@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import csv
+import json
+import ssl
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any, Callable
 
-from config import GOOGLE_SA_PATH, AceSettings, load_settings
+from config import AceSettings, load_settings
 from parser_ssw0157 import (
     COLETAS_CSV,
     HISTORICO_CSV,
@@ -15,6 +19,9 @@ from parser_ssw0157 import (
 )
 
 StatusCallback = Callable[[str], None]
+
+# Apps Script tem limite pratico de tempo/tamanho; envia em fatias.
+_CHUNK_ROWS = 350
 
 
 def _noop(_: str) -> None:
@@ -28,37 +35,74 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(fh))
 
 
-def _ensure_worksheet(spreadsheet, title: str, headers: list[str]):
+def _chunks(rows: list[dict[str, str]], size: int) -> list[list[dict[str, str]]]:
+    if size <= 0:
+        return [rows]
+    return [rows[i : i + size] for i in range(0, len(rows), size)]
+
+
+def _post_json(url: str, payload: dict[str, Any], *, timeout: int = 180) -> dict[str, Any]:
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/json; charset=utf-8"},
+        method="POST",
+    )
+    context = ssl.create_default_context()
+    with urllib.request.urlopen(req, timeout=timeout, context=context) as resp:
+        raw = resp.read().decode("utf-8", errors="replace")
+    if not raw.strip():
+        return {"ok": True}
     try:
-        ws = spreadsheet.worksheet(title)
-    except Exception:
-        ws = spreadsheet.add_worksheet(title=title, rows=2000, cols=max(len(headers), 10))
-        ws.append_row(headers)
-        return ws
-
-    values = ws.get_all_values()
-    if not values:
-        ws.append_row(headers)
-    elif values[0] != headers:
-        # Mantem cabecalho existente se ja houver dados; so cria se vazio
-        if len(values) == 1 and not any(values[0]):
-            ws.update("A1", [headers])
-    return ws
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Algumas respostas do Google redirecionam / devolvem HTML
+        return {"ok": False, "error": f"resposta nao-JSON: {raw[:200]}"}
 
 
-def _replace_sheet(ws, rows: list[dict[str, str]], headers: list[str]) -> dict[str, int]:
-    """Substitui o conteudo da aba pelos dados locais ja mesclados (upsert feito no CSV)."""
-    values = [headers] + [[str(row.get(h, "") or "") for h in headers] for row in rows]
-    ws.clear()
-    if values:
-        # gspread update em blocos para planilhas grandes
-        chunk = 500
-        ws.update("A1", values[:1])
-        for start in range(1, len(values), chunk):
-            part = values[start : start + chunk]
-            cell = f"A{start + 1}"
-            ws.update(cell, part)
-    return {"rows": max(len(values) - 1, 0)}
+def _send_sheet(
+    url: str,
+    token: str,
+    sheet: str,
+    headers: list[str],
+    rows: list[dict[str, str]],
+    *,
+    on_status: StatusCallback,
+) -> dict[str, Any]:
+    """Limpa a aba e envia linhas em chunks (clear + append)."""
+    on_status(f"Sheets/Apps Script: limpando {sheet}...")
+    clear_resp = _post_json(
+        url,
+        {
+            "token": token,
+            "action": "clear",
+            "sheet": sheet,
+            "headers": headers,
+            "rows": [],
+        },
+    )
+    if not clear_resp.get("ok"):
+        return clear_resp
+
+    total = 0
+    parts = _chunks(rows, _CHUNK_ROWS) or [[]]
+    for idx, part in enumerate(parts, start=1):
+        on_status(f"Sheets/Apps Script: {sheet} lote {idx}/{len(parts)} ({len(part)} linhas)...")
+        resp = _post_json(
+            url,
+            {
+                "token": token,
+                "action": "append",
+                "sheet": sheet,
+                "headers": headers,
+                "rows": part,
+            },
+        )
+        if not resp.get("ok"):
+            return resp
+        total += int(resp.get("rows") or len(part))
+    return {"ok": True, "sheet": sheet, "rows": total}
 
 
 def sync_google_sheets(
@@ -67,9 +111,8 @@ def sync_google_sheets(
     on_status: StatusCallback | None = None,
 ) -> dict[str, Any]:
     """
-    Sincroniza CSVs locais com Google Sheets.
-    Os CSVs locais ja fazem merge/upsert; a planilha recebe o snapshot completo.
-    Se desabilitado ou sem credencial, nao quebra o fluxo.
+    Envia CSVs locais para a planilha via Google Apps Script (Web App).
+    Nao usa conta de servico / gspread.
     """
     status = on_status or _noop
     cfg = settings or load_settings()
@@ -81,60 +124,73 @@ def sync_google_sheets(
         status("Sheets desabilitado na configuracao.")
         return result
 
-    if not cfg.google_sheet_id:
+    url = (cfg.apps_script_url or "").strip()
+    token = (cfg.apps_script_token or "").strip()
+    if not url:
         result["skipped"] = True
-        result["reason"] = "google_sheet_id vazio"
-        status("Sheets: ID da planilha nao configurado.")
+        result["reason"] = "apps_script_url vazio"
+        status("Sheets: configure apps_script_url (URL do App da Web).")
         return result
-
-    if not GOOGLE_SA_PATH.exists():
+    if not token:
         result["skipped"] = True
-        result["reason"] = f"credencial ausente: {GOOGLE_SA_PATH}"
-        status(f"Sheets: coloque a conta de servico em {GOOGLE_SA_PATH.name}")
+        result["reason"] = "apps_script_token vazio"
+        status("Sheets: configure apps_script_token (igual ao SECRET do Apps Script).")
         return result
 
+    # Teste rapido de autorizacao antes de enviar tudo
     try:
-        import gspread
-        from google.oauth2.service_account import Credentials
-    except ImportError as error:
-        result["error"] = str(error)
-        status("Sheets: instale gspread e google-auth (pip install -r requirements.txt)")
-        return result
-
-    try:
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive",
-        ]
-        creds = Credentials.from_service_account_file(str(GOOGLE_SA_PATH), scopes=scopes)
-        client = gspread.authorize(creds)
-        spreadsheet = client.open_by_key(cfg.google_sheet_id)
-
-        coletas = _read_csv(COLETAS_CSV)
-        historico = _read_csv(HISTORICO_CSV)
-        resumo = _read_csv(RESUMO_CSV)
-
-        ws_c = _ensure_worksheet(spreadsheet, "Coletas", COLETA_FIELDS)
-        ws_h = _ensure_worksheet(spreadsheet, "Historico", HIST_FIELDS)
-        ws_r = _ensure_worksheet(spreadsheet, "ResumoDiario", RESUMO_FIELDS)
-
-        status(f"Sheets: enviando Coletas ({len(coletas)})...")
-        stats_c = _replace_sheet(ws_c, coletas, COLETA_FIELDS)
-        status(f"Sheets: enviando Historico ({len(historico)})...")
-        stats_h = _replace_sheet(ws_h, historico, HIST_FIELDS)
-        status(f"Sheets: enviando ResumoDiario ({len(resumo)})...")
-        stats_r = _replace_sheet(ws_r, resumo, RESUMO_FIELDS)
-
-        result.update(
+        auth = _post_json(
+            url,
             {
-                "ok": True,
-                "sheet_id": cfg.google_sheet_id,
-                "coletas": stats_c,
-                "historico": stats_h,
-                "resumo": stats_r,
-            }
+                "token": token,
+                "action": "clear",
+                "sheet": "_ace_ping",
+                "headers": ["ok"],
+                "rows": [],
+            },
+            timeout=60,
         )
-        status("Sheets sincronizado com sucesso.")
+        if not auth.get("ok"):
+            result["error"] = auth.get("error") or str(auth)
+            hint = auth.get("hint") or (
+                "No Apps Script, SECRET deve ser exatamente 'coletas-ace' "
+                "(ou o mesmo do config). Depois: Implantar → Gerenciar → Nova versao."
+            )
+            status(f"Sheets nao autorizado: {result['error']}")
+            status(hint)
+            result["hint"] = hint
+            return result
+    except Exception as error:  # noqa: BLE001
+        result["error"] = str(error)
+        status(f"Sheets falhou no ping: {error}")
+        return result
+
+    coletas = _read_csv(COLETAS_CSV)
+    historico = _read_csv(HISTORICO_CSV)
+    resumo = _read_csv(RESUMO_CSV)
+
+    try:
+        status("Sheets: enviando via Apps Script...")
+        stats: dict[str, Any] = {}
+        for sheet, headers, rows in (
+            ("Coletas", COLETA_FIELDS, coletas),
+            ("Historico", HIST_FIELDS, historico),
+            ("ResumoDiario", RESUMO_FIELDS, resumo),
+        ):
+            resp = _send_sheet(url, token, sheet, headers, rows, on_status=status)
+            if not resp.get("ok"):
+                result["error"] = resp.get("error") or str(resp)
+                status(f"Sheets falhou em {sheet}: {result['error']}")
+                return result
+            stats[sheet] = resp
+
+        result.update({"ok": True, "via": "apps_script", "stats": stats})
+        status("Sheets sincronizado com sucesso (Apps Script).")
+        return result
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:300]
+        result["error"] = f"HTTP {error.code}: {detail}"
+        status(f"Sheets falhou (mantendo dados locais): {result['error']}")
         return result
     except Exception as error:  # noqa: BLE001
         result["error"] = str(error)

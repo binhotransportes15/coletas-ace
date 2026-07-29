@@ -35,6 +35,9 @@ class AceSettings:
     entrega_option: str = DEFAULT_ENTREGA_OPTION
     periodo_modo: str = "diario"  # diario | sexta
     enable_sheets: bool = False
+    apps_script_url: str = ""
+    apps_script_token: str = ""
+    # legado (nao usado no fluxo Apps Script)
     google_sheet_id: str = ""
     enable_github_publish: bool = False
     github_repo: str = ""  # owner/repo
@@ -67,6 +70,8 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         periodo_modo=str(payload.get("periodo_modo") or defaults.periodo_modo).strip()
         or defaults.periodo_modo,
         enable_sheets=bool(payload.get("enable_sheets", defaults.enable_sheets)),
+        apps_script_url=str(payload.get("apps_script_url") or "").strip(),
+        apps_script_token=str(payload.get("apps_script_token") or "").strip(),
         google_sheet_id=str(payload.get("google_sheet_id") or "").strip(),
         enable_github_publish=bool(
             payload.get("enable_github_publish", defaults.enable_github_publish)

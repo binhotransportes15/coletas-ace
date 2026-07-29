@@ -9,9 +9,10 @@
   "entrega_option": "",
   "periodo_modo": "diario",
   "enable_sheets": false,
-  "google_sheet_id": "",
+  "apps_script_url": "",
+  "apps_script_token": "TROQUE_ESTE_TOKEN",
   "enable_github_publish": false,
-  "github_repo": "",
+  "github_repo": "binhotransportes15/coletas-ace",
   "github_branch": "main",
   "github_token_env": "GH_TOKEN"
 }

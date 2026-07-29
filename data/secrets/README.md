@@ -1,17 +1,9 @@
-# Conta de serviço Google Sheets
+# Segredos locais
 
-1. No Google Cloud Console, crie um projeto e ative **Google Sheets API** + **Google Drive API**.
-2. Crie uma **Service Account** e baixe o JSON.
-3. Salve o arquivo como:
+A sincronizacao com Google Sheets usa **Apps Script** (sem conta de servico).
 
-`data/secrets/google_service_account.json`
+Veja o passo a passo em:
 
-4. Abra a planilha Google e compartilhe com o e-mail da service account (permissão Editor).
-5. Em `data/config.json`:
+`apps_script/README.md`
 
-```json
-"enable_sheets": true,
-"google_sheet_id": "ID_DA_PLANILHA_NA_URL"
-```
-
-Sem esse arquivo, o ACE continua funcionando com CSV local e não quebra o robô.
+Nao e mais necessario o arquivo `google_service_account.json`.

@@ -1,4 +1,2 @@
 PySide6
 playwright
-gspread
-google-auth

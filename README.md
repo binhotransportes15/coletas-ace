@@ -33,20 +33,21 @@ Cria atalho em `Startup` que executa `ace_robot.py` (headless, modo diario). Log
 
 Se SSW/Sheets/GitHub falhar, o cache e a planilha/dashboard **anteriores permanecem**.
 
-## Google Sheets
+## Google Sheets (via Apps Script)
 
-Ver `data/secrets/README.md`. Abas criadas:
+Sem conta de servico. Passo a passo em [`apps_script/README.md`](apps_script/README.md).
 
-- `Coletas`
-- `Historico` (dia, hora, observacao)
-- `ResumoDiario`
-
-Config:
+1. Cole `apps_script/Code.gs` na planilha (Extensoes → Apps Script)
+2. Publique como **App da Web** e copie a URL
+3. No `data/config.json`:
 
 ```json
 "enable_sheets": true,
-"google_sheet_id": "..."
+"apps_script_url": "https://script.google.com/macros/s/XXXX/exec",
+"apps_script_token": "TROQUE_ESTE_TOKEN"
 ```
+
+Abas criadas automaticamente: `Coletas`, `Historico`, `ResumoDiario`.
 
 ## Dashboard GitHub Pages
 
