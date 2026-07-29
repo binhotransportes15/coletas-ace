@@ -48,8 +48,18 @@ def run_analysis_only(
     cfg = settings or load_settings()
     path = Path(report_path)
     status(f"Analisando relatorio: {path.name}")
-    meta = analyze_report(path, merge=True)
-    status(f"Analise: {meta.get('lote_atual')} coletas | historico total {meta.get('historico')}")
+    # Sempre substitui cache/planilha pelo periodo do relatorio (nao acumula)
+    meta = analyze_report(path, merge=False)
+    totais = meta.get("totais_situacao") or {}
+    status(
+        f"Analise: {meta.get('lote_atual')} coleta(s) pelo cabecalho SPO | "
+        f"SITUACAO ATUAL → "
+        f"COL {totais.get('coletada', 0)} / "
+        f"COM {totais.get('comandada', 0)} / "
+        f"CAD {totais.get('cadastrada', 0)} / "
+        f"CAN {totais.get('cancelada', 0)} | "
+        f"historico {meta.get('historico')} evento(s) (nao entra na soma)"
+    )
     result: dict[str, Any] = {"analysis": meta, "report": str(path)}
 
     if sync:

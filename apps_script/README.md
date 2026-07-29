@@ -1,43 +1,57 @@
-# Apps Script — ligar a planilha ao ACE
+# Apps Script — modelo Vale Pallet
 
-## 1) Criar a planilha
-1. Abra https://sheets.google.com e crie uma planilha vazia (ex.: `ACE Coletas`).
+O site no GitHub Pages **só hospeda o HTML**.  
+Os dados vêm **ao vivo** da planilha, via Apps Script — **sem token do GitHub no dia a dia**.
+
+## Fluxo
+
+```
+ACE (PC) --POST token--> Apps Script --grava--> Google Sheets
+Site GitHub Pages --GET--> Apps Script --le--> Google Sheets
+```
+
+## 1) Criar / abrir a planilha
+Copie o **ID** da URL:
+
+`https://docs.google.com/spreadsheets/d/`**`ID_AQUI`**`/edit`
 
 ## 2) Colar o script
-1. Na planilha: **Extensões → Apps Script**
-2. Apague o código padrão
-3. Cole o conteúdo de [`Code.gs`](Code.gs)
-4. Em `const SECRET = 'TROQUE_ESTE_TOKEN'` coloque um token secreto (ex.: `ace-2026-binho`)
-5. **Salvar** (Ctrl+S)
+1. Planilha → **Extensões → Apps Script**
+2. Cole o [`Code.gs`](Code.gs)
+3. Preencha:
+   ```js
+   var SPREADSHEET_ID = 'ID_AQUI';
+   var SECRET = 'coletas-ace';
+   ```
+4. Salvar
 
-## 3) Publicar como App da Web
-1. Em Apps Script: **Implantar → Nova implantação**
+## 3) Publicar App da Web
+1. **Implantar → Nova implantação** (ou Gerenciar → lápis → **Nova versão**)
 2. Tipo: **App da Web**
-3. Descrição: `ACE bridge`
-4. **Executar como:** Eu
-5. **Quem tem acesso:** Qualquer pessoa
-6. **Implantar**
-7. Autorize a conta Google quando pedir
-8. **Copie a URL** da implantação (termina com `/exec`)
+3. Executar como: **Eu**
+4. Quem tem acesso: **Qualquer pessoa**
+5. Copie a URL `.../exec`
 
-## 4) Configurar o ACE
-Em `data/config.json`:
-
+## 4) Configurar o ACE (`data/config.json`)
 ```json
 "enable_sheets": true,
 "apps_script_url": "https://script.google.com/macros/s/XXXX/exec",
-"apps_script_token": "ace-2026-binho"
+"apps_script_token": "coletas-ace"
 ```
 
-O `apps_script_token` tem que ser **igual** ao `SECRET` do `Code.gs`.
+## 5) Site (igual Vale Pallet)
+Em `dashboard/config.js` já vai a mesma URL do App da Web.  
+O site chama:
+- `?action=resumo`
+- `?action=coletas` — situações (1 SPO = 1 coleta)
+- `?action=historico&coleta_id=SPO071651` — histórico SIT/INSTR sob demanda
 
-## 5) Testar
-No ACE: **Analisar ultimo relatorio** (com sync ligado).
+**GitHub token só é necessário** se você for alterar o HTML do site e fizer `git push` (igual quando atualiza o Vale Pallet).  
+Atualização diária de dados = só o ACE gravando na planilha.
 
-Devem surgir as abas:
-- `Coletas`
-- `Historico`
-- `ResumoDiario`
+## Teste rapido no navegador
+Abra:
 
-## Se alterar o script
-Depois de mudar o `Code.gs`, faça **Implantar → Gerenciar implantações → Editar (lápis) → Nova versão → Implantar**.
+`SUA_URL_EXEC?action=ping`
+
+Deve voltar `{"ok":true,...}`.

@@ -35,9 +35,9 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
             # cria vazio para o dashboard nao quebrar
             with dest.open("w", encoding="utf-8-sig", newline="") as fh:
                 if name.startswith("resumo"):
-                    fh.write("data_cadastro,total,cadastrada,comandada,coletada,cancelada\n")
+                    fh.write("data_cadastro,total_coletas,cadastrada,comandada,coletada,cancelada\n")
                 else:
-                    fh.write("coleta_id,situacao_atual\n")
+                    fh.write("coleta_id,coleta,situacao_atual\n")
             paths[name] = str(dest)
     meta = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),

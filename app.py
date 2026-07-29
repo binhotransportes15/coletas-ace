@@ -255,11 +255,18 @@ class MainWindow(QMainWindow):
         files_layout.addWidget(self.file_list)
         lists.addWidget(files_box, 1)
 
-        coletas_box = QGroupBox("Coletas analisadas (situacao)")
+        coletas_box = QGroupBox("Coletas (1 linha = 1 SPO) — clique para ver historico")
         coletas_layout = QVBoxLayout(coletas_box)
         self.coletas_list = QListWidget()
+        self.coletas_list.currentItemChanged.connect(self._on_coleta_selected)
         coletas_layout.addWidget(self.coletas_list)
         lists.addWidget(coletas_box, 1)
+
+        hist_box = QGroupBox("Historico SIT/INSTR desta coleta (data / hora / o que aconteceu)")
+        hist_layout = QVBoxLayout(hist_box)
+        self.historico_list = QListWidget()
+        hist_layout.addWidget(self.historico_list)
+        lists.addWidget(hist_box, 1)
         root.addLayout(lists, 2)
 
         self.log = QPlainTextEdit()
@@ -445,23 +452,59 @@ class MainWindow(QMainWindow):
             self.file_list.addItem(item)
 
         self.coletas_list.clear()
-        for rec in (analysis.get("records") or [])[:300]:
-            sit = rec.get("situacao_atual") or "?"
+        self.historico_list.clear()
+        self._records_by_id = {}
+        for rec in analysis.get("records") or []:
             cid = rec.get("coleta_id") or ""
-            self.coletas_list.addItem(f"{cid}  ·  {sit}")
+            if cid:
+                self._records_by_id[cid] = rec
+        for rec in (analysis.get("records") or [])[:500]:
+            sit = rec.get("situacao_atual") or "?"
+            label = rec.get("unidade", "") + " " + str(rec.get("numero") or "")
+            label = label.strip() or rec.get("coleta_id") or ""
+            n_hist = len(rec.get("historico") or [])
+            item = QListWidgetItem(f"{label}  ·  {sit}  ·  {n_hist} evento(s)")
+            item.setData(Qt.ItemDataRole.UserRole, rec.get("coleta_id"))
+            self.coletas_list.addItem(item)
 
         self._log(
-            f"Concluido: lote={analysis.get('lote_atual')} "
-            f"coletas_cache={analysis.get('coletas')} "
-            f"historico={analysis.get('historico')}"
+            f"Concluido: {analysis.get('lote_atual')} coleta(s) | "
+            f"SITUACAO ATUAL {analysis.get('totais_situacao')} | "
+            f"{analysis.get('historico')} evento(s) historico (fora da soma)"
         )
+        tot = analysis.get("totais_situacao") or {}
         QMessageBox.information(
             self,
             "ACE",
-            f"Analise concluida.\nColetas no lote: {analysis.get('lote_atual')}\n"
-            f"Historico (cache): {analysis.get('historico')}\n"
-            f"CSV em:\n{CACHE_DIR}",
+            f"Analise concluida.\n\n"
+            f"Coletas (cabecalho SPO): {analysis.get('lote_atual')}\n"
+            f"SITUACAO ATUAL:\n"
+            f"  Coletada: {tot.get('coletada', 0)}\n"
+            f"  Comandada: {tot.get('comandada', 0)}\n"
+            f"  Cadastrada: {tot.get('cadastrada', 0)}\n"
+            f"  Cancelada: {tot.get('cancelada', 0)}\n\n"
+            f"Historico: {analysis.get('historico')} eventos "
+            f"(nao entram na soma).\n"
+            f"Planilha/cache substituidos pelo periodo.",
         )
+
+    def _on_coleta_selected(self, current: QListWidgetItem | None, _previous=None) -> None:
+        self.historico_list.clear()
+        if not current:
+            return
+        cid = current.data(Qt.ItemDataRole.UserRole)
+        rec = getattr(self, "_records_by_id", {}).get(cid) or {}
+        eventos = list(rec.get("historico") or [])
+        # Ordena por data/hora
+        eventos.sort(key=lambda h: (h.get("data") or "", h.get("hora") or ""))
+        if not eventos:
+            self.historico_list.addItem("(sem eventos de historico nesta coleta)")
+            return
+        for h in eventos:
+            self.historico_list.addItem(
+                f"{h.get('data') or ''} {h.get('hora') or ''}  ·  "
+                f"{h.get('usuario') or ''}  ·  {h.get('observacao') or ''}"
+            )
 
     def _on_failed(self, message: str) -> None:
         self._log(f"ERRO: {message}")

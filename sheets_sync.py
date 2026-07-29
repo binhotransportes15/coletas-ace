@@ -170,8 +170,12 @@ def sync_google_sheets(
     resumo = _read_csv(RESUMO_CSV)
 
     try:
-        status("Sheets: enviando via Apps Script...")
+        status(
+            f"Sheets: apagando abas e gravando so o periodo atual "
+            f"({len(coletas)} coletas | {len(historico)} eventos historico)..."
+        )
         stats: dict[str, Any] = {}
+        # Ordem importa: Coletas = 1 SPO; Historico = log da SPO (nao conta como coleta)
         for sheet, headers, rows in (
             ("Coletas", COLETA_FIELDS, coletas),
             ("Historico", HIST_FIELDS, historico),
@@ -184,8 +188,18 @@ def sync_google_sheets(
                 return result
             stats[sheet] = resp
 
-        result.update({"ok": True, "via": "apps_script", "stats": stats})
-        status("Sheets sincronizado com sucesso (Apps Script).")
+        result.update({
+            "ok": True,
+            "via": "apps_script",
+            "mode": "replace",
+            "coletas": len(coletas),
+            "historico_eventos": len(historico),
+            "stats": stats,
+        })
+        status(
+            f"Sheets substituida: {len(coletas)} coleta(s), "
+            f"{len(historico)} evento(s) de historico."
+        )
         return result
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")[:300]

@@ -33,21 +33,25 @@ Cria atalho em `Startup` que executa `ace_robot.py` (headless, modo diario). Log
 
 Se SSW/Sheets/GitHub falhar, o cache e a planilha/dashboard **anteriores permanecem**.
 
-## Google Sheets (via Apps Script)
+## Google Sheets + site (modelo Vale Pallet)
 
-Sem conta de servico. Passo a passo em [`apps_script/README.md`](apps_script/README.md).
+O ACE grava na planilha via Apps Script.  
+O site no GitHub Pages **le a planilha ao vivo** — **nao precisa de token GitHub todo dia**.
 
-1. Cole `apps_script/Code.gs` na planilha (Extensoes → Apps Script)
-2. Publique como **App da Web** e copie a URL
-3. No `data/config.json`:
+Passo a passo: [`apps_script/README.md`](apps_script/README.md)
 
 ```json
 "enable_sheets": true,
 "apps_script_url": "https://script.google.com/macros/s/XXXX/exec",
-"apps_script_token": "TROQUE_ESTE_TOKEN"
+"apps_script_token": "coletas-ace"
 ```
 
-Abas criadas automaticamente: `Coletas`, `Historico`, `ResumoDiario`.
+No `Code.gs` da planilha e obrigatorio:
+- `SPREADSHEET_ID` (ID da URL da planilha)
+- `SECRET = 'coletas-ace'`
+- publicar **Nova versao** da App da Web
+
+Abas: `Coletas`, `Historico`, `ResumoDiario`.
 
 ## Dashboard GitHub Pages
 

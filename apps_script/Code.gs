@@ -1,45 +1,123 @@
 /**
- * ACE · Apps Script receptor
+ * ACE · Apps Script (mesmo modelo do Vale Pallet)
  *
- * 1) Extensoes → Apps Script (nesta planilha)
- * 2) Cole este codigo no Code.gs
- * 3) Ajuste SECRET abaixo (o mesmo valor do config.json → apps_script_token)
- * 4) Implantar → Nova implantacao → Tipo: App da Web
- *    - Executar como: Eu
- *    - Quem tem acesso: Qualquer pessoa
- * 5) Copie a URL da implantacao para config.json → apps_script_url
+ * IMPORTANTE: App da Web muitas vezes NAO acha a planilha com getActiveSpreadsheet().
+ * Por isso e obrigatorio colar o ID abaixo.
+ *
+ * Como pegar o ID:
+ * https://docs.google.com/spreadsheets/d/COLE_ESTE_PEDACO_AQUI/edit
+ *
+ * Passos:
+ * 1. Cole o ID em SPREADSHEET_ID
+ * 2. Confirme SECRET = 'coletas-ace' (igual ao apps_script_token do ACE)
+ * 3. Salvar
+ * 4. Implantar → Gerenciar implantações → lápis → Nova versão → Implantar
+ *
+ * Leitura do site (sem token):
+ *   GET ?action=resumo | ?action=coletas | ?action=historico&coleta_id=SPO071651 | ?action=ping
+ * Escrita do ACE (com token): POST JSON action clear/append/replace
  */
 
-const SECRET = 'coletas-ace'; // deve ser igual a apps_script_token no config.json do ACE
+var SPREADSHEET_ID = '1VOkCF1Hn-VUZC7aKu_pa0Hgo1VjjuEJOqFqNSAErCzU';
+var SECRET = 'coletas-ace';
 
-function doGet() {
-  return json_({
-    ok: true,
-    service: 'ACE Sheets Bridge',
-    hint: 'Use POST com token para enviar coletas/historico/resumo.',
-  });
-}
-
-function doPost(e) {
+function doGet(e) {
   try {
-    if (!e || !e.postData || !e.postData.contents) {
-      return json_({ ok: false, error: 'body vazio' });
-    }
-    const data = JSON.parse(e.postData.contents);
-    const received = String((data && data.token) || '').trim();
-    const expected = String(SECRET || '').trim();
-    if (!data || received !== expected) {
+    var dados = extrairDados_(e);
+    var action = String(dados.action || 'ping').toLowerCase();
+
+    if (action === 'ping' || action === '') {
       return json_({
-        ok: false,
-        error: 'nao autorizado',
-        hint: 'SECRET no Apps Script precisa ser igual ao apps_script_token do ACE. Depois de alterar, faca Nova versao na implantacao.',
+        ok: true,
+        service: 'ACE Sheets Bridge',
+        spreadsheet: SPREADSHEET_ID,
+        hint: 'GET action=resumo|coletas|historico&coleta_id= | POST com token para gravar',
       });
     }
 
-    const action = String(data.action || 'replace').toLowerCase();
-    const sheetName = String(data.sheet || '');
-    const headers = data.headers || [];
-    const rows = data.rows || [];
+    if (action === 'resumo') {
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: sheetToObjects_('ResumoDiario'),
+      });
+    }
+
+    if (action === 'coletas') {
+      // So linhas da aba Coletas (1 SPO = 1 coleta). Nunca misturar Historico.
+      var rows = sheetToObjects_('Coletas').filter(function (r) {
+        if (r.event_key || r.seq_evento) return false;
+        // Precisa do cabecalho SPO + SITUACAO ATUAL para contar
+        if (!(r.coleta_id || r.coleta || (r.unidade && r.numero))) return false;
+        var sit = String(r.situacao_atual || '').toUpperCase();
+        return /CADASTRADA|COMANDADA|COLETADA|CANCELADA/.test(sit);
+      });
+      // Dedupe por coleta_id
+      var seen = {};
+      var unique = [];
+      for (var i = 0; i < rows.length; i++) {
+        var key = String(rows[i].coleta_id || rows[i].coleta || '').trim();
+        if (!key || seen[key]) continue;
+        seen[key] = true;
+        unique.push(rows[i]);
+      }
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: unique,
+        total_coletas: unique.length,
+      });
+    }
+
+    if (action === 'historico') {
+      var filtroId = normalizarColetaId_(dados.coleta_id || dados.coleta || '');
+      if (!filtroId) {
+        return json_({ ok: false, error: 'informe coleta_id (ex.: SPO071651 ou SPO 071651)' });
+      }
+      var hist = sheetToObjects_('Historico').filter(function (r) {
+        var cid = normalizarColetaId_(r.coleta_id || r.coleta || '');
+        return cid === filtroId;
+      });
+      hist.sort(function (a, b) {
+        var da = String(a.data || '') + ' ' + String(a.hora || '');
+        var db = String(b.data || '') + ' ' + String(b.hora || '');
+        return da < db ? -1 : da > db ? 1 : 0;
+      });
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        coleta_id: filtroId,
+        rows: hist,
+        total_eventos: hist.length,
+      });
+    }
+
+    return json_({ ok: false, error: 'action invalida: ' + action });
+  } catch (err) {
+    return json_({ ok: false, error: String(err) });
+  }
+}
+
+function normalizarColetaId_(valor) {
+  return String(valor || '').toUpperCase().replace(/\s+/g, '').trim();
+}
+function doPost(e) {
+  try {
+    var data = extrairDados_(e);
+    var received = String(data.token || '').trim();
+    var expected = String(SECRET || '').trim();
+    if (received !== expected) {
+      return json_({
+        ok: false,
+        error: 'nao autorizado',
+        hint: 'SECRET no Apps Script deve ser igual ao apps_script_token do ACE. Publique Nova versao apos alterar.',
+      });
+    }
+
+    var action = String(data.action || 'replace').toLowerCase();
+    var sheetName = String(data.sheet || '');
+    var headers = data.headers || [];
+    var rows = data.rows || [];
 
     if (!sheetName) {
       return json_({ ok: false, error: 'sheet obrigatorio' });
@@ -49,18 +127,14 @@ function doPost(e) {
     }
 
     if (action === 'replace') {
-      const written = replaceSheet_(sheetName, headers, rows);
-      return json_({ ok: true, sheet: sheetName, rows: written });
+      return json_({ ok: true, sheet: sheetName, rows: replaceSheet_(sheetName, headers, rows) });
     }
-
     if (action === 'clear') {
       clearSheet_(sheetName, headers);
       return json_({ ok: true, sheet: sheetName, cleared: true });
     }
-
     if (action === 'append') {
-      const written = appendRows_(sheetName, headers, rows);
-      return json_({ ok: true, sheet: sheetName, rows: written });
+      return json_({ ok: true, sheet: sheetName, rows: appendRows_(sheetName, headers, rows) });
     }
 
     return json_({ ok: false, error: 'action invalida: ' + action });
@@ -69,47 +143,153 @@ function doPost(e) {
   }
 }
 
+function extrairDados_(e) {
+  var dados = {};
+  try {
+    if (e && e.parameter) {
+      for (var k in e.parameter) {
+        if (Object.prototype.hasOwnProperty.call(e.parameter, k)) {
+          dados[k] = e.parameter[k];
+        }
+      }
+    }
+    if (dados.payload) {
+      var parsedPayload = JSON.parse(dados.payload);
+      for (var pk in parsedPayload) {
+        if (Object.prototype.hasOwnProperty.call(parsedPayload, pk)) {
+          dados[pk] = parsedPayload[pk];
+        }
+      }
+      delete dados.payload;
+    }
+    if (e && e.postData && e.postData.contents) {
+      var raw = String(e.postData.contents).trim();
+      if (raw.charAt(0) === '{') {
+        var parsedBody = JSON.parse(raw);
+        for (var bk in parsedBody) {
+          if (Object.prototype.hasOwnProperty.call(parsedBody, bk)) {
+            dados[bk] = parsedBody[bk];
+          }
+        }
+      }
+    }
+  } catch (ignore) {}
+  return dados;
+}
+
+function getSpreadsheet_() {
+  if (!SPREADSHEET_ID || SPREADSHEET_ID.indexOf('COLE_O_ID') === 0) {
+    throw new Error('Configure SPREADSHEET_ID no Code.gs (ID da planilha na URL).');
+  }
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
 function getOrCreateSheet_(name) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sh = ss.getSheetByName(name);
+  var ss = getSpreadsheet_();
+  var sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
   }
   return sh;
 }
 
+function sheetToObjects_(name) {
+  var sh = getSpreadsheet_().getSheetByName(name);
+  if (!sh) {
+    return [];
+  }
+  var values = sh.getDataRange().getValues();
+  if (!values || values.length < 2) {
+    return [];
+  }
+  var headers = values[0].map(function (h) { return String(h || '').trim(); });
+  var out = [];
+  for (var r = 1; r < values.length; r++) {
+    var row = values[r];
+    var obj = {};
+    var empty = true;
+    for (var c = 0; c < headers.length; c++) {
+      var key = headers[c];
+      if (!key) continue;
+      var val = row[c];
+      var text = cellToText_(val, key);
+      if (text !== '') empty = false;
+      obj[key] = text;
+    }
+    if (!empty) out.push(obj);
+  }
+  return out;
+}
+
+/**
+ * Converte Date do Sheets para texto curto.
+ * Evita "Thu Jul 02 2026 00:00:00 GMT-0300 (Horário Padrão de Brasília)".
+ * Hora pura no Sheets vira 30/12/1899 — exibimos só HH:mm.
+ */
+function cellToText_(val, key) {
+  if (val === null || val === undefined || val === '') return '';
+  var k = String(key || '').toLowerCase();
+  if (Object.prototype.toString.call(val) === '[object Date]' && !isNaN(val.getTime())) {
+    var year = val.getFullYear();
+    var isHoraCol = /(^hora$|_hora$|hora_)/.test(k);
+    var isDataCol = /(^data$|_data$|data_)/.test(k) || k === 'data_cadastro' || k === 'data_limite_inicial';
+    // Serial de hora no Sheets (epoch 1899)
+    if (year < 1900 || isHoraCol) {
+      return Utilities.formatDate(val, 'America/Sao_Paulo', 'HH:mm');
+    }
+    if (isDataCol) {
+      return Utilities.formatDate(val, 'America/Sao_Paulo', 'dd/MM');
+    }
+    // Date com hora relevante
+    var h = val.getHours();
+    var m = val.getMinutes();
+    if (h === 0 && m === 0) {
+      return Utilities.formatDate(val, 'America/Sao_Paulo', 'dd/MM');
+    }
+    return Utilities.formatDate(val, 'America/Sao_Paulo', 'dd/MM HH:mm');
+  }
+  return String(val);
+}
+
 function clearSheet_(name, headers) {
-  const sh = getOrCreateSheet_(name);
+  var sh = getOrCreateSheet_(name);
   sh.clear();
   if (headers && headers.length) {
-    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+    var range = sh.getRange(1, 1, 1, headers.length);
+    range.setNumberFormat('@');
+    range.setValues([headers]);
   }
 }
 
 function appendRows_(name, headers, rows) {
-  const sh = getOrCreateSheet_(name);
-  const values = sh.getDataRange().getValues();
+  var sh = getOrCreateSheet_(name);
+  var values = sh.getDataRange().getValues();
   if (!values.length || !values[0] || !values[0].length) {
-    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+    var head = sh.getRange(1, 1, 1, headers.length);
+    head.setNumberFormat('@');
+    head.setValues([headers]);
   }
   if (!rows.length) {
     return 0;
   }
-  const matrix = rowsToMatrix_(headers, rows);
-  const startRow = sh.getLastRow() + 1;
-  sh.getRange(startRow, 1, matrix.length, headers.length).setValues(matrix);
+  var matrix = rowsToMatrix_(headers, rows);
+  var startRow = sh.getLastRow() + 1;
+  var body = sh.getRange(startRow, 1, matrix.length, headers.length);
+  body.setNumberFormat('@'); // texto: nao transforma 29/07 em Date
+  body.setValues(matrix);
   return matrix.length;
 }
 
 function replaceSheet_(name, headers, rows) {
-  const sh = getOrCreateSheet_(name);
+  var sh = getOrCreateSheet_(name);
   sh.clear();
-  const matrix = [headers].concat(rowsToMatrix_(headers, rows));
-  // Escreve em blocos para planilhas grandes
-  const chunk = 400;
-  for (let i = 0; i < matrix.length; i += chunk) {
-    const part = matrix.slice(i, i + chunk);
-    sh.getRange(i + 1, 1, part.length, headers.length).setValues(part);
+  var matrix = [headers].concat(rowsToMatrix_(headers, rows));
+  var chunk = 400;
+  for (var i = 0; i < matrix.length; i += chunk) {
+    var part = matrix.slice(i, i + chunk);
+    var range = sh.getRange(i + 1, 1, part.length, headers.length);
+    range.setNumberFormat('@');
+    range.setValues(part);
   }
   return Math.max(matrix.length - 1, 0);
 }
@@ -117,7 +297,7 @@ function replaceSheet_(name, headers, rows) {
 function rowsToMatrix_(headers, rows) {
   return (rows || []).map(function (row) {
     return headers.map(function (h) {
-      const v = row[h];
+      var v = row[h];
       if (v === null || v === undefined) return '';
       return String(v);
     });

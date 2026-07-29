@@ -23,7 +23,10 @@ _HEADER_RE = re.compile(
     re.IGNORECASE,
 )
 _SITUACAO_ATUAL_RE = re.compile(
-    r"SITUAC[AÃ]O\s+ATUAL:\s*(?P<data>\d{2}/\d{2})?\s*(?P<hora>\d{2}:\d{2})?\s*(?P<status>\w+)?",
+    r"SITUAC[AÃ]O\s+ATUAL:\s*"
+    r"(?:(?P<data>\d{2}/\d{2})\s+)?"
+    r"(?:(?P<hora>\d{2}:\d{2})\s+)?"
+    r"(?P<status>CADASTRADA|COMANDADA|COLETADA|CANCELADA)",
     re.IGNORECASE,
 )
 _STATUS_SIDE_RE = re.compile(
@@ -44,11 +47,19 @@ _FIELD_PATTERNS = {
         r"DATA/HORA LIMITE:\s*(\d{2}/\d{2}\s+\d{2}:\d{2})", re.IGNORECASE
     ),
     "solicitante": re.compile(r"SOLICITANTE:\s*(\S+(?:\s+\S+)?)", re.IGNORECASE),
-    "motorista": re.compile(r"MOTORISTA:\s*(.+?)(?:\s{2,}|$)", re.IGNORECASE),
+    "motorista": re.compile(
+        r"MOTORISTA:\s*(.*?)(?=\s{2,}SITUAC|\s+SITUAC[AÃ]O\s+ATUAL:|"
+        r"\s{2,}CADASTRADA:|\s{2,}COMANDADA:|\s{2,}COLETADA:|\s{2,}CANCELADA:|\s*$)",
+        re.IGNORECASE,
+    ),
     "val_merc": re.compile(r"VAL MERC:\s*([\d.,]+)", re.IGNORECASE),
     "qtde_vol": re.compile(r"QTDE VOL:\s*([\d.,]+)", re.IGNORECASE),
     "peso_kg": re.compile(r"PESO\(KG\):\s*([\d.,]+)", re.IGNORECASE),
-    "veiculo": re.compile(r"VEICULO:\s*(.+?)(?:\s{2,}|$)", re.IGNORECASE),
+    "veiculo": re.compile(
+        r"VEICULO:\s*(.*?)(?=\s{2,}SITUAC|\s+SITUAC[AÃ]O\s+ATUAL:|"
+        r"\s{2,}CADASTRADA:|\s{2,}COMANDADA:|\s{2,}COLETADA:|\s{2,}CANCELADA:|\s*$)",
+        re.IGNORECASE,
+    ),
     "merc": re.compile(r"MERC:\s*(.+?)(?:\s{2,}TIPO FRETE:|\s*$)", re.IGNORECASE),
     "tipo_frete": re.compile(r"TIPO FRETE:\s*(\S+)", re.IGNORECASE),
     "nfiscais": re.compile(r"NFISCAIS:\s*(.+?)(?:\s{2,}COMANDADA:|\s{2,}CADASTRADA:|\s*$)", re.IGNORECASE),
@@ -142,17 +153,25 @@ def _read_text(path: Path) -> str:
 
 
 def _split_blocks(text: str) -> list[str]:
+    """
+    Cada bloco comeca no cabecalho da coleta: 'SPO 071651 - NORMAL ...'
+    Linhas indentadas (historico SIT/INSTR) NUNCA abrem coleta nova.
+    """
     lines = text.split("\n")
     blocks: list[list[str]] = []
     current: list[str] = []
     for line in lines:
-        if _HEADER_RE.search(line.strip()) or _HEADER_RE.search(line):
+        # So casa no inicio da linha (sem espacos) — evita falso positivo no historico
+        if re.match(
+            r"^[A-Z]{3}\s+\d+\s*-\s*\S+.*?DATA LIMITE INICIAL:\s*\d{2}/\d{2}",
+            line,
+            flags=re.IGNORECASE,
+        ):
             if current:
                 blocks.append(current)
             current = [line]
         elif current:
-            # Separador entre coletas
-            if line.startswith("---") and len(line.strip("-")) == 0:
+            if line.startswith("---") and len(line.strip("- ")) == 0:
                 blocks.append(current)
                 current = []
             else:
@@ -209,17 +228,24 @@ def _parse_block(block: str) -> ColetaRecord | None:
         if found:
             setattr(coleta, field_name, _clean(found.group(1)))
 
-    # Situacao atual e statuses laterais
+    # Situacao atual: fonte UNICA para contagem (nunca historico SIT/INSTR)
+    # Ex.: SITUACAO ATUAL: 29/07 18:32 COMANDADA
+    atual = _SITUACAO_ATUAL_RE.search(joined)
+    if atual:
+        coleta.situacao_atual = (atual.group("status") or "").upper()
+        coleta.situacao_atual_data = atual.group("data") or ""
+        coleta.situacao_atual_hora = atual.group("hora") or ""
+
+    # Datas laterais (CADASTRADA:/COMANDADA:/...) so para detalhe — NAO definem a soma
     for line in lines:
-        atual = _SITUACAO_ATUAL_RE.search(line)
-        if atual:
-            coleta.situacao_atual = _clean(atual.group("status") or "")
-            coleta.situacao_atual_data = atual.group("data") or ""
-            coleta.situacao_atual_hora = atual.group("hora") or ""
         for st in _STATUS_SIDE_RE.finditer(line):
+            label = (st.group("label") or "").upper()
+            # Nao confundir com a linha SITUACAO ATUAL
+            if "SITUAC" in line.upper() and "ATUAL" in line.upper():
+                continue
             _apply_status(
                 coleta,
-                st.group("label"),
+                label,
                 st.group("data") or "",
                 st.group("hora") or "",
                 _clean(st.group("usuario") or ""),
@@ -317,39 +343,87 @@ def _write_csv(path: Path, rows: list[dict[str, Any]], fieldnames: list[str]) ->
             writer.writerow(row)
 
 
-def build_resumo(coletas: list[ColetaRecord]) -> list[dict[str, Any]]:
-    buckets: dict[str, dict[str, Any]] = {}
+def format_coleta_label(unidade: str, numero: str) -> str:
+    """Ex.: SPO 071651 (como no relatorio SSW)."""
+    u = (unidade or "").strip().upper()
+    n = (numero or "").strip()
+    if u and n:
+        return f"{u} {n}"
+    return u or n or ""
+
+
+def normalizar_situacao_atual(status: str) -> str:
+    s = (status or "").strip().upper()
+    if "CANCEL" in s:
+        return "CANCELADA"
+    if "COLET" in s:
+        return "COLETADA"
+    if "COMAND" in s:
+        return "COMANDADA"
+    if "CADASTR" in s:
+        return "CADASTRADA"
+    return s
+
+
+def contar_por_situacao_atual(coletas: list[ColetaRecord]) -> dict[str, int]:
+    """
+    Regra de negocio:
+    - 1 coleta = 1 cabecalho (ex.: SPO 071651 - NORMAL ... DATA LIMITE INICIAL)
+    - A soma das situacoes usa SOMENTE o campo SITUACAO ATUAL
+    - Historico SIT/INSTR NAO entra na contagem
+    """
+    out = {
+        "total_coletas": 0,
+        "cadastrada": 0,
+        "comandada": 0,
+        "coletada": 0,
+        "cancelada": 0,
+        "sem_situacao": 0,
+    }
+    seen: set[str] = set()
     for c in coletas:
-        dia = c.cadastrada_data or c.situacao_atual_data or ""
-        if not dia:
-            dia = "SEM_DATA"
-        bucket = buckets.setdefault(
-            dia,
-            {
-                "data_cadastro": dia,
-                "total": 0,
-                "cadastrada": 0,
-                "comandada": 0,
-                "coletada": 0,
-                "cancelada": 0,
-            },
-        )
-        bucket["total"] += 1
-        status = (c.situacao_atual or "").upper()
-        if status == "CANCELADA" or c.cancelada_data:
-            bucket["cancelada"] += 1
-        elif status == "COLETADA" or c.coletada_data:
-            bucket["coletada"] += 1
-        elif status == "COMANDADA" or c.comandada_data:
-            bucket["comandada"] += 1
+        cid = (c.coleta_id or "").strip().upper()
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        out["total_coletas"] += 1
+        status = normalizar_situacao_atual(c.situacao_atual)
+        if status == "CANCELADA":
+            out["cancelada"] += 1
+        elif status == "COLETADA":
+            out["coletada"] += 1
+        elif status == "COMANDADA":
+            out["comandada"] += 1
+        elif status == "CADASTRADA":
+            out["cadastrada"] += 1
         else:
-            bucket["cadastrada"] += 1
-    return sorted(buckets.values(), key=lambda r: r["data_cadastro"])
+            out["sem_situacao"] += 1
+    return out
+
+
+def build_resumo(coletas: list[ColetaRecord]) -> list[dict[str, Any]]:
+    """
+    Totais do lote atual: 1 linha por periodo (so SITUACAO ATUAL).
+    Nao usa datas do historico nem CADASTRADA:/COMANDADA: laterais para somar.
+    """
+    totais = contar_por_situacao_atual(coletas)
+    return [
+        {
+            "data_cadastro": "PERIODO",
+            "total_coletas": totais["total_coletas"],
+            "cadastrada": totais["cadastrada"],
+            "comandada": totais["comandada"],
+            "coletada": totais["coletada"],
+            "cancelada": totais["cancelada"],
+        }
+    ]
 
 
 def coleta_to_row(c: ColetaRecord) -> dict[str, Any]:
+    label = format_coleta_label(c.unidade, c.numero) or c.coleta_id
     return {
         "coleta_id": c.coleta_id,
+        "coleta": label,
         "unidade": c.unidade,
         "numero": c.numero,
         "tipo": c.tipo,
@@ -385,20 +459,32 @@ def coleta_to_row(c: ColetaRecord) -> dict[str, Any]:
         "obs1": c.obs1,
         "obs2": c.obs2,
         "obs3": c.obs3,
-        "qtd_historico": len(c.historico),
+        "qtd_eventos_historico": len(c.historico),
     }
 
 
 def historico_to_rows(coletas: list[ColetaRecord]) -> list[dict[str, Any]]:
+    """
+    Cada linha e um EVENTO do historico SIT/INSTR de UMA coleta.
+    Varias datas podem aparecer — todas pertencem ao mesmo coleta_id / coleta.
+    """
     rows: list[dict[str, Any]] = []
     for c in coletas:
-        for h in c.historico:
+        label = format_coleta_label(c.unidade, c.numero) or c.coleta_id
+        # Ordena cronologicamente (data+hora) para leitura
+        eventos = sorted(
+            c.historico,
+            key=lambda h: (h.data[3:5] + h.data[:2] if len(h.data) == 5 else h.data, h.hora),
+        )
+        for seq, h in enumerate(eventos, start=1):
             rows.append(
                 {
                     "event_key": h.event_key,
-                    "coleta_id": h.coleta_id,
+                    "coleta_id": c.coleta_id,
+                    "coleta": label,
+                    "seq_evento": seq,
                     "dominio": h.dominio,
-                    "unidade": h.unidade,
+                    "unidade_evento": h.unidade,
                     "usuario": h.usuario,
                     "data": h.data,
                     "hora": h.hora,
@@ -412,8 +498,10 @@ COLETA_FIELDS = list(coleta_to_row(ColetaRecord(coleta_id="X")).keys())
 HIST_FIELDS = [
     "event_key",
     "coleta_id",
+    "coleta",
+    "seq_evento",
     "dominio",
-    "unidade",
+    "unidade_evento",
     "usuario",
     "data",
     "hora",
@@ -421,7 +509,7 @@ HIST_FIELDS = [
 ]
 RESUMO_FIELDS = [
     "data_cadastro",
-    "total",
+    "total_coletas",
     "cadastrada",
     "comandada",
     "coletada",
@@ -433,9 +521,14 @@ def save_cache(
     coletas: list[ColetaRecord],
     *,
     source_file: str = "",
-    merge: bool = True,
+    merge: bool = False,
 ) -> dict[str, Any]:
-    """Grava CSVs locais. Com merge=True, preserva dados antigos e faz upsert."""
+    """
+    Grava CSVs locais do lote atual.
+
+    Padrao merge=False: apaga o cache anterior e grava so o periodo/relatorio
+    analisado agora (planilha e dashboard refletem so essa data).
+    """
     ensure_dirs()
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -461,11 +554,6 @@ def save_cache(
         key=lambda r: (r.get("coleta_id") or "", r.get("data") or "", r.get("hora") or ""),
     )
 
-    # Rebuild coletas objects-ish for resumo from coleta_list
-    resumo_source = coletas
-    if merge and len(coleta_list) > len(coletas):
-        # Resumo so do lote atual + merge simples por situacao_atual do CSV
-        pass
     resumo = build_resumo(coletas)
     if merge and RESUMO_CSV.exists():
         merged_resumo: dict[str, dict[str, Any]] = {
@@ -474,22 +562,19 @@ def save_cache(
         with RESUMO_CSV.open("r", encoding="utf-8-sig", newline="") as fh:
             for row in csv.DictReader(fh):
                 dia = row.get("data_cadastro") or ""
-                if not dia:
+                if not dia or dia in merged_resumo:
                     continue
-                if dia not in merged_resumo:
-                    merged_resumo[dia] = {
-                        "data_cadastro": dia,
-                        "total": int(row.get("total") or 0),
-                        "cadastrada": int(row.get("cadastrada") or 0),
-                        "comandada": int(row.get("comandada") or 0),
-                        "coletada": int(row.get("coletada") or 0),
-                        "cancelada": int(row.get("cancelada") or 0),
-                    }
-                else:
-                    # Atualiza com numeros do lote novo (substitui dia)
-                    pass
+                merged_resumo[dia] = {
+                    "data_cadastro": dia,
+                    "total_coletas": int(row.get("total_coletas") or row.get("total") or 0),
+                    "cadastrada": int(row.get("cadastrada") or 0),
+                    "comandada": int(row.get("comandada") or 0),
+                    "coletada": int(row.get("coletada") or 0),
+                    "cancelada": int(row.get("cancelada") or 0),
+                }
         resumo = sorted(merged_resumo.values(), key=lambda r: r["data_cadastro"])
 
+    # Sempre sobrescreve os CSVs (nao acumula historico de outros periodos)
     _write_csv(COLETAS_CSV, coleta_list, COLETA_FIELDS)
     _write_csv(HISTORICO_CSV, hist_list, HIST_FIELDS)
     _write_csv(RESUMO_CSV, resumo, RESUMO_FIELDS)
@@ -498,9 +583,18 @@ def save_cache(
         "ok": True,
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "source_file": source_file,
+        "merge": merge,
         "coletas": len(coleta_list),
-        "historico": len(hist_list),
+        "historico_eventos": len(hist_list),
+        "historico": len(hist_list),  # compat — eventos, NAO coletas
+        "lote_atual_coletas": len(coletas),
         "lote_atual": len(coletas),
+        "totais_situacao": contar_por_situacao_atual(coletas),
+        "modelo": (
+            "1 coleta = cabecalho SPO+numero. "
+            "Soma = somente SITUACAO ATUAL. "
+            "Historico SIT/INSTR nao conta. Cache/planilha = replace do periodo."
+        ),
         "paths": {
             "coletas": str(COLETAS_CSV),
             "historico": str(HISTORICO_CSV),
@@ -511,7 +605,8 @@ def save_cache(
     return meta
 
 
-def analyze_report(path: Path | str, *, merge: bool = True) -> dict[str, Any]:
+def analyze_report(path: Path | str, *, merge: bool = False) -> dict[str, Any]:
+    """Analisa o .sswweb e substitui o cache pelo lote atual (merge=False)."""
     file_path = Path(path)
     coletas = parse_ssw0157(file_path)
     meta = save_cache(coletas, source_file=str(file_path), merge=merge)
