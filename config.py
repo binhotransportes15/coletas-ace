@@ -1,0 +1,133 @@
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+from pathlib import Path
+import json
+
+BASE_DIR = Path(__file__).resolve().parent
+DOWNLOAD_DIR = BASE_DIR / "data" / "downloads"
+CACHE_DIR = BASE_DIR / "data" / "cache"
+LOG_DIR = BASE_DIR / "data" / "logs"
+SECRETS_DIR = BASE_DIR / "data" / "secrets"
+DASHBOARD_DIR = BASE_DIR / "dashboard"
+CONFIG_PATH = BASE_DIR / "data" / "config.json"
+GOOGLE_SA_PATH = SECRETS_DIR / "google_service_account.json"
+
+SSW_LOGIN_URL = "https://sistema.ssw.inf.br/bin/ssw0422"
+
+DEFAULT_COLETA_OPTION = "50"
+DEFAULT_ENTREGA_OPTION = ""
+
+
+@dataclass(slots=True)
+class SswCredentials:
+    url: str = SSW_LOGIN_URL
+    domain: str = "bin"
+    document: str = "11491465832"
+    user: str = "m.aguir"
+    password: str = "114@mig"
+    unit: str = "spo"
+
+
+@dataclass(slots=True)
+class AceSettings:
+    coleta_option: str = DEFAULT_COLETA_OPTION
+    entrega_option: str = DEFAULT_ENTREGA_OPTION
+    periodo_modo: str = "diario"  # diario | sexta
+    enable_sheets: bool = False
+    google_sheet_id: str = ""
+    enable_github_publish: bool = False
+    github_repo: str = ""  # owner/repo
+    github_branch: str = "main"
+    github_token_env: str = "GH_TOKEN"
+
+
+def ensure_dirs() -> None:
+    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    SECRETS_DIR.mkdir(parents=True, exist_ok=True)
+    (DASHBOARD_DIR / "data").mkdir(parents=True, exist_ok=True)
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+
+def default_credentials() -> SswCredentials:
+    return SswCredentials()
+
+
+def default_settings() -> AceSettings:
+    return AceSettings()
+
+
+def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
+    return AceSettings(
+        coleta_option=str(payload.get("coleta_option") or defaults.coleta_option).strip()
+        or defaults.coleta_option,
+        entrega_option=str(payload.get("entrega_option") or "").strip(),
+        periodo_modo=str(payload.get("periodo_modo") or defaults.periodo_modo).strip()
+        or defaults.periodo_modo,
+        enable_sheets=bool(payload.get("enable_sheets", defaults.enable_sheets)),
+        google_sheet_id=str(payload.get("google_sheet_id") or "").strip(),
+        enable_github_publish=bool(
+            payload.get("enable_github_publish", defaults.enable_github_publish)
+        ),
+        github_repo=str(payload.get("github_repo") or "").strip(),
+        github_branch=str(payload.get("github_branch") or defaults.github_branch).strip()
+        or defaults.github_branch,
+        github_token_env=str(
+            payload.get("github_token_env") or defaults.github_token_env
+        ).strip()
+        or defaults.github_token_env,
+    )
+
+
+def load_credentials() -> SswCredentials:
+    ensure_dirs()
+    defaults = default_credentials()
+    if not CONFIG_PATH.exists():
+        save_all(defaults, default_settings())
+        return defaults
+    try:
+        payload = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        return SswCredentials(
+            url=str(payload.get("url") or defaults.url),
+            domain=str(payload.get("domain") or defaults.domain),
+            document=str(payload.get("document") or defaults.document),
+            user=str(payload.get("user") or defaults.user),
+            password=str(payload.get("password") or defaults.password),
+            unit=str(payload.get("unit") or defaults.unit),
+        )
+    except Exception:
+        return defaults
+
+
+def load_settings() -> AceSettings:
+    ensure_dirs()
+    defaults = default_settings()
+    if not CONFIG_PATH.exists():
+        return defaults
+    try:
+        payload = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        return _payload_settings(payload, defaults)
+    except Exception:
+        return defaults
+
+
+def save_all(credentials: SswCredentials, settings: AceSettings) -> None:
+    ensure_dirs()
+    payload = {
+        **asdict(credentials),
+        **asdict(settings),
+    }
+    CONFIG_PATH.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def save_credentials(credentials: SswCredentials) -> None:
+    save_all(credentials, load_settings())
+
+
+def save_settings(settings: AceSettings) -> None:
+    save_all(load_credentials(), settings)

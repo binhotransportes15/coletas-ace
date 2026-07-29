@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Dados locais / segredos
+data/downloads/*
+!data/downloads/.gitkeep
+data/cache/*
+!data/cache/.gitkeep
+data/logs/*
+!data/logs/.gitkeep
+data/config.json
+data/secrets/*
+!data/secrets/.gitkeep
+!data/secrets/README.md
+
+# Dashboard gerado (meta), mas HTML pode versionar
+dashboard/data/meta.json
+
+# Sistema / downloads SSW
+.DS_Store
+Thumbs.db
+*.sswweb
+*.pdf
+*.zip
+*.log

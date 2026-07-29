@@ -1,0 +1,17 @@
+{
+  "url": "https://sistema.ssw.inf.br/bin/ssw0422",
+  "domain": "bin",
+  "document": "",
+  "user": "",
+  "password": "",
+  "unit": "spo",
+  "coleta_option": "50",
+  "entrega_option": "",
+  "periodo_modo": "diario",
+  "enable_sheets": false,
+  "google_sheet_id": "",
+  "enable_github_publish": false,
+  "github_repo": "",
+  "github_branch": "main",
+  "github_token_env": "GH_TOKEN"
+}
