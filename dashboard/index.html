@@ -96,7 +96,9 @@
   <section class="grid">
     <div class="card">
       <h3>Situações</h3>
-      <p class="muted" style="margin:0 0 12px;">Quantidade de coletas (SPO) em cada situação</p>
+      <p class="muted" style="margin:0 0 12px;">
+        1 coleta = 1 SPO · a torre conta só o campo <b>SITUACAO ATUAL</b> (não soma Cadastrada+Comandada+Coletada da mesma SPO)
+      </p>
       <div class="chart-wrap">
         <canvas id="chartTorres"></canvas>
       </div>
@@ -115,12 +117,10 @@
           <thead>
             <tr>
               <th>Coleta</th>
-              <th>Situação</th>
-              <th>Cadastrada</th>
-              <th>Comandada</th>
-              <th>Coletada</th>
-              <th>Motorista</th>
+              <th>Situação atual</th>
+              <th>Quando</th>
               <th>Destino</th>
+              <th>Motorista</th>
               <th></th>
             </tr>
           </thead>
@@ -296,22 +296,21 @@
       tbody.innerHTML = '';
       const lista = coletasFiltradas().slice().reverse().slice(0, 200);
       if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="muted">Nenhuma coleta nesta situação.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="muted">Nenhuma coleta nesta situação.</td></tr>';
         return;
       }
       lista.forEach(c => {
         const sit = situacaoNorm(c);
         const id = coletaKey(c);
         const label = c.coleta || c.coleta_id || id;
+        const quando = fmtDataHora(c.situacao_atual_data, c.situacao_atual_hora);
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${esc(label)}</td>
           <td class="sit sit-${esc(sit)}">${esc(c.situacao_atual || sit)}</td>
-          <td>${esc(fmtDataHora(c.cadastrada_data, c.cadastrada_hora))}</td>
-          <td>${esc(fmtDataHora(c.comandada_data, c.comandada_hora))}</td>
-          <td>${esc(fmtDataHora(c.coletada_data, c.coletada_hora))}</td>
-          <td>${esc(c.motorista || '')}</td>
+          <td>${esc(quando)}</td>
           <td>${esc(c.dest_cidade || c.dest || '')}</td>
+          <td>${esc(c.motorista || '')}</td>
           <td><button type="button" class="btn" data-hist="${esc(id)}" data-label="${esc(label)}" data-sit="${esc(sit)}">Histórico</button></td>`;
         tbody.appendChild(tr);
       });

@@ -300,15 +300,10 @@ def _parse_block(block: str) -> ColetaRecord | None:
     if current:
         coleta.historico.append(current)
 
-    if not coleta.situacao_atual:
-        if coleta.cancelada_data:
-            coleta.situacao_atual = "CANCELADA"
-        elif coleta.coletada_data:
-            coleta.situacao_atual = "COLETADA"
-        elif coleta.comandada_data:
-            coleta.situacao_atual = "COMANDADA"
-        elif coleta.cadastrada_data:
-            coleta.situacao_atual = "CADASTRADA"
+    # Sem fallback por CADASTRADA:/COMANDADA:/COLETADA: laterais —
+    # a soma das torres usa SOMENTE SITUACAO ATUAL do relatorio.
+    if coleta.situacao_atual:
+        coleta.situacao_atual = normalizar_situacao_atual(coleta.situacao_atual)
 
     return coleta
 
@@ -420,6 +415,11 @@ def build_resumo(coletas: list[ColetaRecord]) -> list[dict[str, Any]]:
 
 
 def coleta_to_row(c: ColetaRecord) -> dict[str, Any]:
+    """
+    Linha da coleta para planilha/dashboard.
+    Contagem no dashboard usa SOMENTE situacao_atual.
+    Campos cadastrada_/comandada_/coletada_ sao detalhe (nao somam torre).
+    """
     label = format_coleta_label(c.unidade, c.numero) or c.coleta_id
     return {
         "coleta_id": c.coleta_id,
@@ -428,9 +428,11 @@ def coleta_to_row(c: ColetaRecord) -> dict[str, Any]:
         "numero": c.numero,
         "tipo": c.tipo,
         "data_limite_inicial": c.data_limite_inicial,
-        "situacao_atual": c.situacao_atual,
+        # Fonte unica da soma:
+        "situacao_atual": normalizar_situacao_atual(c.situacao_atual),
         "situacao_atual_data": c.situacao_atual_data,
         "situacao_atual_hora": c.situacao_atual_hora,
+        # Detalhe (nao usar para KPI):
         "cadastrada_data": c.cadastrada_data,
         "cadastrada_hora": c.cadastrada_hora,
         "cadastrada_usuario": c.cadastrada_usuario,
