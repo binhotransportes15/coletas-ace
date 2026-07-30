@@ -162,6 +162,10 @@
       padding: 4px 7px; border-radius: 999px; background: #450a0a; color: #fecaca;
     }
     .pop-prazo.warn .tag { background: #1e293b; color: var(--cad); }
+    .pop-prazo.perdida .tag {
+      background: #7f1d1d; color: #fff; letter-spacing: 0.04em;
+      font-size: 11px; padding: 5px 8px;
+    }
 
     .torres {
       flex: 1; display: flex; align-items: flex-end; justify-content: center;
@@ -935,14 +939,15 @@
         const nodes = visible.map(r => {
           const atrasada = r.mins < 0;
           const el = document.createElement('div');
-          el.className = 'pop pop-prazo' + (atrasada ? '' : ' warn');
+          el.className = 'pop pop-prazo' + (atrasada ? ' perdida' : ' warn');
+          const tag = atrasada ? 'PERDIDA' : `${r.mins}m`;
           el.innerHTML = `
             <div class="hora">${pad(r.limite.getHours())}:${pad(r.limite.getMinutes())}</div>
             <div>
               <div class="name" style="font-size:13px;">${esc(r.label)}</div>
               <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
             </div>
-            <div class="tag">${esc(atrasada ? `-${Math.abs(r.mins)}m` : `${r.mins}m`)}</div>`;
+            <div class="tag">${esc(tag)}</div>`;
           stack.appendChild(el);
           requestAnimationFrame(() => el.classList.add('show'));
           return el;
