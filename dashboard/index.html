@@ -13,18 +13,18 @@
       --line: #1e293b;
       --text: #e2e8f0;
       --muted: #94a3b8;
-      --ok: #22c55e;
-      --warn: #f59e0b;
-      --danger: #ef4444;
-      --accent: #38bdf8;
+      --col: #22c55e;
+      --com: #38bdf8;
+      --cad: #f59e0b;
+      --can: #ef4444;
       font-family: "Segoe UI", system-ui, sans-serif;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body {
       background:
-        radial-gradient(1200px 600px at 10% -10%, #132038 0%, transparent 55%),
-        radial-gradient(900px 500px at 100% 0%, #1a1020 0%, transparent 50%),
+        radial-gradient(1100px 520px at 8% -10%, #132038 0%, transparent 55%),
+        radial-gradient(800px 420px at 100% 0%, #1a1020 0%, transparent 50%),
         var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -33,253 +33,243 @@
     .board {
       width: min(1440px, 100%);
       margin: 0 auto;
-      padding: 18px 20px 24px;
+      padding: 14px 16px 18px;
       display: grid;
-      gap: 16px;
-      grid-template-rows: auto 1fr;
-      min-height: 100vh;
+      gap: 12px;
     }
 
-    /* ===== HEADER ===== */
+    /* Header */
     .topbar {
       display: grid;
       grid-template-columns: 1fr auto;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       background: linear-gradient(180deg, #0f172a, #0b1220);
       border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 12px 18px;
-      box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      border-radius: 14px;
+      padding: 8px 14px;
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      min-width: 0;
-    }
-    .brand img {
-      height: 64px;
-      width: auto;
-      display: block;
-      object-fit: contain;
-    }
+    .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .brand img { height: 48px; width: auto; display: block; object-fit: contain; }
     .brand .title {
-      font-size: clamp(28px, 4vw, 42px);
+      font-size: clamp(22px, 3vw, 32px);
       font-weight: 800;
       letter-spacing: 0.12em;
       color: #fff;
-      line-height: 1;
     }
-    .brand .title span {
-      color: var(--accent);
-      font-weight: 300;
-      letter-spacing: 0.08em;
-    }
-    .clock-box {
-      text-align: right;
-      padding: 4px 8px;
-    }
+    .clock-box { text-align: right; }
     .clock-box .lbl {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
+      color: var(--muted); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.1em;
     }
     .clock-box .time {
-      font-size: clamp(34px, 5vw, 48px);
+      font-size: clamp(22px, 3vw, 30px);
       font-weight: 300;
       font-variant-numeric: tabular-nums;
-      letter-spacing: 0.04em;
       line-height: 1.05;
-      color: #f8fafc;
     }
-    .clock-box .date {
-      color: var(--muted);
-      font-size: 13px;
-      margin-top: 2px;
-    }
+    .clock-box .date { color: var(--muted); font-size: 11px; }
 
-    /* ===== MAIN GRID ===== */
-    .main {
-      display: grid;
-      grid-template-columns: 1.05fr 1fr;
-      gap: 16px;
-      min-height: 0;
-    }
-    .col {
-      display: grid;
-      gap: 16px;
-      min-height: 0;
-      grid-template-rows: auto 1fr;
-    }
+    /* Torres (destaque) */
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 18px 18px 16px;
-      box-shadow: 0 8px 28px rgba(0,0,0,.25);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #67e8f9;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .torres {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 16px;
+      min-height: 280px;
+      padding: 4px 4px 0;
+    }
+    .torre {
+      width: min(130px, 20vw);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+    .torre .pin {
+      width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      display: grid; place-items: center;
+      margin-bottom: 8px;
+      box-shadow: 0 6px 14px rgba(0,0,0,.35);
+    }
+    .torre .pin span {
+      transform: rotate(45deg);
+      font-size: 10px; font-weight: 800; color: #fff;
+    }
+    .torre .barra {
+      width: 100%;
+      min-height: 48px;
+      border-radius: 10px 10px 0 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 12px;
+      box-shadow: 0 10px 22px rgba(0,0,0,.35);
+      transition: height .35s ease, filter .15s, transform .15s;
+    }
+    .torre .barra strong {
+      font-size: clamp(20px, 2.8vw, 32px);
+      font-weight: 300; color: #fff; line-height: 1;
+    }
+    .torre .faixa {
+      width: 100%; padding: 7px 6px; color: #fff;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase;
+      clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+    }
+    .torre .base {
+      width: 100%; background: #0f172a;
+      border: 1px solid var(--line); border-top: none;
+      border-radius: 0 0 10px 10px;
+      padding: 8px 6px 10px; text-align: center;
+    }
+    .torre .base .qtd { font-size: 18px; font-weight: 700; display: block; }
+    .torre .base .lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .torre:hover { transform: translateY(-3px); }
+    .torre.active .barra { filter: brightness(1.12); }
+    .torre.active .base { border-color: #67e8f9; }
+
+    .t-col .pin, .t-col .barra { background: var(--col); }
+    .t-col .faixa { background: #16a34a; }
+    .t-col .base .qtd { color: var(--col); }
+    .t-com .pin, .t-com .barra { background: var(--com); }
+    .t-com .faixa { background: #0284c7; }
+    .t-com .base .qtd { color: var(--com); }
+    .t-cad .pin, .t-cad .barra { background: var(--cad); }
+    .t-cad .faixa { background: #d97706; }
+    .t-cad .base .qtd { color: var(--cad); }
+    .t-can .pin, .t-can .barra { background: var(--can); }
+    .t-can .faixa { background: #dc2626; }
+    .t-can .base .qtd { color: var(--can); }
+
+    /* Faixa compacta abaixo das torres */
+    .ops {
+      display: grid;
+      grid-template-columns: 140px 1.2fr 1.4fr;
+      gap: 10px;
+      min-height: 0;
+    }
+    .mini {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
       min-height: 0;
       display: flex;
       flex-direction: column;
     }
-    .panel h2 {
-      margin: 0 0 12px;
-      font-size: 12px;
+    .mini h3 {
+      margin: 0 0 8px;
+      font-size: 10px;
       font-weight: 700;
       color: #67e8f9;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-    }
-    .total-panel {
-      align-items: flex-start;
-      justify-content: center;
-      min-height: 150px;
+      letter-spacing: 0.08em;
     }
     .total-num {
-      font-size: clamp(64px, 10vw, 96px);
+      font-size: 42px;
       font-weight: 200;
-      line-height: 0.95;
+      line-height: 1;
       letter-spacing: -0.03em;
-      color: #fff;
     }
-    .total-sub {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-    .total-split {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px;
-    }
-    .pill {
-      border: 1px solid #334155;
-      background: #020617;
-      border-radius: 999px;
-      padding: 5px 10px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .pill b { color: var(--text); font-weight: 700; }
-    .pill.ok b { color: var(--ok); }
-    .pill.warn b { color: var(--warn); }
-    .pill.info b { color: var(--accent); }
-    .pill.bad b { color: var(--danger); }
+    .total-sub { color: var(--muted); font-size: 11px; margin-top: 6px; }
 
-    .placas-panel { overflow: hidden; }
-    .placas-list {
+    .placas-list, .urgentes-list {
       overflow: auto;
+      max-height: 160px;
       display: grid;
-      gap: 10px;
-      padding-right: 4px;
+      gap: 6px;
       min-height: 0;
     }
     .placa-row {
       display: grid;
-      grid-template-columns: 72px 1fr auto;
-      gap: 14px;
+      grid-template-columns: 42px 1fr auto;
+      gap: 8px;
       align-items: center;
       background: #020617;
       border: 1px solid #1e293b;
-      border-radius: 12px;
-      padding: 10px 12px;
+      border-radius: 8px;
+      padding: 5px 8px;
     }
-    .donut {
-      width: 64px;
-      height: 64px;
-      position: relative;
-    }
-    .donut svg { width: 64px; height: 64px; transform: rotate(-90deg); }
+    .donut { width: 40px; height: 40px; position: relative; }
+    .donut svg { width: 40px; height: 40px; transform: rotate(-90deg); }
     .donut .pct {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      font-size: 13px;
-      font-weight: 700;
-      color: #fff;
+      position: absolute; inset: 0; display: grid; place-items: center;
+      font-size: 9px; font-weight: 700; color: #fff;
     }
-    .placa-meta .name {
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-    }
-    .placa-meta .detail {
-      color: var(--muted);
-      font-size: 12px;
-      margin-top: 2px;
-    }
-    .placa-bar {
-      width: 110px;
-      height: 8px;
-      background: #1e293b;
-      border-radius: 999px;
-      overflow: hidden;
-    }
-    .placa-bar > i {
-      display: block;
-      height: 100%;
-      background: linear-gradient(90deg, #16a34a, #4ade80);
-      border-radius: 999px;
-    }
+    .placa-meta .name { font-size: 13px; font-weight: 700; letter-spacing: 0.03em; }
+    .placa-meta .detail { color: var(--muted); font-size: 10px; }
+    .placa-pct { font-size: 12px; font-weight: 700; color: var(--col); }
 
-    .urgentes-panel { overflow: hidden; }
-    .urgentes-list {
-      overflow: auto;
-      display: grid;
-      gap: 8px;
-      min-height: 0;
-    }
     .urgente {
       display: grid;
-      grid-template-columns: 78px 1fr auto;
-      gap: 10px;
+      grid-template-columns: 52px 1fr auto;
+      gap: 8px;
       align-items: center;
       background: #020617;
       border: 1px solid #1e293b;
-      border-left: 4px solid var(--warn);
-      border-radius: 10px;
-      padding: 10px 12px;
+      border-left: 3px solid var(--cad);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
     }
-    .urgente.atrasada { border-left-color: var(--danger); }
-    .urgente .limite {
-      font-variant-numeric: tabular-nums;
-      font-weight: 700;
-      font-size: 16px;
-      color: #fff;
-    }
-    .urgente .id { font-weight: 700; }
-    .urgente .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .urgente.atrasada { border-left-color: var(--can); }
+    .urgente .limite { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .urgente .id { font-weight: 700; font-size: 12px; }
+    .urgente .meta { color: var(--muted); font-size: 10px; }
     .urgente .tag {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: #1e293b;
-      color: var(--warn);
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      padding: 3px 6px; border-radius: 999px; background: #1e293b; color: var(--cad);
       white-space: nowrap;
     }
     .urgente.atrasada .tag { color: #fecaca; background: #450a0a; }
 
-    .status-line {
-      color: var(--muted);
-      font-size: 12px;
-      padding: 0 4px;
+    .empty { color: var(--muted); font-size: 11px; padding: 10px 4px; text-align: center; }
+    .status-line { color: var(--muted); font-size: 11px; padding: 0 2px; }
+
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px;
     }
-    .empty {
-      color: var(--muted);
-      font-size: 13px;
-      padding: 18px 8px;
-      text-align: center;
+    .chip {
+      background: #020617; border: 1px solid #334155; color: var(--text);
+      border-radius: 999px; padding: 4px 10px; font-size: 11px; cursor: pointer;
     }
+    .chip.active { border-color: #67e8f9; color: #67e8f9; }
+
+    .lista { overflow: auto; max-height: 220px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 7px 6px; text-align: left; }
+    th { color: #67e8f9; font-weight: 600; }
+    .sit { font-weight: 700; }
+    .sit-COLETADA, .sit-realizada { color: var(--col); }
+    .sit-COMANDADA, .sit-em_rota { color: var(--com); }
+    .sit-CADASTRADA, .sit-parado { color: var(--cad); }
+    .sit-CANCELADA, .sit-cancelada { color: var(--can); }
+    .muted { color: var(--muted); font-size: 11px; }
 
     @media (max-width: 980px) {
-      .main { grid-template-columns: 1fr; }
-      .brand img { height: 48px; }
+      .ops { grid-template-columns: 1fr; }
+      .torres { gap: 8px; min-height: 230px; }
+      .torre { width: 22vw; }
       .topbar { grid-template-columns: 1fr; }
       .clock-box { text-align: left; }
     }
@@ -299,48 +289,89 @@
       </div>
     </header>
 
-    <div class="main">
-      <div class="col">
-        <section class="panel total-panel">
-          <h2>Total de coletas</h2>
-          <div class="total-num" id="totalColetas">0</div>
-          <div class="total-sub" id="totalSub">Carregando planilha…</div>
-          <div class="total-split" id="totalPills"></div>
-        </section>
+    <section class="panel">
+      <h2>Torres · tempo real</h2>
+      <div class="torres" id="torres">
+        <button type="button" class="torre t-col" data-filtro="realizada">
+          <div class="pin"><span>01</span></div>
+          <div class="barra" id="barReal"><strong id="nReal">0</strong></div>
+          <div class="faixa">Realizada</div>
+          <div class="base"><span class="qtd" id="qReal">0</span><div class="lbl">coletada</div></div>
+        </button>
+        <button type="button" class="torre t-com" data-filtro="em_rota">
+          <div class="pin"><span>02</span></div>
+          <div class="barra" id="barRota"><strong id="nRota">0</strong></div>
+          <div class="faixa">Em rota</div>
+          <div class="base"><span class="qtd" id="qRota">0</span><div class="lbl">comandada</div></div>
+        </button>
+        <button type="button" class="torre t-cad" data-filtro="parado">
+          <div class="pin"><span>03</span></div>
+          <div class="barra" id="barPar"><strong id="nPar">0</strong></div>
+          <div class="faixa">Parado</div>
+          <div class="base"><span class="qtd" id="qPar">0</span><div class="lbl">cadastrada</div></div>
+        </button>
+        <button type="button" class="torre t-can" data-filtro="cancelada">
+          <div class="pin"><span>04</span></div>
+          <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
+          <div class="faixa">Cancelada</div>
+          <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
+        </button>
+      </div>
+    </section>
 
-        <section class="panel placas-panel">
-          <h2>Progresso por placa</h2>
-          <div class="placas-list" id="placasList"></div>
-        </section>
+    <section class="ops">
+      <div class="mini">
+        <h3>Total</h3>
+        <div class="total-num" id="totalColetas">0</div>
+        <div class="total-sub" id="totalSub">coletas</div>
       </div>
 
-      <div class="col">
-        <section class="panel" style="min-height:150px; justify-content:center;">
-          <h2>Janela de atenção</h2>
-          <div class="total-sub" id="janelaInfo">
-            Coletas perto do horário limite · não coletadas · sem canceladas
-          </div>
-          <div class="total-split" style="margin-top:12px;">
-            <span class="pill warn"><b id="qtdUrgentes">0</b> próximas / atrasadas</span>
-            <span class="pill info"><b id="janelaHoras">2h</b> de folga</span>
-          </div>
-        </section>
-
-        <section class="panel urgentes-panel">
-          <h2>Perto do limite</h2>
-          <div class="urgentes-list" id="urgentesList"></div>
-        </section>
+      <div class="mini">
+        <h3>Por placa</h3>
+        <div class="placas-list" id="placasList"></div>
       </div>
-    </div>
+
+      <div class="mini">
+        <h3>Perto do limite</h3>
+        <div class="urgentes-list" id="urgentesList"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Detalhe</h2>
+      <div class="toolbar" id="filtros">
+        <button type="button" class="chip active" data-filtro="TODAS">Todas</button>
+        <button type="button" class="chip" data-filtro="realizada">Realizada</button>
+        <button type="button" class="chip" data-filtro="em_rota">Em rota</button>
+        <button type="button" class="chip" data-filtro="parado">Parado</button>
+        <button type="button" class="chip" data-filtro="cancelada">Cancelada</button>
+      </div>
+      <div class="lista">
+        <table>
+          <thead>
+            <tr>
+              <th>Coleta</th>
+              <th>Status</th>
+              <th>Situação</th>
+              <th>Hora</th>
+              <th>Placa</th>
+              <th>Motorista</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
 
     <p class="status-line" id="statusLine">BINHO · COLETA</p>
   </div>
 
   <script>
     const SCRIPT_URL = (window.ACE_CONFIG && window.ACE_CONFIG.scriptUrl) || '';
-    const JANELA_MIN = 120; // minutos antes do limite = "perto"
+    const JANELA_MIN = 120;
+    let COLETAS = [];
     let COLETAS_50 = [];
-    let COLETAS_103 = [];
+    let FILTRO = 'TODAS';
 
     function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -350,7 +381,7 @@
         `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
       const dias = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
       document.getElementById('clockDate').textContent =
-        `${dias[now.getDay()]} · ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+        `${dias[now.getDay()]} · ${pad(now.getDate())}/${pad(now.getMonth() + 1)}`;
     }
 
     async function chamarPlanilha(action, params = {}) {
@@ -375,12 +406,23 @@
         .toUpperCase().replace(/\s+/g, '').trim();
     }
 
-    function situacaoNorm(c) {
-      const s = String(c.situacao_atual || c.status_ace || '').toUpperCase();
+    function statusAce(c) {
+      const raw = String(c.status_ace || '').toLowerCase().trim();
+      if (['parado', 'em_rota', 'realizada', 'cancelada'].includes(raw)) return raw;
+      const s = String(c.situacao_atual || '').toUpperCase();
+      if (s.includes('CANCEL')) return 'cancelada';
+      if (s.includes('COLET') || s.includes('REALIZ')) return 'realizada';
+      if (s.includes('COMAND') || s.includes('ROTA')) return 'em_rota';
+      if (s.includes('CADASTR') || s.includes('PARADO')) return 'parado';
+      return 'outro';
+    }
+
+    function situacaoNorm50(c) {
+      const s = String(c.situacao_atual || '').toUpperCase();
       if (s.includes('CANCEL')) return 'CANCELADA';
-      if (s.includes('COLET') || s.includes('REALIZ')) return 'COLETADA';
-      if (s.includes('COMAND') || s.includes('ROTA') || s.includes('EM_ROTA')) return 'COMANDADA';
-      if (s.includes('CADASTR') || s.includes('PARADO')) return 'CADASTRADA';
+      if (s.includes('COLET')) return 'COLETADA';
+      if (s.includes('COMAND')) return 'COMANDADA';
+      if (s.includes('CADASTR')) return 'CADASTRADA';
       return '';
     }
 
@@ -402,11 +444,9 @@
     }
 
     function parseLimite(c) {
-      // Prefer data_hora_limite "29/07 17:00" ou data_limite_inicial + hora do texto
       const raw = String(c.data_hora_limite || '').trim();
       const now = new Date();
-      let day = now.getDate(), month = now.getMonth() + 1, hour = 0, minute = 0;
-      let ok = false;
+      let day = now.getDate(), month = now.getMonth() + 1, hour = 0, minute = 0, ok = false;
       let m = raw.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s+(\d{1,2}):(\d{2})/);
       if (m) {
         day = +m[1]; month = +m[2]; hour = +m[4]; minute = +m[5]; ok = true;
@@ -419,7 +459,6 @@
       if (!ok) return null;
       const year = now.getFullYear();
       const dt = new Date(year, month - 1, day, hour, minute, 0, 0);
-      // Se limite ficou > 6 meses no futuro (virada de ano), ajusta
       if (dt.getTime() - now.getTime() > 180 * 86400000) dt.setFullYear(year - 1);
       if (now.getTime() - dt.getTime() > 180 * 86400000) dt.setFullYear(year + 1);
       return dt;
@@ -435,64 +474,71 @@
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    function alturaTorre(valor, max) {
+      const minH = 52, maxH = 190;
+      if (!max || max <= 0) return minH;
+      return Math.round(minH + (valor / max) * (maxH - minH));
+    }
+
+    function countByStatus(rows) {
+      const out = { total: 0, parado: 0, em_rota: 0, realizada: 0, cancelada: 0, outro: 0 };
+      rows.forEach(c => {
+        const s = statusAce(c);
+        out.total += 1;
+        if (out[s] != null) out[s] += 1;
+        else out.outro += 1;
+      });
+      return out;
+    }
+
+    function renderTorres(counts) {
+      const max = Math.max(counts.realizada, counts.em_rota, counts.parado, counts.cancelada, 1);
+      const map = [
+        ['Real', 'barReal', counts.realizada],
+        ['Rota', 'barRota', counts.em_rota],
+        ['Par', 'barPar', counts.parado],
+        ['Can', 'barCan', counts.cancelada],
+      ];
+      map.forEach(([suf, bar, val]) => {
+        document.getElementById('n' + suf).textContent = val;
+        document.getElementById('q' + suf).textContent = val;
+        document.getElementById(bar).style.height = alturaTorre(val, max) + 'px';
+      });
+      document.getElementById('totalColetas').textContent = String(counts.total);
+      document.getElementById('totalSub').textContent = 'coletas no período';
+    }
+
     function donutSvg(pct, color) {
       const p = Math.max(0, Math.min(100, pct || 0));
-      const r = 22;
+      const r = 14;
       const c = 2 * Math.PI * r;
       const dash = (p / 100) * c;
-      return `<svg viewBox="0 0 56 56" aria-hidden="true">
-        <circle cx="28" cy="28" r="${r}" fill="none" stroke="#1e293b" stroke-width="7"></circle>
-        <circle cx="28" cy="28" r="${r}" fill="none" stroke="${color}" stroke-width="7"
+      return `<svg viewBox="0 0 36 36" aria-hidden="true">
+        <circle cx="18" cy="18" r="${r}" fill="none" stroke="#1e293b" stroke-width="5"></circle>
+        <circle cx="18" cy="18" r="${r}" fill="none" stroke="${color}" stroke-width="5"
           stroke-linecap="round" stroke-dasharray="${dash} ${c - dash}"></circle>
       </svg>`;
     }
 
-    function renderTotais(rows) {
-      const total = rows.length;
-      let col = 0, com = 0, cad = 0, can = 0;
-      rows.forEach(r => {
-        const s = situacaoNorm(r);
-        if (s === 'COLETADA') col += 1;
-        else if (s === 'COMANDADA') com += 1;
-        else if (s === 'CADASTRADA') cad += 1;
-        else if (s === 'CANCELADA') can += 1;
-      });
-      document.getElementById('totalColetas').textContent = String(total);
-      document.getElementById('totalSub').textContent = 'Coletas no período atual (planilha)';
-      document.getElementById('totalPills').innerHTML = `
-        <span class="pill ok"><b>${col}</b> realizadas</span>
-        <span class="pill info"><b>${com}</b> em rota</span>
-        <span class="pill warn"><b>${cad}</b> paradas</span>
-        <span class="pill bad"><b>${can}</b> canceladas</span>`;
-    }
-
-    function buildPlacas() {
-      // Prefer 103 (placa explícita); fallback veiculo da 50
-      const byPlaca = new Map();
-      const source = COLETAS_103.length ? COLETAS_103 : COLETAS_50;
-      source.forEach(c => {
-        const sit = situacaoNorm(c);
-        if (sit === 'CANCELADA') return;
-        const placa = parsePlaca(c.placa || c.veiculo || '');
-        if (!placa) return;
-        if (!byPlaca.has(placa)) {
-          byPlaca.set(placa, { placa, total: 0, feitas: 0, motorista: c.motorista || '' });
-        }
-        const row = byPlaca.get(placa);
-        row.total += 1;
-        if (sit === 'COLETADA') row.feitas += 1;
-        if (!row.motorista && c.motorista) row.motorista = c.motorista;
-      });
-      return Array.from(byPlaca.values())
-        .map(r => ({ ...r, pct: r.total ? Math.round((r.feitas / r.total) * 100) : 0 }))
-        .sort((a, b) => a.pct - b.pct || b.total - a.total);
-    }
-
     function renderPlacas() {
       const list = document.getElementById('placasList');
-      const placas = buildPlacas();
+      const byPlaca = new Map();
+      COLETAS.forEach(c => {
+        const st = statusAce(c);
+        if (st === 'cancelada') return;
+        const placa = parsePlaca(c.placa || c.veiculo || '');
+        if (!placa) return;
+        if (!byPlaca.has(placa)) byPlaca.set(placa, { placa, total: 0, feitas: 0 });
+        const row = byPlaca.get(placa);
+        row.total += 1;
+        if (st === 'realizada') row.feitas += 1;
+      });
+      const placas = Array.from(byPlaca.values())
+        .map(r => ({ ...r, pct: r.total ? Math.round((r.feitas / r.total) * 100) : 0 }))
+        .sort((a, b) => a.pct - b.pct || b.total - a.total)
+        .slice(0, 12);
       if (!placas.length) {
-        list.innerHTML = '<div class="empty">Sem placas no período (rode o 103 ou aguarde sync).</div>';
+        list.innerHTML = '<div class="empty">Sem placas</div>';
         return;
       }
       list.innerHTML = placas.map(p => {
@@ -501,87 +547,126 @@
           <div class="donut">${donutSvg(p.pct, color)}<div class="pct">${p.pct}%</div></div>
           <div class="placa-meta">
             <div class="name">${esc(p.placa)}</div>
-            <div class="detail">${p.feitas}/${p.total} feitas${p.motorista ? ' · ' + esc(p.motorista) : ''}</div>
+            <div class="detail">${p.feitas}/${p.total}</div>
           </div>
-          <div class="placa-bar"><i style="width:${p.pct}%"></i></div>
+          <div class="placa-pct">${p.pct}%</div>
         </div>`;
       }).join('');
     }
 
-    function buildUrgentes() {
-      const out = [];
+    function renderUrgentes() {
+      const list = document.getElementById('urgentesList');
+      const rows = [];
       COLETAS_50.forEach(c => {
-        const sit = situacaoNorm(c);
+        const sit = situacaoNorm50(c);
         if (!sit || sit === 'CANCELADA' || sit === 'COLETADA') return;
         const limite = parseLimite(c);
         if (!limite) return;
         const mins = minsUntil(limite);
-        // Perto: até JANELA_MIN à frente, ou já atrasada (ainda aberta)
         if (mins > JANELA_MIN) return;
-        out.push({
-          id: coletaKey(c),
+        rows.push({
           label: c.coleta || c.coleta_id || coletaKey(c),
           sit,
           limite,
           mins,
-          motorista: c.motorista || '',
-          veiculo: parsePlaca(c.veiculo || c.placa || ''),
-          destino: c.dest_cidade || c.dest || '',
+          veiculo: parsePlaca(c.veiculo || ''),
         });
       });
-      out.sort((a, b) => a.mins - b.mins);
-      return out;
-    }
-
-    function fmtHora(dt) {
-      return `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-    }
-
-    function renderUrgentes() {
-      const list = document.getElementById('urgentesList');
-      const rows = buildUrgentes();
-      document.getElementById('qtdUrgentes').textContent = String(rows.length);
+      rows.sort((a, b) => a.mins - b.mins);
       if (!rows.length) {
-        list.innerHTML = '<div class="empty">Nenhuma coleta perto do limite agora.</div>';
+        list.innerHTML = '<div class="empty">Nada perto do limite</div>';
         return;
       }
-      list.innerHTML = rows.map(r => {
+      list.innerHTML = rows.slice(0, 20).map(r => {
         const atrasada = r.mins < 0;
-        const tag = atrasada
-          ? `Atrasada ${Math.abs(r.mins)} min`
-          : r.mins <= 30 ? `Em ${r.mins} min` : `Em ${r.mins} min`;
+        const tag = atrasada ? `-${Math.abs(r.mins)}m` : `${r.mins}m`;
         return `<div class="urgente${atrasada ? ' atrasada' : ''}">
-          <div class="limite">${fmtHora(r.limite)}</div>
+          <div class="limite">${pad(r.limite.getHours())}:${pad(r.limite.getMinutes())}</div>
           <div>
             <div class="id">${esc(r.label)}</div>
-            <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}${r.destino ? ' · ' + esc(r.destino) : ''}</div>
+            <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
           </div>
           <div class="tag">${esc(tag)}</div>
         </div>`;
       }).join('');
     }
 
+    function labelStatus(s) {
+      return ({ parado: 'Parado', em_rota: 'Em rota', realizada: 'Realizada', cancelada: 'Cancelada' })[s] || s;
+    }
+
+    function setFiltro(filtro) {
+      FILTRO = filtro || 'TODAS';
+      document.querySelectorAll('.chip[data-filtro], .torre[data-filtro]').forEach(el => {
+        el.classList.toggle('active', el.getAttribute('data-filtro') === FILTRO);
+      });
+      renderTabela();
+    }
+
+    function renderTabela() {
+      const tbody = document.getElementById('tbody');
+      const lista = (FILTRO === 'TODAS' ? COLETAS : COLETAS.filter(c => statusAce(c) === FILTRO))
+        .slice().reverse().slice(0, 250);
+      if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="muted">Nenhuma coleta.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = lista.map(c => {
+        const st = statusAce(c);
+        return `<tr>
+          <td>${esc(c.coleta_id || '')}</td>
+          <td class="sit sit-${esc(st)}">${esc(labelStatus(st))}</td>
+          <td>${esc(c.situacao_atual || '')}</td>
+          <td>${esc(String(c.hora || '').slice(0, 5))}</td>
+          <td>${esc(c.placa || '')}</td>
+          <td>${esc(c.motorista || '')}</td>
+        </tr>`;
+      }).join('');
+    }
+
     async function refresh() {
       const status = document.getElementById('statusLine');
       try {
-        const [r50, r103] = await Promise.all([
-          chamarPlanilha('coletas'),
-          chamarPlanilha('coletas103').catch(() => ({ rows: [] })),
+        const [r103, r50] = await Promise.all([
+          chamarPlanilha('coletas103').catch(() => null),
+          chamarPlanilha('coletas').catch(() => ({ rows: [] })),
         ]);
-        COLETAS_50 = uniqueRows(r50.rows || []);
-        COLETAS_103 = uniqueRows(r103.rows || []);
-        // Total = prefer 103 se existir, senão 50
-        const base = COLETAS_103.length ? COLETAS_103 : COLETAS_50;
-        renderTotais(base);
+        COLETAS_50 = uniqueRows((r50 && r50.rows) || []);
+        if (r103 && r103.rows && r103.rows.length) {
+          COLETAS = uniqueRows(r103.rows);
+        } else {
+          // fallback: mapeia 50 para status ACE
+          COLETAS = COLETAS_50.map(c => {
+            const sit = situacaoNorm50(c);
+            const map = {
+              COLETADA: 'realizada',
+              COMANDADA: 'em_rota',
+              CADASTRADA: 'parado',
+              CANCELADA: 'cancelada',
+            };
+            return {
+              ...c,
+              status_ace: map[sit] || 'outro',
+              placa: parsePlaca(c.veiculo || ''),
+              hora: c.situacao_atual_hora || '',
+            };
+          });
+        }
+        const counts = countByStatus(COLETAS);
+        renderTorres(counts);
         renderPlacas();
         renderUrgentes();
-        const when = new Date().toLocaleTimeString('pt-BR');
-        status.textContent = `Atualizado ${when} · 50: ${COLETAS_50.length} · 103: ${COLETAS_103.length}`;
+        renderTabela();
+        status.textContent = `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · ${counts.total} coletas`;
       } catch (err) {
         status.textContent = err.message;
         document.getElementById('totalSub').textContent = err.message;
       }
     }
+
+    document.querySelectorAll('.chip[data-filtro], .torre[data-filtro]').forEach(el => {
+      el.addEventListener('click', () => setFiltro(el.getAttribute('data-filtro')));
+    });
 
     tickClock();
     setInterval(tickClock, 1000);
