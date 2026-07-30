@@ -5,24 +5,146 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ACE · Coletas</title>
   <script src="config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
-    :root { color-scheme: dark; font-family: Segoe UI, system-ui, sans-serif; }
-    body { margin: 0; background: #0b1220; color: #e2e8f0; }
-    header { padding: 24px 28px 8px; }
-    h1 { margin: 0 0 6px; font-size: 28px; }
-    .sub { color: #94a3b8; margin: 0; }
-    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 16px 28px 28px; }
-    .card { background: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; }
-    .chart-wrap { max-width: 720px; margin: 0 auto; height: 280px; }
-    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 0 28px 8px; }
-    .kpi { background: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 14px; cursor: pointer; transition: border-color .15s; }
-    .kpi:hover, .kpi.active { border-color: #67e8f9; }
-    .kpi b { display: block; font-size: 22px; margin-top: 4px; }
-    .muted { color: #94a3b8; font-size: 12px; }
-    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      --bg: #0b1220;
+      --panel: #020617;
+      --line: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --col: #22c55e;
+      --com: #38bdf8;
+      --cad: #f59e0b;
+      --can: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+    header { padding: 22px 28px 6px; }
+    h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+    .sub { color: var(--muted); margin: 6px 0 0; font-size: 13px; }
+
+    .wrap { padding: 12px 28px 28px; display: grid; gap: 16px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px 16px 20px;
+    }
+    .panel h2 {
+      margin: 0 0 16px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #67e8f9;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* Torres */
+    .torres {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 18px;
+      min-height: 320px;
+      padding: 8px 8px 0;
+    }
+    .torre {
+      width: min(140px, 22vw);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+    .torre .pin {
+      width: 36px; height: 36px; border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      display: grid; place-items: center;
+      margin-bottom: 10px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.35);
+    }
+    .torre .pin span {
+      transform: rotate(45deg);
+      font-size: 11px; font-weight: 800; color: #fff;
+    }
+    .torre .barra {
+      width: 100%;
+      min-height: 48px;
+      border-radius: 10px 10px 0 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 14px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.35);
+      transition: height .35s ease, filter .15s, transform .15s;
+    }
+    .torre .barra strong {
+      font-size: clamp(22px, 3vw, 34px);
+      font-weight: 300;
+      color: #fff;
+      line-height: 1;
+    }
+    .torre .faixa {
+      width: 100%;
+      padding: 8px 6px;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      position: relative;
+      clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+    }
+    .torre .base {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--line);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      padding: 10px 8px 12px;
+      text-align: center;
+    }
+    .torre .base .qtd {
+      font-size: 20px;
+      font-weight: 700;
+      display: block;
+    }
+    .torre .base .lbl {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .torre:hover { transform: translateY(-4px); }
+    .torre.active .barra { filter: brightness(1.12); }
+    .torre.active .base { border-color: #67e8f9; }
+
+    .t-col .pin, .t-col .barra { background: var(--col); }
+    .t-col .faixa { background: #16a34a; }
+    .t-col .base .qtd { color: var(--col); }
+
+    .t-com .pin, .t-com .barra { background: var(--com); }
+    .t-com .faixa { background: #0284c7; }
+    .t-com .base .qtd { color: var(--com); }
+
+    .t-cad .pin, .t-cad .barra { background: var(--cad); }
+    .t-cad .faixa { background: #d97706; }
+    .t-cad .base .qtd { color: var(--cad); }
+
+    .t-can .pin, .t-can .barra { background: var(--can); }
+    .t-can .faixa { background: #dc2626; }
+    .t-can .base .qtd { color: var(--can); }
+
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin: 0 0 12px;
+    }
     .chip {
-      background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+      background: #0f172a; border: 1px solid #334155; color: var(--text);
       border-radius: 999px; padding: 6px 12px; font-size: 12px; cursor: pointer;
     }
     .chip.active { border-color: #67e8f9; color: #67e8f9; }
@@ -33,14 +155,18 @@
     }
     .btn:hover { background: #155e75; }
     .btn:disabled { opacity: .5; cursor: wait; }
+
+    .lista { overflow: auto; max-height: 380px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { border-bottom: 1px solid #1e293b; padding: 8px; text-align: left; vertical-align: middle; }
-    th { color: #67e8f9; }
-    .sit { font-weight: 600; }
-    .sit-COLETADA { color: #22c55e; }
-    .sit-COMANDADA { color: #38bdf8; }
-    .sit-CADASTRADA { color: #f59e0b; }
-    .sit-CANCELADA { color: #ef4444; }
+    th, td { border-bottom: 1px solid var(--line); padding: 9px 8px; text-align: left; }
+    th { color: #67e8f9; font-weight: 600; }
+    .sit { font-weight: 700; }
+    .sit-COLETADA { color: var(--col); }
+    .sit-COMANDADA { color: var(--com); }
+    .sit-CADASTRADA { color: var(--cad); }
+    .sit-CANCELADA { color: var(--can); }
+    .muted { color: var(--muted); font-size: 12px; }
+
     .modal-backdrop {
       display: none; position: fixed; inset: 0; background: rgba(2, 6, 23, .72);
       align-items: center; justify-content: center; z-index: 50; padding: 16px;
@@ -48,71 +174,83 @@
     .modal-backdrop.open { display: flex; }
     .modal {
       width: min(1100px, 100%); max-height: 90vh; overflow: auto;
-      background: #f3f4f6; border: 1px solid #94a3b8; border-radius: 10px; padding: 14px 16px 18px;
-      color: #0f172a;
+      background: #f3f4f6; border-radius: 10px; padding: 14px 16px 18px; color: #0f172a;
     }
-    .modal h2 { margin: 0 0 2px; font-size: 17px; color: #0f172a; }
+    .modal h2 { margin: 0 0 2px; font-size: 17px; }
     .modal .sub-hist { color: #64748b; font-size: 12px; margin: 0 0 12px; }
     .modal .close {
-      float: right; background: #1e3a5f; border: none;
-      color: #fff; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px;
+      float: right; background: #1e3a5f; border: none; color: #fff;
+      border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px;
     }
-    .modal .close:hover { background: #254a75; }
-    /* Tabela estilo SSW */
     .ssw-wrap { overflow: auto; border: 1px solid #cbd5e1; border-radius: 4px; }
     .ssw-hist { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; }
     .ssw-hist thead th {
       background: #1e3a5f; color: #fff; font-weight: 600; padding: 8px 7px;
-      text-align: left; white-space: nowrap; border-right: 1px solid #2d4a6f;
+      text-align: left; white-space: nowrap;
     }
-    .ssw-hist thead th:last-child { border-right: none; }
     .ssw-hist tbody td {
-      padding: 7px 7px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #eef2f7;
-      vertical-align: top; color: #0f172a;
+      padding: 7px; border-bottom: 1px solid #e2e8f0; vertical-align: top; color: #0f172a;
     }
-    .ssw-hist tbody td:last-child { border-right: none; }
     .ssw-hist tbody tr:nth-child(even) { background: #f1f5f9; }
-    .ssw-hist tbody tr:nth-child(odd) { background: #fff; }
     .ssw-hist .user { color: #1d4ed8; font-weight: 600; }
-    .ssw-hist .occ { color: #0f172a; white-space: nowrap; }
-    .ssw-hist .instr { min-width: 280px; line-height: 1.35; }
+    .ssw-hist .instr { min-width: 260px; line-height: 1.35; }
     .ssw-hist .ctr { text-align: center; }
-    @media (max-width: 900px) {
-      .grid, .kpis { grid-template-columns: 1fr; }
+
+    @media (max-width: 760px) {
+      .torres { gap: 8px; min-height: 260px; }
+      .torre { width: 22vw; }
+      .torre .faixa { font-size: 9px; }
+      header, .wrap { padding-left: 14px; padding-right: 14px; }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>ACE · Analisador Coleta</h1>
-    <p class="sub" id="updated">Carregando situações da planilha...</p>
+    <h1>ACE · Coletas</h1>
+    <p class="sub" id="updated">Carregando…</p>
   </header>
-  <section class="kpis">
-    <div class="kpi active" data-filtro="TODAS" id="kpiTodas"><span class="muted">Coletas (SPO)</span><b id="kTotal">0</b></div>
-    <div class="kpi" data-filtro="COLETADA"><span class="muted">Coletadas</span><b id="kColetada">0</b></div>
-    <div class="kpi" data-filtro="COMANDADA"><span class="muted">Comandadas</span><b id="kComandada">0</b></div>
-    <div class="kpi" data-filtro="CANCELADA"><span class="muted">Canceladas</span><b id="kCancelada">0</b></div>
-  </section>
-  <section class="grid">
-    <div class="card">
-      <h3>Situações</h3>
-      <p class="muted" style="margin:0 0 12px;">
-        1 coleta = 1 SPO · a torre conta só o campo <b>SITUACAO ATUAL</b> (não soma Cadastrada+Comandada+Coletada da mesma SPO)
-      </p>
-      <div class="chart-wrap">
-        <canvas id="chartTorres"></canvas>
+
+  <div class="wrap">
+    <section class="panel">
+      <h2>Situação atual</h2>
+      <div class="torres" id="torres">
+        <button type="button" class="torre t-col" data-filtro="COLETADA">
+          <div class="pin"><span>01</span></div>
+          <div class="barra" id="barCol"><strong id="nCol">0</strong></div>
+          <div class="faixa">Coletada</div>
+          <div class="base"><span class="qtd" id="qCol">0</span><div class="lbl">SPO</div></div>
+        </button>
+        <button type="button" class="torre t-com" data-filtro="COMANDADA">
+          <div class="pin"><span>02</span></div>
+          <div class="barra" id="barCom"><strong id="nCom">0</strong></div>
+          <div class="faixa">Comandada</div>
+          <div class="base"><span class="qtd" id="qCom">0</span><div class="lbl">SPO</div></div>
+        </button>
+        <button type="button" class="torre t-cad" data-filtro="CADASTRADA">
+          <div class="pin"><span>03</span></div>
+          <div class="barra" id="barCad"><strong id="nCad">0</strong></div>
+          <div class="faixa">Cadastrada</div>
+          <div class="base"><span class="qtd" id="qCad">0</span><div class="lbl">SPO</div></div>
+        </button>
+        <button type="button" class="torre t-can" data-filtro="CANCELADA">
+          <div class="pin"><span>04</span></div>
+          <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
+          <div class="faixa">Cancelada</div>
+          <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
+        </button>
       </div>
-    </div>
-    <div class="card">
-      <h3>Coletas por situação</h3>
+    </section>
+
+    <section class="panel">
+      <h2>Coletas</h2>
       <div class="toolbar" id="filtros">
         <button type="button" class="chip active" data-filtro="TODAS">Todas</button>
-        <button type="button" class="chip" data-filtro="CADASTRADA">Cadastrada</button>
-        <button type="button" class="chip" data-filtro="COMANDADA">Comandada</button>
         <button type="button" class="chip" data-filtro="COLETADA">Coletada</button>
+        <button type="button" class="chip" data-filtro="COMANDADA">Comandada</button>
+        <button type="button" class="chip" data-filtro="CADASTRADA">Cadastrada</button>
         <button type="button" class="chip" data-filtro="CANCELADA">Cancelada</button>
       </div>
-      <div style="overflow:auto; max-height:360px;">
+      <div class="lista">
         <table>
           <thead>
             <tr>
@@ -127,14 +265,14 @@
           <tbody id="tbody"></tbody>
         </table>
       </div>
-    </div>
-  </section>
+    </section>
+  </div>
 
   <div class="modal-backdrop" id="modalHist" role="dialog" aria-modal="true">
     <div class="modal">
       <button type="button" class="close" id="btnFecharHist">Fechar</button>
       <h2 id="histTitulo">Histórico</h2>
-      <p class="sub-hist" id="histSub">Mesmo visual do SSW · mais recente no topo</p>
+      <p class="sub-hist" id="histSub"></p>
       <div id="histLista"></div>
     </div>
   </div>
@@ -143,7 +281,6 @@
     const SCRIPT_URL = (window.ACE_CONFIG && window.ACE_CONFIG.scriptUrl) || '';
     let TODAS_COLETAS = [];
     let FILTRO = 'TODAS';
-    let chartTorres = null;
 
     async function chamarPlanilha(action, params = {}) {
       if (!SCRIPT_URL) throw new Error('Configure scriptUrl em config.js');
@@ -157,19 +294,14 @@
       const text = await res.text();
       let dados;
       try { dados = JSON.parse(text); }
-      catch { throw new Error('Resposta invalida do Apps Script. Publique Nova versao do Code.gs.'); }
+      catch { throw new Error('Apps Script inválido. Publique Nova versão do Code.gs.'); }
       if (!dados.ok) throw new Error(dados.error || 'Erro na planilha');
       return dados;
     }
 
     function isColetaRow(r) {
-      if (!r || typeof r !== 'object') return false;
-      if (r.event_key || r.seq_evento) return false;
-      const id = String(r.coleta_id || '').trim();
-      const label = String(r.coleta || '').trim();
-      const un = String(r.unidade || '').trim();
-      const num = String(r.numero || '').trim();
-      return !!(id || label || (un && num));
+      if (!r || r.event_key || r.seq_evento) return false;
+      return !!(r.coleta_id || r.coleta || (r.unidade && r.numero));
     }
 
     function coletaKey(r) {
@@ -188,8 +320,8 @@
       return Array.from(map.values());
     }
 
+    /** Conta SOMENTE SITUACAO ATUAL — 1 SPO = 1 ponto */
     function situacaoNorm(c) {
-      // Conta SOMENTE o campo situacao_atual (SITUACAO ATUAL do relatorio)
       const s = String(c.situacao_atual || '').toUpperCase().trim();
       if (s.includes('CANCEL')) return 'CANCELADA';
       if (s.includes('COLET')) return 'COLETADA';
@@ -202,7 +334,7 @@
       const out = { total: 0, coletada: 0, comandada: 0, cadastrada: 0, cancelada: 0 };
       coletas.forEach(c => {
         const s = situacaoNorm(c);
-        if (!s) return; // sem SITUACAO ATUAL = nao conta
+        if (!s) return;
         out.total += 1;
         if (s === 'CANCELADA') out.cancelada += 1;
         else if (s === 'COLETADA') out.coletada += 1;
@@ -212,35 +344,38 @@
       return out;
     }
 
-    function renderCharts(counts) {
-      if (chartTorres) chartTorres.destroy();
-      chartTorres = new Chart(document.getElementById('chartTorres'), {
-        type: 'bar',
-        data: {
-          labels: ['Coletada', 'Comandada', 'Cadastrada', 'Cancelada'],
-          datasets: [{
-            label: 'Coletas',
-            data: [counts.coletada, counts.comandada, counts.cadastrada, counts.cancelada],
-            backgroundColor: ['#22c55e', '#38bdf8', '#f59e0b', '#ef4444'],
-            borderRadius: 6,
-            maxBarThickness: 72,
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#1e293b' } },
-            x: { grid: { display: false } },
-          }
+    function esc(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function fmtCampo(valor, tipo) {
+      const raw = String(valor ?? '').trim();
+      if (!raw) return '';
+      if (/^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/.test(raw)) return raw.slice(0, 5);
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(raw)) return raw.slice(0, 5);
+      const d = new Date(raw);
+      if (!isNaN(d.getTime()) && /GMT|UTC|Horário|Brasilia|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i.test(raw)) {
+        const y = d.getFullYear();
+        const pad = n => String(n).padStart(2, '0');
+        if (y < 1900 || tipo === 'hora') return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        if (tipo === 'data') return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+        if (d.getHours() || d.getMinutes()) {
+          return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         }
-      });
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+      }
+      return raw.replace(/\s*GMT[^\)]*\)?/gi, '').replace(/\(Horário[^)]*\)/gi, '').trim();
+    }
+
+    function fmtDataHora(data, hora) {
+      return [fmtCampo(data, 'data'), fmtCampo(hora, 'hora')].filter(Boolean).join(' ');
     }
 
     function setFiltro(filtro) {
       FILTRO = filtro || 'TODAS';
-      document.querySelectorAll('.chip[data-filtro], .kpi[data-filtro]').forEach(el => {
+      document.querySelectorAll('.chip[data-filtro], .torre[data-filtro]').forEach(el => {
         el.classList.toggle('active', el.getAttribute('data-filtro') === FILTRO);
       });
       renderTabela();
@@ -251,44 +386,26 @@
       return TODAS_COLETAS.filter(c => situacaoNorm(c) === FILTRO);
     }
 
-    function esc(s) {
-      return String(s ?? '')
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    function alturaTorre(valor, max) {
+      const minH = 56;
+      const maxH = 210;
+      if (!max || max <= 0) return minH;
+      return Math.round(minH + (valor / max) * (maxH - minH));
     }
 
-    /** Limpa "Thu Jul 02 2026 00:00:00 GMT-0300 (Horário Padrão de Brasília)" → dd/MM ou HH:mm */
-    function fmtCampo(valor, tipo) {
-      const raw = String(valor ?? '').trim();
-      if (!raw) return '';
-      // Já no formato curto
-      if (/^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/.test(raw)) return raw.slice(0, 5);
-      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(raw)) return raw.slice(0, 5);
-      // Date string do Sheets / browser
-      const d = new Date(raw);
-      if (!isNaN(d.getTime()) && /GMT|UTC|Horário|Brasilia|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i.test(raw)) {
-        const y = d.getFullYear();
-        const pad = n => String(n).padStart(2, '0');
-        // Epoch de hora pura no Sheets
-        if (y < 1900 || tipo === 'hora') {
-          return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        }
-        if (tipo === 'data') {
-          return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
-        }
-        if (d.getHours() || d.getMinutes()) {
-          return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        }
-        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
-      }
-      // Remove sufixo de fuso se sobrar
-      return raw.replace(/\s*GMT[^\)]*\)?/gi, '').replace(/\(Horário[^)]*\)/gi, '').trim();
-    }
-
-    function fmtDataHora(data, hora) {
-      const d = fmtCampo(data, 'data');
-      const h = fmtCampo(hora, 'hora');
-      return [d, h].filter(Boolean).join(' ');
+    function renderTorres(counts) {
+      const max = Math.max(counts.coletada, counts.comandada, counts.cadastrada, counts.cancelada, 1);
+      const map = [
+        ['Col', counts.coletada],
+        ['Com', counts.comandada],
+        ['Cad', counts.cadastrada],
+        ['Can', counts.cancelada],
+      ];
+      map.forEach(([suf, val]) => {
+        document.getElementById('n' + suf).textContent = val;
+        document.getElementById('q' + suf).textContent = val;
+        document.getElementById('bar' + suf).style.height = alturaTorre(val, max) + 'px';
+      });
     }
 
     function renderTabela() {
@@ -296,19 +413,18 @@
       tbody.innerHTML = '';
       const lista = coletasFiltradas().slice().reverse().slice(0, 200);
       if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="muted">Nenhuma coleta nesta situação.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="muted">Nenhuma coleta.</td></tr>';
         return;
       }
       lista.forEach(c => {
         const sit = situacaoNorm(c);
         const id = coletaKey(c);
         const label = c.coleta || c.coleta_id || id;
-        const quando = fmtDataHora(c.situacao_atual_data, c.situacao_atual_hora);
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${esc(label)}</td>
           <td class="sit sit-${esc(sit)}">${esc(c.situacao_atual || sit)}</td>
-          <td>${esc(quando)}</td>
+          <td>${esc(fmtDataHora(c.situacao_atual_data, c.situacao_atual_hora))}</td>
           <td>${esc(c.dest_cidade || c.dest || '')}</td>
           <td>${esc(c.motorista || '')}</td>
           <td><button type="button" class="btn" data-hist="${esc(id)}" data-label="${esc(label)}" data-sit="${esc(sit)}">Histórico</button></td>`;
@@ -330,11 +446,9 @@
       const m = d.match(/(\d{1,2})\/(\d{1,2})/);
       if (!m) return '0000' + h;
       const pad = n => String(n).padStart(2, '0');
-      // MM + DD + HHMM (ano omitido no relatorio SSW)
       return pad(m[2]) + pad(m[1]) + h.replace(':', '');
     }
 
-    /** Infere ocorrencia no estilo SSW a partir do texto SIT/INSTR */
     function inferOcorrencia(obs) {
       const o = String(obs || '').toUpperCase();
       if (!o) return '';
@@ -346,7 +460,6 @@
       if (/COLETA CADASTRADA|REMET:/.test(o) && /VOL|KG|DESTINO|HORARIO LIMITE/.test(o)) {
         return '98-COLETA CADASTRADA';
       }
-      // Linhas so de instrucao (comprovante, romaneio...) ficam sem codigo — igual SSW
       return '';
     }
 
@@ -356,77 +469,55 @@
       );
       const body = sorted.map(h => {
         const inclusao = fmtDataHora(h.data, h.hora);
-        const domi = (h.dominio || 'BIN').toUpperCase();
-        const fili = (h.unidade_evento || h.unidade || 'SPO').toUpperCase();
-        const user = h.usuario || '';
         const occ = inferOcorrencia(h.observacao);
-        const instr = h.observacao || '';
         return `<tr>
           <td>${esc(inclusao)}</td>
-          <td class="ctr">${esc(domi)}</td>
-          <td class="ctr">${esc(fili)}</td>
+          <td class="ctr">${esc((h.dominio || 'BIN').toUpperCase())}</td>
+          <td class="ctr">${esc((h.unidade_evento || h.unidade || 'SPO').toUpperCase())}</td>
           <td>${esc(inclusao)}</td>
-          <td class="user">${esc(user)}</td>
-          <td class="occ">${esc(occ)}</td>
-          <td class="instr">${esc(instr)}</td>
-          <td class="occ">${esc(occ)}</td>
+          <td class="user">${esc(h.usuario || '')}</td>
+          <td>${esc(occ)}</td>
+          <td class="instr">${esc(h.observacao || '')}</td>
+          <td>${esc(occ)}</td>
         </tr>`;
       }).join('');
-      return `
-        <div class="ssw-wrap">
-          <table class="ssw-hist">
-            <thead>
-              <tr>
-                <th>Inclusão</th>
-                <th>Domi</th>
-                <th>Fili:</th>
-                <th>Inclusão Local</th>
-                <th>Usuário</th>
-                <th>Ocorrência</th>
-                <th>Instruções / situação</th>
-                <th>Ocorrência SSW</th>
-              </tr>
-            </thead>
-            <tbody>${body}</tbody>
-          </table>
-        </div>`;
+      return `<div class="ssw-wrap"><table class="ssw-hist">
+        <thead><tr>
+          <th>Inclusão</th><th>Domi</th><th>Fili:</th><th>Inclusão Local</th>
+          <th>Usuário</th><th>Ocorrência</th><th>Instruções / situação</th><th>Ocorrência SSW</th>
+        </tr></thead><tbody>${body}</tbody></table></div>`;
     }
 
     async function abrirHistorico(coletaId, label, situacao, btn) {
       const modal = document.getElementById('modalHist');
       const lista = document.getElementById('histLista');
       document.getElementById('histTitulo').textContent = `Histórico · ${label || coletaId}`;
-      document.getElementById('histSub').textContent =
-        `Situação atual: ${situacao || '—'} · visual estilo SSW · mais recente no topo`;
-      lista.innerHTML = '<p class="sub-hist">Carregando histórico...</p>';
+      document.getElementById('histSub').textContent = `Situação atual: ${situacao || '—'}`;
+      lista.innerHTML = '<p class="sub-hist">Carregando…</p>';
       modal.classList.add('open');
       if (btn) btn.disabled = true;
       try {
         const resp = await chamarPlanilha('historico', { coleta_id: coletaId });
         const rows = resp.rows || [];
-        if (!rows.length) {
-          lista.innerHTML = '<p class="sub-hist">Nenhum evento de histórico para esta coleta na planilha.</p>';
-          return;
-        }
-        lista.innerHTML = renderHistoricoSsw(rows);
+        lista.innerHTML = rows.length
+          ? renderHistoricoSsw(rows)
+          : '<p class="sub-hist">Sem histórico nesta coleta.</p>';
       } catch (err) {
-        lista.innerHTML = `<p class="sub-hist">Falha ao carregar histórico: ${esc(err.message)}</p>`;
+        lista.innerHTML = `<p class="sub-hist">${esc(err.message)}</p>`;
       } finally {
         if (btn) btn.disabled = false;
       }
     }
 
-    function fecharHistorico() {
-      document.getElementById('modalHist').classList.remove('open');
-    }
-
     async function main() {
       const updated = document.getElementById('updated');
-      document.getElementById('btnFecharHist').addEventListener('click', fecharHistorico);
-      document.getElementById('modalHist').addEventListener('click', (e) => {
-        if (e.target.id === 'modalHist') fecharHistorico();
+      document.getElementById('btnFecharHist').addEventListener('click', () => {
+        document.getElementById('modalHist').classList.remove('open');
       });
-      document.querySelectorAll('.chip[data-filtro], .kpi[data-filtro]').forEach(el => {
+      document.getElementById('modalHist').addEventListener('click', (e) => {
+        if (e.target.id === 'modalHist') e.currentTarget.classList.remove('open');
+      });
+      document.querySelectorAll('.chip[data-filtro], .torre[data-filtro]').forEach(el => {
         el.addEventListener('click', () => setFiltro(el.getAttribute('data-filtro')));
       });
 
@@ -434,21 +525,11 @@
         const coletasResp = await chamarPlanilha('coletas');
         TODAS_COLETAS = uniqueColetas(coletasResp.rows || []);
         const counts = countBySituacao(TODAS_COLETAS);
-
-        updated.textContent =
-          `${counts.total} coleta(s) · só situações · histórico no botão · ` +
-          (coletasResp.updated_at || '');
-
-        document.getElementById('kTotal').textContent = counts.total;
-        document.getElementById('kColetada').textContent = counts.coletada;
-        document.getElementById('kComandada').textContent = counts.comandada;
-        document.getElementById('kCancelada').textContent = counts.cancelada;
-
-        renderCharts(counts);
+        updated.textContent = `${counts.total} coletas · só SITUACAO ATUAL`;
+        renderTorres(counts);
         renderTabela();
       } catch (err) {
-        updated.textContent =
-          'Nao conectou na planilha. Confira Code.gs (SPREADSHEET_ID + Nova versao). ' + err.message;
+        updated.textContent = err.message;
       }
     }
     main();
