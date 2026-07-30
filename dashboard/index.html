@@ -9,7 +9,7 @@
     :root {
       color-scheme: dark;
       --bg: #070b14;
-      --panel: #0c1220;
+      --panel: #0b1220;
       --line: #1e293b;
       --text: #e2e8f0;
       --muted: #94a3b8;
@@ -20,25 +20,26 @@
       font-family: "Segoe UI", system-ui, sans-serif;
     }
     * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; }
+    html, body { height: 100%; margin: 0; overflow: hidden; }
     body {
       background:
         radial-gradient(1100px 520px at 8% -10%, #132038 0%, transparent 55%),
         radial-gradient(800px 420px at 100% 0%, #1a1020 0%, transparent 50%),
         var(--bg);
       color: var(--text);
-      min-height: 100vh;
+      height: 100vh;
     }
 
     .board {
-      width: min(1440px, 100%);
+      height: 100vh;
+      width: min(1500px, 100%);
       margin: 0 auto;
-      padding: 14px 16px 18px;
+      padding: 12px 14px;
       display: grid;
-      gap: 12px;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
     }
 
-    /* Header */
     .topbar {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -49,13 +50,12 @@
       border-radius: 14px;
       padding: 8px 14px;
     }
-    .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
-    .brand img { height: 48px; width: auto; display: block; object-fit: contain; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand img { height: 46px; width: auto; display: block; object-fit: contain; }
     .brand .title {
-      font-size: clamp(22px, 3vw, 32px);
+      font-size: clamp(22px, 3vw, 30px);
       font-weight: 800;
       letter-spacing: 0.12em;
-      color: #fff;
     }
     .clock-box { text-align: right; }
     .clock-box .lbl {
@@ -70,69 +70,182 @@
     }
     .clock-box .date { color: var(--muted); font-size: 11px; }
 
-    /* Torres (destaque) */
-    .panel {
-      background: var(--panel);
+    /* Layout principal: pops | torres | urgentes */
+    .stage {
+      display: grid;
+      grid-template-columns: 220px 1fr 260px;
+      gap: 12px;
+      min-height: 0;
+      height: 100%;
+    }
+
+    .side {
+      background: rgba(12, 18, 32, 0.55);
       border: 1px solid var(--line);
       border-radius: 14px;
-      padding: 14px;
+      padding: 12px;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
-    .panel h2 {
+    .side h2 {
       margin: 0 0 10px;
       font-size: 11px;
       font-weight: 700;
       color: #67e8f9;
       text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .total-num {
+      font-size: 56px;
+      font-weight: 200;
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      color: #fff;
+    }
+    .total-sub { color: var(--muted); font-size: 12px; margin: 4px 0 14px; }
+
+    /* Stack de pops */
+    .pop-stack {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .pop {
+      position: absolute;
+      left: 0; right: 0;
+      display: grid;
+      align-items: center;
+      gap: 10px;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 10px 12px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.35);
+      opacity: 0;
+      transform: translateY(28px) scale(0.96);
+      transition:
+        opacity .45s ease,
+        transform .55s cubic-bezier(.2,.8,.2,1),
+        top .55s cubic-bezier(.2,.8,.2,1);
+      pointer-events: none;
+    }
+    .pop.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .pop.leaving {
+      opacity: 0;
+      transform: translateY(-34px) scale(0.96);
+    }
+
+    .pop-placa {
+      grid-template-columns: 48px 1fr auto;
+    }
+    .pop-prazo {
+      grid-template-columns: 58px 1fr auto;
+      border-left: 4px solid var(--can);
+    }
+    .pop-prazo.warn {
+      border-left-color: var(--cad);
+    }
+
+    .donut { width: 44px; height: 44px; position: relative; }
+    .donut svg { width: 44px; height: 44px; transform: rotate(-90deg); }
+    .donut .pct {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      font-size: 11px; font-weight: 800; color: #fff;
+    }
+    .pop .name { font-size: 15px; font-weight: 800; letter-spacing: 0.03em; }
+    .pop .meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .pop .badge {
+      font-size: 13px; font-weight: 800; color: var(--col);
+      font-variant-numeric: tabular-nums;
+    }
+    .pop-prazo .hora {
+      font-size: 18px; font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .pop-prazo .tag {
+      font-size: 10px; font-weight: 800; text-transform: uppercase;
+      padding: 4px 7px; border-radius: 999px;
+      background: #450a0a; color: #fecaca; white-space: nowrap;
+    }
+    .pop-prazo.warn .tag {
+      background: #1e293b; color: var(--cad);
+    }
+
+    /* Torres centro */
+    .center {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 10px 16px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .center h2 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #67e8f9;
+      text-transform: uppercase;
       letter-spacing: 0.08em;
+      text-align: center;
     }
     .torres {
+      flex: 1;
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      gap: 16px;
-      min-height: 280px;
-      padding: 4px 4px 0;
+      gap: 18px;
+      min-height: 0;
+      padding: 8px 8px 0;
     }
     .torre {
-      width: min(130px, 20vw);
+      width: min(132px, 18vw);
       display: flex;
       flex-direction: column;
       align-items: center;
-      cursor: pointer;
       border: none;
       background: transparent;
       padding: 0;
       color: inherit;
     }
     .torre .pin {
-      width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
+      width: 34px; height: 34px; border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg);
       display: grid; place-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       box-shadow: 0 6px 14px rgba(0,0,0,.35);
     }
     .torre .pin span {
       transform: rotate(45deg);
-      font-size: 10px; font-weight: 800; color: #fff;
+      font-size: 11px; font-weight: 800; color: #fff;
     }
     .torre .barra {
       width: 100%;
-      min-height: 48px;
+      min-height: 56px;
       border-radius: 10px 10px 0 0;
       display: flex;
       align-items: flex-start;
       justify-content: center;
-      padding-top: 12px;
+      padding-top: 14px;
       box-shadow: 0 10px 22px rgba(0,0,0,.35);
-      transition: height .35s ease, filter .15s, transform .15s;
+      transition: height .45s ease;
     }
     .torre .barra strong {
-      font-size: clamp(20px, 2.8vw, 32px);
+      font-size: clamp(24px, 3.2vw, 36px);
       font-weight: 300; color: #fff; line-height: 1;
     }
     .torre .faixa {
-      width: 100%; padding: 7px 6px; color: #fff;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+      width: 100%; padding: 8px 6px; color: #fff;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
       text-transform: uppercase;
       clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
     }
@@ -140,13 +253,10 @@
       width: 100%; background: #0f172a;
       border: 1px solid var(--line); border-top: none;
       border-radius: 0 0 10px 10px;
-      padding: 8px 6px 10px; text-align: center;
+      padding: 9px 6px 11px; text-align: center;
     }
     .torre .base .qtd { font-size: 18px; font-weight: 700; display: block; }
-    .torre .base .lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
-    .torre:hover { transform: translateY(-3px); }
-    .torre.active .barra { filter: brightness(1.12); }
-    .torre.active .base { border-color: #67e8f9; }
+    .torre .base .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
     .t-col .pin, .t-col .barra { background: var(--col); }
     .t-col .faixa { background: #16a34a; }
@@ -161,117 +271,14 @@
     .t-can .faixa { background: #dc2626; }
     .t-can .base .qtd { color: var(--can); }
 
-    /* Faixa compacta abaixo das torres */
-    .ops {
-      display: grid;
-      grid-template-columns: 140px 1.2fr 1.4fr;
-      gap: 10px;
-      min-height: 0;
-    }
-    .mini {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px 12px;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-    }
-    .mini h3 {
-      margin: 0 0 8px;
-      font-size: 10px;
-      font-weight: 700;
-      color: #67e8f9;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .total-num {
-      font-size: 42px;
-      font-weight: 200;
-      line-height: 1;
-      letter-spacing: -0.03em;
-    }
-    .total-sub { color: var(--muted); font-size: 11px; margin-top: 6px; }
-
-    .placas-list, .urgentes-list {
-      overflow: auto;
-      max-height: 160px;
-      display: grid;
-      gap: 6px;
-      min-height: 0;
-    }
-    .placa-row {
-      display: grid;
-      grid-template-columns: 42px 1fr auto;
-      gap: 8px;
-      align-items: center;
-      background: #020617;
-      border: 1px solid #1e293b;
-      border-radius: 8px;
-      padding: 5px 8px;
-    }
-    .donut { width: 40px; height: 40px; position: relative; }
-    .donut svg { width: 40px; height: 40px; transform: rotate(-90deg); }
-    .donut .pct {
-      position: absolute; inset: 0; display: grid; place-items: center;
-      font-size: 9px; font-weight: 700; color: #fff;
-    }
-    .placa-meta .name { font-size: 13px; font-weight: 700; letter-spacing: 0.03em; }
-    .placa-meta .detail { color: var(--muted); font-size: 10px; }
-    .placa-pct { font-size: 12px; font-weight: 700; color: var(--col); }
-
-    .urgente {
-      display: grid;
-      grid-template-columns: 52px 1fr auto;
-      gap: 8px;
-      align-items: center;
-      background: #020617;
-      border: 1px solid #1e293b;
-      border-left: 3px solid var(--cad);
-      border-radius: 8px;
-      padding: 6px 8px;
-      font-size: 12px;
-    }
-    .urgente.atrasada { border-left-color: var(--can); }
-    .urgente .limite { font-weight: 700; font-variant-numeric: tabular-nums; }
-    .urgente .id { font-weight: 700; font-size: 12px; }
-    .urgente .meta { color: var(--muted); font-size: 10px; }
-    .urgente .tag {
-      font-size: 9px; font-weight: 700; text-transform: uppercase;
-      padding: 3px 6px; border-radius: 999px; background: #1e293b; color: var(--cad);
-      white-space: nowrap;
-    }
-    .urgente.atrasada .tag { color: #fecaca; background: #450a0a; }
-
-    .empty { color: var(--muted); font-size: 11px; padding: 10px 4px; text-align: center; }
-    .status-line { color: var(--muted); font-size: 11px; padding: 0 2px; }
-
-    .toolbar {
-      display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px;
-    }
-    .chip {
-      background: #020617; border: 1px solid #334155; color: var(--text);
-      border-radius: 999px; padding: 4px 10px; font-size: 11px; cursor: pointer;
-    }
-    .chip.active { border-color: #67e8f9; color: #67e8f9; }
-
-    .lista { overflow: auto; max-height: 220px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th, td { border-bottom: 1px solid var(--line); padding: 7px 6px; text-align: left; }
-    th { color: #67e8f9; font-weight: 600; }
-    .sit { font-weight: 700; }
-    .sit-COLETADA, .sit-realizada { color: var(--col); }
-    .sit-COMANDADA, .sit-em_rota { color: var(--com); }
-    .sit-CADASTRADA, .sit-parado { color: var(--cad); }
-    .sit-CANCELADA, .sit-cancelada { color: var(--can); }
-    .muted { color: var(--muted); font-size: 11px; }
+    .status-line { color: var(--muted); font-size: 11px; padding: 0 4px; }
 
     @media (max-width: 980px) {
-      .ops { grid-template-columns: 1fr; }
-      .torres { gap: 8px; min-height: 230px; }
-      .torre { width: 22vw; }
-      .topbar { grid-template-columns: 1fr; }
-      .clock-box { text-align: left; }
+      body { overflow: auto; }
+      .board { height: auto; min-height: 100vh; }
+      .stage { grid-template-columns: 1fr; height: auto; }
+      .pop-stack { min-height: 220px; }
+      .torres { min-height: 280px; }
     }
   </style>
 </head>
@@ -289,79 +296,53 @@
       </div>
     </header>
 
-    <section class="panel">
-      <h2>Torres · tempo real</h2>
-      <div class="torres" id="torres">
-        <button type="button" class="torre t-col" data-filtro="realizada">
-          <div class="pin"><span>01</span></div>
-          <div class="barra" id="barReal"><strong id="nReal">0</strong></div>
-          <div class="faixa">Realizada</div>
-          <div class="base"><span class="qtd" id="qReal">0</span><div class="lbl">coletada</div></div>
-        </button>
-        <button type="button" class="torre t-com" data-filtro="em_rota">
-          <div class="pin"><span>02</span></div>
-          <div class="barra" id="barRota"><strong id="nRota">0</strong></div>
-          <div class="faixa">Em rota</div>
-          <div class="base"><span class="qtd" id="qRota">0</span><div class="lbl">comandada</div></div>
-        </button>
-        <button type="button" class="torre t-cad" data-filtro="parado">
-          <div class="pin"><span>03</span></div>
-          <div class="barra" id="barPar"><strong id="nPar">0</strong></div>
-          <div class="faixa">Parado</div>
-          <div class="base"><span class="qtd" id="qPar">0</span><div class="lbl">cadastrada</div></div>
-        </button>
-        <button type="button" class="torre t-can" data-filtro="cancelada">
-          <div class="pin"><span>04</span></div>
-          <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
-          <div class="faixa">Cancelada</div>
-          <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
-        </button>
-      </div>
-    </section>
-
-    <section class="ops">
-      <div class="mini">
-        <h3>Total</h3>
+    <div class="stage">
+      <!-- ESQUERDA: total + pops de placa -->
+      <aside class="side">
+        <h2>Total</h2>
         <div class="total-num" id="totalColetas">0</div>
         <div class="total-sub" id="totalSub">coletas</div>
-      </div>
+        <h2>Placas</h2>
+        <div class="pop-stack" id="placaStack"></div>
+      </aside>
 
-      <div class="mini">
-        <h3>Por placa</h3>
-        <div class="placas-list" id="placasList"></div>
-      </div>
+      <!-- CENTRO: torres -->
+      <section class="center">
+        <h2>Torres · tempo real</h2>
+        <div class="torres">
+          <div class="torre t-col">
+            <div class="pin"><span>01</span></div>
+            <div class="barra" id="barReal"><strong id="nReal">0</strong></div>
+            <div class="faixa">Realizada</div>
+            <div class="base"><span class="qtd" id="qReal">0</span><div class="lbl">coletada</div></div>
+          </div>
+          <div class="torre t-com">
+            <div class="pin"><span>02</span></div>
+            <div class="barra" id="barRota"><strong id="nRota">0</strong></div>
+            <div class="faixa">Em rota</div>
+            <div class="base"><span class="qtd" id="qRota">0</span><div class="lbl">comandada</div></div>
+          </div>
+          <div class="torre t-cad">
+            <div class="pin"><span>03</span></div>
+            <div class="barra" id="barPar"><strong id="nPar">0</strong></div>
+            <div class="faixa">Parado</div>
+            <div class="base"><span class="qtd" id="qPar">0</span><div class="lbl">cadastrada</div></div>
+          </div>
+          <div class="torre t-can">
+            <div class="pin"><span>04</span></div>
+            <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
+            <div class="faixa">Cancelada</div>
+            <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
+          </div>
+        </div>
+      </section>
 
-      <div class="mini">
-        <h3>Perto do limite</h3>
-        <div class="urgentes-list" id="urgentesList"></div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2>Detalhe</h2>
-      <div class="toolbar" id="filtros">
-        <button type="button" class="chip active" data-filtro="TODAS">Todas</button>
-        <button type="button" class="chip" data-filtro="realizada">Realizada</button>
-        <button type="button" class="chip" data-filtro="em_rota">Em rota</button>
-        <button type="button" class="chip" data-filtro="parado">Parado</button>
-        <button type="button" class="chip" data-filtro="cancelada">Cancelada</button>
-      </div>
-      <div class="lista">
-        <table>
-          <thead>
-            <tr>
-              <th>Coleta</th>
-              <th>Status</th>
-              <th>Situação</th>
-              <th>Hora</th>
-              <th>Placa</th>
-              <th>Motorista</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
-    </section>
+      <!-- DIREITA: pops de prazo -->
+      <aside class="side">
+        <h2>Perto do limite</h2>
+        <div class="pop-stack" id="prazoStack"></div>
+      </aside>
+    </div>
 
     <p class="status-line" id="statusLine">BINHO · COLETA</p>
   </div>
@@ -369,9 +350,20 @@
   <script>
     const SCRIPT_URL = (window.ACE_CONFIG && window.ACE_CONFIG.scriptUrl) || '';
     const JANELA_MIN = 120;
+    const PLACA_VISIBLE = 3;
+    const PRAZO_VISIBLE = 4;
+    const PLACA_TICK_MS = 2800;
+    const PRAZO_TICK_MS = 3200;
+    const PCT_ANIM_MS = 900;
+
     let COLETAS = [];
     let COLETAS_50 = [];
-    let FILTRO = 'TODAS';
+    let PLACAS = [];
+    let URGENTES = [];
+    let placaCursor = 0;
+    let prazoCursor = 0;
+    let placaTimer = null;
+    let prazoTimer = null;
 
     function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -384,19 +376,16 @@
         `${dias[now.getDay()]} · ${pad(now.getDate())}/${pad(now.getMonth() + 1)}`;
     }
 
-    async function chamarPlanilha(action, params = {}) {
+    async function chamarPlanilha(action) {
       if (!SCRIPT_URL) throw new Error('Configure scriptUrl em config.js');
       const url = new URL(SCRIPT_URL);
       url.searchParams.set('action', action);
       url.searchParams.set('t', String(Date.now()));
-      Object.entries(params).forEach(([k, v]) => {
-        if (v != null && v !== '') url.searchParams.set(k, v);
-      });
       const res = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
       const text = await res.text();
       let dados;
       try { dados = JSON.parse(text); }
-      catch { throw new Error('Apps Script inválido — publique Nova versão do Code.gs'); }
+      catch { throw new Error('Apps Script inválido — publique Nova versão'); }
       if (!dados.ok) throw new Error(dados.error || 'Erro na planilha');
       return dados;
     }
@@ -404,6 +393,16 @@
     function coletaKey(r) {
       return String(r.coleta_id || r.coleta || `${r.unidade || ''}${r.numero || ''}`)
         .toUpperCase().replace(/\s+/g, '').trim();
+    }
+
+    function uniqueRows(rows) {
+      const map = new Map();
+      (rows || []).forEach(r => {
+        const key = coletaKey(r);
+        if (!key) return;
+        if (!map.has(key)) map.set(key, r);
+      });
+      return Array.from(map.values());
     }
 
     function statusAce(c) {
@@ -424,16 +423,6 @@
       if (s.includes('COMAND')) return 'COMANDADA';
       if (s.includes('CADASTR')) return 'CADASTRADA';
       return '';
-    }
-
-    function uniqueRows(rows) {
-      const map = new Map();
-      (rows || []).forEach(r => {
-        const key = coletaKey(r);
-        if (!key) return;
-        if (!map.has(key)) map.set(key, r);
-      });
-      return Array.from(map.values());
     }
 
     function parsePlaca(raw) {
@@ -475,7 +464,7 @@
     }
 
     function alturaTorre(valor, max) {
-      const minH = 52, maxH = 190;
+      const minH = 56, maxH = 220;
       if (!max || max <= 0) return minH;
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
@@ -493,13 +482,12 @@
 
     function renderTorres(counts) {
       const max = Math.max(counts.realizada, counts.em_rota, counts.parado, counts.cancelada, 1);
-      const map = [
+      [
         ['Real', 'barReal', counts.realizada],
         ['Rota', 'barRota', counts.em_rota],
         ['Par', 'barPar', counts.parado],
         ['Can', 'barCan', counts.cancelada],
-      ];
-      map.forEach(([suf, bar, val]) => {
+      ].forEach(([suf, bar, val]) => {
         document.getElementById('n' + suf).textContent = val;
         document.getElementById('q' + suf).textContent = val;
         document.getElementById(bar).style.height = alturaTorre(val, max) + 'px';
@@ -510,53 +498,36 @@
 
     function donutSvg(pct, color) {
       const p = Math.max(0, Math.min(100, pct || 0));
-      const r = 14;
+      const r = 15;
       const c = 2 * Math.PI * r;
       const dash = (p / 100) * c;
-      return `<svg viewBox="0 0 36 36" aria-hidden="true">
-        <circle cx="18" cy="18" r="${r}" fill="none" stroke="#1e293b" stroke-width="5"></circle>
-        <circle cx="18" cy="18" r="${r}" fill="none" stroke="${color}" stroke-width="5"
-          stroke-linecap="round" stroke-dasharray="${dash} ${c - dash}"></circle>
+      return `<svg viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="${r}" fill="none" stroke="#1e293b" stroke-width="5"></circle>
+        <circle class="arc" cx="20" cy="20" r="${r}" fill="none" stroke="${color}" stroke-width="5"
+          stroke-linecap="round" stroke-dasharray="0 ${c}" data-full="${dash} ${c - dash}"></circle>
       </svg>`;
     }
 
-    function renderPlacas() {
-      const list = document.getElementById('placasList');
+    function buildPlacas() {
       const byPlaca = new Map();
       COLETAS.forEach(c => {
         const st = statusAce(c);
         if (st === 'cancelada') return;
         const placa = parsePlaca(c.placa || c.veiculo || '');
         if (!placa) return;
-        if (!byPlaca.has(placa)) byPlaca.set(placa, { placa, total: 0, feitas: 0 });
+        if (!byPlaca.has(placa)) byPlaca.set(placa, { placa, total: 0, feitas: 0, motorista: c.motorista || '' });
         const row = byPlaca.get(placa);
         row.total += 1;
         if (st === 'realizada') row.feitas += 1;
+        if (!row.motorista && c.motorista) row.motorista = c.motorista;
       });
-      const placas = Array.from(byPlaca.values())
+      return Array.from(byPlaca.values())
         .map(r => ({ ...r, pct: r.total ? Math.round((r.feitas / r.total) * 100) : 0 }))
-        .sort((a, b) => a.pct - b.pct || b.total - a.total)
-        .slice(0, 12);
-      if (!placas.length) {
-        list.innerHTML = '<div class="empty">Sem placas</div>';
-        return;
-      }
-      list.innerHTML = placas.map(p => {
-        const color = p.pct >= 100 ? '#22c55e' : p.pct >= 50 ? '#38bdf8' : '#f59e0b';
-        return `<div class="placa-row">
-          <div class="donut">${donutSvg(p.pct, color)}<div class="pct">${p.pct}%</div></div>
-          <div class="placa-meta">
-            <div class="name">${esc(p.placa)}</div>
-            <div class="detail">${p.feitas}/${p.total}</div>
-          </div>
-          <div class="placa-pct">${p.pct}%</div>
-        </div>`;
-      }).join('');
+        .sort((a, b) => a.pct - b.pct || b.total - a.total);
     }
 
-    function renderUrgentes() {
-      const list = document.getElementById('urgentesList');
-      const rows = [];
+    function buildUrgentes() {
+      const out = [];
       COLETAS_50.forEach(c => {
         const sit = situacaoNorm50(c);
         if (!sit || sit === 'CANCELADA' || sit === 'COLETADA') return;
@@ -564,7 +535,7 @@
         if (!limite) return;
         const mins = minsUntil(limite);
         if (mins > JANELA_MIN) return;
-        rows.push({
+        out.push({
           label: c.coleta || c.coleta_id || coletaKey(c),
           sit,
           limite,
@@ -572,56 +543,142 @@
           veiculo: parsePlaca(c.veiculo || ''),
         });
       });
-      rows.sort((a, b) => a.mins - b.mins);
-      if (!rows.length) {
-        list.innerHTML = '<div class="empty">Nada perto do limite</div>';
-        return;
+      out.sort((a, b) => a.mins - b.mins);
+      return out;
+    }
+
+    function animateDonut(el, targetPct) {
+      const arc = el.querySelector('.arc');
+      const label = el.querySelector('.pct');
+      if (!arc || !label) return;
+      const full = arc.getAttribute('data-full') || '0 100';
+      // sobe o % visualmente
+      let start = 0;
+      const end = Math.max(0, Math.min(100, targetPct || 0));
+      const t0 = performance.now();
+      const r = 15;
+      const circ = 2 * Math.PI * r;
+      function frame(t) {
+        const k = Math.min(1, (t - t0) / PCT_ANIM_MS);
+        const ease = 1 - Math.pow(1 - k, 3);
+        const cur = Math.round(start + (end - start) * ease);
+        const dash = (cur / 100) * circ;
+        arc.setAttribute('stroke-dasharray', `${dash} ${circ - dash}`);
+        label.textContent = cur + '%';
+        if (k < 1) requestAnimationFrame(frame);
+        else arc.setAttribute('stroke-dasharray', full);
       }
-      list.innerHTML = rows.slice(0, 20).map(r => {
-        const atrasada = r.mins < 0;
-        const tag = atrasada ? `-${Math.abs(r.mins)}m` : `${r.mins}m`;
-        return `<div class="urgente${atrasada ? ' atrasada' : ''}">
-          <div class="limite">${pad(r.limite.getHours())}:${pad(r.limite.getMinutes())}</div>
-          <div>
-            <div class="id">${esc(r.label)}</div>
-            <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
-          </div>
-          <div class="tag">${esc(tag)}</div>
-        </div>`;
-      }).join('');
+      requestAnimationFrame(frame);
     }
 
-    function labelStatus(s) {
-      return ({ parado: 'Parado', em_rota: 'Em rota', realizada: 'Realizada', cancelada: 'Cancelada' })[s] || s;
-    }
-
-    function setFiltro(filtro) {
-      FILTRO = filtro || 'TODAS';
-      document.querySelectorAll('.chip[data-filtro], .torre[data-filtro]').forEach(el => {
-        el.classList.toggle('active', el.getAttribute('data-filtro') === FILTRO);
+    function layoutPops(stack, nodes) {
+      const gap = 10;
+      let top = 0;
+      nodes.forEach((node, i) => {
+        node.style.top = top + 'px';
+        node.style.zIndex = String(100 - i);
+        top += node.offsetHeight + gap;
       });
-      renderTabela();
     }
 
-    function renderTabela() {
-      const tbody = document.getElementById('tbody');
-      const lista = (FILTRO === 'TODAS' ? COLETAS : COLETAS.filter(c => statusAce(c) === FILTRO))
-        .slice().reverse().slice(0, 250);
-      if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="muted">Nenhuma coleta.</td></tr>';
+    function renderPlacaPops() {
+      const stack = document.getElementById('placaStack');
+      if (!PLACAS.length) {
+        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem placas no período</div></div>';
         return;
       }
-      tbody.innerHTML = lista.map(c => {
-        const st = statusAce(c);
-        return `<tr>
-          <td>${esc(c.coleta_id || '')}</td>
-          <td class="sit sit-${esc(st)}">${esc(labelStatus(st))}</td>
-          <td>${esc(c.situacao_atual || '')}</td>
-          <td>${esc(String(c.hora || '').slice(0, 5))}</td>
-          <td>${esc(c.placa || '')}</td>
-          <td>${esc(c.motorista || '')}</td>
-        </tr>`;
-      }).join('');
+      const visible = [];
+      const n = Math.min(PLACA_VISIBLE, PLACAS.length);
+      for (let i = 0; i < n; i++) {
+        visible.push(PLACAS[(placaCursor + i) % PLACAS.length]);
+      }
+
+      // remove pops antigos com saida
+      Array.from(stack.querySelectorAll('.pop')).forEach(el => {
+        el.classList.remove('show');
+        el.classList.add('leaving');
+        setTimeout(() => el.remove(), 480);
+      });
+
+      // cria novos
+      setTimeout(() => {
+        const nodes = visible.map(p => {
+          const color = p.pct >= 100 ? '#22c55e' : p.pct >= 50 ? '#38bdf8' : '#f59e0b';
+          const el = document.createElement('div');
+          el.className = 'pop pop-placa';
+          el.innerHTML = `
+            <div class="donut">${donutSvg(p.pct, color)}<div class="pct">0%</div></div>
+            <div>
+              <div class="name">${esc(p.placa)}</div>
+              <div class="meta">${p.feitas}/${p.total}${p.motorista ? ' · ' + esc(p.motorista.split(' ')[0]) : ''}</div>
+            </div>
+            <div class="badge">${p.pct}%</div>`;
+          stack.appendChild(el);
+          requestAnimationFrame(() => el.classList.add('show'));
+          animateDonut(el, p.pct);
+          return el;
+        });
+        layoutPops(stack, nodes);
+      }, 120);
+    }
+
+    function renderPrazoPops() {
+      const stack = document.getElementById('prazoStack');
+      if (!URGENTES.length) {
+        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Nada perto do limite agora</div></div>';
+        return;
+      }
+      const visible = [];
+      const n = Math.min(PRAZO_VISIBLE, URGENTES.length);
+      for (let i = 0; i < n; i++) {
+        visible.push(URGENTES[(prazoCursor + i) % URGENTES.length]);
+      }
+
+      Array.from(stack.querySelectorAll('.pop')).forEach(el => {
+        el.classList.remove('show');
+        el.classList.add('leaving');
+        setTimeout(() => el.remove(), 480);
+      });
+
+      setTimeout(() => {
+        const nodes = visible.map(r => {
+          const atrasada = r.mins < 0;
+          const tag = atrasada ? `-${Math.abs(r.mins)}m` : `${r.mins}m`;
+          const el = document.createElement('div');
+          el.className = 'pop pop-prazo' + (atrasada ? '' : ' warn');
+          el.innerHTML = `
+            <div class="hora">${pad(r.limite.getHours())}:${pad(r.limite.getMinutes())}</div>
+            <div>
+              <div class="name" style="font-size:14px;">${esc(r.label)}</div>
+              <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
+            </div>
+            <div class="tag">${esc(tag)}</div>`;
+          stack.appendChild(el);
+          requestAnimationFrame(() => el.classList.add('show'));
+          return el;
+        });
+        layoutPops(stack, nodes);
+      }, 120);
+    }
+
+    function startPopLoops() {
+      if (placaTimer) clearInterval(placaTimer);
+      if (prazoTimer) clearInterval(prazoTimer);
+      renderPlacaPops();
+      renderPrazoPops();
+      placaTimer = setInterval(() => {
+        if (!PLACAS.length) return;
+        placaCursor = (placaCursor + 1) % PLACAS.length;
+        renderPlacaPops();
+      }, PLACA_TICK_MS);
+      prazoTimer = setInterval(() => {
+        if (!URGENTES.length) return;
+        // se cabem todas, ainda “pisca” renovando; senao avanca
+        if (URGENTES.length > PRAZO_VISIBLE) {
+          prazoCursor = (prazoCursor + 1) % URGENTES.length;
+        }
+        renderPrazoPops();
+      }, PRAZO_TICK_MS);
     }
 
     async function refresh() {
@@ -635,14 +692,11 @@
         if (r103 && r103.rows && r103.rows.length) {
           COLETAS = uniqueRows(r103.rows);
         } else {
-          // fallback: mapeia 50 para status ACE
           COLETAS = COLETAS_50.map(c => {
             const sit = situacaoNorm50(c);
             const map = {
-              COLETADA: 'realizada',
-              COMANDADA: 'em_rota',
-              CADASTRADA: 'parado',
-              CANCELADA: 'cancelada',
+              COLETADA: 'realizada', COMANDADA: 'em_rota',
+              CADASTRADA: 'parado', CANCELADA: 'cancelada',
             };
             return {
               ...c,
@@ -654,19 +708,18 @@
         }
         const counts = countByStatus(COLETAS);
         renderTorres(counts);
-        renderPlacas();
-        renderUrgentes();
-        renderTabela();
-        status.textContent = `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · ${counts.total} coletas`;
+        PLACAS = buildPlacas();
+        URGENTES = buildUrgentes();
+        placaCursor = 0;
+        prazoCursor = 0;
+        startPopLoops();
+        status.textContent =
+          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · ${counts.total} coletas · ${PLACAS.length} placas · ${URGENTES.length} no limite`;
       } catch (err) {
         status.textContent = err.message;
         document.getElementById('totalSub').textContent = err.message;
       }
     }
-
-    document.querySelectorAll('.chip[data-filtro], .torre[data-filtro]').forEach(el => {
-      el.addEventListener('click', () => setFiltro(el.getAttribute('data-filtro')));
-    });
 
     tickClock();
     setInterval(tickClock, 1000);
