@@ -2,10 +2,11 @@
 ACE · Loop CMD (tempo real)
 
 Roda sem parar:
-  - a cada N minutos (padrao 5) baixa 50 + 103 EM PARALELO
+  - a cada N segundos/minutos/horas/dias baixa 50 + 103 EM PARALELO
   - 50  = cadastramento D-1 (segunda = sexta–sabado)
   - 103 = inclusao HOJE
   - na virada do dia recalcula sozinho os periodos
+  - intervalo vem de config loop_intervalo (ex.: 5m, 30s, 1h)
 
 Ctrl+C para parar.
 """
@@ -19,6 +20,7 @@ from datetime import date, datetime
 
 from config import CONFIG_PATH, ensure_dirs, load_credentials, load_settings
 from dates import format_period, periodo_103_hoje, periodo_50_cadastramento, to_ssw_ddmmyy
+from interval_parse import format_duration, format_duration_long, parse_duration
 from pipeline import run_dual_cycle
 
 
@@ -26,7 +28,25 @@ def _log(msg: str) -> None:
     print(f"[{datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
-def _banner(interval_min: int, headless: bool) -> None:
+def resolve_interval_sec(
+    override: str | int | float | None = None,
+    *,
+    settings_intervalo: str | None = None,
+) -> int:
+    """Prioridade: override CLI > settings.loop_intervalo > 5m."""
+    if override is not None and str(override).strip() != "":
+        if isinstance(override, (int, float)) and not isinstance(override, bool):
+            # numero puro no CLI antigo = minutos (compat)
+            return parse_duration(f"{override}m")
+        return parse_duration(str(override))
+    raw = (settings_intervalo or "").strip() or "5m"
+    try:
+        return parse_duration(raw)
+    except ValueError:
+        return parse_duration("5m")
+
+
+def _banner(interval_sec: int, headless: bool) -> None:
     ini50, fim50 = periodo_50_cadastramento()
     ini103, fim103 = periodo_103_hoje()
     hoje = date.today()
@@ -43,13 +63,23 @@ def _banner(interval_min: int, headless: bool) -> None:
         f"  103 inclusao:{to_ssw_ddmmyy(ini103)} ({format_period(ini103, fim103)})",
         flush=True,
     )
-    print(f"  Intervalo:   {interval_min} min | headless={headless}", flush=True)
+    print(
+        f"  Intervalo:   {format_duration(interval_sec)} "
+        f"({format_duration_long(interval_sec)}) | headless={headless}",
+        flush=True,
+    )
     print(f"  Config:      {CONFIG_PATH}", flush=True)
     print("  Parar:       Ctrl+C", flush=True)
     print("=" * 72, flush=True)
 
 
-def run_loop(*, interval_min: int = 5, headless: bool = True, once: bool = False) -> int:
+def run_loop(
+    *,
+    interval_sec: int | None = None,
+    interval_min: int | None = None,  # legado
+    headless: bool = True,
+    once: bool = False,
+) -> int:
     ensure_dirs()
     creds = load_credentials()
     cfg = load_settings()
@@ -57,8 +87,13 @@ def run_loop(*, interval_min: int = 5, headless: bool = True, once: bool = False
         _log("ERRO: configure login no ace.bat (/e user ... /e password ...)")
         return 1
 
+    if interval_sec is None and interval_min is not None:
+        interval_sec = resolve_interval_sec(f"{interval_min}m")
+    if interval_sec is None:
+        interval_sec = resolve_interval_sec(settings_intervalo=cfg.loop_intervalo)
+
     day_marker = date.today()
-    _banner(interval_min, headless)
+    _banner(interval_sec, headless)
     ciclo = 0
 
     while True:
@@ -67,7 +102,7 @@ def run_loop(*, interval_min: int = 5, headless: bool = True, once: bool = False
         if today != day_marker:
             _log(f"VIRADA DE DIA: {day_marker} → {today} | recalculando periodos")
             day_marker = today
-            _banner(interval_min, headless)
+            _banner(interval_sec, headless)
 
         ini50, fim50 = periodo_50_cadastramento(today)
         ini103, fim103 = periodo_103_hoje(today)
@@ -99,18 +134,24 @@ def run_loop(*, interval_min: int = 5, headless: bool = True, once: bool = False
         if once:
             return 0
 
-        wait_s = max(5, int(interval_min * 60))
-        _log(f"Aguardando {interval_min} min ate o proximo ciclo...")
-        # dorme em fatias para reagir a Ctrl+C e virada de dia
+        # recarrega intervalo a cada ciclo (permite /e intervalo em outro terminal)
+        creds = load_credentials()
+        cfg = load_settings()
+        try:
+            interval_sec = resolve_interval_sec(settings_intervalo=cfg.loop_intervalo)
+        except ValueError:
+            pass
+
+        wait_s = max(5, int(interval_sec))
+        _log(f"Aguardando {format_duration_long(wait_s)} ate o proximo ciclo...")
+        # dorme em fatias curtas para reagir a Ctrl+C e virada de dia
+        slice_s = 1.0 if wait_s <= 30 else 5.0 if wait_s <= 120 else 15.0
         end_wait = time.time() + wait_s
         while time.time() < end_wait:
-            time.sleep(min(15, end_wait - time.time()))
+            time.sleep(min(slice_s, max(0.2, end_wait - time.time())))
             if date.today() != day_marker:
                 _log("Dia mudou durante a espera — iniciando ciclo agora.")
                 break
-        # reload config a cada ciclo (permite /e em outro terminal)
-        creds = load_credentials()
-        cfg = load_settings()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -118,9 +159,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--interval",
         "-i",
-        type=int,
-        default=5,
-        help="Minutos entre ciclos (padrao 5)",
+        default=None,
+        help="Intervalo: 30s | 5m | 1h | 2d (padrao = config loop_intervalo)",
     )
     parser.add_argument(
         "--headed",
@@ -134,14 +174,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     try:
+        cfg = load_settings()
+        sec = resolve_interval_sec(args.interval, settings_intervalo=cfg.loop_intervalo)
         return run_loop(
-            interval_min=max(1, args.interval),
+            interval_sec=sec,
             headless=not args.headed,
             once=bool(args.once),
         )
     except KeyboardInterrupt:
         print("\nLoop interrompido.", flush=True)
         return 0
+    except ValueError as err:
+        print(f"ERRO: {err}", flush=True)
+        return 1
 
 
 if __name__ == "__main__":

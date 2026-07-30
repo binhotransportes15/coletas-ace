@@ -54,6 +54,7 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "entrega_option": ("auto", "str", False),
     "periodo_modo": ("auto", "str", False),  # diario | sexta
     "auto_baixar_ao_abrir": ("auto", "bool", False),
+    "loop_intervalo": ("auto", "str", False),  # 30s | 5m | 1h | 2d
     # Sheets / dashboard
     "enable_sheets": ("cloud", "bool", False),
     "apps_script_url": ("cloud", "str", False),
@@ -113,6 +114,7 @@ def _save_payload(payload: dict[str, Any]) -> None:
         entrega_option=str(payload.get("entrega_option") or ""),
         periodo_modo=str(payload.get("periodo_modo") or "diario"),
         auto_baixar_ao_abrir=bool(payload.get("auto_baixar_ao_abrir", True)),
+        loop_intervalo=str(payload.get("loop_intervalo") or "5m"),
         enable_sheets=bool(payload.get("enable_sheets", False)),
         apps_script_url=str(payload.get("apps_script_url") or ""),
         apps_script_token=str(payload.get("apps_script_token") or ""),
@@ -153,11 +155,24 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
         _, _, secret = EDITABLE[key]
         print(f"    {key:<22} {_mask(str(payload.get(key, '')), secret)}")
     print("  [AUTOMACAO]")
-    for key in ("coleta_option", "entrega_option", "periodo_modo", "auto_baixar_ao_abrir"):
+    for key in (
+        "coleta_option",
+        "entrega_option",
+        "periodo_modo",
+        "auto_baixar_ao_abrir",
+        "loop_intervalo",
+    ):
         _, typ, secret = EDITABLE[key]
         val = payload.get(key, "")
         shown = _mask(str(val), secret) if typ == "str" else str(bool(val)).lower()
         print(f"    {key:<22} {shown}")
+    try:
+        from interval_parse import format_duration_long, parse_duration
+
+        sec = parse_duration(str(payload.get("loop_intervalo") or "5m"))
+        print(f"    {'(intervalo)':<22} {format_duration_long(sec)}")
+    except Exception:
+        pass
     print("  [SHEETS / DASHBOARD]")
     for key in (
         "enable_sheets",
@@ -186,12 +201,12 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print("    4 / dash    Atualiza arquivos do dashboard local")
     print("    5 / gui     Abre o ACE grafico (app.py)")
     print("    6 / show    Mostra config completa (senha mascarada)")
-    print("    7 /automatica  Loop auto 5 min: 50+103 paralelo ate fechar")
+    print("    7 /automatica  Loop auto (intervalo = loop_intervalo) ate fechar")
     print("    8 /status      Mostra alteracoes locais (git)")
     print("    9 /push        Commit + sobe TUDO pro GitHub (Pages)")
     print("    /pull          Baixa alteracoes do GitHub")
     print("    /e             Lista campos editaveis")
-    print("    /e chave       Edita um campo (pede valor)")
+    print("    /e intervalo 5m   Define tempo do /automatica (30s|5m|1h|2d)")
     print("    /e chave v     Edita direto: /e unit SPO")
     print("=" * 72)
     if message:
@@ -207,12 +222,11 @@ def cmd_help() -> str:
         f"  Campos: {keys}\n"
         "  Bool: true/false | sim/nao | 1/0\n"
         "  periodo_modo: diario | sexta\n"
-        "  /automatica [min]: 50=D-1 + 103=hoje a cada N min ate fechar\n"
-        "  /status: lista arquivos alterados\n"
-        "  /push [msg]: commit + push pro GitHub (dashboard sobe pro Pages)\n"
-        "  /pull: git pull --ff-only\n"
-        "  Ex.: ace.bat /push\n"
-        "       ACE> /push corrige torres percentual"
+        "  loop_intervalo: 30s | 5m | 1h | 2d  (min 5s, max 30d)\n"
+        "    /e intervalo 30s\n"
+        "    /e loop_intervalo 1h\n"
+        "  /automatica [intervalo]: usa config ou override (ex.: /automatica 90s)\n"
+        "  /status | /push [msg] | /pull"
     )
 
 
@@ -240,6 +254,10 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "repo": "github_repo",
         "opcao": "coleta_option",
         "auto": "auto_baixar_ao_abrir",
+        "intervalo": "loop_intervalo",
+        "interval": "loop_intervalo",
+        "tempo": "loop_intervalo",
+        "loop": "loop_intervalo",
     }
     key = aliases.get(key, key)
     if key not in EDITABLE:
@@ -279,6 +297,14 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
             if v not in {"diario", "sexta"}:
                 return "periodo_modo deve ser: diario | sexta"
             payload[key] = v
+        elif key == "loop_intervalo":
+            from interval_parse import format_duration, parse_duration
+
+            try:
+                sec = parse_duration(raw)
+            except ValueError as err:
+                return str(err)
+            payload[key] = format_duration(sec)
         elif key == "unit":
             payload[key] = raw.strip().lower()
         elif key in {"domain", "user"}:
@@ -288,6 +314,13 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
 
     _save_payload(payload)
     shown = _mask(str(payload[key]), secret) if typ != "bool" else str(payload[key]).lower()
+    if key == "loop_intervalo":
+        from interval_parse import format_duration_long, parse_duration
+
+        try:
+            shown = f"{payload[key]} ({format_duration_long(parse_duration(str(payload[key])))})"
+        except ValueError:
+            pass
     return f"OK: {key} = {shown}"
 
 
@@ -349,27 +382,42 @@ def run_gui() -> str:
     return "GUI iniciada em processo separado."
 
 
-def run_automatica_cmd(interval_min: int = 5, *, return_to_menu: bool = True) -> str:
+def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool = True) -> str:
     """Modo /automatica: ciclo dual 50+103 ate fechar (Ctrl+C)."""
-    from ace_loop import run_loop
+    from ace_loop import resolve_interval_sec, run_loop
+    from interval_parse import format_duration_long
+    from config import load_settings
 
-    mins = max(1, int(interval_min or 5))
+    cfg = load_settings()
+    try:
+        sec = resolve_interval_sec(interval_arg, settings_intervalo=cfg.loop_intervalo)
+    except ValueError as err:
+        return f"ERRO: {err}"
+
     print("\n" + "=" * 72)
     print("  MODO /AUTOMATICA")
     print("  50 = cadastramento D-1 (segunda = sexta-sabado)")
     print("  103 = inclusao HOJE")
-    print(f"  Ciclo a cada {mins} min: baixar + analisar + Sheets/dashboard")
+    print(f"  Ciclo a cada {format_duration_long(sec)}: baixar + analisar + Sheets/dashboard")
     print("  Em paralelo. Virada de dia recalcula sozinho.")
+    print("  Altere com: /e intervalo 30s | 5m | 1h | 2d")
     if return_to_menu:
         print("  Ctrl+C volta ao menu. Fechar a janela encerra.")
     else:
         print("  Ctrl+C ou fechar a janela encerra.")
     print("=" * 72 + "\n")
     try:
-        run_loop(interval_min=mins, headless=True, once=False)
+        run_loop(interval_sec=sec, headless=True, once=False)
     except KeyboardInterrupt:
         print("\nModo automatica interrompido.")
     return "Modo /automatica encerrado."
+
+
+def _parse_interval_arg(parts: list[str]) -> str | None:
+    """Pega override apos o comando: /automatica 90s | /automatica 5m."""
+    if len(parts) >= 2:
+        return " ".join(parts[1:]).strip() or None
+    return None
 
 
 def run_git_status() -> str:
@@ -411,15 +459,6 @@ def show_config(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _parse_interval_arg(parts: list[str], default: int = 5) -> int:
-    if len(parts) >= 2:
-        try:
-            return max(1, int(parts[1]))
-        except ValueError:
-            return default
-    return default
-
-
 def _is_automatica_token(token: str) -> bool:
     t = token.strip().lower().lstrip("/")
     return t in {"automatica", "automática", "auto", "loop", "watch"}
@@ -451,8 +490,7 @@ def main(argv: list[str] | None = None) -> int:
     args = list(argv if argv is not None else sys.argv[1:])
     # ace.bat /automatica  [minutos]
     if args and _is_automatica_token(args[0]):
-        interval = _parse_interval_arg(args, 5)
-        run_automatica_cmd(interval, return_to_menu=False)
+        run_automatica_cmd(_parse_interval_arg(args), return_to_menu=False)
         return 0
     # ace.bat /push [mensagem]
     if args and _is_push_token(args[0]):
@@ -518,7 +556,7 @@ def main(argv: list[str] | None = None) -> int:
                 "auto",
                 "/auto",
             }:
-                message = run_automatica_cmd(_parse_interval_arg(parts, 5))
+                message = run_automatica_cmd(_parse_interval_arg(parts))
                 payload = _load_payload()
             elif cmd in {"8", "status", "/status", "git", "/git"}:
                 message = run_git_status()

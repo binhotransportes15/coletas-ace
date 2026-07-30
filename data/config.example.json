@@ -9,6 +9,7 @@
   "entrega_option": "",
   "periodo_modo": "diario",
   "auto_baixar_ao_abrir": true,
+  "loop_intervalo": "5m",
   "enable_sheets": false,
   "apps_script_url": "",
   "apps_script_token": "TROQUE_ESTE_TOKEN",
