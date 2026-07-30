@@ -171,37 +171,34 @@
       transform: rotate(-45deg); display: grid; place-items: center;
       margin-bottom: 10px; box-shadow: 0 6px 14px rgba(0,0,0,.35);
     }
-    .torre .pin span { transform: rotate(45deg); font-size: 11px; font-weight: 800; color: #fff; }
+    .torre .pin span { transform: rotate(45deg); font-size: 13px; font-weight: 800; color: #fff; }
     .torre .barra {
       width: 100%; min-height: 56px; border-radius: 10px 10px 0 0;
-      display: flex; align-items: flex-start; justify-content: center; padding-top: 14px;
+      display: flex; align-items: center; justify-content: center;
       box-shadow: 0 10px 22px rgba(0,0,0,.35); transition: height .45s ease;
     }
     .torre .barra strong {
-      font-size: clamp(24px, 3.2vw, 36px); font-weight: 300; color: #fff; line-height: 1;
+      font-size: clamp(20px, 2.8vw, 32px); font-weight: 300; color: #fff; line-height: 1;
     }
-    .torre .faixa {
-      width: 100%; padding: 8px 6px; color: #fff; font-size: 11px; font-weight: 700;
-      text-transform: uppercase; clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+    .torre .barra strong .pct-sign {
+      font-size: .55em; font-weight: 500; margin-left: 1px; opacity: .9;
     }
     .torre .base {
       width: 100%; background: #0f172a; border: 1px solid var(--line); border-top: none;
-      border-radius: 0 0 10px 10px; padding: 9px 6px 11px; text-align: center;
+      border-radius: 0 0 10px 10px; padding: 10px 6px 12px; text-align: center;
     }
-    .torre .base .qtd { font-size: 18px; font-weight: 700; display: block; }
-    .torre .base .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .torre .base .lbl {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .04em; color: var(--muted);
+    }
     .t-col .pin, .t-col .barra { background: var(--col); }
-    .t-col .faixa { background: #16a34a; }
-    .t-col .base .qtd { color: var(--col); }
+    .t-col .base .lbl { color: var(--col); }
     .t-com .pin, .t-com .barra { background: var(--com); }
-    .t-com .faixa { background: #0284c7; }
-    .t-com .base .qtd { color: var(--com); }
+    .t-com .base .lbl { color: var(--com); }
     .t-cad .pin, .t-cad .barra { background: var(--cad); }
-    .t-cad .faixa { background: #d97706; }
-    .t-cad .base .qtd { color: var(--cad); }
+    .t-cad .base .lbl { color: var(--cad); }
     .t-can .pin, .t-can .barra { background: var(--can); }
-    .t-can .faixa { background: #dc2626; }
-    .t-can .base .qtd { color: var(--can); }
+    .t-can .base .lbl { color: var(--can); }
 
     /* Gestão */
     .panel {
@@ -313,28 +310,24 @@
           <div class="col-center">
             <div class="torres">
               <div class="torre t-col">
-                <div class="pin"><span>01</span></div>
-                <div class="barra" id="barReal"><strong id="nReal">0</strong></div>
-                <div class="faixa">Realizada</div>
-                <div class="base"><span class="qtd" id="qReal">0</span><div class="lbl">coletada</div></div>
+                <div class="pin"><span id="rankReal">1</span></div>
+                <div class="barra" id="barReal"><strong id="nReal">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Realizada</div></div>
               </div>
               <div class="torre t-com">
-                <div class="pin"><span>02</span></div>
-                <div class="barra" id="barRota"><strong id="nRota">0</strong></div>
-                <div class="faixa">Em rota</div>
-                <div class="base"><span class="qtd" id="qRota">0</span><div class="lbl">comandada</div></div>
+                <div class="pin"><span id="rankRota">2</span></div>
+                <div class="barra" id="barRota"><strong id="nRota">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Em rota</div></div>
               </div>
               <div class="torre t-cad">
-                <div class="pin"><span>03</span></div>
-                <div class="barra" id="barPar"><strong id="nPar">0</strong></div>
-                <div class="faixa">Parado</div>
-                <div class="base"><span class="qtd" id="qPar">0</span><div class="lbl">cadastrada</div></div>
+                <div class="pin"><span id="rankPar">3</span></div>
+                <div class="barra" id="barPar"><strong id="nPar">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Parado</div></div>
               </div>
               <div class="torre t-can">
-                <div class="pin"><span>04</span></div>
-                <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
-                <div class="faixa">Cancelada</div>
-                <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
+                <div class="pin"><span id="rankCan">4</span></div>
+                <div class="barra" id="barCan"><strong id="nCan">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Cancelada</div></div>
               </div>
             </div>
           </div>
@@ -533,18 +526,31 @@
     }
 
     function renderTorres(counts) {
-      const max = Math.max(counts.realizada, counts.em_rota, counts.parado, counts.cancelada, 1);
-      [
-        ['Real', 'barReal', counts.realizada],
-        ['Rota', 'barRota', counts.em_rota],
-        ['Par', 'barPar', counts.parado],
-        ['Can', 'barCan', counts.cancelada],
-      ].forEach(([suf, bar, val]) => {
-        document.getElementById('n' + suf).textContent = val;
-        document.getElementById('q' + suf).textContent = val;
+      const items = [
+        { suf: 'Real', bar: 'barReal', val: counts.realizada || 0 },
+        { suf: 'Rota', bar: 'barRota', val: counts.em_rota || 0 },
+        { suf: 'Par', bar: 'barPar', val: counts.parado || 0 },
+        { suf: 'Can', bar: 'barCan', val: counts.cancelada || 0 },
+      ];
+      const total = Math.max(0, Number(counts.total) || 0);
+      const max = Math.max(...items.map(i => i.val), 1);
+
+      // Ranking: 1 = maior quantidade, 2 = segundo, etc. Empate mantém ordem estável.
+      const ranked = items
+        .map((item, idx) => ({ ...item, idx }))
+        .sort((a, b) => (b.val - a.val) || (a.idx - b.idx));
+      const rankOf = {};
+      ranked.forEach((item, i) => { rankOf[item.suf] = i + 1; });
+
+      items.forEach(({ suf, bar, val }) => {
+        const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+        const nEl = document.getElementById('n' + suf);
+        nEl.innerHTML = `${pct}<span class="pct-sign">%</span>`;
+        nEl.title = `${val} de ${total}`;
+        document.getElementById('rank' + suf).textContent = String(rankOf[suf]);
         document.getElementById(bar).style.height = alturaTorre(val, max) + 'px';
       });
-      document.getElementById('totalColetas').textContent = String(counts.total);
+      document.getElementById('totalColetas').textContent = String(total);
       document.getElementById('totalSub').textContent = 'coletas no período';
     }
 
