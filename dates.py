@@ -63,11 +63,12 @@ def to_ddmm(value: date) -> str:
 
 def periodo_analise_diaria(hoje: date | datetime | None = None) -> tuple[str, str]:
     """
-    Periodo de cadastramento para o relatorio diario da opcao 50.
+    Periodo de CADASTRAMENTO para a opcao 50 (campo 'Periodo de cadastramento').
 
-    Cadastro em D → rua em D+1 → relatorio util em D+2.
-    - Ter–Dom / padrao: ini = fim = hoje - 2
-    - Segunda: cobre sexta→sabado (cadastro sex sai na seg):
+    Hoje = D → puxa coletas cadastradas em D-2 (performance do dia anterior D-1).
+    Ex.: hoje 30/07 → cadastramento 28/07 (performance de 29/07).
+
+    Segunda: cobre sexta→sabado (cadastro sex/sab):
       ini = sexta (hoje-3), fim = sabado (hoje-2)
     """
     today = _as_date(hoje)

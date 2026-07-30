@@ -25,7 +25,22 @@
     h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
     .sub { color: var(--muted); margin: 6px 0 0; font-size: 13px; }
 
+    .nav {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      padding: 12px 28px 0;
+    }
+    .nav-btn {
+      background: #020617; border: 1px solid #1e293b; color: #94a3b8;
+      border-radius: 10px 10px 0 0; padding: 10px 16px; font-size: 13px;
+      font-weight: 700; cursor: pointer;
+    }
+    .nav-btn.active {
+      background: #0f172a; color: #67e8f9; border-color: #334155; border-bottom-color: #0f172a;
+    }
+
     .wrap { padding: 12px 28px 28px; display: grid; gap: 16px; }
+    .view { display: none; }
+    .view.active { display: grid; gap: 16px; }
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -41,7 +56,6 @@
       letter-spacing: 0.06em;
     }
 
-    /* Torres */
     .torres {
       display: flex;
       align-items: flex-end;
@@ -161,10 +175,10 @@
     th, td { border-bottom: 1px solid var(--line); padding: 9px 8px; text-align: left; }
     th { color: #67e8f9; font-weight: 600; }
     .sit { font-weight: 700; }
-    .sit-COLETADA { color: var(--col); }
-    .sit-COMANDADA { color: var(--com); }
-    .sit-CADASTRADA { color: var(--cad); }
-    .sit-CANCELADA { color: var(--can); }
+    .sit-COLETADA, .sit-realizada { color: var(--col); }
+    .sit-COMANDADA, .sit-em_rota { color: var(--com); }
+    .sit-CADASTRADA, .sit-parado { color: var(--cad); }
+    .sit-CANCELADA, .sit-cancelada { color: var(--can); }
     .muted { color: var(--muted); font-size: 12px; }
 
     .modal-backdrop {
@@ -200,7 +214,7 @@
       .torres { gap: 8px; min-height: 260px; }
       .torre { width: 22vw; }
       .torre .faixa { font-size: 9px; }
-      header, .wrap { padding-left: 14px; padding-right: 14px; }
+      header, .wrap, .nav { padding-left: 14px; padding-right: 14px; }
     }
   </style>
 </head>
@@ -210,62 +224,130 @@
     <p class="sub" id="updated">Carregando…</p>
   </header>
 
-  <div class="wrap">
-    <section class="panel">
-      <h2>Situação atual</h2>
-      <div class="torres" id="torres">
-        <button type="button" class="torre t-col" data-filtro="COLETADA">
-          <div class="pin"><span>01</span></div>
-          <div class="barra" id="barCol"><strong id="nCol">0</strong></div>
-          <div class="faixa">Coletada</div>
-          <div class="base"><span class="qtd" id="qCol">0</span><div class="lbl">SPO</div></div>
-        </button>
-        <button type="button" class="torre t-com" data-filtro="COMANDADA">
-          <div class="pin"><span>02</span></div>
-          <div class="barra" id="barCom"><strong id="nCom">0</strong></div>
-          <div class="faixa">Comandada</div>
-          <div class="base"><span class="qtd" id="qCom">0</span><div class="lbl">SPO</div></div>
-        </button>
-        <button type="button" class="torre t-cad" data-filtro="CADASTRADA">
-          <div class="pin"><span>03</span></div>
-          <div class="barra" id="barCad"><strong id="nCad">0</strong></div>
-          <div class="faixa">Cadastrada</div>
-          <div class="base"><span class="qtd" id="qCad">0</span><div class="lbl">SPO</div></div>
-        </button>
-        <button type="button" class="torre t-can" data-filtro="CANCELADA">
-          <div class="pin"><span>04</span></div>
-          <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
-          <div class="faixa">Cancelada</div>
-          <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
-        </button>
-      </div>
-    </section>
+  <nav class="nav">
+    <button type="button" class="nav-btn active" data-view="50">50 · Situações</button>
+    <button type="button" class="nav-btn" data-view="103">103 · Tempo real</button>
+  </nav>
 
-    <section class="panel">
-      <h2>Coletas</h2>
-      <div class="toolbar" id="filtros">
-        <button type="button" class="chip active" data-filtro="TODAS">Todas</button>
-        <button type="button" class="chip" data-filtro="COLETADA">Coletada</button>
-        <button type="button" class="chip" data-filtro="COMANDADA">Comandada</button>
-        <button type="button" class="chip" data-filtro="CADASTRADA">Cadastrada</button>
-        <button type="button" class="chip" data-filtro="CANCELADA">Cancelada</button>
-      </div>
-      <div class="lista">
-        <table>
-          <thead>
-            <tr>
-              <th>Coleta</th>
-              <th>Situação atual</th>
-              <th>Quando</th>
-              <th>Destino</th>
-              <th>Motorista</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
-    </section>
+  <div class="wrap">
+    <!-- ============ RELATÓRIO 50 ============ -->
+    <div class="view active" id="view50">
+      <section class="panel">
+        <h2>Situação atual</h2>
+        <div class="torres" id="torres50">
+          <button type="button" class="torre t-col" data-filtro="COLETADA">
+            <div class="pin"><span>01</span></div>
+            <div class="barra" id="barCol"><strong id="nCol">0</strong></div>
+            <div class="faixa">Coletada</div>
+            <div class="base"><span class="qtd" id="qCol">0</span><div class="lbl">SPO</div></div>
+          </button>
+          <button type="button" class="torre t-com" data-filtro="COMANDADA">
+            <div class="pin"><span>02</span></div>
+            <div class="barra" id="barCom"><strong id="nCom">0</strong></div>
+            <div class="faixa">Comandada</div>
+            <div class="base"><span class="qtd" id="qCom">0</span><div class="lbl">SPO</div></div>
+          </button>
+          <button type="button" class="torre t-cad" data-filtro="CADASTRADA">
+            <div class="pin"><span>03</span></div>
+            <div class="barra" id="barCad"><strong id="nCad">0</strong></div>
+            <div class="faixa">Cadastrada</div>
+            <div class="base"><span class="qtd" id="qCad">0</span><div class="lbl">SPO</div></div>
+          </button>
+          <button type="button" class="torre t-can" data-filtro="CANCELADA">
+            <div class="pin"><span>04</span></div>
+            <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
+            <div class="faixa">Cancelada</div>
+            <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Coletas</h2>
+        <div class="toolbar" id="filtros50">
+          <button type="button" class="chip active" data-filtro="TODAS">Todas</button>
+          <button type="button" class="chip" data-filtro="COLETADA">Coletada</button>
+          <button type="button" class="chip" data-filtro="COMANDADA">Comandada</button>
+          <button type="button" class="chip" data-filtro="CADASTRADA">Cadastrada</button>
+          <button type="button" class="chip" data-filtro="CANCELADA">Cancelada</button>
+        </div>
+        <div class="lista">
+          <table>
+            <thead>
+              <tr>
+                <th>Coleta</th>
+                <th>Situação atual</th>
+                <th>Quando</th>
+                <th>Destino</th>
+                <th>Motorista</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody50"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ RELATÓRIO 103 ============ -->
+    <div class="view" id="view103">
+      <section class="panel">
+        <h2>Tempo real · inclusão</h2>
+        <div class="torres" id="torres103">
+          <button type="button" class="torre t-col" data-filtro103="realizada">
+            <div class="pin"><span>01</span></div>
+            <div class="barra" id="barReal"><strong id="nReal">0</strong></div>
+            <div class="faixa">Realizada</div>
+            <div class="base"><span class="qtd" id="qReal">0</span><div class="lbl">coletada</div></div>
+          </button>
+          <button type="button" class="torre t-com" data-filtro103="em_rota">
+            <div class="pin"><span>02</span></div>
+            <div class="barra" id="barRota"><strong id="nRota">0</strong></div>
+            <div class="faixa">Em rota</div>
+            <div class="base"><span class="qtd" id="qRota">0</span><div class="lbl">comandada</div></div>
+          </button>
+          <button type="button" class="torre t-cad" data-filtro103="parado">
+            <div class="pin"><span>03</span></div>
+            <div class="barra" id="barPar"><strong id="nPar">0</strong></div>
+            <div class="faixa">Parado</div>
+            <div class="base"><span class="qtd" id="qPar">0</span><div class="lbl">cadastrada</div></div>
+          </button>
+          <button type="button" class="torre t-can" data-filtro103="cancelada">
+            <div class="pin"><span>04</span></div>
+            <div class="barra" id="barCan103"><strong id="nCan103">0</strong></div>
+            <div class="faixa">Cancelada</div>
+            <div class="base"><span class="qtd" id="qCan103">0</span><div class="lbl">SPO</div></div>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Detalhe 103</h2>
+        <div class="toolbar" id="filtros103">
+          <button type="button" class="chip active" data-filtro103="TODAS">Todas</button>
+          <button type="button" class="chip" data-filtro103="realizada">Realizada</button>
+          <button type="button" class="chip" data-filtro103="em_rota">Em rota</button>
+          <button type="button" class="chip" data-filtro103="parado">Parado</button>
+          <button type="button" class="chip" data-filtro103="cancelada">Cancelada</button>
+        </div>
+        <div class="lista">
+          <table>
+            <thead>
+              <tr>
+                <th>Coleta</th>
+                <th>Status</th>
+                <th>Situação</th>
+                <th>Hora</th>
+                <th>Placa</th>
+                <th>Carreta</th>
+                <th>Motorista</th>
+              </tr>
+            </thead>
+            <tbody id="tbody103"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   </div>
 
   <div class="modal-backdrop" id="modalHist" role="dialog" aria-modal="true">
@@ -279,8 +361,13 @@
 
   <script>
     const SCRIPT_URL = (window.ACE_CONFIG && window.ACE_CONFIG.scriptUrl) || '';
+    let VIEW = '50';
     let TODAS_COLETAS = [];
+    let COLETAS_103 = [];
     let FILTRO = 'TODAS';
+    let FILTRO_103 = 'TODAS';
+    let loaded50 = false;
+    let loaded103 = false;
 
     async function chamarPlanilha(action, params = {}) {
       if (!SCRIPT_URL) throw new Error('Configure scriptUrl em config.js');
@@ -320,7 +407,6 @@
       return Array.from(map.values());
     }
 
-    /** Conta SOMENTE SITUACAO ATUAL — 1 SPO = 1 ponto */
     function situacaoNorm(c) {
       const s = String(c.situacao_atual || '').toUpperCase().trim();
       if (s.includes('CANCEL')) return 'CANCELADA';
@@ -328,6 +414,17 @@
       if (s.includes('COMAND')) return 'COMANDADA';
       if (s.includes('CADASTR')) return 'CADASTRADA';
       return '';
+    }
+
+    function status103(c) {
+      const raw = String(c.status_ace || '').toLowerCase().trim();
+      if (['parado', 'em_rota', 'realizada', 'cancelada'].includes(raw)) return raw;
+      const s = String(c.situacao_atual || '').toUpperCase();
+      if (s.includes('CANCEL')) return 'cancelada';
+      if (s.includes('COLET') || s.includes('REALIZ')) return 'realizada';
+      if (s.includes('COMAND') || s.includes('ROTA')) return 'em_rota';
+      if (s.includes('CADASTR') || s.includes('PARADO')) return 'parado';
+      return 'outro';
     }
 
     function countBySituacao(coletas) {
@@ -340,6 +437,17 @@
         else if (s === 'COLETADA') out.coletada += 1;
         else if (s === 'COMANDADA') out.comandada += 1;
         else out.cadastrada += 1;
+      });
+      return out;
+    }
+
+    function countBy103(coletas) {
+      const out = { total: 0, parado: 0, em_rota: 0, realizada: 0, cancelada: 0, outro: 0 };
+      coletas.forEach(c => {
+        const s = status103(c);
+        out.total += 1;
+        if (out[s] != null) out[s] += 1;
+        else out.outro += 1;
       });
       return out;
     }
@@ -373,19 +481,6 @@
       return [fmtCampo(data, 'data'), fmtCampo(hora, 'hora')].filter(Boolean).join(' ');
     }
 
-    function setFiltro(filtro) {
-      FILTRO = filtro || 'TODAS';
-      document.querySelectorAll('.chip[data-filtro], .torre[data-filtro]').forEach(el => {
-        el.classList.toggle('active', el.getAttribute('data-filtro') === FILTRO);
-      });
-      renderTabela();
-    }
-
-    function coletasFiltradas() {
-      if (FILTRO === 'TODAS') return TODAS_COLETAS;
-      return TODAS_COLETAS.filter(c => situacaoNorm(c) === FILTRO);
-    }
-
     function alturaTorre(valor, max) {
       const minH = 56;
       const maxH = 210;
@@ -393,25 +488,58 @@
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
 
-    function renderTorres(counts) {
+    function setFiltro(filtro) {
+      FILTRO = filtro || 'TODAS';
+      document.querySelectorAll('#view50 .chip[data-filtro], #view50 .torre[data-filtro]').forEach(el => {
+        el.classList.toggle('active', el.getAttribute('data-filtro') === FILTRO);
+      });
+      renderTabela50();
+    }
+
+    function setFiltro103(filtro) {
+      FILTRO_103 = filtro || 'TODAS';
+      document.querySelectorAll('#view103 [data-filtro103]').forEach(el => {
+        el.classList.toggle('active', el.getAttribute('data-filtro103') === FILTRO_103);
+      });
+      renderTabela103();
+    }
+
+    function renderTorres50(counts) {
       const max = Math.max(counts.coletada, counts.comandada, counts.cadastrada, counts.cancelada, 1);
-      const map = [
+      [
         ['Col', counts.coletada],
         ['Com', counts.comandada],
         ['Cad', counts.cadastrada],
         ['Can', counts.cancelada],
-      ];
-      map.forEach(([suf, val]) => {
+      ].forEach(([suf, val]) => {
         document.getElementById('n' + suf).textContent = val;
         document.getElementById('q' + suf).textContent = val;
         document.getElementById('bar' + suf).style.height = alturaTorre(val, max) + 'px';
       });
     }
 
-    function renderTabela() {
-      const tbody = document.getElementById('tbody');
+    function renderTorres103(counts) {
+      const max = Math.max(counts.realizada, counts.em_rota, counts.parado, counts.cancelada, 1);
+      const map = [
+        ['Real', 'barReal', counts.realizada],
+        ['Rota', 'barRota', counts.em_rota],
+        ['Par', 'barPar', counts.parado],
+        ['Can103', 'barCan103', counts.cancelada],
+      ];
+      map.forEach(([suf, bar, val]) => {
+        document.getElementById('n' + suf).textContent = val;
+        document.getElementById('q' + suf).textContent = val;
+        document.getElementById(bar).style.height = alturaTorre(val, max) + 'px';
+      });
+    }
+
+    function renderTabela50() {
+      const tbody = document.getElementById('tbody50');
       tbody.innerHTML = '';
-      const lista = coletasFiltradas().slice().reverse().slice(0, 200);
+      const lista = (FILTRO === 'TODAS'
+        ? TODAS_COLETAS
+        : TODAS_COLETAS.filter(c => situacaoNorm(c) === FILTRO)
+      ).slice().reverse().slice(0, 200);
       if (!lista.length) {
         tbody.innerHTML = '<tr><td colspan="6" class="muted">Nenhuma coleta.</td></tr>';
         return;
@@ -437,6 +565,36 @@
           btn.getAttribute('data-sit'),
           btn
         ));
+      });
+    }
+
+    function labelStatus103(s) {
+      return ({ parado: 'Parado', em_rota: 'Em rota', realizada: 'Realizada', cancelada: 'Cancelada' })[s] || s;
+    }
+
+    function renderTabela103() {
+      const tbody = document.getElementById('tbody103');
+      tbody.innerHTML = '';
+      const lista = (FILTRO_103 === 'TODAS'
+        ? COLETAS_103
+        : COLETAS_103.filter(c => status103(c) === FILTRO_103)
+      ).slice().reverse().slice(0, 300);
+      if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="muted">Nenhuma coleta 103. Rode a aba 103 no ACE e publique o Apps Script.</td></tr>';
+        return;
+      }
+      lista.forEach(c => {
+        const st = status103(c);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${esc(c.coleta_id || '')}</td>
+          <td class="sit sit-${esc(st)}">${esc(labelStatus103(st))}</td>
+          <td>${esc(c.situacao_atual || '')}</td>
+          <td>${esc(fmtCampo(c.hora, 'hora'))}</td>
+          <td>${esc(c.placa || '')}</td>
+          <td>${esc(c.placa_carreta || '')}</td>
+          <td>${esc(c.motorista || '')}</td>`;
+        tbody.appendChild(tr);
       });
     }
 
@@ -509,28 +667,69 @@
       }
     }
 
-    async function main() {
+    async function load50() {
       const updated = document.getElementById('updated');
+      const coletasResp = await chamarPlanilha('coletas');
+      TODAS_COLETAS = uniqueColetas(coletasResp.rows || []);
+      const counts = countBySituacao(TODAS_COLETAS);
+      updated.textContent = `50 · ${counts.total} coletas · só SITUACAO ATUAL`;
+      renderTorres50(counts);
+      renderTabela50();
+      loaded50 = true;
+    }
+
+    async function load103() {
+      const updated = document.getElementById('updated');
+      const resp = await chamarPlanilha('coletas103');
+      COLETAS_103 = uniqueColetas(resp.rows || []);
+      const counts = countBy103(COLETAS_103);
+      updated.textContent =
+        `103 · ${counts.total} coletas · Parado ${counts.parado} · Em rota ${counts.em_rota} · Realizada ${counts.realizada}`;
+      renderTorres103(counts);
+      renderTabela103();
+      loaded103 = true;
+    }
+
+    async function setView(view) {
+      VIEW = view === '103' ? '103' : '50';
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-view') === VIEW);
+      });
+      document.getElementById('view50').classList.toggle('active', VIEW === '50');
+      document.getElementById('view103').classList.toggle('active', VIEW === '103');
+      const updated = document.getElementById('updated');
+      try {
+        if (VIEW === '50') {
+          if (!loaded50) updated.textContent = 'Carregando 50…';
+          await load50();
+        } else {
+          if (!loaded103) updated.textContent = 'Carregando 103…';
+          await load103();
+        }
+      } catch (err) {
+        updated.textContent = err.message;
+      }
+    }
+
+    async function main() {
       document.getElementById('btnFecharHist').addEventListener('click', () => {
         document.getElementById('modalHist').classList.remove('open');
       });
       document.getElementById('modalHist').addEventListener('click', (e) => {
         if (e.target.id === 'modalHist') e.currentTarget.classList.remove('open');
       });
-      document.querySelectorAll('.chip[data-filtro], .torre[data-filtro]').forEach(el => {
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => setView(btn.getAttribute('data-view')));
+      });
+      document.querySelectorAll('#view50 .chip[data-filtro], #view50 .torre[data-filtro]').forEach(el => {
         el.addEventListener('click', () => setFiltro(el.getAttribute('data-filtro')));
       });
+      document.querySelectorAll('#view103 [data-filtro103]').forEach(el => {
+        el.addEventListener('click', () => setFiltro103(el.getAttribute('data-filtro103')));
+      });
 
-      try {
-        const coletasResp = await chamarPlanilha('coletas');
-        TODAS_COLETAS = uniqueColetas(coletasResp.rows || []);
-        const counts = countBySituacao(TODAS_COLETAS);
-        updated.textContent = `${counts.total} coletas · só SITUACAO ATUAL`;
-        renderTorres(counts);
-        renderTabela();
-      } catch (err) {
-        updated.textContent = err.message;
-      }
+      const hash = (location.hash || '').replace('#', '');
+      await setView(hash === '103' ? '103' : '50');
     }
     main();
   </script>

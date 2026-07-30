@@ -34,6 +34,7 @@ class AceSettings:
     coleta_option: str = DEFAULT_COLETA_OPTION
     entrega_option: str = DEFAULT_ENTREGA_OPTION
     periodo_modo: str = "diario"  # diario | sexta
+    auto_baixar_ao_abrir: bool = True
     enable_sheets: bool = False
     apps_script_url: str = ""
     apps_script_token: str = ""
@@ -69,6 +70,9 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         entrega_option=str(payload.get("entrega_option") or "").strip(),
         periodo_modo=str(payload.get("periodo_modo") or defaults.periodo_modo).strip()
         or defaults.periodo_modo,
+        auto_baixar_ao_abrir=bool(
+            payload.get("auto_baixar_ao_abrir", defaults.auto_baixar_ao_abrir)
+        ),
         enable_sheets=bool(payload.get("enable_sheets", defaults.enable_sheets)),
         apps_script_url=str(payload.get("apps_script_url") or "").strip(),
         apps_script_token=str(payload.get("apps_script_token") or "").strip(),

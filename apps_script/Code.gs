@@ -14,8 +14,11 @@
  * 4. Implantar → Gerenciar implantações → lápis → Nova versão → Implantar
  *
  * Leitura do site (sem token):
- *   GET ?action=resumo | ?action=coletas | ?action=historico&coleta_id=SPO071651 | ?action=ping
+ *   GET ?action=resumo | ?action=coletas | ?action=historico&coleta_id=SPO071651
+ *       | ?action=coletas103 | ?action=resumo103 | ?action=ping
  * Escrita do ACE (com token): POST JSON action clear/append/replace
+ * Abas 50: Coletas, Historico, ResumoDiario
+ * Abas 103: Coletas103, Resumo103
  */
 
 var SPREADSHEET_ID = '1VOkCF1Hn-VUZC7aKu_pa0Hgo1VjjuEJOqFqNSAErCzU';
@@ -31,7 +34,7 @@ function doGet(e) {
         ok: true,
         service: 'ACE Sheets Bridge',
         spreadsheet: SPREADSHEET_ID,
-        hint: 'GET action=resumo|coletas|historico&coleta_id= | POST com token para gravar',
+        hint: 'GET action=resumo|coletas|historico|coletas103|resumo103 | POST com token para gravar',
       });
     }
 
@@ -89,6 +92,39 @@ function doGet(e) {
         coleta_id: filtroId,
         rows: hist,
         total_eventos: hist.length,
+      });
+    }
+
+    if (action === 'coletas103' || action === '103') {
+      var rows103 = sheetToObjects_('Coletas103').filter(function (r) {
+        if (!(r.coleta_id || r.coleta)) return false;
+        var st = String(r.status_ace || r.situacao_atual || '').toUpperCase();
+        return /PARADO|EM_ROTA|EM ROTA|REALIZADA|CANCELADA|CADASTRADA|COMANDADA|COLETADA/.test(st)
+          || String(r.coleta_id || '').trim() !== '';
+      });
+      var seen103 = {};
+      var unique103 = [];
+      for (var j = 0; j < rows103.length; j++) {
+        var key103 = normalizarColetaId_(rows103[j].coleta_id || rows103[j].coleta || '');
+        if (!key103 || seen103[key103]) continue;
+        seen103[key103] = true;
+        unique103.push(rows103[j]);
+      }
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: unique103,
+        total_coletas: unique103.length,
+        report: '103',
+      });
+    }
+
+    if (action === 'resumo103') {
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: sheetToObjects_('Resumo103'),
+        report: '103',
       });
     }
 

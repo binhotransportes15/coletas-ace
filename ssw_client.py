@@ -23,6 +23,7 @@ SSW_ORIGIN = "https://sistema.ssw.inf.br"
 # Codigo menu → programa SSW
 MENU_PROGRAM = {
     "50": "/bin/ssw0157",  # Relacao das Coletas
+    "103": "/bin/ssw0166",  # 103 - Situacao de Coletas (coletas normais / Excel)
 }
 
 _PATCH_CREATE_NEW_DOC = """
@@ -408,35 +409,286 @@ class AceSswClient:
         )
 
     def _download_report_50(self, page) -> Path:
-        """050 - Relacao das Coletas (ssw0157)."""
+        """050 - Relacao das Coletas (ssw0157) pelo Periodo de CADASTRAMENTO."""
         self.on_status(
-            f"Gerando coleta (50) de {format_period(self.start_date_ui, self.end_date_ui)}..."
+            f"Gerando coleta (50) | cadastramento "
+            f"{format_period(self.start_date_ui, self.end_date_ui)} "
+            f"({self.start_date_yy} a {self.end_date_yy})..."
         )
         popup = self._open_menu_option(
             page,
             "50",
-            markers=("coleta", "050", "periodo", "ssw0157", "relacao"),
+            markers=("coleta", "050", "periodo", "ssw0157", "relacao", "cadastr"),
         )
         try:
-            # Layout conhecido (CyberMap): campos 4/5 limpos, 6/7 periodo, botao 21
             popup.locator('[id="4"]').wait_for()
-            popup.locator('[id="4"]').fill("")
-            popup.locator('[id="5"]').fill("")
-            popup.locator('[id="6"]').fill(self.start_date)
-            popup.locator('[id="6"]').press("Tab")
-            popup.locator('[id="7"]').fill(self.end_date)
-            popup.locator('[id="7"]').press("Tab")
+            self._preencher_periodo_cadastramento_50(popup)
             with popup.expect_download(timeout=120000) as download_info:
                 popup.locator('[id="21"]').click()
             return self._save_download(
                 download_info.value,
-                f"coleta_50_{self.start_date}_{self.end_date}_{self.timestamp}.sswweb",
+                f"coleta_50_cad_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}.sswweb",
             )
         finally:
             try:
                 popup.close()
             except Exception:
                 pass
+
+    def _preencher_periodo_cadastramento_50(self, popup) -> None:
+        """
+        Tela ssw0157:
+        - NAO usa periodo da coleta
+        - Usa 'Periodo de cadastramento (opc)' em DDMMYY (ex.: 280726)
+        Layout tipico CyberMap: 4/5 = coleta (limpar), 6/7 = cadastramento
+        """
+        ini = self.start_date_yy
+        fim = self.end_date_yy
+
+        # 1) Tenta achar inputs ao lado do texto "cadastramento"
+        filled = popup.evaluate(
+            """([ini, fim]) => {
+              const norm = (t) => String(t || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\\u0300-\\u036f]/g, '');
+              const nodes = Array.from(document.querySelectorAll('div, span, td, label, font'));
+              const label = nodes.find(n => {
+                const t = norm(n.textContent || '');
+                return t.includes('cadastramento') && t.includes('periodo');
+              }) || nodes.find(n => norm(n.textContent || '').includes('cadastramento'));
+              const inputs = [];
+              if (label) {
+                let el = label;
+                for (let i = 0; i < 8 && el; i++) {
+                  el = el.nextElementSibling || (el.parentElement && el.parentElement.nextElementSibling);
+                  if (!el) break;
+                  el.querySelectorAll && el.querySelectorAll('input').forEach(inp => inputs.push(inp));
+                  if (el.tagName === 'INPUT') inputs.push(el);
+                  if (inputs.length >= 2) break;
+                }
+              }
+              // Limpa inputs de periodo da coleta (se houver label)
+              const coletaLabel = nodes.find(n => {
+                const t = norm(n.textContent || '');
+                return t.includes('periodo') && t.includes('coleta') && !t.includes('cadastr');
+              });
+              if (coletaLabel) {
+                let el = coletaLabel;
+                for (let i = 0; i < 8 && el; i++) {
+                  el = el.nextElementSibling || (el.parentElement && el.parentElement.nextElementSibling);
+                  if (!el) break;
+                  const list = el.tagName === 'INPUT' ? [el] : Array.from(el.querySelectorAll ? el.querySelectorAll('input') : []);
+                  list.forEach(inp => { inp.value = ''; inp.dispatchEvent(new Event('input', {bubbles:true})); });
+                }
+              }
+              if (inputs.length >= 2) {
+                inputs[0].value = ini;
+                inputs[1].value = fim;
+                inputs[0].dispatchEvent(new Event('input', {bubbles:true}));
+                inputs[1].dispatchEvent(new Event('input', {bubbles:true}));
+                inputs[0].dispatchEvent(new Event('change', {bubbles:true}));
+                inputs[1].dispatchEvent(new Event('change', {bubbles:true}));
+                return {ok: true, via: 'label', ids: [inputs[0].id, inputs[1].id]};
+              }
+              return {ok: false};
+            }""",
+            [ini, fim],
+        )
+        if filled and filled.get("ok"):
+            self.on_status(
+                f"Periodo cadastramento preenchido ({filled.get('via')}): {ini} a {fim}"
+            )
+            return
+
+        # 2) Fallback CyberMap: limpa coleta 4/5, preenche cadastramento 6/7 em DDMMYY
+        for fid in ("4", "5"):
+            try:
+                popup.locator(f'[id="{fid}"]').fill("")
+            except Exception:
+                pass
+        popup.locator('[id="6"]').fill(ini)
+        popup.locator('[id="6"]').press("Tab")
+        popup.locator('[id="7"]').fill(fim)
+        popup.locator('[id="7"]').press("Tab")
+        self.on_status(f"Periodo cadastramento (campos 6/7): {ini} a {fim}")
+
+    def run_103(self) -> dict[str, Any]:
+        """Baixa somente a opcao 103 (Excel coletas normais)."""
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError as error:
+            raise RuntimeError(
+                "Playwright nao esta instalado. Rode: pip install playwright && playwright install chromium"
+            ) from error
+
+        ensure_dirs()
+        self.download_dir.mkdir(parents=True, exist_ok=True)
+        period = format_period(self.start_date_ui, self.end_date_ui)
+        self.on_status(f"ACE 103 | inclusao {period} | Excel")
+
+        browser = None
+        context = None
+        with sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(
+                    headless=self.headless,
+                    slow_mo=0 if self.headless else 200,
+                )
+                context = browser.new_context(accept_downloads=True)
+                page = context.new_page()
+                page.set_default_timeout(30000)
+                self._login(page)
+                self._ensure_unit(page)
+                self._patch_blank_popup_fix(page)
+                path = self._download_report_103(page)
+                self.paths["coleta_103"] = str(path)
+                self.on_status(f"103 Excel salvo: {path.name}")
+                return {
+                    "paths": dict(self.paths),
+                    "errors": {},
+                    "period": period,
+                    "coleta_option": "103",
+                    "download_dir": str(self.download_dir),
+                }
+            finally:
+                if not self.keep_open:
+                    if context is not None:
+                        context.close()
+                    if browser is not None:
+                        browser.close()
+
+    def _download_report_103(self, page) -> Path:
+        """
+        103 - Coletas normais:
+          Periodo de pesquisa = D-2 (DDMMYY)
+          Por data de = I (inclusao)
+          Mostrar em = E (excel)
+          Unidade = SPO (credencial)
+        """
+        self.on_status(
+            f"Gerando 103 Excel | inclusao {self.start_date_yy} a {self.end_date_yy}..."
+        )
+        popup = self._open_menu_option(
+            page,
+            "103",
+            markers=(
+                "coleta",
+                "normal",
+                "pesquisa",
+                "inclus",
+                "excel",
+                "periodo",
+                "unidade",
+                "103",
+            ),
+        )
+        try:
+            self._preencher_tela_103(popup)
+            with popup.expect_download(timeout=180000) as download_info:
+                self._clicar_gerar_103(popup)
+            dest_name = (
+                f"coleta_103_inc_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}.sswweb"
+            )
+            # SSW "Excel" (E) da 103 costuma vir como CSV*.sswweb
+            download = download_info.value
+            suggested = (download.suggested_filename or "").lower()
+            if suggested.endswith(".xlsx"):
+                dest_name = dest_name.replace(".sswweb", ".xlsx")
+            elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
+                dest_name = dest_name.replace(".sswweb", ".xls")
+            elif suggested.endswith(".csv"):
+                dest_name = dest_name.replace(".sswweb", ".csv")
+            elif suggested.endswith(".sswweb"):
+                dest_name = dest_name  # keep
+            return self._save_download(download, dest_name)
+        finally:
+            try:
+                popup.close()
+            except Exception:
+                pass
+
+    def _preencher_tela_103(self, popup) -> None:
+        """
+        ssw0166 · bloco Coletas normais:
+          #14/#15 periodo DDMMYY
+          #16 Por data de (I=inclusao)
+          #17 Mostrar em (E=excel)
+          #19 Unidade de coleta
+        """
+        ini, fim = self.start_date_yy, self.end_date_yy
+        unidade = (self.credentials.unit or "spo").strip().upper()
+        result = popup.evaluate(
+            """([ini, fim, unidade]) => {
+              const setVal = (id, v) => {
+                const el = document.getElementById(String(id));
+                if (!el) return false;
+                el.focus();
+                el.value = v;
+                el.dispatchEvent(new Event('input', {bubbles:true}));
+                el.dispatchEvent(new Event('change', {bubbles:true}));
+                return true;
+              };
+              const ok14 = setVal(14, ini);
+              const ok15 = setVal(15, fim);
+              const ok16 = setVal(16, 'I');
+              const ok17 = setVal(17, 'E');
+              const ok19 = setVal(19, unidade);
+              return {
+                ok: ok14 && ok15 && ok16 && ok17 && ok19,
+                values: {
+                  periodo: [
+                    (document.getElementById('14') || {}).value || '',
+                    (document.getElementById('15') || {}).value || '',
+                  ],
+                  por_data: (document.getElementById('16') || {}).value || '',
+                  mostrar: (document.getElementById('17') || {}).value || '',
+                  unidade: (document.getElementById('19') || {}).value || '',
+                },
+              };
+            }""",
+            [ini, fim, unidade],
+        )
+        if not result or not result.get("ok"):
+            raise RuntimeError(
+                f"103: falha ao preencher campos ssw0166 (ids 14-17/19): {result}"
+            )
+        self.on_status(
+            f"103 preenchido: periodo {ini}-{fim} | data=I | excel=E | un={unidade} | {result.get('values')}"
+        )
+        popup.wait_for_timeout(300)
+
+    def _clicar_gerar_103(self, popup) -> None:
+        # Coletas normais → seta da Unidade de coleta = ajaxEnvia('FIL_COL', 1)
+        candidates = [
+            'a[onclick*="FIL_COL"]',
+            '[id="20"]',
+            'a[onclick*="REM_COL"]',
+            'a[onclick*="DES_COL"]',
+            'a[onclick*="GRU_COL"]',
+        ]
+        for sel in candidates:
+            loc = popup.locator(sel)
+            try:
+                if loc.count() > 0 and loc.first.is_visible():
+                    loc.first.click()
+                    self.on_status(f"103: clique gerar via {sel}")
+                    return
+            except Exception:
+                continue
+        clicked = popup.evaluate(
+            """() => {
+              if (typeof ajaxEnvia === 'function') {
+                ajaxEnvia('FIL_COL', 1);
+                return true;
+              }
+              return false;
+            }"""
+        )
+        if clicked:
+            self.on_status("103: clique gerar via ajaxEnvia('FIL_COL')")
+            return
+        raise RuntimeError("103: nao achei botao FIL_COL para gerar o Excel.")
 
 
 def download_ace_reports(
@@ -459,3 +711,25 @@ def download_ace_reports(
         settings=settings,
     )
     return client.run()
+
+
+def download_ace_103(
+    start_date: str,
+    end_date: str,
+    *,
+    keep_open: bool = False,
+    headless: bool = False,
+    on_status: StatusCallback | None = None,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+) -> dict[str, Any]:
+    client = AceSswClient(
+        start_date,
+        end_date,
+        keep_open=keep_open,
+        headless=headless,
+        on_status=on_status,
+        credentials=credentials,
+        settings=settings,
+    )
+    return client.run_103()

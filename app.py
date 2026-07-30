@@ -5,7 +5,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
+from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QPlainTextEdit,
     QRadioButton,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -39,9 +40,10 @@ from config import (
     load_settings,
     save_all,
 )
-from dates import format_period, normalize_date, sugestao_periodo
+from dates import format_period, normalize_date, sugestao_periodo, to_ssw_ddmmyy
 from pipeline import find_latest_report, run_analysis_only, run_full_pipeline
 from publish_dashboard import ensure_dashboard_files
+from tab_relatorio103 import Relatorio103Tab
 
 
 class PipelineWorker(QObject):
@@ -133,6 +135,7 @@ class MainWindow(QMainWindow):
         self._refresh_login_status()
         self._apply_periodo_sugerido()
         ensure_dashboard_files()
+        QTimer.singleShot(900, self._maybe_auto_baixar)
 
     def _build_menu(self) -> None:
         menu_bar = self.menuBar()
@@ -160,9 +163,9 @@ class MainWindow(QMainWindow):
     def _build_ui(self) -> None:
         central = QWidget()
         self.setCentralWidget(central)
-        root = QVBoxLayout(central)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(12)
+        outer = QVBoxLayout(central)
+        outer.setContentsMargins(12, 12, 12, 12)
+        outer.setSpacing(8)
 
         header = QHBoxLayout()
         title_col = QVBoxLayout()
@@ -170,8 +173,8 @@ class MainWindow(QMainWindow):
         title.setObjectName("title")
         title_col.addWidget(title)
         subtitle = QLabel(
-            "Opcao 50 → analise (situacoes + historico) → planilha Google → dashboard. "
-            "Periodo diario usa D-2 (cadastro → rua → relatorio)."
+            "Aba 50 = SITUACAO ATUAL (sswweb). Aba 103 = Excel tempo real "
+            "(Parado / Em rota / Realizada)."
         )
         subtitle.setObjectName("subtitle")
         subtitle.setWordWrap(True)
@@ -182,7 +185,31 @@ class MainWindow(QMainWindow):
         self.login_status.setCursor(Qt.CursorShape.PointingHandCursor)
         self.login_status.clicked.connect(self._open_login_dialog)
         header.addWidget(self.login_status, 0, Qt.AlignmentFlag.AlignTop)
-        root.addLayout(header)
+        outer.addLayout(header)
+
+        self.tabs = QTabWidget()
+        tab50 = QWidget()
+        root = QVBoxLayout(tab50)
+        root.setContentsMargins(4, 8, 4, 4)
+        root.setSpacing(12)
+        self._build_tab50(root)
+        self.tabs.addTab(tab50, "50 · Situações")
+
+        self.tab103 = Relatorio103Tab(
+            get_credentials=lambda: self.credentials,
+            get_settings=lambda: self._settings_from_ui(),
+        )
+        self.tabs.addTab(self.tab103, "103 · Tempo real")
+        outer.addWidget(self.tabs, 1)
+
+    def _build_tab50(self, root: QVBoxLayout) -> None:
+        tip = QLabel(
+            "Opcao 50 usa Periodo de CADASTRAMENTO (DDMMYY). "
+            "Diario = D-2 (hoje 30 → cadastro 28, performance de 29)."
+        )
+        tip.setObjectName("subtitle")
+        tip.setWordWrap(True)
+        root.addWidget(tip)
 
         mid = QHBoxLayout()
         mid.setSpacing(12)
@@ -196,7 +223,7 @@ class MainWindow(QMainWindow):
         options_form.addRow("Opcao entrega", self.entrega_option_edit)
         mid.addWidget(options_box, 1)
 
-        period_box = QGroupBox("Periodo (DDMM)")
+        period_box = QGroupBox("Periodo de cadastramento (opc)")
         period_layout = QVBoxLayout(period_box)
         mode_row = QHBoxLayout()
         self.mode_diario = QRadioButton("Diario (D-2)")
@@ -216,11 +243,15 @@ class MainWindow(QMainWindow):
         period_form = QFormLayout()
         self.start_edit = QLineEdit()
         self.end_edit = QLineEdit()
-        self.start_edit.setPlaceholderText("DDMM")
-        self.end_edit.setPlaceholderText("DDMM")
-        period_form.addRow("Inicio", self.start_edit)
-        period_form.addRow("Fim", self.end_edit)
+        self.start_edit.setPlaceholderText("DDMMYY ex: 280726")
+        self.end_edit.setPlaceholderText("DDMMYY ex: 280726")
+        period_form.addRow("De", self.start_edit)
+        period_form.addRow("a", self.end_edit)
         period_layout.addLayout(period_form)
+        self.ssw_period_hint = QLabel("")
+        self.ssw_period_hint.setObjectName("subtitle")
+        self.ssw_period_hint.setWordWrap(True)
+        period_layout.addWidget(self.ssw_period_hint)
         mid.addWidget(period_box, 1)
         root.addLayout(mid)
 
@@ -228,8 +259,11 @@ class MainWindow(QMainWindow):
         self.keep_open_check = QCheckBox("Manter navegador aberto")
         self.sync_check = QCheckBox("Enviar Sheets + dashboard apos analisar")
         self.sync_check.setChecked(True)
+        self.auto_check = QCheckBox("Ao abrir: baixar cadastramento D-2")
+        self.auto_check.setChecked(bool(getattr(self.settings, "auto_baixar_ao_abrir", True)))
         checks.addWidget(self.keep_open_check)
         checks.addWidget(self.sync_check)
+        checks.addWidget(self.auto_check)
         checks.addStretch(1)
         root.addLayout(checks)
 
@@ -307,6 +341,15 @@ class MainWindow(QMainWindow):
             QPushButton#primary { background: #0284c7; border: none; color: white; }
             QPushButton#primary:hover { background: #0ea5e9; }
             QPushButton:disabled { color: #64748b; background: #111827; }
+            QTabWidget::pane { border: 1px solid #1e293b; border-radius: 8px; top: -1px; }
+            QTabBar::tab {
+                background: #020617; color: #94a3b8; padding: 8px 14px;
+                border: 1px solid #1e293b; border-bottom: none; border-top-left-radius: 8px; border-top-right-radius: 8px;
+                margin-right: 4px;
+            }
+            QTabBar::tab:selected { background: #0f172a; color: #67e8f9; }
+            QTableWidget { background: #020617; border: 1px solid #334155; gridline-color: #1e293b; }
+            QHeaderView::section { background: #0f172a; color: #67e8f9; padding: 6px; border: none; }
             QDialog { background: #0b1220; }
             """
         )
@@ -324,8 +367,30 @@ class MainWindow(QMainWindow):
 
     def _apply_periodo_sugerido(self) -> None:
         ini, fim = sugestao_periodo(self._periodo_modo())
-        self.start_edit.setText(ini)
-        self.end_edit.setText(fim)
+        self.start_edit.setText(to_ssw_ddmmyy(ini))
+        self.end_edit.setText(to_ssw_ddmmyy(fim))
+        if hasattr(self, "ssw_period_hint"):
+            self.ssw_period_hint.setText(
+                f"SSW cadastramento: {to_ssw_ddmmyy(ini)} a {to_ssw_ddmmyy(fim)} "
+                f"({format_period(ini, fim)}) — nao usa periodo da coleta."
+            )
+        if hasattr(self, "tab103"):
+            self.tab103.apply_periodo_d2()
+
+    def _maybe_auto_baixar(self) -> None:
+        if not getattr(self, "auto_check", None) or not self.auto_check.isChecked():
+            return
+        if self.thread is not None and self.thread.isRunning():
+            return
+        if not (self.credentials.user and self.credentials.password):
+            self._log("Auto D-2: configure o login SSW (Ctrl+L).")
+            return
+        self._apply_periodo_sugerido()
+        self._log(
+            f"Auto ao abrir: cadastramento D-2 → "
+            f"{self.start_edit.text()} a {self.end_edit.text()}"
+        )
+        self._start_full(automatico=True)
 
     def _open_login_dialog(self) -> None:
         dialog = LoginDialog(self.credentials, self)
@@ -340,6 +405,7 @@ class MainWindow(QMainWindow):
         self.settings.coleta_option = self.coleta_option_edit.text().strip() or "50"
         self.settings.entrega_option = self.entrega_option_edit.text().strip()
         self.settings.periodo_modo = self._periodo_modo()
+        self.settings.auto_baixar_ao_abrir = bool(self.auto_check.isChecked())
         return self.settings
 
     def _save_options(self) -> None:
@@ -390,8 +456,11 @@ class MainWindow(QMainWindow):
         self.worker = worker
         thread.start()
 
-    def _start_full(self) -> None:
+    def _start_full(self, *, automatico: bool = False) -> None:
         if not (self.credentials.user and self.credentials.password):
+            if automatico:
+                self._log("Auto D-2: login SSW ausente.")
+                return
             QMessageBox.warning(self, "Login", "Configure o login SSW.")
             self._open_login_dialog()
             return
@@ -401,13 +470,19 @@ class MainWindow(QMainWindow):
             start = normalize_date(self.start_edit.text())
             end = normalize_date(self.end_edit.text())
         except ValueError as error:
+            if automatico:
+                self._log(f"Auto D-2: data invalida — {error}")
+                return
             QMessageBox.warning(self, "Data invalida", str(error))
             return
-        self.start_edit.setText(start)
-        self.end_edit.setText(end)
+        self.start_edit.setText(to_ssw_ddmmyy(start))
+        self.end_edit.setText(to_ssw_ddmmyy(end))
         self.file_list.clear()
         self.coletas_list.clear()
-        self._log(f"Inicio fluxo completo | {format_period(start, end)}")
+        self._log(
+            f"{'Auto' if automatico else 'Inicio'} | cadastramento "
+            f"{to_ssw_ddmmyy(start)} a {to_ssw_ddmmyy(end)} ({format_period(start, end)})"
+        )
         worker = PipelineWorker(
             "full",
             modo=self._periodo_modo(),
@@ -415,8 +490,8 @@ class MainWindow(QMainWindow):
             end_date=end,
             credentials=self.credentials,
             settings=settings,
-            keep_open=self.keep_open_check.isChecked(),
-            headless=False,
+            keep_open=False if automatico else self.keep_open_check.isChecked(),
+            headless=True if automatico else False,
         )
         self._start_worker(worker)
 

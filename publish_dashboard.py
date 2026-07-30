@@ -11,6 +11,7 @@ from typing import Any, Callable
 
 from config import DASHBOARD_DIR, BASE_DIR, AceSettings, load_settings
 from parser_ssw0157 import COLETAS_CSV, RESUMO_CSV
+from parser_ssw103 import COLETAS_103_CSV, RESUMO_103_CSV
 
 StatusCallback = Callable[[str], None]
 
@@ -26,16 +27,24 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
     for src, name in (
         (COLETAS_CSV, "coletas.csv"),
         (RESUMO_CSV, "resumo_diario.csv"),
+        (COLETAS_103_CSV, "coletas_103.csv"),
+        (RESUMO_103_CSV, "resumo_103.csv"),
     ):
         dest = data_dir / name
         if src.exists():
             shutil.copy2(src, dest)
             paths[name] = str(dest)
         elif not dest.exists():
-            # cria vazio para o dashboard nao quebrar
             with dest.open("w", encoding="utf-8-sig", newline="") as fh:
-                if name.startswith("resumo"):
+                if name == "resumo_diario.csv":
                     fh.write("data_cadastro,total_coletas,cadastrada,comandada,coletada,cancelada\n")
+                elif name == "resumo_103.csv":
+                    fh.write("periodo,total,parado,em_rota,realizada,cancelada,outro\n")
+                elif name == "coletas_103.csv":
+                    fh.write(
+                        "coleta_id,situacao_atual,status_ace,hora,hora_antes_meio_dia,"
+                        "cadastrada_ref_AI,placa,placa_carreta,motorista\n"
+                    )
                 else:
                     fh.write("coleta_id,coleta,situacao_atual\n")
             paths[name] = str(dest)

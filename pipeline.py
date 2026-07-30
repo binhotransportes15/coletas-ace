@@ -8,8 +8,9 @@ from config import DOWNLOAD_DIR, LOG_DIR, AceSettings, SswCredentials, ensure_di
 from dates import format_period, normalize_date, sugestao_periodo
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
-from sheets_sync import sync_google_sheets
-from ssw_client import download_ace_reports
+from sheets_sync import sync_google_sheets, sync_google_sheets_103
+from ssw_client import download_ace_103, download_ace_reports
+from parser_ssw103 import analyze_report_103
 
 StatusCallback = Callable[[str], None]
 
@@ -98,7 +99,7 @@ def run_full_pipeline(
     else:
         ini, fim = sugestao_periodo(modo_eff)
 
-    emit(f"Pipeline ACE | modo={modo_eff} | periodo {format_period(ini, fim)}")
+    emit(f"Pipeline ACE | modo={modo_eff} | cadastramento {format_period(ini, fim)}")
 
     download = download_ace_reports(
         ini,
@@ -119,6 +120,130 @@ def run_full_pipeline(
             raise RuntimeError("Download da coleta nao gerou arquivo .sswweb")
 
     analysis = run_analysis_only(report, settings=cfg, on_status=emit, sync=True)
+    return {
+        "download": download,
+        **analysis,
+        "period": format_period(ini, fim),
+        "modo": modo_eff,
+    }
+
+
+def find_latest_103(download_dir: Path | None = None) -> Path | None:
+    folder = Path(download_dir or DOWNLOAD_DIR)
+    candidates: list[Path] = []
+    search_dirs = [folder]
+    downloads_user = Path.home() / "Downloads"
+    if downloads_user.exists() and downloads_user.resolve() != folder.resolve():
+        search_dirs.append(downloads_user)
+
+    patterns = (
+        "coleta_103*",
+        "CSV*ssw0166*",
+        "*ssw0166*",
+        "*.xlsx",
+        "*.xls",
+        "*.csv",
+    )
+    for directory in search_dirs:
+        if not directory.exists():
+            continue
+        for pattern in patterns:
+            candidates.extend(directory.glob(pattern))
+
+    # Prefer arquivos da 103
+    def score(path: Path) -> tuple:
+        name = path.name.lower()
+        is_103 = ("ssw0166" in name) or name.startswith("coleta_103") or name.startswith("csvssw0166")
+        return (1 if is_103 else 0, path.stat().st_mtime)
+
+    files = sorted({p.resolve() for p in candidates if p.is_file()}, key=score, reverse=True)
+    return files[0] if files else None
+
+
+def run_analysis_103(
+    report_path: Path | str,
+    *,
+    periodo: str = "",
+    settings: AceSettings | None = None,
+    on_status: StatusCallback | None = None,
+    sync: bool = True,
+) -> dict[str, Any]:
+    status = on_status or _noop
+    cfg = settings or load_settings()
+    path = Path(report_path)
+    status(f"Analisando 103: {path.name}")
+    meta = analyze_report_103(path, periodo=periodo)
+    tot = meta.get("totais") or {}
+    status(
+        f"103: {meta.get('lote')} coleta(s) | "
+        f"parado={tot.get('parado', 0)} em_rota={tot.get('em_rota', 0)} "
+        f"realizada={tot.get('realizada', 0)} cancelada={tot.get('cancelada', 0)}"
+    )
+    sheets = {"ok": False, "skipped": True}
+    dash = {"ok": False, "skipped": True}
+    if sync:
+        sheets = sync_google_sheets_103(cfg, on_status=status)
+        dash = publish_dashboard(cfg, on_status=status)
+    return {
+        "analysis": meta,
+        "report": str(path),
+        "sheets": sheets,
+        "dashboard": dash,
+    }
+
+
+def run_full_pipeline_103(
+    *,
+    modo: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    keep_open: bool = False,
+    headless: bool = False,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    """Baixa opcao 103 (Excel / data inclusao) → analisa torres tempo real."""
+    status = on_status or _noop
+
+    def emit(msg: str) -> None:
+        status(msg)
+        _log_file(msg)
+
+    cfg = settings or load_settings()
+    creds = credentials or load_credentials()
+    modo_eff = (modo or cfg.periodo_modo or "diario").strip().lower()
+    if start_date and end_date:
+        ini, fim = normalize_date(start_date), normalize_date(end_date)
+    else:
+        ini, fim = sugestao_periodo(modo_eff)
+
+    emit(f"Pipeline ACE 103 | inclusao {format_period(ini, fim)}")
+    download = download_ace_103(
+        ini,
+        fim,
+        keep_open=keep_open,
+        on_status=emit,
+        credentials=creds,
+        settings=cfg,
+        headless=headless,
+    )
+    report = Path((download.get("paths") or {}).get("coleta_103") or "")
+    if not report.exists():
+        latest = find_latest_103()
+        if latest:
+            report = latest
+            emit(f"Usando ultimo Excel 103: {report.name}")
+        else:
+            raise RuntimeError("Download 103 nao gerou Excel")
+
+    analysis = run_analysis_103(
+        report,
+        periodo=format_period(ini, fim),
+        settings=cfg,
+        on_status=emit,
+        sync=True,
+    )
     return {
         "download": download,
         **analysis,
