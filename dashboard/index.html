@@ -20,29 +20,32 @@
       font-family: "Segoe UI", system-ui, sans-serif;
     }
     * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; overflow: hidden; }
+    html, body { height: 100%; margin: 0; }
     body {
       background:
         radial-gradient(1100px 520px at 8% -10%, #132038 0%, transparent 55%),
         radial-gradient(800px 420px at 100% 0%, #1a1020 0%, transparent 50%),
         var(--bg);
       color: var(--text);
-      height: 100vh;
+      min-height: 100vh;
     }
+    body.live-mode { overflow: hidden; height: 100vh; }
 
     .board {
-      height: 100vh;
       width: min(1500px, 100%);
       margin: 0 auto;
-      padding: 12px 14px;
+      padding: 12px 14px 16px;
       display: grid;
-      grid-template-rows: auto 1fr auto;
       gap: 10px;
+    }
+    body.live-mode .board {
+      height: 100vh;
+      grid-template-rows: auto auto 1fr auto;
     }
 
     .topbar {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr auto auto;
       align-items: center;
       gap: 12px;
       background: linear-gradient(180deg, #0f172a, #0b1220);
@@ -57,20 +60,32 @@
       font-weight: 800;
       letter-spacing: 0.12em;
     }
+    .nav {
+      display: flex; gap: 6px;
+    }
+    .nav-btn {
+      background: #020617; border: 1px solid #1e293b; color: #94a3b8;
+      border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 700;
+      cursor: pointer;
+    }
+    .nav-btn.active { color: #67e8f9; border-color: #334155; background: #0f172a; }
     .clock-box { text-align: right; }
     .clock-box .lbl {
       color: var(--muted); font-size: 10px;
       text-transform: uppercase; letter-spacing: 0.1em;
     }
     .clock-box .time {
-      font-size: clamp(22px, 3vw, 30px);
+      font-size: clamp(20px, 2.8vw, 28px);
       font-weight: 300;
       font-variant-numeric: tabular-nums;
       line-height: 1.05;
     }
     .clock-box .date { color: var(--muted); font-size: 11px; }
 
-    /* UM unico painel = torres + pops (como na foto) */
+    .view { display: none; }
+    .view.active { display: grid; gap: 10px; min-height: 0; }
+    body.live-mode #viewLive.active { height: 100%; grid-template-rows: 1fr; }
+
     .arena {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -83,7 +98,7 @@
       overflow: hidden;
       box-shadow: 0 12px 40px rgba(0,0,0,.28);
     }
-    .arena h2 {
+    .arena h2, .panel h2 {
       margin: 0;
       font-size: 12px;
       font-weight: 700;
@@ -91,82 +106,42 @@
       text-transform: uppercase;
       letter-spacing: 0.08em;
     }
-
     .arena-body {
       display: grid;
       grid-template-columns: 200px 1fr 250px;
       gap: 14px;
       min-height: 0;
       height: 100%;
-      align-items: stretch;
     }
-
     .col-left, .col-right, .col-center {
-      min-height: 0;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
+      min-height: 0; min-width: 0;
+      display: flex; flex-direction: column;
     }
-
     .total-lbl {
-      font-size: 11px;
-      font-weight: 700;
-      color: #67e8f9;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 2px;
+      font-size: 11px; font-weight: 700; color: #67e8f9;
+      text-transform: uppercase; letter-spacing: 0.1em;
     }
     .total-num {
-      font-size: 56px;
-      font-weight: 200;
-      line-height: 0.95;
-      letter-spacing: -0.03em;
-      color: #fff;
+      font-size: 56px; font-weight: 200; line-height: 0.95;
+      letter-spacing: -0.03em; color: #fff;
     }
     .total-sub { color: var(--muted); font-size: 12px; margin: 4px 0 12px; }
 
-    .pop-stack {
-      position: relative;
-      flex: 1;
-      min-height: 0;
-      overflow: hidden;
-    }
-
+    .pop-stack { position: relative; flex: 1; min-height: 0; overflow: hidden; }
     .pop {
-      position: absolute;
-      left: 0; right: 0;
-      display: grid;
-      align-items: center;
-      gap: 10px;
-      background: #020617;
-      border: 1px solid #1e293b;
-      border-radius: 12px;
-      padding: 10px 12px;
-      box-shadow: 0 10px 24px rgba(0,0,0,.35);
-      opacity: 0;
-      transform: translateY(24px) scale(0.96);
-      transition:
-        opacity .45s ease,
-        transform .55s cubic-bezier(.2,.8,.2,1),
-        top .55s cubic-bezier(.2,.8,.2,1);
+      position: absolute; left: 0; right: 0;
+      display: grid; align-items: center; gap: 10px;
+      background: #020617; border: 1px solid #1e293b; border-radius: 12px;
+      padding: 10px 12px; box-shadow: 0 10px 24px rgba(0,0,0,.35);
+      opacity: 0; transform: translateY(24px) scale(0.96);
+      transition: opacity .45s ease, transform .55s cubic-bezier(.2,.8,.2,1), top .55s cubic-bezier(.2,.8,.2,1);
       pointer-events: none;
     }
-    .pop.show {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-    .pop.leaving {
-      opacity: 0;
-      transform: translateY(-30px) scale(0.96);
-    }
-
+    .pop.show { opacity: 1; transform: translateY(0) scale(1); }
+    .pop.leaving { opacity: 0; transform: translateY(-30px) scale(0.96); }
     .pop-placa { grid-template-columns: 46px 1fr auto; }
-    .pop-prazo {
-      grid-template-columns: 54px 1fr auto;
-      border-left: 4px solid var(--can);
-    }
+    .pop-prazo { grid-template-columns: 54px 1fr auto; border-left: 4px solid var(--can); }
     .pop-prazo.warn { border-left-color: var(--cad); }
-
     .donut { width: 42px; height: 42px; position: relative; }
     .donut svg { width: 42px; height: 42px; transform: rotate(-90deg); }
     .donut .pct {
@@ -175,83 +150,46 @@
     }
     .pop .name { font-size: 14px; font-weight: 800; letter-spacing: 0.03em; }
     .pop .meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
-    .pop .badge {
-      font-size: 13px; font-weight: 800; color: var(--col);
-      font-variant-numeric: tabular-nums;
-    }
-    .pop-prazo .hora {
-      font-size: 17px; font-weight: 800;
-      font-variant-numeric: tabular-nums;
-    }
+    .pop .badge { font-size: 13px; font-weight: 800; color: var(--col); }
+    .pop-prazo .hora { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
     .pop-prazo .tag {
       font-size: 10px; font-weight: 800; text-transform: uppercase;
-      padding: 4px 7px; border-radius: 999px;
-      background: #450a0a; color: #fecaca; white-space: nowrap;
+      padding: 4px 7px; border-radius: 999px; background: #450a0a; color: #fecaca;
     }
-    .pop-prazo.warn .tag {
-      background: #1e293b; color: var(--cad);
-    }
+    .pop-prazo.warn .tag { background: #1e293b; color: var(--cad); }
 
     .torres {
-      flex: 1;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 16px;
-      min-height: 0;
-      padding: 4px 4px 0;
+      flex: 1; display: flex; align-items: flex-end; justify-content: center;
+      gap: 16px; min-height: 0; padding: 4px 4px 0;
     }
     .torre {
-      width: min(128px, 17vw);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      border: none;
-      background: transparent;
-      padding: 0;
-      color: inherit;
+      width: min(128px, 17vw); display: flex; flex-direction: column; align-items: center;
+      border: none; background: transparent; padding: 0; color: inherit;
     }
     .torre .pin {
       width: 34px; height: 34px; border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      display: grid; place-items: center;
-      margin-bottom: 10px;
-      box-shadow: 0 6px 14px rgba(0,0,0,.35);
+      transform: rotate(-45deg); display: grid; place-items: center;
+      margin-bottom: 10px; box-shadow: 0 6px 14px rgba(0,0,0,.35);
     }
-    .torre .pin span {
-      transform: rotate(45deg);
-      font-size: 11px; font-weight: 800; color: #fff;
-    }
+    .torre .pin span { transform: rotate(45deg); font-size: 11px; font-weight: 800; color: #fff; }
     .torre .barra {
-      width: 100%;
-      min-height: 56px;
-      border-radius: 10px 10px 0 0;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding-top: 14px;
-      box-shadow: 0 10px 22px rgba(0,0,0,.35);
-      transition: height .45s ease;
+      width: 100%; min-height: 56px; border-radius: 10px 10px 0 0;
+      display: flex; align-items: flex-start; justify-content: center; padding-top: 14px;
+      box-shadow: 0 10px 22px rgba(0,0,0,.35); transition: height .45s ease;
     }
     .torre .barra strong {
-      font-size: clamp(24px, 3.2vw, 36px);
-      font-weight: 300; color: #fff; line-height: 1;
+      font-size: clamp(24px, 3.2vw, 36px); font-weight: 300; color: #fff; line-height: 1;
     }
     .torre .faixa {
-      width: 100%; padding: 8px 6px; color: #fff;
-      font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
-      text-transform: uppercase;
-      clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+      width: 100%; padding: 8px 6px; color: #fff; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
     }
     .torre .base {
-      width: 100%; background: #0f172a;
-      border: 1px solid var(--line); border-top: none;
-      border-radius: 0 0 10px 10px;
-      padding: 9px 6px 11px; text-align: center;
+      width: 100%; background: #0f172a; border: 1px solid var(--line); border-top: none;
+      border-radius: 0 0 10px 10px; padding: 9px 6px 11px; text-align: center;
     }
     .torre .base .qtd { font-size: 18px; font-weight: 700; display: block; }
     .torre .base .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
     .t-col .pin, .t-col .barra { background: var(--col); }
     .t-col .faixa { background: #16a34a; }
     .t-col .base .qtd { color: var(--col); }
@@ -265,24 +203,95 @@
     .t-can .faixa { background: #dc2626; }
     .t-can .base .qtd { color: var(--can); }
 
+    /* Gestão */
+    .panel {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 14px; padding: 14px;
+    }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px;
+    }
+    .chip {
+      background: #020617; border: 1px solid #334155; color: var(--text);
+      border-radius: 999px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+    }
+    .chip.active { border-color: #67e8f9; color: #67e8f9; }
+    .search {
+      display: flex; gap: 8px; align-items: center; margin-left: auto;
+    }
+    .search input {
+      background: #020617; border: 1px solid #334155; color: var(--text);
+      border-radius: 8px; padding: 7px 10px; min-width: 180px; font-size: 13px;
+    }
+    .btn {
+      background: #164e63; border: 1px solid #22d3ee; color: #ecfeff;
+      border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+    }
+    .btn:hover { background: #155e75; }
+    .btn:disabled { opacity: .5; cursor: wait; }
+    .lista { overflow: auto; max-height: 520px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px 7px; text-align: left; }
+    th { color: #67e8f9; font-weight: 600; }
+    .sit { font-weight: 700; }
+    .sit-COLETADA, .sit-realizada { color: var(--col); }
+    .sit-COMANDADA, .sit-em_rota { color: var(--com); }
+    .sit-CADASTRADA, .sit-parado { color: var(--cad); }
+    .sit-CANCELADA, .sit-cancelada { color: var(--can); }
+    .muted { color: var(--muted); font-size: 12px; }
     .status-line { color: var(--muted); font-size: 11px; padding: 0 4px; }
 
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(2, 6, 23, .72);
+      align-items: center; justify-content: center; z-index: 50; padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: min(1100px, 100%); max-height: 90vh; overflow: auto;
+      background: #f3f4f6; border-radius: 10px; padding: 14px 16px 18px; color: #0f172a;
+    }
+    .modal h2 { margin: 0 0 2px; font-size: 17px; color: #0f172a; text-transform: none; letter-spacing: 0; }
+    .modal .sub-hist { color: #64748b; font-size: 12px; margin: 0 0 12px; }
+    .modal .close {
+      float: right; background: #1e3a5f; border: none; color: #fff;
+      border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px;
+    }
+    .ssw-wrap { overflow: auto; border: 1px solid #cbd5e1; border-radius: 4px; }
+    .ssw-hist { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; }
+    .ssw-hist thead th {
+      background: #1e3a5f; color: #fff; font-weight: 600; padding: 8px 7px;
+      text-align: left; white-space: nowrap;
+    }
+    .ssw-hist tbody td {
+      padding: 7px; border-bottom: 1px solid #e2e8f0; vertical-align: top; color: #0f172a;
+    }
+    .ssw-hist tbody tr:nth-child(even) { background: #f1f5f9; }
+    .ssw-hist .user { color: #1d4ed8; font-weight: 600; }
+    .ssw-hist .instr { min-width: 260px; line-height: 1.35; }
+    .ssw-hist .ctr { text-align: center; }
+
     @media (max-width: 980px) {
-      body { overflow: auto; }
-      .board { height: auto; min-height: 100vh; }
+      body.live-mode { overflow: auto; height: auto; }
       .arena-body { grid-template-columns: 1fr; height: auto; }
       .pop-stack { min-height: 200px; }
       .torres { min-height: 280px; }
+      .topbar { grid-template-columns: 1fr; }
+      .search { margin-left: 0; width: 100%; }
+      .search input { flex: 1; }
     }
   </style>
 </head>
-<body>
+<body class="live-mode">
   <div class="board">
     <header class="topbar">
       <div class="brand">
         <img src="logo-binho.png" alt="BINHO Transportes" />
         <div class="title">COLETA</div>
       </div>
+      <nav class="nav">
+        <button type="button" class="nav-btn active" data-view="live">Ao vivo</button>
+        <button type="button" class="nav-btn" data-view="gestao">Gestão</button>
+      </nav>
       <div class="clock-box">
         <div class="lbl">Tempo real</div>
         <div class="time" id="clock">--:--:--</div>
@@ -290,53 +299,85 @@
       </div>
     </header>
 
-    <!-- Tudo dentro do mesmo retangulo das torres -->
-    <section class="arena">
-      <h2>Torres · tempo real</h2>
-      <div class="arena-body">
-        <div class="col-left">
-          <div class="total-lbl">Total</div>
-          <div class="total-num" id="totalColetas">0</div>
-          <div class="total-sub" id="totalSub">coletas</div>
-          <div class="pop-stack" id="placaStack"></div>
-        </div>
-
-        <div class="col-center">
-          <div class="torres">
-            <div class="torre t-col">
-              <div class="pin"><span>01</span></div>
-              <div class="barra" id="barReal"><strong id="nReal">0</strong></div>
-              <div class="faixa">Realizada</div>
-              <div class="base"><span class="qtd" id="qReal">0</span><div class="lbl">coletada</div></div>
-            </div>
-            <div class="torre t-com">
-              <div class="pin"><span>02</span></div>
-              <div class="barra" id="barRota"><strong id="nRota">0</strong></div>
-              <div class="faixa">Em rota</div>
-              <div class="base"><span class="qtd" id="qRota">0</span><div class="lbl">comandada</div></div>
-            </div>
-            <div class="torre t-cad">
-              <div class="pin"><span>03</span></div>
-              <div class="barra" id="barPar"><strong id="nPar">0</strong></div>
-              <div class="faixa">Parado</div>
-              <div class="base"><span class="qtd" id="qPar">0</span><div class="lbl">cadastrada</div></div>
-            </div>
-            <div class="torre t-can">
-              <div class="pin"><span>04</span></div>
-              <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
-              <div class="faixa">Cancelada</div>
-              <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
+    <!-- AO VIVO -->
+    <div class="view active" id="viewLive">
+      <section class="arena">
+        <h2>Torres · tempo real</h2>
+        <div class="arena-body">
+          <div class="col-left">
+            <div class="total-lbl">Total</div>
+            <div class="total-num" id="totalColetas">0</div>
+            <div class="total-sub" id="totalSub">coletas</div>
+            <div class="pop-stack" id="placaStack"></div>
+          </div>
+          <div class="col-center">
+            <div class="torres">
+              <div class="torre t-col">
+                <div class="pin"><span>01</span></div>
+                <div class="barra" id="barReal"><strong id="nReal">0</strong></div>
+                <div class="faixa">Realizada</div>
+                <div class="base"><span class="qtd" id="qReal">0</span><div class="lbl">coletada</div></div>
+              </div>
+              <div class="torre t-com">
+                <div class="pin"><span>02</span></div>
+                <div class="barra" id="barRota"><strong id="nRota">0</strong></div>
+                <div class="faixa">Em rota</div>
+                <div class="base"><span class="qtd" id="qRota">0</span><div class="lbl">comandada</div></div>
+              </div>
+              <div class="torre t-cad">
+                <div class="pin"><span>03</span></div>
+                <div class="barra" id="barPar"><strong id="nPar">0</strong></div>
+                <div class="faixa">Parado</div>
+                <div class="base"><span class="qtd" id="qPar">0</span><div class="lbl">cadastrada</div></div>
+              </div>
+              <div class="torre t-can">
+                <div class="pin"><span>04</span></div>
+                <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
+                <div class="faixa">Cancelada</div>
+                <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
+              </div>
             </div>
           </div>
+          <div class="col-right">
+            <div class="pop-stack" id="prazoStack"></div>
+          </div>
         </div>
+      </section>
+    </div>
 
-        <div class="col-right">
-          <div class="pop-stack" id="prazoStack"></div>
+    <!-- GESTÃO -->
+    <div class="view" id="viewGestao">
+      <section class="panel">
+        <h2>Gestão de coletas</h2>
+        <div class="toolbar" id="tabsRelatorio">
+          <button type="button" class="chip active" data-rel="103">103 · Tempo real</button>
+          <button type="button" class="chip" data-rel="50">50 · Situações</button>
+          <div class="search">
+            <input id="buscaColeta" type="search" placeholder="Buscar nº coleta (ex: 071655 ou SPO071655)" />
+            <button type="button" class="btn" id="btnBuscar">Buscar</button>
+            <button type="button" class="btn" id="btnLimparBusca" style="background:#1e293b;border-color:#334155;">Limpar</button>
+          </div>
         </div>
-      </div>
-    </section>
+        <div class="toolbar" id="filtrosGestao"></div>
+        <div class="lista">
+          <table>
+            <thead id="theadGestao"></thead>
+            <tbody id="tbodyGestao"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
 
     <p class="status-line" id="statusLine">BINHO · COLETA</p>
+  </div>
+
+  <div class="modal-backdrop" id="modalHist" role="dialog" aria-modal="true">
+    <div class="modal">
+      <button type="button" class="close" id="btnFecharHist">Fechar</button>
+      <h2 id="histTitulo">Histórico</h2>
+      <p class="sub-hist" id="histSub"></p>
+      <div id="histLista"></div>
+    </div>
   </div>
 
   <script>
@@ -348,6 +389,10 @@
     const PRAZO_TICK_MS = 3200;
     const PCT_ANIM_MS = 900;
 
+    let VIEW = 'live';
+    let REL = '103';
+    let FILTRO = 'TODAS';
+    let BUSCA = '';
     let COLETAS = [];
     let COLETAS_50 = [];
     let PLACAS = [];
@@ -368,11 +413,14 @@
         `${dias[now.getDay()]} · ${pad(now.getDate())}/${pad(now.getMonth() + 1)}`;
     }
 
-    async function chamarPlanilha(action) {
+    async function chamarPlanilha(action, params = {}) {
       if (!SCRIPT_URL) throw new Error('Configure scriptUrl em config.js');
       const url = new URL(SCRIPT_URL);
       url.searchParams.set('action', action);
       url.searchParams.set('t', String(Date.now()));
+      Object.entries(params).forEach(([k, v]) => {
+        if (v != null && v !== '') url.searchParams.set(k, v);
+      });
       const res = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
       const text = await res.text();
       let dados;
@@ -455,6 +503,18 @@
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    function fmtCampo(valor, tipo) {
+      const raw = String(valor ?? '').trim();
+      if (!raw) return '';
+      if (/^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/.test(raw)) return raw.slice(0, 5);
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(raw)) return raw.slice(0, 5);
+      return raw;
+    }
+
+    function fmtDataHora(data, hora) {
+      return [fmtCampo(data, 'data'), fmtCampo(hora, 'hora')].filter(Boolean).join(' ');
+    }
+
     function alturaTorre(valor, max) {
       const minH = 56, maxH = 220;
       if (!max || max <= 0) return minH;
@@ -529,9 +589,7 @@
         if (mins > JANELA_MIN) return;
         out.push({
           label: c.coleta || c.coleta_id || coletaKey(c),
-          sit,
-          limite,
-          mins,
+          sit, limite, mins,
           veiculo: parsePlaca(c.veiculo || ''),
         });
       });
@@ -546,12 +604,10 @@
       const full = arc.getAttribute('data-full') || '0 100';
       const end = Math.max(0, Math.min(100, targetPct || 0));
       const t0 = performance.now();
-      const r = 14;
-      const circ = 2 * Math.PI * r;
+      const circ = 2 * Math.PI * 14;
       function frame(t) {
         const k = Math.min(1, (t - t0) / PCT_ANIM_MS);
-        const ease = 1 - Math.pow(1 - k, 3);
-        const cur = Math.round(end * ease);
+        const cur = Math.round(end * (1 - Math.pow(1 - k, 3)));
         const dash = (cur / 100) * circ;
         arc.setAttribute('stroke-dasharray', `${dash} ${circ - dash}`);
         label.textContent = cur + '%';
@@ -562,12 +618,11 @@
     }
 
     function layoutPops(stack, nodes) {
-      const gap = 10;
       let top = 0;
       nodes.forEach((node, i) => {
         node.style.top = top + 'px';
         node.style.zIndex = String(100 - i);
-        top += node.offsetHeight + gap;
+        top += node.offsetHeight + 10;
       });
     }
 
@@ -580,13 +635,10 @@
       const visible = [];
       const n = Math.min(PLACA_VISIBLE, PLACAS.length);
       for (let i = 0; i < n; i++) visible.push(PLACAS[(placaCursor + i) % PLACAS.length]);
-
       Array.from(stack.querySelectorAll('.pop')).forEach(el => {
-        el.classList.remove('show');
-        el.classList.add('leaving');
+        el.classList.remove('show'); el.classList.add('leaving');
         setTimeout(() => el.remove(), 480);
       });
-
       setTimeout(() => {
         const nodes = visible.map(p => {
           const color = p.pct >= 100 ? '#22c55e' : p.pct >= 50 ? '#38bdf8' : '#f59e0b';
@@ -594,10 +646,7 @@
           el.className = 'pop pop-placa';
           el.innerHTML = `
             <div class="donut">${donutSvg(p.pct, color)}<div class="pct">0%</div></div>
-            <div>
-              <div class="name">${esc(p.placa)}</div>
-              <div class="meta">${p.feitas}/${p.total}</div>
-            </div>
+            <div><div class="name">${esc(p.placa)}</div><div class="meta">${p.feitas}/${p.total}</div></div>
             <div class="badge">${p.pct}%</div>`;
           stack.appendChild(el);
           requestAnimationFrame(() => el.classList.add('show'));
@@ -617,17 +666,13 @@
       const visible = [];
       const n = Math.min(PRAZO_VISIBLE, URGENTES.length);
       for (let i = 0; i < n; i++) visible.push(URGENTES[(prazoCursor + i) % URGENTES.length]);
-
       Array.from(stack.querySelectorAll('.pop')).forEach(el => {
-        el.classList.remove('show');
-        el.classList.add('leaving');
+        el.classList.remove('show'); el.classList.add('leaving');
         setTimeout(() => el.remove(), 480);
       });
-
       setTimeout(() => {
         const nodes = visible.map(r => {
           const atrasada = r.mins < 0;
-          const tag = atrasada ? `-${Math.abs(r.mins)}m` : `${r.mins}m`;
           const el = document.createElement('div');
           el.className = 'pop pop-prazo' + (atrasada ? '' : ' warn');
           el.innerHTML = `
@@ -636,7 +681,7 @@
               <div class="name" style="font-size:13px;">${esc(r.label)}</div>
               <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
             </div>
-            <div class="tag">${esc(tag)}</div>`;
+            <div class="tag">${esc(atrasada ? `-${Math.abs(r.mins)}m` : `${r.mins}m`)}</div>`;
           stack.appendChild(el);
           requestAnimationFrame(() => el.classList.add('show'));
           return el;
@@ -657,11 +702,200 @@
       }, PLACA_TICK_MS);
       prazoTimer = setInterval(() => {
         if (!URGENTES.length) return;
-        if (URGENTES.length > PRAZO_VISIBLE) {
-          prazoCursor = (prazoCursor + 1) % URGENTES.length;
-        }
+        if (URGENTES.length > PRAZO_VISIBLE) prazoCursor = (prazoCursor + 1) % URGENTES.length;
         renderPrazoPops();
       }, PRAZO_TICK_MS);
+    }
+
+    /* ===== GESTÃO ===== */
+    function labelStatus103(s) {
+      return ({ parado: 'Parado', em_rota: 'Em rota', realizada: 'Realizada', cancelada: 'Cancelada' })[s] || s;
+    }
+
+    function matchBusca(c) {
+      if (!BUSCA) return true;
+      const q = BUSCA.toUpperCase().replace(/\s+/g, '');
+      const id = coletaKey(c);
+      const num = String(c.numero || '').replace(/\D/g, '');
+      const qNum = q.replace(/\D/g, '');
+      return id.includes(q) || (qNum && (id.includes(qNum) || num.includes(qNum)));
+    }
+
+    function renderFiltrosGestao() {
+      const box = document.getElementById('filtrosGestao');
+      const opts103 = [
+        ['TODAS', 'Todas'], ['realizada', 'Realizada'], ['em_rota', 'Em rota'],
+        ['parado', 'Parado'], ['cancelada', 'Cancelada'],
+      ];
+      const opts50 = [
+        ['TODAS', 'Todas'], ['COLETADA', 'Coletada'], ['COMANDADA', 'Comandada'],
+        ['CADASTRADA', 'Cadastrada'], ['CANCELADA', 'Cancelada'],
+      ];
+      const opts = REL === '50' ? opts50 : opts103;
+      if (!opts.some(([k]) => k === FILTRO)) FILTRO = 'TODAS';
+      box.innerHTML = opts.map(([k, lbl]) =>
+        `<button type="button" class="chip${FILTRO === k ? ' active' : ''}" data-filtro="${k}">${lbl}</button>`
+      ).join('');
+      box.querySelectorAll('[data-filtro]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          FILTRO = btn.getAttribute('data-filtro');
+          renderFiltrosGestao();
+          renderTabelaGestao();
+        });
+      });
+    }
+
+    function renderTabelaGestao() {
+      const thead = document.getElementById('theadGestao');
+      const tbody = document.getElementById('tbodyGestao');
+      if (REL === '50') {
+        thead.innerHTML = `<tr>
+          <th>Coleta</th><th>Situação atual</th><th>Quando</th>
+          <th>Destino</th><th>Motorista</th><th></th></tr>`;
+        let rows = COLETAS_50.filter(matchBusca);
+        if (FILTRO !== 'TODAS') rows = rows.filter(c => situacaoNorm50(c) === FILTRO);
+        rows = rows.slice().reverse().slice(0, 300);
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="muted">Nenhuma coleta 50.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(c => {
+          const sit = situacaoNorm50(c);
+          const id = coletaKey(c);
+          const label = c.coleta || c.coleta_id || id;
+          return `<tr>
+            <td>${esc(label)}</td>
+            <td class="sit sit-${esc(sit)}">${esc(c.situacao_atual || sit)}</td>
+            <td>${esc(fmtDataHora(c.situacao_atual_data, c.situacao_atual_hora))}</td>
+            <td>${esc(c.dest_cidade || c.dest || '')}</td>
+            <td>${esc(c.motorista || '')}</td>
+            <td><button type="button" class="btn" data-hist="${esc(id)}" data-label="${esc(label)}" data-sit="${esc(sit)}">Histórico</button></td>
+          </tr>`;
+        }).join('');
+        tbody.querySelectorAll('[data-hist]').forEach(btn => {
+          btn.addEventListener('click', () => abrirHistorico(
+            btn.getAttribute('data-hist'),
+            btn.getAttribute('data-label'),
+            btn.getAttribute('data-sit'),
+            btn
+          ));
+        });
+      } else {
+        thead.innerHTML = `<tr>
+          <th>Coleta</th><th>Status</th><th>Situação</th>
+          <th>Hora</th><th>Placa</th><th>Carreta</th><th>Motorista</th></tr>`;
+        let rows = COLETAS.filter(matchBusca);
+        if (FILTRO !== 'TODAS') rows = rows.filter(c => statusAce(c) === FILTRO);
+        rows = rows.slice().reverse().slice(0, 300);
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="muted">Nenhuma coleta 103.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(c => {
+          const st = statusAce(c);
+          return `<tr>
+            <td>${esc(c.coleta_id || '')}</td>
+            <td class="sit sit-${esc(st)}">${esc(labelStatus103(st))}</td>
+            <td>${esc(c.situacao_atual || '')}</td>
+            <td>${esc(fmtCampo(c.hora, 'hora'))}</td>
+            <td>${esc(c.placa || '')}</td>
+            <td>${esc(c.placa_carreta || '')}</td>
+            <td>${esc(c.motorista || '')}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    function histSortKey(data, hora) {
+      const d = fmtCampo(data, 'data');
+      const h = fmtCampo(hora, 'hora') || '00:00';
+      const m = d.match(/(\d{1,2})\/(\d{1,2})/);
+      if (!m) return '0000' + h;
+      return pad(m[2]) + pad(m[1]) + h.replace(':', '');
+    }
+
+    function inferOcorrencia(obs) {
+      const o = String(obs || '').toUpperCase();
+      if (!o) return '';
+      if (/CANCELAD/.test(o)) return '99-COLETA CANCELADA';
+      if (/COLETA REALIZADA|CARREGADA NO VEICULO|CTRC GERADO/.test(o)) {
+        return '01-COLETA REALIZADA (CARREGADA NO VEICULO)';
+      }
+      if (/COMANDADA/.test(o)) return '02-COLETA COMANDADA AO VEICU';
+      if (/COLETA CADASTRADA|REMET:/.test(o) && /VOL|KG|DESTINO|HORARIO LIMITE/.test(o)) {
+        return '98-COLETA CADASTRADA';
+      }
+      return '';
+    }
+
+    function renderHistoricoSsw(rows) {
+      const sorted = (rows || []).slice().sort((a, b) =>
+        histSortKey(b.data, b.hora).localeCompare(histSortKey(a.data, a.hora))
+      );
+      const body = sorted.map(h => {
+        const inclusao = fmtDataHora(h.data, h.hora);
+        const occ = inferOcorrencia(h.observacao);
+        return `<tr>
+          <td>${esc(inclusao)}</td>
+          <td class="ctr">${esc((h.dominio || 'BIN').toUpperCase())}</td>
+          <td class="ctr">${esc((h.unidade_evento || h.unidade || 'SPO').toUpperCase())}</td>
+          <td>${esc(inclusao)}</td>
+          <td class="user">${esc(h.usuario || '')}</td>
+          <td>${esc(occ)}</td>
+          <td class="instr">${esc(h.observacao || '')}</td>
+          <td>${esc(occ)}</td>
+        </tr>`;
+      }).join('');
+      return `<div class="ssw-wrap"><table class="ssw-hist">
+        <thead><tr>
+          <th>Inclusão</th><th>Domi</th><th>Fili:</th><th>Inclusão Local</th>
+          <th>Usuário</th><th>Ocorrência</th><th>Instruções / situação</th><th>Ocorrência SSW</th>
+        </tr></thead><tbody>${body || '<tr><td colspan="8">Sem eventos</td></tr>'}</tbody></table></div>`;
+    }
+
+    async function abrirHistorico(coletaId, label, situacao, btn) {
+      const modal = document.getElementById('modalHist');
+      const lista = document.getElementById('histLista');
+      document.getElementById('histTitulo').textContent = `Histórico · ${label || coletaId}`;
+      document.getElementById('histSub').textContent = `Situação atual: ${situacao || '—'}`;
+      lista.innerHTML = '<p class="sub-hist">Carregando…</p>';
+      modal.classList.add('open');
+      if (btn) btn.disabled = true;
+      try {
+        const resp = await chamarPlanilha('historico', { coleta_id: coletaId });
+        const rows = resp.rows || [];
+        lista.innerHTML = rows.length
+          ? renderHistoricoSsw(rows)
+          : '<p class="sub-hist">Sem histórico nesta coleta.</p>';
+      } catch (err) {
+        lista.innerHTML = `<p class="sub-hist">${esc(err.message)}</p>`;
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function setView(view) {
+      VIEW = view === 'gestao' ? 'gestao' : 'live';
+      document.body.classList.toggle('live-mode', VIEW === 'live');
+      document.querySelectorAll('.nav-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-view') === VIEW);
+      });
+      document.getElementById('viewLive').classList.toggle('active', VIEW === 'live');
+      document.getElementById('viewGestao').classList.toggle('active', VIEW === 'gestao');
+      if (VIEW === 'gestao') {
+        renderFiltrosGestao();
+        renderTabelaGestao();
+      }
+    }
+
+    function setRel(rel) {
+      REL = rel === '50' ? '50' : '103';
+      FILTRO = 'TODAS';
+      document.querySelectorAll('#tabsRelatorio [data-rel]').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-rel') === REL);
+      });
+      renderFiltrosGestao();
+      renderTabelaGestao();
     }
 
     async function refresh() {
@@ -696,12 +930,50 @@
         placaCursor = 0;
         prazoCursor = 0;
         startPopLoops();
+        if (VIEW === 'gestao') {
+          renderFiltrosGestao();
+          renderTabelaGestao();
+        }
         status.textContent =
-          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · ${counts.total} coletas · ${PLACAS.length} placas · ${URGENTES.length} no limite`;
+          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · 103: ${COLETAS.length} · 50: ${COLETAS_50.length}`;
       } catch (err) {
         status.textContent = err.message;
         document.getElementById('totalSub').textContent = err.message;
       }
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => setView(btn.getAttribute('data-view')));
+    });
+    document.querySelectorAll('#tabsRelatorio [data-rel]').forEach(btn => {
+      btn.addEventListener('click', () => setRel(btn.getAttribute('data-rel')));
+    });
+    document.getElementById('btnBuscar').addEventListener('click', () => {
+      BUSCA = document.getElementById('buscaColeta').value.trim();
+      renderTabelaGestao();
+    });
+    document.getElementById('buscaColeta').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        BUSCA = e.target.value.trim();
+        renderTabelaGestao();
+      }
+    });
+    document.getElementById('btnLimparBusca').addEventListener('click', () => {
+      BUSCA = '';
+      document.getElementById('buscaColeta').value = '';
+      renderTabelaGestao();
+    });
+    document.getElementById('btnFecharHist').addEventListener('click', () => {
+      document.getElementById('modalHist').classList.remove('open');
+    });
+    document.getElementById('modalHist').addEventListener('click', (e) => {
+      if (e.target.id === 'modalHist') e.currentTarget.classList.remove('open');
+    });
+
+    const hash = (location.hash || '').replace('#', '');
+    if (hash === 'gestao' || hash === '50' || hash === '103') {
+      setView('gestao');
+      if (hash === '50' || hash === '103') setRel(hash);
     }
 
     tickClock();
