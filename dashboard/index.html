@@ -70,34 +70,52 @@
     }
     .clock-box .date { color: var(--muted); font-size: 11px; }
 
-    /* Layout principal: pops | torres | urgentes */
-    .stage {
-      display: grid;
-      grid-template-columns: 220px 1fr 260px;
-      gap: 12px;
+    /* UM unico painel = torres + pops (como na foto) */
+    .arena {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 16px 16px;
       min-height: 0;
-      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,.28);
+    }
+    .arena h2 {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 700;
+      color: #67e8f9;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
 
-    .side {
-      background: rgba(12, 18, 32, 0.55);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 12px;
+    .arena-body {
+      display: grid;
+      grid-template-columns: 200px 1fr 250px;
+      gap: 14px;
       min-height: 0;
+      height: 100%;
+      align-items: stretch;
+    }
+
+    .col-left, .col-right, .col-center {
+      min-height: 0;
+      min-width: 0;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
     }
-    .side h2 {
-      margin: 0 0 10px;
+
+    .total-lbl {
       font-size: 11px;
       font-weight: 700;
       color: #67e8f9;
       text-transform: uppercase;
       letter-spacing: 0.1em;
+      margin-bottom: 2px;
     }
-
     .total-num {
       font-size: 56px;
       font-weight: 200;
@@ -105,9 +123,8 @@
       letter-spacing: -0.03em;
       color: #fff;
     }
-    .total-sub { color: var(--muted); font-size: 12px; margin: 4px 0 14px; }
+    .total-sub { color: var(--muted); font-size: 12px; margin: 4px 0 12px; }
 
-    /* Stack de pops */
     .pop-stack {
       position: relative;
       flex: 1;
@@ -127,7 +144,7 @@
       padding: 10px 12px;
       box-shadow: 0 10px 24px rgba(0,0,0,.35);
       opacity: 0;
-      transform: translateY(28px) scale(0.96);
+      transform: translateY(24px) scale(0.96);
       transition:
         opacity .45s ease,
         transform .55s cubic-bezier(.2,.8,.2,1),
@@ -140,34 +157,30 @@
     }
     .pop.leaving {
       opacity: 0;
-      transform: translateY(-34px) scale(0.96);
+      transform: translateY(-30px) scale(0.96);
     }
 
-    .pop-placa {
-      grid-template-columns: 48px 1fr auto;
-    }
+    .pop-placa { grid-template-columns: 46px 1fr auto; }
     .pop-prazo {
-      grid-template-columns: 58px 1fr auto;
+      grid-template-columns: 54px 1fr auto;
       border-left: 4px solid var(--can);
     }
-    .pop-prazo.warn {
-      border-left-color: var(--cad);
-    }
+    .pop-prazo.warn { border-left-color: var(--cad); }
 
-    .donut { width: 44px; height: 44px; position: relative; }
-    .donut svg { width: 44px; height: 44px; transform: rotate(-90deg); }
+    .donut { width: 42px; height: 42px; position: relative; }
+    .donut svg { width: 42px; height: 42px; transform: rotate(-90deg); }
     .donut .pct {
       position: absolute; inset: 0; display: grid; place-items: center;
-      font-size: 11px; font-weight: 800; color: #fff;
+      font-size: 10px; font-weight: 800; color: #fff;
     }
-    .pop .name { font-size: 15px; font-weight: 800; letter-spacing: 0.03em; }
+    .pop .name { font-size: 14px; font-weight: 800; letter-spacing: 0.03em; }
     .pop .meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
     .pop .badge {
       font-size: 13px; font-weight: 800; color: var(--col);
       font-variant-numeric: tabular-nums;
     }
     .pop-prazo .hora {
-      font-size: 18px; font-weight: 800;
+      font-size: 17px; font-weight: 800;
       font-variant-numeric: tabular-nums;
     }
     .pop-prazo .tag {
@@ -179,36 +192,17 @@
       background: #1e293b; color: var(--cad);
     }
 
-    /* Torres centro */
-    .center {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 14px 10px 16px;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-    .center h2 {
-      margin: 0 0 8px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #67e8f9;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      text-align: center;
-    }
     .torres {
       flex: 1;
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      gap: 18px;
+      gap: 16px;
       min-height: 0;
-      padding: 8px 8px 0;
+      padding: 4px 4px 0;
     }
     .torre {
-      width: min(132px, 18vw);
+      width: min(128px, 17vw);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -276,8 +270,8 @@
     @media (max-width: 980px) {
       body { overflow: auto; }
       .board { height: auto; min-height: 100vh; }
-      .stage { grid-template-columns: 1fr; height: auto; }
-      .pop-stack { min-height: 220px; }
+      .arena-body { grid-template-columns: 1fr; height: auto; }
+      .pop-stack { min-height: 200px; }
       .torres { min-height: 280px; }
     }
   </style>
@@ -296,53 +290,51 @@
       </div>
     </header>
 
-    <div class="stage">
-      <!-- ESQUERDA: total + pops de placa -->
-      <aside class="side">
-        <h2>Total</h2>
-        <div class="total-num" id="totalColetas">0</div>
-        <div class="total-sub" id="totalSub">coletas</div>
-        <h2>Placas</h2>
-        <div class="pop-stack" id="placaStack"></div>
-      </aside>
+    <!-- Tudo dentro do mesmo retangulo das torres -->
+    <section class="arena">
+      <h2>Torres · tempo real</h2>
+      <div class="arena-body">
+        <div class="col-left">
+          <div class="total-lbl">Total</div>
+          <div class="total-num" id="totalColetas">0</div>
+          <div class="total-sub" id="totalSub">coletas</div>
+          <div class="pop-stack" id="placaStack"></div>
+        </div>
 
-      <!-- CENTRO: torres -->
-      <section class="center">
-        <h2>Torres · tempo real</h2>
-        <div class="torres">
-          <div class="torre t-col">
-            <div class="pin"><span>01</span></div>
-            <div class="barra" id="barReal"><strong id="nReal">0</strong></div>
-            <div class="faixa">Realizada</div>
-            <div class="base"><span class="qtd" id="qReal">0</span><div class="lbl">coletada</div></div>
-          </div>
-          <div class="torre t-com">
-            <div class="pin"><span>02</span></div>
-            <div class="barra" id="barRota"><strong id="nRota">0</strong></div>
-            <div class="faixa">Em rota</div>
-            <div class="base"><span class="qtd" id="qRota">0</span><div class="lbl">comandada</div></div>
-          </div>
-          <div class="torre t-cad">
-            <div class="pin"><span>03</span></div>
-            <div class="barra" id="barPar"><strong id="nPar">0</strong></div>
-            <div class="faixa">Parado</div>
-            <div class="base"><span class="qtd" id="qPar">0</span><div class="lbl">cadastrada</div></div>
-          </div>
-          <div class="torre t-can">
-            <div class="pin"><span>04</span></div>
-            <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
-            <div class="faixa">Cancelada</div>
-            <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
+        <div class="col-center">
+          <div class="torres">
+            <div class="torre t-col">
+              <div class="pin"><span>01</span></div>
+              <div class="barra" id="barReal"><strong id="nReal">0</strong></div>
+              <div class="faixa">Realizada</div>
+              <div class="base"><span class="qtd" id="qReal">0</span><div class="lbl">coletada</div></div>
+            </div>
+            <div class="torre t-com">
+              <div class="pin"><span>02</span></div>
+              <div class="barra" id="barRota"><strong id="nRota">0</strong></div>
+              <div class="faixa">Em rota</div>
+              <div class="base"><span class="qtd" id="qRota">0</span><div class="lbl">comandada</div></div>
+            </div>
+            <div class="torre t-cad">
+              <div class="pin"><span>03</span></div>
+              <div class="barra" id="barPar"><strong id="nPar">0</strong></div>
+              <div class="faixa">Parado</div>
+              <div class="base"><span class="qtd" id="qPar">0</span><div class="lbl">cadastrada</div></div>
+            </div>
+            <div class="torre t-can">
+              <div class="pin"><span>04</span></div>
+              <div class="barra" id="barCan"><strong id="nCan">0</strong></div>
+              <div class="faixa">Cancelada</div>
+              <div class="base"><span class="qtd" id="qCan">0</span><div class="lbl">SPO</div></div>
+            </div>
           </div>
         </div>
-      </section>
 
-      <!-- DIREITA: pops de prazo -->
-      <aside class="side">
-        <h2>Perto do limite</h2>
-        <div class="pop-stack" id="prazoStack"></div>
-      </aside>
-    </div>
+        <div class="col-right">
+          <div class="pop-stack" id="prazoStack"></div>
+        </div>
+      </div>
+    </section>
 
     <p class="status-line" id="statusLine">BINHO · COLETA</p>
   </div>
@@ -498,7 +490,7 @@
 
     function donutSvg(pct, color) {
       const p = Math.max(0, Math.min(100, pct || 0));
-      const r = 15;
+      const r = 14;
       const c = 2 * Math.PI * r;
       const dash = (p / 100) * c;
       return `<svg viewBox="0 0 40 40" aria-hidden="true">
@@ -552,16 +544,14 @@
       const label = el.querySelector('.pct');
       if (!arc || !label) return;
       const full = arc.getAttribute('data-full') || '0 100';
-      // sobe o % visualmente
-      let start = 0;
       const end = Math.max(0, Math.min(100, targetPct || 0));
       const t0 = performance.now();
-      const r = 15;
+      const r = 14;
       const circ = 2 * Math.PI * r;
       function frame(t) {
         const k = Math.min(1, (t - t0) / PCT_ANIM_MS);
         const ease = 1 - Math.pow(1 - k, 3);
-        const cur = Math.round(start + (end - start) * ease);
+        const cur = Math.round(end * ease);
         const dash = (cur / 100) * circ;
         arc.setAttribute('stroke-dasharray', `${dash} ${circ - dash}`);
         label.textContent = cur + '%';
@@ -584,23 +574,19 @@
     function renderPlacaPops() {
       const stack = document.getElementById('placaStack');
       if (!PLACAS.length) {
-        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem placas no período</div></div>';
+        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem placas</div></div>';
         return;
       }
       const visible = [];
       const n = Math.min(PLACA_VISIBLE, PLACAS.length);
-      for (let i = 0; i < n; i++) {
-        visible.push(PLACAS[(placaCursor + i) % PLACAS.length]);
-      }
+      for (let i = 0; i < n; i++) visible.push(PLACAS[(placaCursor + i) % PLACAS.length]);
 
-      // remove pops antigos com saida
       Array.from(stack.querySelectorAll('.pop')).forEach(el => {
         el.classList.remove('show');
         el.classList.add('leaving');
         setTimeout(() => el.remove(), 480);
       });
 
-      // cria novos
       setTimeout(() => {
         const nodes = visible.map(p => {
           const color = p.pct >= 100 ? '#22c55e' : p.pct >= 50 ? '#38bdf8' : '#f59e0b';
@@ -610,7 +596,7 @@
             <div class="donut">${donutSvg(p.pct, color)}<div class="pct">0%</div></div>
             <div>
               <div class="name">${esc(p.placa)}</div>
-              <div class="meta">${p.feitas}/${p.total}${p.motorista ? ' · ' + esc(p.motorista.split(' ')[0]) : ''}</div>
+              <div class="meta">${p.feitas}/${p.total}</div>
             </div>
             <div class="badge">${p.pct}%</div>`;
           stack.appendChild(el);
@@ -625,14 +611,12 @@
     function renderPrazoPops() {
       const stack = document.getElementById('prazoStack');
       if (!URGENTES.length) {
-        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Nada perto do limite agora</div></div>';
+        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Nada perto do limite</div></div>';
         return;
       }
       const visible = [];
       const n = Math.min(PRAZO_VISIBLE, URGENTES.length);
-      for (let i = 0; i < n; i++) {
-        visible.push(URGENTES[(prazoCursor + i) % URGENTES.length]);
-      }
+      for (let i = 0; i < n; i++) visible.push(URGENTES[(prazoCursor + i) % URGENTES.length]);
 
       Array.from(stack.querySelectorAll('.pop')).forEach(el => {
         el.classList.remove('show');
@@ -649,7 +633,7 @@
           el.innerHTML = `
             <div class="hora">${pad(r.limite.getHours())}:${pad(r.limite.getMinutes())}</div>
             <div>
-              <div class="name" style="font-size:14px;">${esc(r.label)}</div>
+              <div class="name" style="font-size:13px;">${esc(r.label)}</div>
               <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
             </div>
             <div class="tag">${esc(tag)}</div>`;
@@ -673,7 +657,6 @@
       }, PLACA_TICK_MS);
       prazoTimer = setInterval(() => {
         if (!URGENTES.length) return;
-        // se cabem todas, ainda “pisca” renovando; senao avanca
         if (URGENTES.length > PRAZO_VISIBLE) {
           prazoCursor = (prazoCursor + 1) % URGENTES.length;
         }
