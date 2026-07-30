@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, LOG_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import format_period, normalize_date, sugestao_periodo
+from dates import format_period, normalize_date, periodo_103_hoje, periodo_50_cadastramento, sugestao_periodo
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
 from sheets_sync import sync_google_sheets, sync_google_sheets_103
@@ -96,8 +96,10 @@ def run_full_pipeline(
 
     if start_date and end_date:
         ini, fim = normalize_date(start_date), normalize_date(end_date)
+    elif modo_eff in {"sexta", "friday", "sex"}:
+        ini, fim = sugestao_periodo("sexta")
     else:
-        ini, fim = sugestao_periodo(modo_eff)
+        ini, fim = periodo_50_cadastramento()
 
     emit(f"Pipeline ACE | modo={modo_eff} | cadastramento {format_period(ini, fim)}")
 
@@ -212,13 +214,12 @@ def run_full_pipeline_103(
 
     cfg = settings or load_settings()
     creds = credentials or load_credentials()
-    modo_eff = (modo or cfg.periodo_modo or "diario").strip().lower()
     if start_date and end_date:
         ini, fim = normalize_date(start_date), normalize_date(end_date)
     else:
-        ini, fim = sugestao_periodo(modo_eff)
+        ini, fim = periodo_103_hoje()
 
-    emit(f"Pipeline ACE 103 | inclusao {format_period(ini, fim)}")
+    emit(f"Pipeline ACE 103 | inclusao HOJE {format_period(ini, fim)}")
     download = download_ace_103(
         ini,
         fim,
@@ -248,5 +249,135 @@ def run_full_pipeline_103(
         "download": download,
         **analysis,
         "period": format_period(ini, fim),
-        "modo": modo_eff,
+        "modo": "hoje",
+    }
+
+
+def run_dual_cycle(
+    *,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    headless: bool = True,
+    on_status: StatusCallback | None = None,
+    sync: bool = True,
+) -> dict[str, Any]:
+    """
+    Baixa 50 + 103 EM PARALELO (dois navegadores), analisa e sobe Sheets/dashboard.
+
+    Periodos automaticos (recalculados a cada ciclo / virada de dia):
+      50  → cadastramento D-1 (segunda = sexta–sabado)
+      103 → inclusao HOJE
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    status = on_status or _noop
+
+    def emit(msg: str) -> None:
+        status(msg)
+        _log_file(msg)
+
+    cfg = settings or load_settings()
+    creds = credentials or load_credentials()
+    ini50, fim50 = periodo_50_cadastramento()
+    ini103, fim103 = periodo_103_hoje()
+    emit(
+        f"CICLO dual | 50 cad={format_period(ini50, fim50)} "
+        f"| 103 hoje={format_period(ini103, fim103)} | paralelo"
+    )
+
+    result_50: dict[str, Any] = {}
+    result_103: dict[str, Any] = {}
+    errors: dict[str, str] = {}
+
+    def job_50() -> dict[str, Any]:
+        def st(m: str) -> None:
+            emit(f"[50] {m}")
+
+        download = download_ace_reports(
+            ini50,
+            fim50,
+            keep_open=False,
+            headless=headless,
+            on_status=st,
+            credentials=creds,
+            settings=cfg,
+        )
+        report = Path((download.get("paths") or {}).get("coleta") or "")
+        if not report.exists():
+            latest = find_latest_report()
+            if not latest:
+                raise RuntimeError("50 sem arquivo")
+            report = latest
+            st(f"Usando ultimo: {report.name}")
+        analysis = run_analysis_only(report, settings=cfg, on_status=st, sync=False)
+        return {"download": download, **analysis, "period": format_period(ini50, fim50)}
+
+    def job_103() -> dict[str, Any]:
+        def st(m: str) -> None:
+            emit(f"[103] {m}")
+
+        download = download_ace_103(
+            ini103,
+            fim103,
+            keep_open=False,
+            headless=headless,
+            on_status=st,
+            credentials=creds,
+            settings=cfg,
+        )
+        report = Path((download.get("paths") or {}).get("coleta_103") or "")
+        if not report.exists():
+            latest = find_latest_103()
+            if not latest:
+                raise RuntimeError("103 sem arquivo")
+            report = latest
+            st(f"Usando ultimo: {report.name}")
+        analysis = run_analysis_103(
+            report,
+            periodo=format_period(ini103, fim103),
+            settings=cfg,
+            on_status=st,
+            sync=False,
+        )
+        return {"download": download, **analysis, "period": format_period(ini103, fim103)}
+
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="ace") as pool:
+        futures = {
+            pool.submit(job_50): "50",
+            pool.submit(job_103): "103",
+        }
+        for fut in as_completed(futures):
+            label = futures[fut]
+            try:
+                data = fut.result()
+                if label == "50":
+                    result_50 = data
+                else:
+                    result_103 = data
+                emit(f"{label} concluido.")
+            except Exception as err:  # noqa: BLE001
+                errors[label] = str(err)
+                emit(f"{label} FALHOU: {err}")
+
+    sheets50 = sheets103 = dash = {"ok": False, "skipped": True}
+    if sync and (result_50 or result_103):
+        if result_50:
+            sheets50 = sync_google_sheets(cfg, on_status=emit)
+        if result_103:
+            sheets103 = sync_google_sheets_103(cfg, on_status=emit)
+        dash = publish_dashboard(cfg, on_status=emit)
+
+    if errors and not result_50 and not result_103:
+        raise RuntimeError("; ".join(f"{k}: {v}" for k, v in errors.items()))
+
+    return {
+        "ok": not errors or bool(result_50 or result_103),
+        "errors": errors,
+        "period_50": format_period(ini50, fim50),
+        "period_103": format_period(ini103, fim103),
+        "50": result_50,
+        "103": result_103,
+        "sheets_50": sheets50,
+        "sheets_103": sheets103,
+        "dashboard": dash,
     }

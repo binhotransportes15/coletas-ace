@@ -205,7 +205,7 @@ class MainWindow(QMainWindow):
     def _build_tab50(self, root: QVBoxLayout) -> None:
         tip = QLabel(
             "Opcao 50 usa Periodo de CADASTRAMENTO (DDMMYY). "
-            "Diario = D-2 (hoje 30 → cadastro 28, performance de 29)."
+            "Diario = D-1 (hoje 30 → cadastro 29). Segunda = sexta–sabado."
         )
         tip.setObjectName("subtitle")
         tip.setWordWrap(True)
@@ -226,7 +226,7 @@ class MainWindow(QMainWindow):
         period_box = QGroupBox("Periodo de cadastramento (opc)")
         period_layout = QVBoxLayout(period_box)
         mode_row = QHBoxLayout()
-        self.mode_diario = QRadioButton("Diario (D-2)")
+        self.mode_diario = QRadioButton("Diario (D-1)")
         self.mode_sexta = QRadioButton("Sexta (cadastro sex)")
         self.mode_group = QButtonGroup(self)
         self.mode_group.addButton(self.mode_diario)
@@ -259,7 +259,7 @@ class MainWindow(QMainWindow):
         self.keep_open_check = QCheckBox("Manter navegador aberto")
         self.sync_check = QCheckBox("Enviar Sheets + dashboard apos analisar")
         self.sync_check.setChecked(True)
-        self.auto_check = QCheckBox("Ao abrir: baixar cadastramento D-2")
+        self.auto_check = QCheckBox("Ao abrir: baixar cadastramento D-1")
         self.auto_check.setChecked(bool(getattr(self.settings, "auto_baixar_ao_abrir", True)))
         checks.addWidget(self.keep_open_check)
         checks.addWidget(self.sync_check)
@@ -383,11 +383,11 @@ class MainWindow(QMainWindow):
         if self.thread is not None and self.thread.isRunning():
             return
         if not (self.credentials.user and self.credentials.password):
-            self._log("Auto D-2: configure o login SSW (Ctrl+L).")
+            self._log("Auto D-1: configure o login SSW (Ctrl+L).")
             return
         self._apply_periodo_sugerido()
         self._log(
-            f"Auto ao abrir: cadastramento D-2 → "
+            f"Auto ao abrir: cadastramento D-1 → "
             f"{self.start_edit.text()} a {self.end_edit.text()}"
         )
         self._start_full(automatico=True)
@@ -459,7 +459,7 @@ class MainWindow(QMainWindow):
     def _start_full(self, *, automatico: bool = False) -> None:
         if not (self.credentials.user and self.credentials.password):
             if automatico:
-                self._log("Auto D-2: login SSW ausente.")
+                self._log("Auto D-1: login SSW ausente.")
                 return
             QMessageBox.warning(self, "Login", "Configure o login SSW.")
             self._open_login_dialog()
@@ -471,7 +471,7 @@ class MainWindow(QMainWindow):
             end = normalize_date(self.end_edit.text())
         except ValueError as error:
             if automatico:
-                self._log(f"Auto D-2: data invalida — {error}")
+                self._log(f"Auto D-1: data invalida — {error}")
                 return
             QMessageBox.warning(self, "Data invalida", str(error))
             return

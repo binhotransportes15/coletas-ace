@@ -137,10 +137,13 @@ class AceSswClient:
         context = None
         with sync_playwright() as playwright:
             try:
-                browser = playwright.chromium.launch(
-                    headless=self.headless,
-                    slow_mo=0 if self.headless else 200,
-                )
+                launch_kwargs: dict[str, Any] = {
+                    "headless": self.headless,
+                    "slow_mo": 0,
+                }
+                if self.headless:
+                    launch_kwargs["args"] = ["--disable-dev-shm-usage"]
+                browser = playwright.chromium.launch(**launch_kwargs)
                 context = browser.new_context(accept_downloads=True)
                 page = context.new_page()
                 page.set_default_timeout(30000)
@@ -531,10 +534,13 @@ class AceSswClient:
         context = None
         with sync_playwright() as playwright:
             try:
-                browser = playwright.chromium.launch(
-                    headless=self.headless,
-                    slow_mo=0 if self.headless else 200,
-                )
+                launch_kwargs: dict[str, Any] = {
+                    "headless": self.headless,
+                    "slow_mo": 0,
+                }
+                if self.headless:
+                    launch_kwargs["args"] = ["--disable-dev-shm-usage"]
+                browser = playwright.chromium.launch(**launch_kwargs)
                 context = browser.new_context(accept_downloads=True)
                 page = context.new_page()
                 page.set_default_timeout(30000)

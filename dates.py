@@ -61,15 +61,16 @@ def to_ddmm(value: date) -> str:
     return value.strftime("%d%m")
 
 
-def periodo_analise_diaria(hoje: date | datetime | None = None) -> tuple[str, str]:
+def periodo_50_cadastramento(hoje: date | datetime | None = None) -> tuple[str, str]:
     """
-    Periodo de CADASTRAMENTO para a opcao 50 (campo 'Periodo de cadastramento').
+    Relatorio 50 · Periodo de CADASTRAMENTO.
 
-    Hoje = D → puxa coletas cadastradas em D-2 (performance do dia anterior D-1).
-    Ex.: hoje 30/07 → cadastramento 28/07 (performance de 29/07).
+    Regra ACE (tempo real CMD):
+      - Dias uteis: cadastradas no dia anterior (D-1)
+      - Segunda: conforme sexta → sexta a sabado (cadastros do fim de semana)
 
-    Segunda: cobre sexta→sabado (cadastro sex/sab):
-      ini = sexta (hoje-3), fim = sabado (hoje-2)
+    Ex.: terça 30/07 → 29/07
+         segunda 03/08 → 31/07 a 01/08 (sex–sab)
     """
     today = _as_date(hoje)
     weekday = today.weekday()  # 0=seg ... 6=dom
@@ -77,8 +78,19 @@ def periodo_analise_diaria(hoje: date | datetime | None = None) -> tuple[str, st
         ini = today - timedelta(days=3)  # sexta
         fim = today - timedelta(days=2)  # sabado
     else:
-        ini = fim = today - timedelta(days=2)
+        ini = fim = today - timedelta(days=1)
     return to_ddmm(ini), to_ddmm(fim)
+
+
+def periodo_103_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
+    """Relatorio 103 · sempre a data de inclusao de HOJE."""
+    today = _as_date(hoje)
+    return to_ddmm(today), to_ddmm(today)
+
+
+def periodo_analise_diaria(hoje: date | datetime | None = None) -> tuple[str, str]:
+    """Alias historico → agora D-1 (ver periodo_50_cadastramento)."""
+    return periodo_50_cadastramento(hoje)
 
 
 def periodo_sexta(hoje: date | datetime | None = None) -> tuple[str, str]:
