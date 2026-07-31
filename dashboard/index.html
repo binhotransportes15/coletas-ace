@@ -130,17 +130,22 @@
       border-bottom: 1px dashed #1e293b;
       padding-bottom: 8px;
     }
-    /* Coleta = mesmo layout de quando era tela separada */
     .zone-col {
       display: grid;
-      grid-template-columns: 200px minmax(280px, 1fr) 240px;
+      grid-template-columns: 200px minmax(280px, 1fr) 260px;
       gap: 14px;
       min-height: 0;
       flex: 1;
+      overflow: hidden;
     }
     .col-left, .col-center, .col-right {
       min-height: 0; min-width: 0;
       display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .col-center .torres {
+      overflow: hidden;
+      max-height: 100%;
     }
     .col-label {
       font-size: 10px;
@@ -251,17 +256,17 @@
     .cyl-banners {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      justify-content: space-evenly;
+      gap: 8px;
       min-width: 0;
       min-height: 0;
     }
     .cyl-ban {
       position: relative;
-      flex: 1 1 0;
-      flex-grow: 1;
-      flex-shrink: 1;
-      flex-basis: 0;
-      min-height: 28px;
+      flex: 0 0 auto;
+      width: 100%;
+      min-width: 72px;
+      min-height: clamp(36px, 4.5vh, 52px);
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -270,11 +275,11 @@
       box-shadow: 0 6px 16px rgba(0,0,0,.28);
       border: 1px solid rgba(255,255,255,.08);
       transition:
-        flex-grow .75s cubic-bezier(0.22, 1, 0.36, 1),
-        opacity .45s ease,
-        transform .45s ease;
+        width .75s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity .45s ease;
+      will-change: width;
     }
-    .cyl-ban.is-zero { opacity: 0.35; flex-grow: 0.12 !important; }
+    .cyl-ban.is-zero { opacity: 0.4; }
     .cyl-ban .ban-title {
       font-size: clamp(11px, 1.2vw, 13px);
       font-weight: 800;
@@ -282,12 +287,14 @@
       text-transform: uppercase;
       color: #fff;
       line-height: 1.1;
+      white-space: nowrap;
     }
     .cyl-ban .ban-meta {
       font-size: 12px;
       color: rgba(255,255,255,.88);
       font-variant-numeric: tabular-nums;
       margin-top: 2px;
+      white-space: nowrap;
     }
     .cyl-ban .ban-meta b { font-size: 15px; font-weight: 800; color: #fff; }
     .cyl-ban.b-real {
@@ -303,6 +310,7 @@
     .cyl-ban.b-par .ban-meta,
     .cyl-ban.b-par .ban-meta b { color: #1a1200; }
     #pendenciaStack { min-height: 0; height: 100%; }
+    #prazoStack .pop { margin-bottom: 0; }
 
     .total-hero {
       position: relative;
@@ -635,7 +643,7 @@
       height: 100%;
     }
     body.tv-mode .zone-col {
-      grid-template-columns: minmax(160px, 16vw) 1fr minmax(200px, 22vw);
+      grid-template-columns: minmax(150px, 15vw) 1fr minmax(240px, 26vw);
       gap: clamp(12px, 1.8vmin, 28px);
     }
     body.tv-mode .total-hero {
@@ -645,38 +653,44 @@
     }
     body.tv-mode .total-lbl { font-size: clamp(11px, 1.3vmin, 16px); }
     body.tv-mode .total-num {
-      font-size: clamp(56px, 9vmin, 132px);
+      font-size: clamp(36px, 5.5vmin, 72px);
     }
-    body.tv-mode .total-stats div { font-size: clamp(11px, 1.3vmin, 16px); }
-    body.tv-mode .total-stats b { font-size: clamp(14px, 1.8vmin, 22px); }
-    body.tv-mode .total-mix { height: clamp(6px, 0.8vmin, 10px); margin-top: clamp(12px, 1.5vmin, 18px); }
     body.tv-mode .torres {
-      gap: clamp(14px, 2.2vmin, 36px);
+      gap: clamp(10px, 1.6vmin, 24px);
       padding-bottom: clamp(4px, 0.6vmin, 10px);
+      max-height: 100%;
+      overflow: hidden;
     }
     body.tv-mode .torre {
-      width: clamp(100px, 14vmin, 240px);
+      width: clamp(88px, 11vmin, 180px);
     }
     body.tv-mode .torre .pin {
-      width: clamp(34px, 4.2vmin, 56px);
-      height: clamp(34px, 4.2vmin, 56px);
-      margin-bottom: clamp(10px, 1.4vmin, 18px);
+      width: clamp(28px, 3.4vmin, 44px);
+      height: clamp(28px, 3.4vmin, 44px);
+      margin-bottom: clamp(6px, 1vmin, 12px);
     }
-    body.tv-mode .torre .pin span { font-size: clamp(14px, 1.8vmin, 22px); }
-    body.tv-mode .torre .pin span.pin-lg { font-size: clamp(11px, 1.4vmin, 16px); }
+    body.tv-mode .torre .pin span { font-size: clamp(12px, 1.5vmin, 18px); }
+    body.tv-mode .torre .pin span.pin-lg { font-size: clamp(10px, 1.2vmin, 14px); }
     body.tv-mode .torre .barra {
-      min-height: clamp(64px, 8vmin, 120px);
+      min-height: clamp(36px, 4.5vmin, 64px);
+      max-height: 28vh;
       border-radius: clamp(8px, 1vmin, 14px) clamp(8px, 1vmin, 14px) 0 0;
     }
     body.tv-mode .torre .barra strong {
-      font-size: clamp(28px, 4.2vmin, 64px);
+      font-size: clamp(18px, 2.8vmin, 40px);
     }
     body.tv-mode .torre .base {
-      padding: clamp(10px, 1.2vmin, 16px) 6px;
+      padding: clamp(8px, 1vmin, 12px) 6px;
       border-radius: 0 0 clamp(8px, 1vmin, 14px) clamp(8px, 1vmin, 14px);
     }
     body.tv-mode .torre .base .lbl {
-      font-size: clamp(12px, 1.5vmin, 20px);
+      font-size: clamp(11px, 1.3vmin, 16px);
+    }
+    body.tv-mode .col-right {
+      min-width: 0;
+    }
+    body.tv-mode #prazoStack .pop {
+      font-size: clamp(12px, 1.4vmin, 16px);
     }
     body.tv-mode .pop {
       padding: clamp(10px, 1.2vmin, 16px) clamp(12px, 1.4vmin, 18px);
@@ -772,15 +786,15 @@
                     <div class="cyl-seg c-par" id="cylSegPar" style="flex-grow:1"></div>
                   </div>
                   <div class="cyl-banners">
-                    <div class="cyl-ban b-real" id="cylBanReal" style="flex-grow:1">
+                    <div class="cyl-ban b-real" id="cylBanReal" style="width:100%">
                       <div class="ban-title">Realizada</div>
                       <div class="ban-meta"><b id="entNReal">0</b> · <span id="entPReal">0%</span></div>
                     </div>
-                    <div class="cyl-ban b-rota" id="cylBanRota" style="flex-grow:1">
+                    <div class="cyl-ban b-rota" id="cylBanRota" style="width:100%">
                       <div class="ban-title">Em rota</div>
                       <div class="ban-meta"><b id="entNRota">0</b> · <span id="entPRota">0%</span></div>
                     </div>
-                    <div class="cyl-ban b-par" id="cylBanPar" style="flex-grow:1">
+                    <div class="cyl-ban b-par" id="cylBanPar" style="width:100%">
                       <div class="ban-title">Pendência</div>
                       <div class="ban-meta"><b id="entNPar">0</b> · <span id="entPPar">0%</span></div>
                     </div>
@@ -1018,17 +1032,19 @@
       }
       items.forEach(({ seg, ban, n, p, val }) => {
         const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-        // Cresce/diminui junto com o percentual (minimo visual quando zero)
         const grow = total > 0 ? Math.max(val, 0) : 1;
         const isZero = total > 0 && val <= 0;
         const segEl = document.getElementById(seg);
         const banEl = document.getElementById(ban);
+        // Cilindro: altura proporcional
         if (segEl) {
           segEl.style.flexGrow = String(isZero ? 0.08 : Math.max(grow, 0.35));
           segEl.classList.toggle('is-zero', isZero);
         }
+        // Faixas: largura anda com o % (horizontal)
         if (banEl) {
-          banEl.style.flexGrow = String(isZero ? 0.12 : Math.max(grow, 0.35));
+          const w = total <= 0 ? 100 : (isZero ? 10 : Math.max(pct, 12));
+          banEl.style.width = w + '%';
           banEl.classList.toggle('is-zero', isZero);
         }
         const nEl = document.getElementById(n);
@@ -1101,10 +1117,21 @@
     function alturaTorre(valor, max) {
       const vh = window.innerHeight || 800;
       const tv = document.body.classList.contains('tv-mode');
-      const minH = Math.round(vh * (tv ? 0.10 : 0.07));
-      const maxH = Math.round(vh * (tv ? 0.52 : 0.28));
+      // Layout empilhado: coleta usa ~55% da tela — limita altura para nao invadir Entrega
+      const minH = Math.round(vh * (tv ? 0.035 : 0.045));
+      const maxH = Math.round(vh * (tv ? 0.20 : 0.16));
       if (!max || max <= 0) return minH;
       return Math.round(minH + (valor / max) * (maxH - minH));
+    }
+
+    function prazoVisivel() {
+      const tv = document.body.classList.contains('tv-mode');
+      const stack = document.getElementById('prazoStack');
+      if (!stack) return tv ? 7 : PRAZO_VISIBLE;
+      const h = stack.clientHeight || 0;
+      // ~62px por card + gap — preenche a coluna
+      const bySpace = Math.max(3, Math.floor(h / (tv ? 70 : 64)));
+      return Math.min(bySpace, tv ? 9 : 6);
     }
 
     function countByStatus(rows) {
@@ -1450,7 +1477,8 @@
         return;
       }
       const visible = [];
-      const n = Math.min(PRAZO_VISIBLE, URGENTES.length);
+      const nVis = prazoVisivel();
+      const n = Math.min(nVis, URGENTES.length);
       for (let i = 0; i < n; i++) visible.push(URGENTES[(prazoCursor + i) % URGENTES.length]);
       Array.from(stack.querySelectorAll('.pop')).forEach(el => {
         el.classList.remove('show'); el.classList.add('leaving');
@@ -1528,7 +1556,8 @@
       }, PLACA_TICK_MS);
       prazoTimer = setInterval(() => {
         if (!URGENTES.length) return;
-        if (URGENTES.length > PRAZO_VISIBLE) prazoCursor = (prazoCursor + 1) % URGENTES.length;
+        const nVis = prazoVisivel();
+        if (URGENTES.length > nVis) prazoCursor = (prazoCursor + 1) % URGENTES.length;
         renderPrazoPops();
       }, PRAZO_TICK_MS);
       pendTimer = setInterval(() => {
