@@ -59,10 +59,11 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
 
 
 def ensure_dashboard_files() -> None:
-    """Garante HTML/JS do dashboard e CSVs locais."""
+    """Garante HTML/JS do dashboard e CSVs locais (nao sobrescreve index real)."""
     DASHBOARD_DIR.mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data").mkdir(parents=True, exist_ok=True)
     index = DASHBOARD_DIR / "index.html"
+    # Nunca sobrescrever o dashboard BINHO com o HTML legado embutido.
     if not index.exists():
         index.write_text(_DASHBOARD_HTML, encoding="utf-8")
     _copy_cache_to_dashboard()
