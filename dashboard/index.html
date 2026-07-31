@@ -114,7 +114,7 @@
     }
     .arena-body {
       display: grid;
-      grid-template-rows: auto minmax(140px, 36fr) minmax(240px, 64fr);
+      grid-template-rows: auto minmax(210px, 38fr) minmax(220px, 62fr);
       grid-template-columns: 1fr;
       gap: 10px;
       min-height: 0;
@@ -274,6 +274,10 @@
     }
 
     /* ===== ENTREGA ===== */
+    .zone-ent {
+      min-height: 0;
+      overflow: hidden;
+    }
     .ent-panel {
       display: grid;
       grid-template-columns: minmax(280px, 1.4fr) minmax(210px, 0.9fr);
@@ -281,6 +285,7 @@
       min-height: 0;
       flex: 1;
       align-items: stretch;
+      overflow: hidden;
     }
     .ent-main {
       display: flex;
@@ -288,6 +293,8 @@
       gap: 0;
       min-height: 0;
       min-width: 0;
+      height: 100%;
+      overflow: hidden;
     }
     .cyl-wrap {
       display: grid;
@@ -296,6 +303,8 @@
       align-items: stretch;
       flex: 1 1 auto;
       min-height: 0;
+      height: 100%;
+      overflow: hidden;
     }
     .cyl {
       position: relative;
@@ -344,23 +353,26 @@
     .cyl-banners {
       display: flex;
       flex-direction: column;
-      justify-content: space-evenly;
-      gap: 8px;
+      justify-content: stretch;
+      gap: clamp(4px, 0.8vh, 8px);
       min-width: 0;
       min-height: 0;
+      height: 100%;
+      overflow: hidden;
     }
     .cyl-ban {
       position: relative;
-      flex: 0 0 auto;
+      flex: 1 1 0;
       width: 100%;
-      min-width: 120px;
-      min-height: clamp(44px, 5.5vh, 60px);
+      min-width: 0;
+      min-height: 0;
+      max-height: 72px;
       display: flex;
       flex-direction: row;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      padding: 6px 40px 6px 12px;
+      gap: 8px;
+      padding: 4px 36px 4px 10px;
       clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%);
       box-shadow: 0 6px 16px rgba(0,0,0,.28);
       border: 1px solid rgba(255,255,255,.08);
@@ -368,6 +380,7 @@
         width .75s cubic-bezier(0.22, 1, 0.36, 1),
         opacity .45s ease;
       will-change: width;
+      box-sizing: border-box;
     }
     .cyl-ban.is-zero { opacity: 0.4; }
     .cyl-ban .ban-left {
@@ -397,14 +410,14 @@
       flex-shrink: 0;
       margin-left: auto;
       margin-right: 2px;
-      font-size: clamp(22px, 2.8vw, 34px);
+      font-size: clamp(18px, 2.4vw, 32px);
       font-weight: 900;
       font-variant-numeric: tabular-nums;
       letter-spacing: -0.03em;
       color: #fff;
       text-shadow: 0 2px 10px rgba(0,0,0,.45);
       line-height: 1;
-      padding: 2px 0;
+      padding: 0;
     }
     .cyl-ban.b-real {
       background: linear-gradient(90deg, var(--col-dark), var(--col));
@@ -730,10 +743,13 @@
       height: 100%;
     }
     body.tv-mode .arena-body {
-      grid-template-rows: auto minmax(140px, 34fr) minmax(260px, 66fr);
+      grid-template-rows: auto minmax(220px, 36fr) minmax(240px, 64fr);
       grid-template-columns: 1fr;
       gap: clamp(8px, 1.2vmin, 14px);
       height: 100%;
+    }
+    body.tv-mode .cyl-ban {
+      max-height: clamp(48px, 7vmin, 78px);
     }
     body.tv-mode .resumo-total strong {
       font-size: clamp(44px, 5.5vmin, 72px);
@@ -849,7 +865,7 @@
     @media (orientation: portrait) {
       body.tv-mode .arena-body {
         grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(120px, 32fr) minmax(240px, 68fr);
+        grid-template-rows: auto minmax(200px, 34fr) minmax(240px, 66fr);
       }
       body.tv-mode .zone-col-body { grid-template-columns: 1fr; }
       body.tv-mode .ent-panel { grid-template-columns: 1fr; }
