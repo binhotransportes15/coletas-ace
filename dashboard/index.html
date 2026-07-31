@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BINHO · COLETA</title>
+  <title>BINHO · OPERAÇÃO</title>
   <script src="config.js"></script>
   <style>
     :root {
@@ -114,8 +114,8 @@
     }
     .arena-body {
       display: grid;
-      grid-template-columns: 220px 1fr 260px;
-      gap: 16px;
+      grid-template-columns: 200px minmax(280px, 1fr) 340px;
+      gap: 14px;
       min-height: 0;
       height: 100%;
     }
@@ -123,6 +123,145 @@
       min-height: 0; min-width: 0;
       display: flex; flex-direction: column;
     }
+    .col-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #67e8f9;
+      margin: 0 0 8px;
+      flex-shrink: 0;
+    }
+    .col-right .col-label { color: #fbb03b; }
+    .col-left .pop-stack { flex: 1.1; }
+    .col-left #prazoStack {
+      flex: 0.9;
+      margin-top: 8px;
+      border-top: 1px dashed #1e293b;
+      padding-top: 8px;
+    }
+
+    /* ===== Cilindro ENTREGA ===== */
+    .ent-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+      height: 100%;
+    }
+    .ent-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .ent-head .lbl {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #fbb03b;
+    }
+    .ent-head .num {
+      font-size: clamp(28px, 3.5vw, 40px);
+      font-weight: 200;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: #fff;
+    }
+    .cyl-wrap {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 10px;
+      align-items: stretch;
+      flex: 0 0 auto;
+      min-height: 168px;
+      max-height: 42vh;
+    }
+    .cyl {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow:
+        inset 8px 0 14px rgba(255,255,255,.18),
+        inset -10px 0 18px rgba(0,0,0,.45),
+        0 10px 24px rgba(0,0,0,.4);
+      background: #0b1220;
+      border: 1px solid #243044;
+    }
+    .cyl::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 38%;
+      background: linear-gradient(90deg, rgba(255,255,255,.22), transparent);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .cyl-seg {
+      flex: 1 1 0;
+      min-height: 18px;
+      transition: flex-grow .45s ease;
+      position: relative;
+    }
+    .cyl-seg.c-real {
+      background: linear-gradient(180deg, #a3e048, var(--col) 40%, var(--col-dark));
+    }
+    .cyl-seg.c-rota {
+      background: linear-gradient(180deg, #5ec8f0, var(--com) 45%, var(--com-dark));
+    }
+    .cyl-seg.c-par {
+      background: linear-gradient(180deg, #fff566, var(--cad) 40%, var(--cad-dark));
+    }
+    .cyl-banners {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+    .cyl-ban {
+      position: relative;
+      flex: 1 1 0;
+      min-height: 44px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 8px 28px 8px 12px;
+      clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
+      box-shadow: 0 6px 16px rgba(0,0,0,.28);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .cyl-ban .ban-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #fff;
+      line-height: 1.1;
+    }
+    .cyl-ban .ban-meta {
+      font-size: 12px;
+      color: rgba(255,255,255,.88);
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+    }
+    .cyl-ban .ban-meta b { font-size: 15px; font-weight: 800; color: #fff; }
+    .cyl-ban.b-real {
+      background: linear-gradient(90deg, var(--col-dark), var(--col));
+    }
+    .cyl-ban.b-rota {
+      background: linear-gradient(90deg, var(--com-dark), var(--com));
+    }
+    .cyl-ban.b-par {
+      background: linear-gradient(90deg, var(--cad-dark), var(--cad));
+    }
+    .cyl-ban.b-par .ban-title,
+    .cyl-ban.b-par .ban-meta,
+    .cyl-ban.b-par .ban-meta b { color: #1a1200; }
+    #pendenciaStack { flex: 1; min-height: 0; }
 
     .total-hero {
       position: relative;
@@ -442,7 +581,7 @@
       height: 100%;
     }
     body.tv-mode .arena-body {
-      grid-template-columns: minmax(160px, 18vw) 1fr minmax(200px, 24vw);
+      grid-template-columns: minmax(160px, 16vw) 1fr minmax(260px, 28vw);
       gap: clamp(12px, 1.8vmin, 28px);
       height: 100%;
     }
@@ -547,11 +686,9 @@
     <header class="topbar">
       <div class="brand">
         <img src="logo-binho.png" alt="BINHO Transportes" />
-        <div class="title">COLETA</div>
+        <div class="title">OPERAÇÃO</div>
       </div>
       <nav class="nav">
-        <a class="nav-btn active" href="index.html" style="text-decoration:none;">Coleta</a>
-        <a class="nav-btn" href="entregas.html" style="text-decoration:none;">Entrega</a>
         <button type="button" class="nav-btn active" data-view="live">Ao vivo</button>
         <button type="button" class="nav-btn" data-view="gestao">Gestão</button>
         <button type="button" class="nav-btn tv-btn" id="btnTv" title="Modo TV / tela inteira (F)">TV</button>
@@ -563,11 +700,12 @@
       </div>
     </header>
 
-    <!-- AO VIVO -->
+    <!-- AO VIVO: Coleta (esq/centro) + Entrega (dir) -->
     <div class="view active" id="viewLive">
       <section class="arena">
         <div class="arena-body">
           <div class="col-left">
+            <div class="col-label">Coleta</div>
             <div class="total-hero">
               <span class="total-lbl">Total</span>
               <strong class="total-num" id="totalColetas">0</strong>
@@ -586,8 +724,10 @@
               <div class="total-sub" id="totalSub" hidden></div>
             </div>
             <div class="pop-stack" id="placaStack"></div>
+            <div class="pop-stack" id="prazoStack"></div>
           </div>
           <div class="col-center">
+            <div class="col-label">Coleta · situações</div>
             <div class="torres">
               <div class="torre t-col">
                 <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
@@ -612,7 +752,34 @@
             </div>
           </div>
           <div class="col-right">
-            <div class="pop-stack" id="prazoStack"></div>
+            <div class="ent-panel">
+              <div class="ent-head">
+                <span class="lbl">Entrega</span>
+                <strong class="num" id="entTotal">0</strong>
+              </div>
+              <div class="cyl-wrap" aria-label="Resumo de entregas">
+                <div class="cyl">
+                  <div class="cyl-seg c-real" id="cylSegReal" style="flex:1"></div>
+                  <div class="cyl-seg c-rota" id="cylSegRota" style="flex:1"></div>
+                  <div class="cyl-seg c-par" id="cylSegPar" style="flex:1"></div>
+                </div>
+                <div class="cyl-banners">
+                  <div class="cyl-ban b-real">
+                    <div class="ban-title">Realizada</div>
+                    <div class="ban-meta"><b id="entNReal">0</b> · <span id="entPReal">0%</span></div>
+                  </div>
+                  <div class="cyl-ban b-rota">
+                    <div class="ban-title">Em rota</div>
+                    <div class="ban-meta"><b id="entNRota">0</b> · <span id="entPRota">0%</span></div>
+                  </div>
+                  <div class="cyl-ban b-par">
+                    <div class="ban-title">Pendência</div>
+                    <div class="ban-meta"><b id="entNPar">0</b> · <span id="entPPar">0%</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="pop-stack" id="pendenciaStack"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -621,12 +788,13 @@
     <!-- GESTÃO -->
     <div class="view" id="viewGestao">
       <section class="panel">
-        <h2>Gestão de coletas</h2>
+        <h2>Gestão</h2>
         <div class="toolbar" id="tabsRelatorio">
-          <button type="button" class="chip" data-rel="103">103 · Tempo real</button>
-          <button type="button" class="chip active" data-rel="50">50 · Situações / histórico</button>
+          <button type="button" class="chip" data-rel="103">103 · Coleta live</button>
+          <button type="button" class="chip active" data-rel="50">50 · Situações</button>
+          <button type="button" class="chip" data-rel="36">36 · Entregas</button>
           <div class="search">
-            <input id="buscaColeta" type="search" placeholder="Buscar nº coleta (ex: 071655 ou SPO071655)" />
+            <input id="buscaColeta" type="search" placeholder="Buscar coleta / romaneio / placa / CTRC" />
             <button type="button" class="btn" id="btnBuscar">Buscar</button>
             <button type="button" class="btn" id="btnLimparBusca" style="background:#1e293b;border-color:#334155;">Limpar</button>
           </div>
@@ -641,7 +809,7 @@
       </section>
     </div>
 
-    <p class="status-line" id="statusLine">BINHO · COLETA</p>
+    <p class="status-line" id="statusLine">BINHO · OPERAÇÃO</p>
   </div>
 
   <div class="modal-backdrop" id="modalHist" role="dialog" aria-modal="true">
@@ -670,23 +838,33 @@
     let wakeLock = null;
     let tvIdleTimer = null;
     let lastCounts = null;
+    let lastCountsEnt = null;
     let FILTRO = 'TODAS';
     let BUSCA = '';
     let COLETAS = [];      // ao vivo (torres) — somente 103
     let COLETAS_50 = [];   // gestao / historico
     let COLETAS_103 = [];
+    let ENTREGAS_36 = [];  // CTRCs ativos 36
+    let ENTREGAS_ALL = []; // todos CTRCs 36 (modal)
+    let ROMANEIOS_36 = [];
     let refreshSeq = 0;
     let lastGood103 = [];
+    let lastGood36 = [];
     let PLACAS = [];
     let URGENTES = [];
+    let PENDENCIAS_36 = [];
     let placaCursor = 0;
     let prazoCursor = 0;
+    let pendCursor = 0;
     let placaTimer = null;
     let prazoTimer = null;
+    let pendTimer = null;
     /** @type {Map<string, number>} feitas no ciclo anterior */
     let placaPrevFeitas = new Map();
     /** @type {Map<string, number>} timestamp ate quando a placa fica "quente" */
     let placaHotUntil = new Map();
+    const PEND_VISIBLE = 4;
+    const PEND_TICK_MS = 3200;
 
     function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -721,10 +899,11 @@
         .toUpperCase().replace(/\s+/g, '').trim();
     }
 
-    function uniqueRows(rows) {
+    function uniqueRows(rows, keyFn) {
       const map = new Map();
+      const getKey = keyFn || ((r) => coletaKey(r));
       (rows || []).forEach(r => {
-        const key = coletaKey(r);
+        const key = getKey(r);
         if (!key) return;
         if (!map.has(key)) map.set(key, r);
       });
@@ -740,6 +919,50 @@
       if (s.includes('COMAND') || s.includes('ROTA')) return 'em_rota';
       if (s.includes('CADASTR') || s.includes('PARADO')) return 'parado';
       return 'outro';
+    }
+
+    function statusAce36(c) {
+      const raw = String(c.status_ace || '').toLowerCase().trim();
+      if (raw === 'realizada') return 'realizada';
+      if (raw === 'em_rota') return 'em_rota';
+      if (raw === 'pendencia') return 'parado';
+      if (raw === 'excluido') return 'cancelada';
+      return 'outro';
+    }
+
+    function countByStatus36(rows) {
+      const out = { total: 0, parado: 0, em_rota: 0, realizada: 0, cancelada: 0, outro: 0 };
+      rows.forEach(c => {
+        const s = statusAce36(c);
+        out.total += 1;
+        if (out[s] != null) out[s] += 1;
+        else out.outro += 1;
+      });
+      return out;
+    }
+
+    function renderCilindroEntrega(counts) {
+      const total = Math.max(0, Number(counts.total) || 0);
+      const items = [
+        { seg: 'cylSegReal', n: 'entNReal', p: 'entPReal', val: counts.realizada || 0 },
+        { seg: 'cylSegRota', n: 'entNRota', p: 'entPRota', val: counts.em_rota || 0 },
+        { seg: 'cylSegPar', n: 'entNPar', p: 'entPPar', val: counts.parado || 0 },
+      ];
+      const entTotal = document.getElementById('entTotal');
+      if (entTotal) entTotal.textContent = String(total);
+      items.forEach(({ seg, n, p, val }) => {
+        const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+        const segEl = document.getElementById(seg);
+        if (segEl) {
+          segEl.style.flex = String(Math.max(val, total > 0 ? 0.15 : 1));
+          segEl.style.display = total > 0 && val <= 0 ? 'none' : 'block';
+        }
+        const nEl = document.getElementById(n);
+        const pEl = document.getElementById(p);
+        if (nEl) nEl.textContent = String(val);
+        if (pEl) pEl.textContent = pct + '%';
+      });
+      lastCountsEnt = counts;
     }
 
     function situacaoNorm50(c) {
@@ -1061,6 +1284,23 @@
       return out;
     }
 
+    function buildPendencias36() {
+      const out = [];
+      ENTREGAS_36.forEach(c => {
+        if (statusAce36(c) !== 'parado') return;
+        const hora = String(c.hora_ocorrencia || '').trim()
+          || (String(c.data_ocorrencia || '').match(/(\d{1,2}:\d{2})/) || [])[1]
+          || '--:--';
+        out.push({
+          label: c.ctrc_id || c.romaneio || '',
+          hora,
+          veiculo: parsePlaca(c.placa || ''),
+        });
+      });
+      out.sort((a, b) => String(b.hora).localeCompare(String(a.hora)));
+      return out.slice(0, 40);
+    }
+
     function animateDonut(el, targetPct) {
       const arc = el.querySelector('.arc');
       const label = el.querySelector('.pct');
@@ -1127,6 +1367,7 @@
 
     function renderPrazoPops() {
       const stack = document.getElementById('prazoStack');
+      if (!stack) return;
       if (!URGENTES.length) {
         stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Nada perto do limite</div></div>';
         return;
@@ -1139,6 +1380,7 @@
         setTimeout(() => el.remove(), 480);
       });
       setTimeout(() => {
+        if (!document.getElementById('prazoStack')) return;
         const nodes = visible.map(r => {
           const atrasada = r.mins < 0;
           const el = document.createElement('div');
@@ -1159,11 +1401,47 @@
       }, 120);
     }
 
+    function renderPendenciaPops() {
+      const stack = document.getElementById('pendenciaStack');
+      if (!stack) return;
+      if (!PENDENCIAS_36.length) {
+        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem pendências</div></div>';
+        return;
+      }
+      const visible = [];
+      const n = Math.min(PEND_VISIBLE, PENDENCIAS_36.length);
+      for (let i = 0; i < n; i++) visible.push(PENDENCIAS_36[(pendCursor + i) % PENDENCIAS_36.length]);
+      Array.from(stack.querySelectorAll('.pop')).forEach(el => {
+        el.classList.remove('show'); el.classList.add('leaving');
+        setTimeout(() => { try { el.remove(); } catch (_) {} }, 480);
+      });
+      setTimeout(() => {
+        if (!document.getElementById('pendenciaStack')) return;
+        const nodes = visible.map(r => {
+          const el = document.createElement('div');
+          el.className = 'pop pop-prazo warn';
+          el.innerHTML = `
+            <div class="hora">${esc(r.hora || '--:--')}</div>
+            <div>
+              <div class="name">${esc(r.label)}</div>
+              <div class="meta">${r.veiculo ? esc(r.veiculo) : ''}</div>
+            </div>
+            <div class="tag">PENDÊNCIA</div>`;
+          stack.appendChild(el);
+          requestAnimationFrame(() => el.classList.add('show'));
+          return el;
+        });
+        layoutPops(stack, nodes);
+      }, 120);
+    }
+
     function startPopLoops() {
       if (placaTimer) clearInterval(placaTimer);
       if (prazoTimer) clearInterval(prazoTimer);
+      if (pendTimer) clearInterval(pendTimer);
       renderPlacaPops();
       renderPrazoPops();
+      renderPendenciaPops();
       placaTimer = setInterval(() => {
         const comBaixa = PLACAS.filter(p => p.feitas > 0);
         const base = comBaixa.length || PLACAS.length;
@@ -1176,6 +1454,11 @@
         if (URGENTES.length > PRAZO_VISIBLE) prazoCursor = (prazoCursor + 1) % URGENTES.length;
         renderPrazoPops();
       }, PRAZO_TICK_MS);
+      pendTimer = setInterval(() => {
+        if (!PENDENCIAS_36.length) return;
+        if (PENDENCIAS_36.length > PEND_VISIBLE) pendCursor = (pendCursor + 1) % PENDENCIAS_36.length;
+        renderPendenciaPops();
+      }, PEND_TICK_MS);
     }
 
     /* ===== GESTÃO ===== */
@@ -1186,6 +1469,12 @@
     function matchBusca(c) {
       if (!BUSCA) return true;
       const q = BUSCA.toUpperCase().replace(/\s+/g, '');
+      if (REL === '36') {
+        const blob = [
+          c.romaneio, c.placa, c.motorista, c.ctrc_id, c.destinatario, c.ocorrencia,
+        ].join(' ').toUpperCase().replace(/\s+/g, '');
+        return blob.includes(q);
+      }
       const id = coletaKey(c);
       const num = String(c.numero || '').replace(/\D/g, '');
       const qNum = q.replace(/\D/g, '');
@@ -1202,7 +1491,11 @@
         ['TODAS', 'Todas'], ['COLETADA', 'Coletada'], ['COMANDADA', 'Comandada'],
         ['CADASTRADA', 'Cadastrada'], ['CANCELADA', 'Cancelada'],
       ];
-      const opts = REL === '50' ? opts50 : opts103;
+      const opts36 = [
+        ['TODAS', 'Todas'], ['realizada', 'Realizada'], ['em_rota', 'Em rota'],
+        ['parado', 'Pendência'],
+      ];
+      const opts = REL === '50' ? opts50 : (REL === '36' ? opts36 : opts103);
       if (!opts.some(([k]) => k === FILTRO)) FILTRO = 'TODAS';
       box.innerHTML = opts.map(([k, lbl]) =>
         `<button type="button" class="chip${FILTRO === k ? ' active' : ''}" data-filtro="${k}">${lbl}</button>`
@@ -1219,6 +1512,34 @@
     function renderTabelaGestao() {
       const thead = document.getElementById('theadGestao');
       const tbody = document.getElementById('tbodyGestao');
+      if (REL === '36') {
+        thead.innerHTML = `<tr>
+          <th>Romaneio</th><th>Placa</th><th>Motorista</th>
+          <th>Total</th><th>Realizada</th><th>Em rota</th><th>Pendência</th><th>%</th><th></th></tr>`;
+        let rows = ROMANEIOS_36.filter(matchBusca);
+        if (FILTRO === 'realizada') rows = rows.filter(r => Number(r.realizada) > 0);
+        if (FILTRO === 'em_rota') rows = rows.filter(r => Number(r.em_rota) > 0);
+        if (FILTRO === 'parado') rows = rows.filter(r => Number(r.pendencia) > 0);
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="9" class="muted">Nenhum romaneio 36.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(r => `<tr>
+          <td>${esc(r.romaneio || '')}</td>
+          <td>${esc(r.placa || '')}</td>
+          <td>${esc(r.motorista || '')}</td>
+          <td>${esc(r.total || '0')}</td>
+          <td class="sit sit-realizada">${esc(r.realizada || '0')}</td>
+          <td class="sit sit-em_rota">${esc(r.em_rota || '0')}</td>
+          <td class="sit sit-parado">${esc(r.pendencia || '0')}</td>
+          <td>${esc(r.pct || '0')}%</td>
+          <td><button type="button" class="btn" data-rom="${esc(r.romaneio || '')}">CTRCs</button></td>
+        </tr>`).join('');
+        tbody.querySelectorAll('[data-rom]').forEach(btn => {
+          btn.addEventListener('click', () => abrirCtrcsRomaneio(btn.getAttribute('data-rom')));
+        });
+        return;
+      }
       if (REL === '50') {
         thead.innerHTML = `<tr>
           <th>Coleta</th><th>Situação atual</th><th>Quando</th>
@@ -1275,6 +1596,35 @@
           </tr>`;
         }).join('');
       }
+    }
+
+    function abrirCtrcsRomaneio(romaneio) {
+      const modal = document.getElementById('modalHist');
+      const titulo = document.getElementById('histTitulo');
+      const sub = document.getElementById('histSub');
+      const lista = document.getElementById('histLista');
+      const rows = ENTREGAS_ALL.filter(c =>
+        String(c.romaneio || '').toUpperCase() === String(romaneio || '').toUpperCase()
+      );
+      titulo.textContent = `CTRCs · ${romaneio}`;
+      sub.textContent = `${rows.length} CTRC(s)`;
+      if (!rows.length) {
+        lista.innerHTML = '<p class="muted">Sem CTRCs neste romaneio.</p>';
+      } else {
+        lista.innerHTML = `<table><thead><tr>
+          <th>CTRC</th><th>Status</th><th>Destinatário</th><th>Ocorrência</th><th>Hora</th>
+        </tr></thead><tbody>${rows.map(c => {
+          const st = statusAce36(c);
+          return `<tr>
+            <td>${esc(c.ctrc_id || '')}</td>
+            <td class="sit sit-${esc(st)}">${esc(labelStatus103(st === 'parado' ? 'parado' : st).replace('Parado', 'Pendência'))}</td>
+            <td>${esc(c.destinatario || '')}</td>
+            <td>${esc(c.ocorrencia || '—')}</td>
+            <td>${esc(c.hora_ocorrencia || '')}</td>
+          </tr>`;
+        }).join('')}</tbody></table>`;
+      }
+      modal.classList.add('open');
     }
 
     function histSortKey(data, hora) {
@@ -1361,7 +1711,7 @@
     }
 
     function setRel(rel) {
-      REL = rel === '50' ? '50' : '103';
+      REL = rel === '50' ? '50' : (rel === '36' ? '36' : '103');
       FILTRO = 'TODAS';
       document.querySelectorAll('#tabsRelatorio [data-rel]').forEach(b => {
         b.classList.toggle('active', b.getAttribute('data-rel') === REL);
@@ -1374,22 +1724,21 @@
       const status = document.getElementById('statusLine');
       const seq = ++refreshSeq;
       try {
-        const [r103, r50] = await Promise.all([
+        const [r103, r50, r36, rRom] = await Promise.all([
           chamarPlanilha('coletas103').catch(() => null),
           chamarPlanilha('coletas').catch(() => ({ rows: [] })),
+          chamarPlanilha('entregas36').catch(() => null),
+          chamarPlanilha('romaneios36').catch(() => ({ rows: [] })),
         ]);
-        // Resposta antiga nao sobrescreve a mais nova
         if (seq !== refreshSeq) return;
 
         COLETAS_50 = uniqueRows((r50 && r50.rows) || []);
 
         const incoming103 = uniqueRows((r103 && r103.rows) || []);
-        // Durante o sync a aba pode vir vazia/parcial — mantem o ultimo 103 bom.
         if (incoming103.length > 0) {
           const prev = lastGood103.length;
           const dropBrusca = prev > 0 && incoming103.length < Math.max(3, Math.floor(prev * 0.5));
           if (dropBrusca) {
-            // queda brusca: provavelmente sync no meio; ignora 1 ciclo
             COLETAS_103 = lastGood103.slice();
           } else {
             lastGood103 = incoming103.slice();
@@ -1401,28 +1750,52 @@
           COLETAS_103 = [];
         }
 
-        // Torres ao vivo = somente 103 (nunca usa o 50 aqui)
         COLETAS = COLETAS_103.slice();
+
+        const incoming36 = uniqueRows((r36 && r36.rows) || [], (r) =>
+          String(r.ctrc_id || `${r.romaneio || ''}|${r.destinatario || ''}`).toUpperCase()
+        );
+        if (incoming36.length > 0) {
+          const prev = lastGood36.length;
+          const dropBrusca = prev > 0 && incoming36.length < Math.max(3, Math.floor(prev * 0.5));
+          if (dropBrusca) {
+            ENTREGAS_ALL = lastGood36.slice();
+          } else {
+            lastGood36 = incoming36.slice();
+            ENTREGAS_ALL = incoming36;
+          }
+        } else if (lastGood36.length) {
+          ENTREGAS_ALL = lastGood36.slice();
+        } else {
+          ENTREGAS_ALL = [];
+        }
+        ENTREGAS_36 = ENTREGAS_ALL.filter(c =>
+          String(c.excluido || '') !== '1' && statusAce36(c) !== 'cancelada'
+        );
+        ROMANEIOS_36 = (rRom && rRom.rows) || [];
 
         const counts = countByStatus(COLETAS);
         renderTorres(counts);
+        renderCilindroEntrega(countByStatus36(ENTREGAS_36));
         PLACAS = buildPlacas();
         URGENTES = buildUrgentes();
-        // Nao zera o cursor a cada refresh — evita "pulo" / sensacao de pagina cair
+        PENDENCIAS_36 = buildPendencias36();
         if (placaCursor >= PLACAS.length) placaCursor = 0;
         if (prazoCursor >= URGENTES.length) prazoCursor = 0;
-        if (!placaTimer || !prazoTimer) {
+        if (pendCursor >= PENDENCIAS_36.length) pendCursor = 0;
+        if (!placaTimer || !prazoTimer || !pendTimer) {
           startPopLoops();
         } else {
           renderPlacaPops();
           renderPrazoPops();
+          renderPendenciaPops();
         }
         if (VIEW === 'gestao') {
           renderFiltrosGestao();
           renderTabelaGestao();
         }
         status.textContent =
-          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · torres(103): ${COLETAS.length} · gestao(50): ${COLETAS_50.length}`;
+          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · coleta(103): ${COLETAS.length} · entrega(36): ${ENTREGAS_36.length}`;
       } catch (err) {
         if (seq !== refreshSeq) return;
         status.textContent = err.message;
@@ -1499,9 +1872,9 @@
     if (hash === 'tv' || hash === 'fullscreen' || hash === 'tela') {
       setView('live');
       setTvMode(true, { syncHash: false });
-    } else if (hash === 'gestao' || hash === '50' || hash === '103') {
+    } else if (hash === 'gestao' || hash === '50' || hash === '103' || hash === '36') {
       setView('gestao');
-      if (hash === '50' || hash === '103') setRel(hash);
+      if (hash === '50' || hash === '103' || hash === '36') setRel(hash);
     }
 
     tickClock();

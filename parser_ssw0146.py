@@ -19,8 +19,8 @@ LAST_36_JSON = CACHE_DIR / "last_run_36.json"
 
 # Indices 0-based no CSV com coluna tipo na posicao 0 (= Excel A)
 # B=1 ROMANEIO, E=4 SITUACAO, F=5 PLACA, H=7 MOTORISTA, M=12 CTRC,
-# P=15 DESTINATARIO, Z=25 DESC OCORR ROM, AA=26 DATA OCORR ROM,
-# AD=29 DESC OCORR CTRC, AE=30 DATA OCORR CTRC
+# P=15 DESTINATARIO, Z=25 DESC OCORR ROM, AA=26 DATA OCORR ROM, AB=27 HORA OCORR ROM,
+# AD=29 DESC OCORR CTRC, AE=30 DATA OCORR CTRC, AF=31 HORA OCORR CTRC
 IDX_ROMANEIO = 1
 IDX_SITUACAO = 4
 IDX_PLACA = 5
@@ -30,8 +30,10 @@ IDX_CTRC = 12
 IDX_DESTINATARIO = 15
 IDX_DESC_OCORR_ROM = 25
 IDX_DATA_OCORR_ROM = 26
+IDX_HORA_OCORR_ROM = 27
 IDX_DESC_OCORR_CTRC = 29
 IDX_DATA_OCORR_CTRC = 30
+IDX_HORA_OCORR_CTRC = 31
 
 ENTREGA_36_FIELDS = [
     "ctrc_id",
@@ -44,6 +46,7 @@ ENTREGA_36_FIELDS = [
     "destinatario",
     "ocorrencia",
     "data_ocorrencia",
+    "hora_ocorrencia",
     "excluido",
     "motivo_exclusao",
 ]
@@ -82,6 +85,7 @@ class EntregaCtrc:
     destinatario: str = ""
     ocorrencia: str = ""
     data_ocorrencia: str = ""
+    hora_ocorrencia: str = ""
     excluido: bool = False
     motivo_exclusao: str = ""
     extras: dict[str, str] = field(default_factory=dict)
@@ -100,6 +104,16 @@ def _cell(row: list[str], idx: int) -> str:
     if idx < 0 or idx >= len(row):
         return ""
     return _clean(row[idx])
+
+
+def _norm_hora(raw: str) -> str:
+    text = _clean(raw)
+    if not text:
+        return ""
+    m = re.match(r"^(\d{1,2}):(\d{2})(?::\d{2})?", text)
+    if m:
+        return f"{int(m.group(1)):02d}:{m.group(2)}"
+    return text[:5]
 
 
 def _parse_data_ocorr(raw: str) -> date | None:
@@ -240,13 +254,20 @@ def parse_ssw0146(
 
         desc_ctrc = _cell(row, IDX_DESC_OCORR_CTRC)
         data_ctrc = _cell(row, IDX_DATA_OCORR_CTRC)
+        hora_ctrc = _cell(row, IDX_HORA_OCORR_CTRC)
         desc_rom = _cell(row, IDX_DESC_OCORR_ROM)
         data_rom = _cell(row, IDX_DATA_OCORR_ROM)
+        hora_rom = _cell(row, IDX_HORA_OCORR_ROM)
 
         # Texto da ocorrencia: CTRC (linha) com fallback ROM
         ocorrencia = desc_ctrc or desc_rom
         # Data da baixa: AA (ROM) preferencial — define se conta hoje ou descarta ontem
         data_txt = data_rom or data_ctrc
+        # Hora alinhada ao texto da ocorrencia (CTRC primeiro)
+        if desc_ctrc:
+            hora_txt = _norm_hora(hora_ctrc) or _norm_hora(hora_rom)
+        else:
+            hora_txt = _norm_hora(hora_rom) or _norm_hora(hora_ctrc)
         data_d = _parse_data_ocorr(data_txt)
 
         situacao = _cell(row, IDX_SITUACAO)
@@ -271,6 +292,7 @@ def parse_ssw0146(
                 destinatario=_cell(row, IDX_DESTINATARIO),
                 ocorrencia=ocorrencia,
                 data_ocorrencia=data_txt,
+                hora_ocorrencia=hora_txt,
                 excluido=excluido,
                 motivo_exclusao=motivo,
             )
@@ -354,6 +376,7 @@ def analyze_report_36(
             "destinatario": c.destinatario,
             "ocorrencia": c.ocorrencia,
             "data_ocorrencia": c.data_ocorrencia,
+            "hora_ocorrencia": c.hora_ocorrencia,
             "excluido": "1" if c.excluido else "0",
             "motivo_exclusao": c.motivo_exclusao,
         }
@@ -373,6 +396,7 @@ def analyze_report_36(
                 "destinatario": c.destinatario,
                 "ocorrencia": c.ocorrencia,
                 "data_ocorrencia": c.data_ocorrencia,
+                "hora_ocorrencia": c.hora_ocorrencia,
                 "excluido": "1",
                 "motivo_exclusao": c.motivo_exclusao,
             }
