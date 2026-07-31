@@ -205,7 +205,7 @@ def run_full_pipeline_103(
     headless: bool = False,
     on_status: StatusCallback | None = None,
 ) -> dict[str, Any]:
-    """Baixa opcao 103 (Excel / data inclusao) → analisa torres tempo real."""
+    """Baixa opcao 103 (Excel / data limite L) → analisa torres tempo real."""
     status = on_status or _noop
 
     def emit(msg: str) -> None:
@@ -219,7 +219,7 @@ def run_full_pipeline_103(
     else:
         ini, fim = periodo_103_hoje()
 
-    emit(f"Pipeline ACE 103 | inclusao HOJE {format_period(ini, fim)}")
+    emit(f"Pipeline ACE 103 | data LIMITE HOJE {format_period(ini, fim)}")
     download = download_ace_103(
         ini,
         fim,
@@ -266,7 +266,7 @@ def run_dual_cycle(
 
     Periodos automaticos (recalculados a cada ciclo / virada de dia):
       50  → cadastramento D-1 (segunda = sexta–sabado)
-      103 → inclusao HOJE
+      103 → data LIMITE HOJE (Por data de = L)
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -282,7 +282,7 @@ def run_dual_cycle(
     ini103, fim103 = periodo_103_hoje()
     emit(
         f"CICLO dual | 50 cad={format_period(ini50, fim50)} "
-        f"| 103 hoje={format_period(ini103, fim103)} | paralelo"
+        f"| 103 limite={format_period(ini103, fim103)} | paralelo"
     )
 
     result_50: dict[str, Any] = {}

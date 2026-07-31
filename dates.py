@@ -83,7 +83,7 @@ def periodo_50_cadastramento(hoje: date | datetime | None = None) -> tuple[str, 
 
 
 def periodo_103_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
-    """Relatorio 103 · sempre a data de inclusao de HOJE."""
+    """Relatorio 103 · data LIMITE de HOJE (Por data de = L)."""
     today = _as_date(hoje)
     return to_ddmm(today), to_ddmm(today)
 

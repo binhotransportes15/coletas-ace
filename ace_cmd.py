@@ -134,7 +134,7 @@ def _periodo_hint(modo: str) -> str:
         return (
             f"50 cad {to_ssw_ddmmyy(ini50)}-{to_ssw_ddmmyy(fim50)} "
             f"({format_period(ini50, fim50)}) | "
-            f"103 hoje {to_ssw_ddmmyy(ini103)} ({format_period(ini103, fim103)})"
+            f"103 hoje {to_ssw_ddmmyy(ini103)} limite ({format_period(ini103, fim103)})"
         )
     except Exception:
         return "—"
@@ -395,7 +395,7 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
     print("\n" + "=" * 72)
     print("  MODO /AUTOMATICA")
     print("  50 = cadastramento D-1 (segunda = sexta-sabado)")
-    print("  103 = inclusao HOJE")
+    print("  103 = data LIMITE HOJE (L)")
     print(f"  Ciclo a cada {format_duration_long(sec)}: baixar + analisar + Sheets/dashboard")
     print("  Em paralelo. Virada de dia recalcula sozinho.")
     print("  Altere com: /e intervalo 30s | 5m | 1h | 2d")

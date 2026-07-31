@@ -528,7 +528,7 @@ class AceSswClient:
         ensure_dirs()
         self.download_dir.mkdir(parents=True, exist_ok=True)
         period = format_period(self.start_date_ui, self.end_date_ui)
-        self.on_status(f"ACE 103 | inclusao {period} | Excel")
+        self.on_status(f"ACE 103 | data limite {period} | Excel")
 
         browser = None
         context = None
@@ -567,13 +567,13 @@ class AceSswClient:
     def _download_report_103(self, page) -> Path:
         """
         103 - Coletas normais:
-          Periodo de pesquisa = D-2 (DDMMYY)
-          Por data de = I (inclusao)
+          Periodo de pesquisa = HOJE (DDMMYY)
+          Por data de = L (limite)
           Mostrar em = E (excel)
           Unidade = SPO (credencial)
         """
         self.on_status(
-            f"Gerando 103 Excel | inclusao {self.start_date_yy} a {self.end_date_yy}..."
+            f"Gerando 103 Excel | limite {self.start_date_yy} a {self.end_date_yy}..."
         )
         popup = self._open_menu_option(
             page,
@@ -582,6 +582,7 @@ class AceSswClient:
                 "coleta",
                 "normal",
                 "pesquisa",
+                "limite",
                 "inclus",
                 "excel",
                 "periodo",
@@ -594,7 +595,7 @@ class AceSswClient:
             with popup.expect_download(timeout=180000) as download_info:
                 self._clicar_gerar_103(popup)
             dest_name = (
-                f"coleta_103_inc_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}.sswweb"
+                f"coleta_103_lim_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}.sswweb"
             )
             # SSW "Excel" (E) da 103 costuma vir como CSV*.sswweb
             download = download_info.value
@@ -618,7 +619,7 @@ class AceSswClient:
         """
         ssw0166 · bloco Coletas normais:
           #14/#15 periodo DDMMYY
-          #16 Por data de (I=inclusao)
+          #16 Por data de (L=limite)
           #17 Mostrar em (E=excel)
           #19 Unidade de coleta
         """
@@ -637,7 +638,7 @@ class AceSswClient:
               };
               const ok14 = setVal(14, ini);
               const ok15 = setVal(15, fim);
-              const ok16 = setVal(16, 'I');
+              const ok16 = setVal(16, 'L');
               const ok17 = setVal(17, 'E');
               const ok19 = setVal(19, unidade);
               return {
@@ -660,7 +661,7 @@ class AceSswClient:
                 f"103: falha ao preencher campos ssw0166 (ids 14-17/19): {result}"
             )
         self.on_status(
-            f"103 preenchido: periodo {ini}-{fim} | data=I | excel=E | un={unidade} | {result.get('values')}"
+            f"103 preenchido: periodo {ini}-{fim} | data=L (limite) | excel=E | un={unidade} | {result.get('values')}"
         )
         popup.wait_for_timeout(300)
 

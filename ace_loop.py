@@ -4,7 +4,7 @@ ACE · Loop CMD (tempo real)
 Roda sem parar:
   - a cada N segundos/minutos/horas/dias baixa 50 + 103 EM PARALELO
   - 50  = cadastramento D-1 (segunda = sexta–sabado)
-  - 103 = inclusao HOJE
+  - 103 = data LIMITE HOJE (Por data de = L)
   - na virada do dia recalcula sozinho os periodos
   - intervalo vem de config loop_intervalo (ex.: 5m, 30s, 1h)
 
@@ -60,7 +60,7 @@ def _banner(interval_sec: int, headless: bool) -> None:
         flush=True,
     )
     print(
-        f"  103 inclusao:{to_ssw_ddmmyy(ini103)} ({format_period(ini103, fim103)})",
+        f"  103 limite:  {to_ssw_ddmmyy(ini103)} ({format_period(ini103, fim103)})",
         flush=True,
     )
     print(

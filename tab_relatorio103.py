@@ -72,14 +72,14 @@ class Relatorio103Tab(QWidget):
         root.setSpacing(10)
 
         tip = QLabel(
-            "103 · Excel · Por data de inclusão (I) · D-2. "
+            "103 · Excel · Por data de limite (L) · HOJE. "
             "Torres: Parado (cadastrada) · Em rota (comandada) · Realizada (coletada)."
         )
         tip.setObjectName("subtitle")
         tip.setWordWrap(True)
         root.addWidget(tip)
 
-        form_box = QGroupBox("Periodo de pesquisa (inclusao)")
+        form_box = QGroupBox("Periodo de pesquisa (data limite)")
         form = QFormLayout(form_box)
         self.start_edit = QLineEdit()
         self.end_edit = QLineEdit()
@@ -187,7 +187,7 @@ class Relatorio103Tab(QWidget):
         self.end_edit.setText(to_ssw_ddmmyy(end))
         save_all(creds, settings)
         self._log(
-            f"103 download | inclusao {to_ssw_ddmmyy(start)} a {to_ssw_ddmmyy(end)}"
+            f"103 download | limite {to_ssw_ddmmyy(start)} a {to_ssw_ddmmyy(end)}"
         )
         self._start_worker(
             Worker103(
