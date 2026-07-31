@@ -221,16 +221,12 @@ class AceSswClient:
                     errors["coleta"] = str(error)
                     self.on_status(f"Coleta ({coleta}) falhou: {error}")
 
+                # Entrega 36 NAO roda aqui — so via run_36 / job dedicado do ciclo
+                # (evita periodo errado da 50 e race com o job [36]).
                 if entrega:
-                    try:
-                        path = self._download_entrega(page, entrega)
-                        self.paths["entrega"] = str(path)
-                        self.on_status(f"Entrega ({entrega}) salva: {path.name}")
-                    except Exception as error:  # noqa: BLE001
-                        errors["entrega"] = str(error)
-                        self.on_status(f"Entrega ({entrega}) falhou: {error}")
-                else:
-                    self.on_status("Entrega: opcao ainda nao definida — pulando.")
+                    self.on_status(
+                        f"Entrega={entrega}: pulando neste browser (use job 36 dedicado)."
+                    )
 
                 if not self.paths:
                     details = "; ".join(f"{k}: {v}" for k, v in errors.items())
@@ -514,13 +510,19 @@ class AceSswClient:
         """
         36 - Consulta romaneios/CTRCs (ssw0146):
           Excel = S
-          Unidade = cada sigla (SPO/LEO/RIS) ou vazio
+          Unidade vazia = todas (campo opc) — evita 3x REL2 em paralelo com 50/103
           Periodo = D-1 .. hoje (DDMMYY)
           Gerar = ajaxEnvia('REL2') via #btn_env_periodo
         """
         units = self._coleta_units()
-        passes = units if units else [""]
-        label = ",".join(passes) if units else "TODAS"
+        # Unidade (opc): se varias siglas na config, 1 download sem filtro
+        # (SSW devolve SPO+LEO+RIS). Override: 1 sigla sozinha ainda filtra.
+        if len(units) == 1:
+            passes = units
+            label = units[0]
+        else:
+            passes = [""]
+            label = "TODAS" if not units else ",".join(units) + " (1x sem filtro)"
         self.on_status(
             f"Gerando 36 Excel | periodo {self.start_date_yy} a {self.end_date_yy} | un={label}..."
         )
@@ -549,8 +551,12 @@ class AceSswClient:
             ),
         )
         try:
+            # Fecha alertas SSW que bloqueiam o download
+            popup.on("dialog", lambda d: d.accept())
             self._preencher_tela_36(popup, unidade=unidade)
-            with popup.expect_download(timeout=180000) as download_info:
+            popup.wait_for_timeout(400)
+            # Download pode vir no popup ou em nova aba do mesmo context
+            with page.context.expect_download(timeout=180000) as download_info:
                 self._clicar_gerar_36(popup)
             suffix = (unidade or "todas").lower()
             dest_name = (
@@ -564,7 +570,9 @@ class AceSswClient:
                 dest_name = dest_name.replace(".sswweb", ".csv")
             elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
                 dest_name = dest_name.replace(".sswweb", ".xls")
-            return self._save_download(download, dest_name)
+            path = self._save_download(download, dest_name)
+            self.on_status(f"36 arquivo ({suffix}): {path.name} ({path.stat().st_size} bytes)")
+            return path
         finally:
             try:
                 popup.close()
@@ -575,7 +583,7 @@ class AceSswClient:
         """
         ssw0146:
           t_excel = S
-          t_unidade = sigla ou vazio
+          t_unidade = sigla ou vazio (todas)
           t_dt_ini / t_dt_fin = DDMMYY
           limpa busca pontual (romaneio/ciot/mdfe/placa/cpf)
         """
@@ -590,6 +598,7 @@ class AceSswClient:
                 el.value = v;
                 el.dispatchEvent(new Event('input', {bubbles:true}));
                 el.dispatchEvent(new Event('change', {bubbles:true}));
+                try { el.blur(); } catch (e) {}
                 return true;
               };
               // Limpa busca pontual — usa so "Romaneios do periodo"
@@ -618,7 +627,7 @@ class AceSswClient:
         self.on_status(
             f"36 preenchido: periodo {ini}-{fim} | excel=S | un={un or 'TODAS'} | {result.get('values')}"
         )
-        popup.wait_for_timeout(300)
+        popup.wait_for_timeout(500)
 
     def _clicar_gerar_36(self, popup) -> None:
         loc = popup.locator('#btn_env_periodo, a[onclick*="REL2"]')

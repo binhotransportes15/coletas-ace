@@ -382,8 +382,12 @@ def run_dual_cycle(
     emit(
         f"CICLO dual | 50 coleta={format_period(ini50, fim50)} "
         f"| 103 limite={format_period(ini103, fim103)}"
-        + (f" | 36 periodo={format_period(ini36, fim36)}" if run_36 else "")
-        + " | paralelo"
+        + (
+            f" | 36 periodo={format_period(ini36, fim36)} (apos 50/103)"
+            if run_36
+            else ""
+        )
+        + " | paralelo 50+103"
     )
 
     # Limpa antigos UMA vez antes do paralelo (evita race)
@@ -478,28 +482,33 @@ def run_dual_cycle(
         )
         return {"download": download, **analysis, "period": format_period(ini36, fim36)}
 
-    workers = 3 if run_36 else 2
-    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="ace") as pool:
+    # 50 + 103 em paralelo; 36 depois (sozinha) para nao disputar SSW/download
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="ace") as pool:
         futures = {
             pool.submit(job_50): "50",
             pool.submit(job_103): "103",
         }
-        if run_36:
-            futures[pool.submit(job_36)] = "36"
         for fut in as_completed(futures):
             label = futures[fut]
             try:
                 data = fut.result()
                 if label == "50":
                     result_50 = data
-                elif label == "103":
-                    result_103 = data
                 else:
-                    result_36 = data
+                    result_103 = data
                 emit(f"{label} concluido.")
             except Exception as err:  # noqa: BLE001
                 errors[label] = str(err)
                 emit(f"{label} FALHOU: {err}")
+
+    if run_36:
+        emit(f"36 sequencial | periodo={format_period(ini36, fim36)}")
+        try:
+            result_36 = job_36()
+            emit("36 concluido.")
+        except Exception as err:  # noqa: BLE001
+            errors["36"] = str(err)
+            emit(f"36 FALHOU: {err}")
 
     # Mantem so os relatorios finais deste ciclo
     keep: list[Path] = []
