@@ -63,14 +63,10 @@ def to_ddmm(value: date) -> str:
 
 def periodo_50_cadastramento(hoje: date | datetime | None = None) -> tuple[str, str]:
     """
-    Relatorio 50 · Periodo de CADASTRAMENTO.
+    Relatorio 50 · Periodo de CADASTRAMENTO (legado D-1).
 
-    Regra ACE (tempo real CMD):
-      - Dias uteis: cadastradas no dia anterior (D-1)
-      - Segunda: conforme sexta → sexta a sabado (cadastros do fim de semana)
-
-    Ex.: terça 30/07 → 29/07
-         segunda 03/08 → 31/07 a 01/08 (sex–sab)
+    Mantido para referencia; o fluxo automatico atual usa
+    periodo_50_coleta_hoje (Periodo de coleta = HOJE).
     """
     today = _as_date(hoje)
     weekday = today.weekday()  # 0=seg ... 6=dom
@@ -80,6 +76,12 @@ def periodo_50_cadastramento(hoje: date | datetime | None = None) -> tuple[str, 
     else:
         ini = fim = today - timedelta(days=1)
     return to_ddmm(ini), to_ddmm(fim)
+
+
+def periodo_50_coleta_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
+    """Relatorio 50 · Periodo de COLETA = HOJE (sempre o dia atual)."""
+    today = _as_date(hoje)
+    return to_ddmm(today), to_ddmm(today)
 
 
 def periodo_103_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:

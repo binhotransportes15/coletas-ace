@@ -412,9 +412,9 @@ class AceSswClient:
         )
 
     def _download_report_50(self, page) -> Path:
-        """050 - Relacao das Coletas (ssw0157) pelo Periodo de CADASTRAMENTO."""
+        """050 - Relacao das Coletas (ssw0157) pelo Periodo de COLETA (hoje)."""
         self.on_status(
-            f"Gerando coleta (50) | cadastramento "
+            f"Gerando coleta (50) | periodo de coleta "
             f"{format_period(self.start_date_ui, self.end_date_ui)} "
             f"({self.start_date_yy} a {self.end_date_yy})..."
         )
@@ -425,12 +425,12 @@ class AceSswClient:
         )
         try:
             popup.locator('[id="4"]').wait_for()
-            self._preencher_periodo_cadastramento_50(popup)
+            self._preencher_periodo_coleta_50(popup)
             with popup.expect_download(timeout=120000) as download_info:
                 popup.locator('[id="21"]').click()
             return self._save_download(
                 download_info.value,
-                f"coleta_50_cad_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}.sswweb",
+                f"coleta_50_col_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}.sswweb",
             )
         finally:
             try:
@@ -438,61 +438,62 @@ class AceSswClient:
             except Exception:
                 pass
 
-    def _preencher_periodo_cadastramento_50(self, popup) -> None:
+    def _preencher_periodo_coleta_50(self, popup) -> None:
         """
         Tela ssw0157:
-        - NAO usa periodo da coleta
-        - Usa 'Periodo de cadastramento (opc)' em DDMMYY (ex.: 280726)
-        Layout tipico CyberMap: 4/5 = coleta (limpar), 6/7 = cadastramento
+        - Usa 'Periodo de coleta (opc)' = HOJE (DDMMYY)
+        - Limpa 'Periodo de cadastramento (opc)'
+        Layout tipico CyberMap: 4/5 = coleta, 6/7 = cadastramento
         """
         ini = self.start_date_yy
         fim = self.end_date_yy
 
-        # 1) Tenta achar inputs ao lado do texto "cadastramento"
         filled = popup.evaluate(
             """([ini, fim]) => {
               const norm = (t) => String(t || '')
                 .toLowerCase()
                 .normalize('NFD')
                 .replace(/[\\u0300-\\u036f]/g, '');
+              const setPair = (a, b, v1, v2) => {
+                if (!a || !b) return false;
+                a.focus(); a.value = v1;
+                a.dispatchEvent(new Event('input', {bubbles:true}));
+                a.dispatchEvent(new Event('change', {bubbles:true}));
+                b.focus(); b.value = v2;
+                b.dispatchEvent(new Event('input', {bubbles:true}));
+                b.dispatchEvent(new Event('change', {bubbles:true}));
+                return true;
+              };
+              const clearPair = (a, b) => setPair(a, b, '', '');
               const nodes = Array.from(document.querySelectorAll('div, span, td, label, font'));
-              const label = nodes.find(n => {
-                const t = norm(n.textContent || '');
-                return t.includes('cadastramento') && t.includes('periodo');
-              }) || nodes.find(n => norm(n.textContent || '').includes('cadastramento'));
-              const inputs = [];
-              if (label) {
+              const findInputsAfter = (pred) => {
+                const label = nodes.find(n => pred(norm(n.textContent || '')));
+                const inputs = [];
+                if (!label) return inputs;
                 let el = label;
                 for (let i = 0; i < 8 && el; i++) {
                   el = el.nextElementSibling || (el.parentElement && el.parentElement.nextElementSibling);
                   if (!el) break;
-                  el.querySelectorAll && el.querySelectorAll('input').forEach(inp => inputs.push(inp));
                   if (el.tagName === 'INPUT') inputs.push(el);
+                  el.querySelectorAll && el.querySelectorAll('input').forEach(inp => inputs.push(inp));
                   if (inputs.length >= 2) break;
                 }
-              }
-              // Limpa inputs de periodo da coleta (se houver label)
-              const coletaLabel = nodes.find(n => {
-                const t = norm(n.textContent || '');
-                return t.includes('periodo') && t.includes('coleta') && !t.includes('cadastr');
-              });
-              if (coletaLabel) {
-                let el = coletaLabel;
-                for (let i = 0; i < 8 && el; i++) {
-                  el = el.nextElementSibling || (el.parentElement && el.parentElement.nextElementSibling);
-                  if (!el) break;
-                  const list = el.tagName === 'INPUT' ? [el] : Array.from(el.querySelectorAll ? el.querySelectorAll('input') : []);
-                  list.forEach(inp => { inp.value = ''; inp.dispatchEvent(new Event('input', {bubbles:true})); });
-                }
-              }
-              if (inputs.length >= 2) {
-                inputs[0].value = ini;
-                inputs[1].value = fim;
-                inputs[0].dispatchEvent(new Event('input', {bubbles:true}));
-                inputs[1].dispatchEvent(new Event('input', {bubbles:true}));
-                inputs[0].dispatchEvent(new Event('change', {bubbles:true}));
-                inputs[1].dispatchEvent(new Event('change', {bubbles:true}));
-                return {ok: true, via: 'label', ids: [inputs[0].id, inputs[1].id]};
+                return inputs;
+              };
+              const coletaInputs = findInputsAfter(t =>
+                t.includes('periodo') && t.includes('coleta') && !t.includes('cadastr')
+              );
+              const cadInputs = findInputsAfter(t =>
+                t.includes('cadastramento') && t.includes('periodo')
+              );
+              if (cadInputs.length >= 2) clearPair(cadInputs[0], cadInputs[1]);
+              if (coletaInputs.length >= 2) {
+                setPair(coletaInputs[0], coletaInputs[1], ini, fim);
+                return {
+                  ok: true,
+                  via: 'label',
+                  ids: [coletaInputs[0].id, coletaInputs[1].id],
+                };
               }
               return {ok: false};
             }""",
@@ -500,21 +501,21 @@ class AceSswClient:
         )
         if filled and filled.get("ok"):
             self.on_status(
-                f"Periodo cadastramento preenchido ({filled.get('via')}): {ini} a {fim}"
+                f"Periodo de coleta preenchido ({filled.get('via')}): {ini} a {fim}"
             )
             return
 
-        # 2) Fallback CyberMap: limpa coleta 4/5, preenche cadastramento 6/7 em DDMMYY
-        for fid in ("4", "5"):
+        # Fallback CyberMap: preenche coleta 4/5, limpa cadastramento 6/7
+        popup.locator('[id="4"]').fill(ini)
+        popup.locator('[id="4"]').press("Tab")
+        popup.locator('[id="5"]').fill(fim)
+        popup.locator('[id="5"]').press("Tab")
+        for fid in ("6", "7"):
             try:
                 popup.locator(f'[id="{fid}"]').fill("")
             except Exception:
                 pass
-        popup.locator('[id="6"]').fill(ini)
-        popup.locator('[id="6"]').press("Tab")
-        popup.locator('[id="7"]').fill(fim)
-        popup.locator('[id="7"]').press("Tab")
-        self.on_status(f"Periodo cadastramento (campos 6/7): {ini} a {fim}")
+        self.on_status(f"Periodo de coleta (campos 4/5): {ini} a {fim} | cadastramento limpo")
 
     def run_103(self) -> dict[str, Any]:
         """Baixa somente a opcao 103 (Excel coletas normais)."""

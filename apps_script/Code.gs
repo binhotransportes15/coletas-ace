@@ -317,16 +317,27 @@ function appendRows_(name, headers, rows) {
 }
 
 function replaceSheet_(name, headers, rows) {
-  var sh = getOrCreateSheet_(name);
-  sh.clear();
+  // Grava em aba temporaria e troca o nome — evita GET ver aba vazia no meio do clear+write.
+  var ss = getSpreadsheet_();
+  var tempName = String(name) + '__next';
+  var oldTemp = ss.getSheetByName(tempName);
+  if (oldTemp) {
+    ss.deleteSheet(oldTemp);
+  }
+  var tmp = ss.insertSheet(tempName);
   var matrix = [headers].concat(rowsToMatrix_(headers, rows));
   var chunk = 400;
   for (var i = 0; i < matrix.length; i += chunk) {
     var part = matrix.slice(i, i + chunk);
-    var range = sh.getRange(i + 1, 1, part.length, headers.length);
+    var range = tmp.getRange(i + 1, 1, part.length, headers.length);
     range.setNumberFormat('@');
     range.setValues(part);
   }
+  var current = ss.getSheetByName(name);
+  if (current) {
+    ss.deleteSheet(current);
+  }
+  tmp.setName(name);
   return Math.max(matrix.length - 1, 0);
 }
 

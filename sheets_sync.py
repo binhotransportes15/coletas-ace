@@ -76,39 +76,22 @@ def _send_sheet(
     *,
     on_status: StatusCallback,
 ) -> dict[str, Any]:
-    """Limpa a aba e envia linhas em chunks (clear + append)."""
-    on_status(f"Sheets/Apps Script: limpando {sheet}...")
-    clear_resp = _post_json(
+    """Substitui a aba em uma unica gravacao (evita painel ver aba vazia no meio do sync)."""
+    on_status(f"Sheets/Apps Script: atualizando {sheet} ({len(rows)} linhas)...")
+    resp = _post_json(
         url,
         {
             "token": token,
-            "action": "clear",
+            "action": "replace",
             "sheet": sheet,
             "headers": headers,
-            "rows": [],
+            "rows": rows,
         },
+        timeout=180,
     )
-    if not clear_resp.get("ok"):
-        return clear_resp
-
-    total = 0
-    parts = _chunks(rows, _CHUNK_ROWS) or [[]]
-    for idx, part in enumerate(parts, start=1):
-        on_status(f"Sheets/Apps Script: {sheet} lote {idx}/{len(parts)} ({len(part)} linhas)...")
-        resp = _post_json(
-            url,
-            {
-                "token": token,
-                "action": "append",
-                "sheet": sheet,
-                "headers": headers,
-                "rows": part,
-            },
-        )
-        if not resp.get("ok"):
-            return resp
-        total += int(resp.get("rows") or len(part))
-    return {"ok": True, "sheet": sheet, "rows": total}
+    if not resp.get("ok"):
+        return resp
+    return {"ok": True, "sheet": sheet, "rows": resp.get("rows", len(rows))}
 
 
 def sync_google_sheets(

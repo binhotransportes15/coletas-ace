@@ -643,9 +643,11 @@
     let lastCounts = null;
     let FILTRO = 'TODAS';
     let BUSCA = '';
-    let COLETAS = [];      // ao vivo (torres) — situacao atual do 50
-    let COLETAS_50 = [];
+    let COLETAS = [];      // ao vivo (torres) — somente 103
+    let COLETAS_50 = [];   // gestao / historico
     let COLETAS_103 = [];
+    let refreshSeq = 0;
+    let lastGood103 = [];
     let PLACAS = [];
     let URGENTES = [];
     let placaCursor = 0;
@@ -1267,16 +1269,36 @@
 
     async function refresh() {
       const status = document.getElementById('statusLine');
+      const seq = ++refreshSeq;
       try {
         const [r103, r50] = await Promise.all([
           chamarPlanilha('coletas103').catch(() => null),
           chamarPlanilha('coletas').catch(() => ({ rows: [] })),
         ]);
-        COLETAS_50 = uniqueRows((r50 && r50.rows) || []);
-        COLETAS_103 = uniqueRows((r103 && r103.rows) || []);
+        // Resposta antiga nao sobrescreve a mais nova
+        if (seq !== refreshSeq) return;
 
-        // Torres ao vivo = somente 103 (situacao atual tempo real)
-        // 50 fica so na Gestao (busca + historico)
+        COLETAS_50 = uniqueRows((r50 && r50.rows) || []);
+
+        const incoming103 = uniqueRows((r103 && r103.rows) || []);
+        // Durante o sync a aba pode vir vazia/parcial — mantem o ultimo 103 bom.
+        if (incoming103.length > 0) {
+          const prev = lastGood103.length;
+          const dropBrusca = prev > 0 && incoming103.length < Math.max(3, Math.floor(prev * 0.5));
+          if (dropBrusca) {
+            // queda brusca: provavelmente sync no meio; ignora 1 ciclo
+            COLETAS_103 = lastGood103.slice();
+          } else {
+            lastGood103 = incoming103.slice();
+            COLETAS_103 = incoming103;
+          }
+        } else if (lastGood103.length) {
+          COLETAS_103 = lastGood103.slice();
+        } else {
+          COLETAS_103 = [];
+        }
+
+        // Torres ao vivo = somente 103 (nunca usa o 50 aqui)
         COLETAS = COLETAS_103.slice();
 
         const counts = countByStatus(COLETAS);
@@ -1293,6 +1315,7 @@
         status.textContent =
           `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · torres(103): ${COLETAS.length} · gestao(50): ${COLETAS_50.length}`;
       } catch (err) {
+        if (seq !== refreshSeq) return;
         status.textContent = err.message;
         const sub = document.getElementById('totalSub');
         if (sub) {

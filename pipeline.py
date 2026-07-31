@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, LOG_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import format_period, normalize_date, periodo_103_hoje, periodo_50_cadastramento, sugestao_periodo
+from dates import format_period, normalize_date, periodo_103_hoje, periodo_50_coleta_hoje, sugestao_periodo
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
 from sheets_sync import sync_google_sheets, sync_google_sheets_103
@@ -99,9 +99,9 @@ def run_full_pipeline(
     elif modo_eff in {"sexta", "friday", "sex"}:
         ini, fim = sugestao_periodo("sexta")
     else:
-        ini, fim = periodo_50_cadastramento()
+        ini, fim = periodo_50_coleta_hoje()
 
-    emit(f"Pipeline ACE | modo={modo_eff} | cadastramento {format_period(ini, fim)}")
+    emit(f"Pipeline ACE | modo={modo_eff} | periodo de coleta {format_period(ini, fim)}")
 
     download = download_ace_reports(
         ini,
@@ -265,7 +265,7 @@ def run_dual_cycle(
     Baixa 50 + 103 EM PARALELO (dois navegadores), analisa e sobe Sheets/dashboard.
 
     Periodos automaticos (recalculados a cada ciclo / virada de dia):
-      50  → cadastramento D-1 (segunda = sexta–sabado)
+      50  → periodo de COLETA = HOJE
       103 → data LIMITE HOJE (Por data de = L)
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -278,10 +278,10 @@ def run_dual_cycle(
 
     cfg = settings or load_settings()
     creds = credentials or load_credentials()
-    ini50, fim50 = periodo_50_cadastramento()
+    ini50, fim50 = periodo_50_coleta_hoje()
     ini103, fim103 = periodo_103_hoje()
     emit(
-        f"CICLO dual | 50 cad={format_period(ini50, fim50)} "
+        f"CICLO dual | 50 coleta={format_period(ini50, fim50)} "
         f"| 103 limite={format_period(ini103, fim103)} | paralelo"
     )
 

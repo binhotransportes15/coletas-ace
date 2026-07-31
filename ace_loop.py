@@ -3,7 +3,7 @@ ACE · Loop CMD (tempo real)
 
 Roda sem parar:
   - a cada N segundos/minutos/horas/dias baixa 50 + 103 EM PARALELO
-  - 50  = cadastramento D-1 (segunda = sexta–sabado)
+  - 50  = periodo de COLETA HOJE
   - 103 = data LIMITE HOJE (Por data de = L)
   - na virada do dia recalcula sozinho os periodos
   - intervalo vem de config loop_intervalo (ex.: 5m, 30s, 1h)
@@ -19,7 +19,7 @@ import time
 from datetime import date, datetime
 
 from config import CONFIG_PATH, ensure_dirs, load_credentials, load_settings
-from dates import format_period, periodo_103_hoje, periodo_50_cadastramento, to_ssw_ddmmyy
+from dates import format_period, periodo_103_hoje, periodo_50_coleta_hoje, to_ssw_ddmmyy
 from interval_parse import format_duration, format_duration_long, parse_duration
 from pipeline import run_dual_cycle
 
@@ -47,7 +47,7 @@ def resolve_interval_sec(
 
 
 def _banner(interval_sec: int, headless: bool) -> None:
-    ini50, fim50 = periodo_50_cadastramento()
+    ini50, fim50 = periodo_50_coleta_hoje()
     ini103, fim103 = periodo_103_hoje()
     hoje = date.today()
     print("=" * 72, flush=True)
@@ -55,7 +55,7 @@ def _banner(interval_sec: int, headless: bool) -> None:
     print("=" * 72, flush=True)
     print(f"  Hoje:        {hoje:%d/%m/%Y} ({hoje.strftime('%A')})", flush=True)
     print(
-        f"  50 cad:      {to_ssw_ddmmyy(ini50)} a {to_ssw_ddmmyy(fim50)} "
+        f"  50 coleta:   {to_ssw_ddmmyy(ini50)} a {to_ssw_ddmmyy(fim50)} "
         f"({format_period(ini50, fim50)})",
         flush=True,
     )
@@ -104,7 +104,7 @@ def run_loop(
             day_marker = today
             _banner(interval_sec, headless)
 
-        ini50, fim50 = periodo_50_cadastramento(today)
+        ini50, fim50 = periodo_50_coleta_hoje(today)
         ini103, fim103 = periodo_103_hoje(today)
         _log(
             f"=== CICLO {ciclo} | 50={format_period(ini50, fim50)} "

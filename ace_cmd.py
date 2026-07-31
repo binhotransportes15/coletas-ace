@@ -37,7 +37,7 @@ from config import (
     load_settings,
     save_all,
 )
-from dates import format_period, periodo_103_hoje, periodo_50_cadastramento, to_ssw_ddmmyy
+from dates import format_period, periodo_103_hoje, periodo_50_coleta_hoje, to_ssw_ddmmyy
 
 
 # Campos editaveis: chave -> (grupo, tipo, mascara_senha)
@@ -129,12 +129,12 @@ def _save_payload(payload: dict[str, Any]) -> None:
 
 def _periodo_hint(modo: str) -> str:
     try:
-        ini50, fim50 = periodo_50_cadastramento()
+        ini50, fim50 = periodo_50_coleta_hoje()
         ini103, fim103 = periodo_103_hoje()
         return (
-            f"50 cad {to_ssw_ddmmyy(ini50)}-{to_ssw_ddmmyy(fim50)} "
+            f"50 coleta {to_ssw_ddmmyy(ini50)}-{to_ssw_ddmmyy(fim50)} "
             f"({format_period(ini50, fim50)}) | "
-            f"103 hoje {to_ssw_ddmmyy(ini103)} limite ({format_period(ini103, fim103)})"
+            f"103 limite {to_ssw_ddmmyy(ini103)} ({format_period(ini103, fim103)})"
         )
     except Exception:
         return "—"
@@ -394,7 +394,7 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
 
     print("\n" + "=" * 72)
     print("  MODO /AUTOMATICA")
-    print("  50 = cadastramento D-1 (segunda = sexta-sabado)")
+    print("  50 = periodo de COLETA HOJE")
     print("  103 = data LIMITE HOJE (L)")
     print(f"  Ciclo a cada {format_duration_long(sec)}: baixar + analisar + Sheets/dashboard")
     print("  Em paralelo. Virada de dia recalcula sozinho.")
