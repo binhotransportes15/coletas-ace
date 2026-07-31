@@ -114,12 +114,96 @@
     }
     .arena-body {
       display: grid;
-      grid-template-rows: minmax(150px, 38fr) minmax(260px, 62fr);
+      grid-template-rows: auto minmax(140px, 36fr) minmax(240px, 64fr);
       grid-template-columns: 1fr;
-      gap: 12px;
+      gap: 10px;
       min-height: 0;
       height: 100%;
     }
+    /* Resumo unificado no topo */
+    .resumo-top {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .resumo-card {
+      display: grid;
+      grid-template-columns: minmax(88px, auto) 1fr;
+      gap: 8px 16px;
+      align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.2);
+    }
+    .resumo-card.rc-ent { border-color: #3f3a1a; }
+    .resumo-card.rc-col { border-color: #1e3a4a; }
+    .resumo-kicker {
+      grid-column: 1 / -1;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+    .rc-ent .resumo-kicker { color: #fbb03b; }
+    .rc-col .resumo-kicker { color: #67e8f9; }
+    .resumo-total {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-right: 12px;
+      border-right: 1px solid #1e293b;
+      min-width: 0;
+    }
+    .resumo-total span {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .resumo-total strong {
+      font-size: clamp(40px, 5vw, 58px);
+      font-weight: 700;
+      line-height: 0.9;
+      font-variant-numeric: tabular-nums;
+      color: #fff;
+      letter-spacing: -0.04em;
+    }
+    .rc-ent .resumo-total strong { color: #fbb03b; }
+    .rc-col .resumo-total strong { color: #67e8f9; }
+    .resumo-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 14px;
+      min-width: 0;
+    }
+    .resumo-stats.stats-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .resumo-stats div {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 11px;
+      color: #94a3b8;
+      min-width: 0;
+    }
+    .resumo-stats b {
+      font-size: clamp(18px, 2vw, 24px);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .resumo-stats .s-real b { color: var(--col); }
+    .resumo-stats .s-rota b { color: var(--com); }
+    .resumo-stats .s-par b { color: var(--cad); }
+    .resumo-stats .s-can b { color: var(--can); }
     .zone {
       min-height: 0;
       min-width: 0;
@@ -137,13 +221,13 @@
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      margin: 0 0 10px;
+      margin: 0 0 8px;
       flex-shrink: 0;
-      padding-bottom: 8px;
+      padding-bottom: 6px;
       border-bottom: 1px solid #1e293b;
     }
     .zone-head .zone-title {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
       letter-spacing: 0.16em;
       text-transform: uppercase;
@@ -151,12 +235,10 @@
     }
     .zone-ent .zone-title { color: #fbb03b; }
     .zone-col .zone-title { color: #67e8f9; }
-    .zone-head .zone-total {
-      font-size: clamp(22px, 2.8vw, 32px);
-      font-weight: 200;
-      font-variant-numeric: tabular-nums;
-      color: #fff;
-      line-height: 1;
+    .zone-head .zone-hint {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
     }
     .zone-col-body {
       display: grid;
@@ -271,13 +353,15 @@
       position: relative;
       flex: 0 0 auto;
       width: 100%;
-      min-width: 72px;
-      min-height: clamp(36px, 4.5vh, 52px);
+      min-width: 120px;
+      min-height: clamp(44px, 5.5vh, 60px);
       display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 6px 28px 6px 12px;
-      clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 40px 6px 12px;
+      clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%);
       box-shadow: 0 6px 16px rgba(0,0,0,.28);
       border: 1px solid rgba(255,255,255,.08);
       transition:
@@ -286,8 +370,14 @@
       will-change: width;
     }
     .cyl-ban.is-zero { opacity: 0.4; }
+    .cyl-ban .ban-left {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
     .cyl-ban .ban-title {
-      font-size: clamp(11px, 1.2vw, 13px);
+      font-size: clamp(10px, 1.1vw, 12px);
       font-weight: 800;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -297,12 +387,25 @@
     }
     .cyl-ban .ban-meta {
       font-size: 12px;
-      color: rgba(255,255,255,.88);
+      color: rgba(255,255,255,.9);
       font-variant-numeric: tabular-nums;
       margin-top: 2px;
       white-space: nowrap;
     }
     .cyl-ban .ban-meta b { font-size: 15px; font-weight: 800; color: #fff; }
+    .cyl-ban .ban-pct {
+      flex-shrink: 0;
+      margin-left: auto;
+      margin-right: 2px;
+      font-size: clamp(22px, 2.8vw, 34px);
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0,0,0,.45);
+      line-height: 1;
+      padding: 2px 0;
+    }
     .cyl-ban.b-real {
       background: linear-gradient(90deg, var(--col-dark), var(--col));
     }
@@ -314,7 +417,8 @@
     }
     .cyl-ban.b-par .ban-title,
     .cyl-ban.b-par .ban-meta,
-    .cyl-ban.b-par .ban-meta b { color: #1a1200; }
+    .cyl-ban.b-par .ban-meta b,
+    .cyl-ban.b-par .ban-pct { color: #1a1200; text-shadow: none; }
     #pendenciaStack { min-height: 0; height: 100%; }
     #prazoStack .pop { margin-bottom: 0; }
 
@@ -567,6 +671,7 @@
         grid-template-rows: auto auto;
         height: auto;
       }
+      body.live-mode:not(.tv-mode) .resumo-top { grid-template-columns: 1fr; }
       body.live-mode:not(.tv-mode) .zone-col-body { grid-template-columns: 1fr; }
       body.live-mode:not(.tv-mode) .ent-panel { grid-template-columns: 1fr; }
       body.live-mode:not(.tv-mode) .cyl-wrap { min-height: 160px; }
@@ -625,10 +730,19 @@
       height: 100%;
     }
     body.tv-mode .arena-body {
-      grid-template-rows: minmax(160px, 36fr) minmax(280px, 64fr);
+      grid-template-rows: auto minmax(140px, 34fr) minmax(260px, 66fr);
       grid-template-columns: 1fr;
       gap: clamp(8px, 1.2vmin, 14px);
       height: 100%;
+    }
+    body.tv-mode .resumo-total strong {
+      font-size: clamp(44px, 5.5vmin, 72px);
+    }
+    body.tv-mode .resumo-stats b {
+      font-size: clamp(18px, 2.2vmin, 28px);
+    }
+    body.tv-mode .ban-pct {
+      font-size: clamp(26px, 3.4vmin, 42px) !important;
     }
     body.tv-mode .zone-col-body {
       grid-template-columns: minmax(150px, 15vw) 1fr minmax(240px, 26vw);
@@ -735,7 +849,7 @@
     @media (orientation: portrait) {
       body.tv-mode .arena-body {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: auto minmax(120px, 32fr) minmax(240px, 68fr);
       }
       body.tv-mode .zone-col-body { grid-template-columns: 1fr; }
       body.tv-mode .ent-panel { grid-template-columns: 1fr; }
@@ -768,10 +882,32 @@
     <div class="view active" id="viewLive">
       <section class="arena">
         <div class="arena-body">
+          <div class="resumo-top" aria-label="Resumo coleta e entrega">
+            <div class="resumo-card rc-ent">
+              <p class="resumo-kicker">Entrega</p>
+              <div class="resumo-total"><span>Total</span><strong id="entTotal">0</strong></div>
+              <div class="resumo-stats stats-3">
+                <div class="s-real"><span>Realizada</span><b id="sumEntReal">0</b></div>
+                <div class="s-rota"><span>Em rota</span><b id="sumEntRota">0</b></div>
+                <div class="s-par"><span>Pendência</span><b id="sumEntPar">0</b></div>
+              </div>
+            </div>
+            <div class="resumo-card rc-col">
+              <p class="resumo-kicker">Coleta</p>
+              <div class="resumo-total"><span>Total</span><strong id="totalColetas">0</strong></div>
+              <div class="resumo-stats">
+                <div class="s-real"><span>Realizada</span><b id="statReal">0</b></div>
+                <div class="s-rota"><span>Em rota</span><b id="statRota">0</b></div>
+                <div class="s-par"><span>Parado</span><b id="statPar">0</b></div>
+                <div class="s-can"><span>Cancelada</span><b id="statCan">0</b></div>
+              </div>
+            </div>
+          </div>
+
           <section class="zone zone-ent">
             <header class="zone-head">
               <h2 class="zone-title">Entrega</h2>
-              <strong class="zone-total" id="entTotal">0</strong>
+              <span class="zone-hint">faixas · pendências</span>
             </header>
             <div class="ent-panel">
               <div class="ent-main">
@@ -783,16 +919,25 @@
                   </div>
                   <div class="cyl-banners">
                     <div class="cyl-ban b-real" id="cylBanReal" style="width:100%">
-                      <div class="ban-title">Realizada</div>
-                      <div class="ban-meta"><b id="entNReal">0</b> · <span id="entPReal">0%</span></div>
+                      <div class="ban-left">
+                        <div class="ban-title">Realizada</div>
+                        <div class="ban-meta"><b id="entNReal">0</b></div>
+                      </div>
+                      <div class="ban-pct" id="entPReal">0%</div>
                     </div>
                     <div class="cyl-ban b-rota" id="cylBanRota" style="width:100%">
-                      <div class="ban-title">Em rota</div>
-                      <div class="ban-meta"><b id="entNRota">0</b> · <span id="entPRota">0%</span></div>
+                      <div class="ban-left">
+                        <div class="ban-title">Em rota</div>
+                        <div class="ban-meta"><b id="entNRota">0</b></div>
+                      </div>
+                      <div class="ban-pct" id="entPRota">0%</div>
                     </div>
                     <div class="cyl-ban b-par" id="cylBanPar" style="width:100%">
-                      <div class="ban-title">Pendência</div>
-                      <div class="ban-meta"><b id="entNPar">0</b> · <span id="entPPar">0%</span></div>
+                      <div class="ban-left">
+                        <div class="ban-title">Pendência</div>
+                        <div class="ban-meta"><b id="entNPar">0</b></div>
+                      </div>
+                      <div class="ban-pct" id="entPPar">0%</div>
                     </div>
                   </div>
                 </div>
@@ -804,26 +949,11 @@
           <section class="zone zone-col">
             <header class="zone-head">
               <h2 class="zone-title">Coleta</h2>
-              <strong class="zone-total" id="totalColetas">0</strong>
+              <span class="zone-hint">placas · situações · prazo</span>
             </header>
             <div class="zone-col-body">
               <div class="col-left">
-                <div class="col-sub">Resumo · placas</div>
-                <div class="total-hero">
-                  <div class="total-mix" id="totalMix" aria-hidden="true">
-                    <span class="m-real" id="mixReal" style="flex:1"></span>
-                    <span class="m-rota" id="mixRota" style="flex:1"></span>
-                    <span class="m-par" id="mixPar" style="flex:1"></span>
-                    <span class="m-can" id="mixCan" style="flex:1"></span>
-                  </div>
-                  <div class="total-stats">
-                    <div class="s-real"><span>Realizada</span><b id="statReal">0</b></div>
-                    <div class="s-rota"><span>Em rota</span><b id="statRota">0</b></div>
-                    <div class="s-par"><span>Parado</span><b id="statPar">0</b></div>
-                    <div class="s-can"><span>Cancelada</span><b id="statCan">0</b></div>
-                  </div>
-                  <div class="total-sub" id="totalSub" hidden></div>
-                </div>
+                <div class="col-sub">Placas</div>
                 <div class="pop-stack" id="placaStack"></div>
               </div>
               <div class="col-center">
@@ -1020,35 +1150,33 @@
     function renderCilindroEntrega(counts) {
       const total = Math.max(0, Number(counts.total) || 0);
       const items = [
-        { seg: 'cylSegReal', ban: 'cylBanReal', n: 'entNReal', p: 'entPReal', val: counts.realizada || 0 },
-        { seg: 'cylSegRota', ban: 'cylBanRota', n: 'entNRota', p: 'entPRota', val: counts.em_rota || 0 },
-        { seg: 'cylSegPar', ban: 'cylBanPar', n: 'entNPar', p: 'entPPar', val: counts.parado || 0 },
+        { seg: 'cylSegReal', ban: 'cylBanReal', n: 'entNReal', p: 'entPReal', sum: 'sumEntReal', val: counts.realizada || 0 },
+        { seg: 'cylSegRota', ban: 'cylBanRota', n: 'entNRota', p: 'entPRota', sum: 'sumEntRota', val: counts.em_rota || 0 },
+        { seg: 'cylSegPar', ban: 'cylBanPar', n: 'entNPar', p: 'entPPar', sum: 'sumEntPar', val: counts.parado || 0 },
       ];
       const entTotal = document.getElementById('entTotal');
-      if (entTotal) {
-        entTotal.textContent = String(total);
-      }
-      items.forEach(({ seg, ban, n, p, val }) => {
+      if (entTotal) entTotal.textContent = String(total);
+      items.forEach(({ seg, ban, n, p, sum, val }) => {
         const pct = total > 0 ? Math.round((val / total) * 100) : 0;
         const grow = total > 0 ? Math.max(val, 0) : 1;
         const isZero = total > 0 && val <= 0;
         const segEl = document.getElementById(seg);
         const banEl = document.getElementById(ban);
-        // Cilindro: altura proporcional
         if (segEl) {
           segEl.style.flexGrow = String(isZero ? 0.08 : Math.max(grow, 0.35));
           segEl.classList.toggle('is-zero', isZero);
         }
-        // Faixas: largura anda com o % (horizontal)
         if (banEl) {
-          const w = total <= 0 ? 100 : (isZero ? 10 : Math.max(pct, 12));
+          const w = total <= 0 ? 100 : (isZero ? 14 : Math.max(pct, 16));
           banEl.style.width = w + '%';
           banEl.classList.toggle('is-zero', isZero);
         }
         const nEl = document.getElementById(n);
         const pEl = document.getElementById(p);
+        const sEl = document.getElementById(sum);
         if (nEl) nEl.textContent = String(val);
         if (pEl) pEl.textContent = pct + '%';
+        if (sEl) sEl.textContent = String(val);
       });
       lastCountsEnt = counts;
     }
@@ -1173,17 +1301,14 @@
       });
       document.getElementById('totalColetas').textContent = String(total);
       const parts = [
-        ['mixReal', 'statReal', counts.realizada || 0],
-        ['mixRota', 'statRota', counts.em_rota || 0],
-        ['mixPar', 'statPar', counts.parado || 0],
-        ['mixCan', 'statCan', counts.cancelada || 0],
+        ['statReal', counts.realizada || 0],
+        ['statRota', counts.em_rota || 0],
+        ['statPar', counts.parado || 0],
+        ['statCan', counts.cancelada || 0],
       ];
-      parts.forEach(([mixId, statId, val]) => {
-        const mix = document.getElementById(mixId);
-        const share = total > 0 ? val : 1;
-        mix.style.flex = String(Math.max(share, 0));
-        mix.style.display = total > 0 && val <= 0 ? 'none' : 'block';
-        document.getElementById(statId).textContent = String(val);
+      parts.forEach(([statId, val]) => {
+        const el = document.getElementById(statId);
+        if (el) el.textContent = String(val);
       });
       const sub = document.getElementById('totalSub');
       if (sub) { sub.hidden = true; sub.textContent = ''; }
