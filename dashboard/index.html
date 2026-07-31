@@ -643,8 +643,9 @@
     let lastCounts = null;
     let FILTRO = 'TODAS';
     let BUSCA = '';
-    let COLETAS = [];
+    let COLETAS = [];      // ao vivo (torres) — situacao atual do 50
     let COLETAS_50 = [];
+    let COLETAS_103 = [];
     let PLACAS = [];
     let URGENTES = [];
     let placaCursor = 0;
@@ -1149,7 +1150,7 @@
         thead.innerHTML = `<tr>
           <th>Coleta</th><th>Status</th><th>Situação</th>
           <th>Hora</th><th>Placa</th><th>Carreta</th><th>Motorista</th></tr>`;
-        let rows = COLETAS.filter(matchBusca);
+        let rows = COLETAS_103.filter(matchBusca);
         if (FILTRO !== 'TODAS') rows = rows.filter(c => statusAce(c) === FILTRO);
         rows = rows.slice().reverse().slice(0, 300);
         if (!rows.length) {
@@ -1264,6 +1265,22 @@
       renderTabelaGestao();
     }
 
+    function map50ToAce(rows) {
+      return uniqueRows(rows || []).map(c => {
+        const sit = situacaoNorm50(c);
+        const map = {
+          COLETADA: 'realizada', COMANDADA: 'em_rota',
+          CADASTRADA: 'parado', CANCELADA: 'cancelada',
+        };
+        return {
+          ...c,
+          status_ace: map[sit] || statusAce(c),
+          placa: parsePlaca(c.veiculo || c.placa || ''),
+          hora: c.situacao_atual_hora || c.hora || '',
+        };
+      });
+    }
+
     async function refresh() {
       const status = document.getElementById('statusLine');
       try {
@@ -1272,23 +1289,15 @@
           chamarPlanilha('coletas').catch(() => ({ rows: [] })),
         ]);
         COLETAS_50 = uniqueRows((r50 && r50.rows) || []);
-        if (r103 && r103.rows && r103.rows.length) {
-          COLETAS = uniqueRows(r103.rows);
-        } else {
-          COLETAS = COLETAS_50.map(c => {
-            const sit = situacaoNorm50(c);
-            const map = {
-              COLETADA: 'realizada', COMANDADA: 'em_rota',
-              CADASTRADA: 'parado', CANCELADA: 'cancelada',
-            };
-            return {
-              ...c,
-              status_ace: map[sit] || 'outro',
-              placa: parsePlaca(c.veiculo || ''),
-              hora: c.situacao_atual_hora || '',
-            };
-          });
+        COLETAS_103 = uniqueRows((r103 && r103.rows) || []);
+
+        // Torres ao vivo: usa o 50 (situacao atual completa).
+        // O 103 de hoje muitas vezes so traz cadastradas — nao deve zerar Em rota/Realizada.
+        COLETAS = map50ToAce(COLETAS_50);
+        if (!COLETAS.length && COLETAS_103.length) {
+          COLETAS = COLETAS_103.slice();
         }
+
         const counts = countByStatus(COLETAS);
         renderTorres(counts);
         PLACAS = buildPlacas();
@@ -1301,7 +1310,7 @@
           renderTabelaGestao();
         }
         status.textContent =
-          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · 103: ${COLETAS.length} · 50: ${COLETAS_50.length}`;
+          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · torres(50): ${COLETAS.length} · 103: ${COLETAS_103.length}`;
       } catch (err) {
         status.textContent = err.message;
         const sub = document.getElementById('totalSub');
