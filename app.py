@@ -159,9 +159,12 @@ class MainWindow(QMainWindow):
         action_cache = QAction("Abrir pasta cache (CSV)", self)
         action_cache.triggered.connect(self._open_cache)
         menu_arquivos.addAction(action_cache)
-        action_dash = QAction("Abrir dashboard local", self)
+        action_dash = QAction("Abrir Operação (dashboard unificado)", self)
         action_dash.triggered.connect(self._open_dashboard)
+        action_dash_tv = QAction("Abrir Operação em modo TV", self)
+        action_dash_tv.triggered.connect(self._open_dashboard_tv)
         menu_arquivos.addAction(action_dash)
+        menu_arquivos.addAction(action_dash_tv)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -278,7 +281,11 @@ class MainWindow(QMainWindow):
         self.run_button.clicked.connect(self._start_full)
         self.open_downloads_button = QPushButton("Downloads")
         self.open_downloads_button.clicked.connect(self._open_downloads)
+        self.open_dash_button = QPushButton("Operação (dashboard)")
+        self.open_dash_button.setToolTip("Abre a tela unificada Coleta + Entrega")
+        self.open_dash_button.clicked.connect(self._open_dashboard)
         buttons.addWidget(self.open_downloads_button)
+        buttons.addWidget(self.open_dash_button)
         buttons.addWidget(self.analyze_button)
         buttons.addStretch(1)
         buttons.addWidget(self.run_button)
@@ -427,6 +434,13 @@ class MainWindow(QMainWindow):
     def _open_dashboard(self) -> None:
         ensure_dashboard_files()
         os.startfile(str(DASHBOARD_DIR / "index.html"))  # noqa: S606
+
+    def _open_dashboard_tv(self) -> None:
+        ensure_dashboard_files()
+        path = DASHBOARD_DIR / "index.html"
+        # Abre com hash #tv via file URL
+        url = path.resolve().as_uri() + "#tv"
+        os.startfile(url)  # noqa: S606
 
     def _open_file_item(self, item: QListWidgetItem) -> None:
         path = item.data(Qt.ItemDataRole.UserRole) or item.text()
