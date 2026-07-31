@@ -137,6 +137,7 @@ def mapear_status_entrega(
     - data ocorrencia = ontem → excluir
     - ocorrencia vazia → em_rota
     - contem ENTREGA REALIZADA → realizada
+    - contem SAIDA PARA ENTREGA → em_rota
     - outra ocorrencia → pendencia
     - SITUACAO PENDENTE reforça em_rota se nao for realizada
     """
@@ -144,14 +145,33 @@ def mapear_status_entrega(
     ontem = ref - timedelta(days=1)
     sit = _clean(situacao).upper()
     ocorr = _clean(ocorrencia).upper()
+    # Normaliza acentos p/ bater SAIDA/SAÍDA etc.
+    ocorr_n = (
+        ocorr.replace("Á", "A")
+        .replace("À", "A")
+        .replace("Ã", "A")
+        .replace("Â", "A")
+        .replace("É", "E")
+        .replace("Ê", "E")
+        .replace("Í", "I")
+        .replace("Ó", "O")
+        .replace("Ô", "O")
+        .replace("Õ", "O")
+        .replace("Ú", "U")
+        .replace("Ç", "C")
+    )
 
     if data_ocorr is not None and data_ocorr == ontem:
         return "excluido", True, "ocorrencia_ontem"
 
-    if "ENTREGA REALIZADA" in ocorr:
+    if "ENTREGA REALIZADA" in ocorr_n:
         return "realizada", False, ""
 
     if not ocorr:
+        return "em_rota", False, ""
+
+    # Saida para entrega = ainda em rota (nao e pendencia)
+    if "SAIDA PARA ENTREGA" in ocorr_n:
         return "em_rota", False, ""
 
     if sit == "PENDENTE":
@@ -385,7 +405,7 @@ def analyze_report_36(
         "romaneios": len(romaneios),
         "modelo": (
             "36 ssw0146: CTRC ativo se data ocorrencia != ontem. "
-            "blank→em_rota, ENTREGA REALIZADA→realizada, outra→pendencia."
+            "blank/SAIDA PARA ENTREGA→em_rota, ENTREGA REALIZADA→realizada, outra→pendencia."
         ),
     }
     LAST_36_JSON.write_text(

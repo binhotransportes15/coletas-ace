@@ -538,6 +538,7 @@ class AceSswClient:
             # Fecha alertas SSW que bloqueiam o download
             popup.on("dialog", lambda d: d.accept())
             self._preencher_tela_36(popup, unidade=unidade)
+            self._fechar_lookup_36(popup)
             popup.wait_for_timeout(400)
             with popup.expect_download(timeout=180000) as download_info:
                 self._clicar_gerar_36(popup)
@@ -564,49 +565,106 @@ class AceSswClient:
 
     def _preencher_tela_36(self, popup, *, unidade: str = "SPO") -> None:
         """
-        ssw0146 (mesmo padrao CyberMap / teste que baixou OK):
-          t_excel = S, t_unidade = SPO, t_dt_ini/t_dt_fin = DDMMYY
-          limpa busca pontual (romaneio/ciot/mdfe/placa/cpf)
+        ssw0146:
+          t_excel = S, t_unidade = SPO (sempre), periodo D-1..hoje
+          Unidade NAO usa fill/focus — o SSW abre findfil (tela de selecao).
         """
         ini, fim = self.start_date_yy, self.end_date_yy
         un = (unidade or "SPO").strip().upper() or "SPO"
         popup.locator("#t_excel").wait_for()
-        for fid in (
-            "t_sigla_rom",
-            "t_nro_rom",
-            "t_cod_barras_rom",
-            "t_ciot",
-            "t_ser_mdfe",
-            "t_nro_mdfe",
-            "t_placa_veic",
-            "t_cpf_motorista",
-        ):
-            try:
-                popup.locator(f"#{fid}").fill("")
-            except Exception:
-                pass
-        popup.locator("#t_excel").fill("S")
-        popup.locator("#t_unidade").fill(un)
-        popup.locator("#t_dt_ini").fill(ini)
-        popup.locator("#t_dt_fin").fill(fim)
+        # Seta tudo via JS (sem focus em t_unidade / lnk_unidade → findfil)
         values = popup.evaluate(
-            """() => ({
-              excel: (document.getElementById('t_excel') || {}).value || '',
-              unidade: (document.getElementById('t_unidade') || {}).value || '',
-              periodo: [
-                (document.getElementById('t_dt_ini') || {}).value || '',
-                (document.getElementById('t_dt_fin') || {}).value || '',
-              ],
-            })"""
+            """([ini, fim, unidade]) => {
+              const setSilent = (id, v) => {
+                const el = document.getElementById(String(id));
+                if (!el) return false;
+                el.value = v;
+                el.dispatchEvent(new Event('input', {bubbles:true}));
+                el.dispatchEvent(new Event('change', {bubbles:true}));
+                return true;
+              };
+              ['t_sigla_rom','t_nro_rom','t_cod_barras_rom','t_ciot','t_ser_mdfe',
+               't_nro_mdfe','t_placa_veic','t_cpf_motorista'].forEach(id => setSilent(id, ''));
+              const okExcel = setSilent('t_excel', 'S');
+              const okUn = setSilent('t_unidade', unidade);
+              const okIni = setSilent('t_dt_ini', ini);
+              const okFim = setSilent('t_dt_fin', fim);
+              // Evita foco no link Unidade (findfil)
+              try {
+                const excel = document.getElementById('t_excel');
+                if (excel) excel.focus();
+              } catch (e) {}
+              return {
+                ok: okExcel && okUn && okIni && okFim,
+                excel: (document.getElementById('t_excel') || {}).value || '',
+                unidade: (document.getElementById('t_unidade') || {}).value || '',
+                periodo: [
+                  (document.getElementById('t_dt_ini') || {}).value || '',
+                  (document.getElementById('t_dt_fin') || {}).value || '',
+                ],
+              };
+            }""",
+            [ini, fim, un],
         )
-        if (values.get("excel") or "").upper() != "S" or (values.get("unidade") or "").upper() != un:
+        self._fechar_lookup_36(popup)
+        if not values or not values.get("ok"):
             raise RuntimeError(f"36: falha ao preencher ssw0146: {values}")
+        if (values.get("excel") or "").upper() != "S" or (values.get("unidade") or "").upper() != un:
+            raise RuntimeError(f"36: valores incorretos apos preencher: {values}")
         self.on_status(
             f"36 preenchido: periodo {ini}-{fim} | excel=S | un={un} | {values}"
         )
-        popup.wait_for_timeout(500)
+        popup.wait_for_timeout(300)
+
+    def _fechar_lookup_36(self, popup) -> None:
+        """Ignora/fecha tela de selecao (findfil unidade), sem fechar o ssw0146."""
+        if popup.is_closed():
+            return
+        # Fecha so janelas extras (lookup/findfil), nunca menu nem ssw0146.
+        # NAO usa btnClose/Escape no form principal — isso fecha o proprio 36.
+        try:
+            main = None
+            try:
+                main = popup.context.pages[0]
+            except Exception:
+                pass
+            for pg in list(popup.context.pages):
+                if pg is popup or pg is main:
+                    continue
+                url = (pg.url or "").lower()
+                if "ssw0146" in url or "menu01" in url:
+                    continue
+                try:
+                    self.on_status(f"36: ignorando tela selecao ({url or 'about:blank'})")
+                    pg.close()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        if popup.is_closed():
+            return
+        try:
+            popup.evaluate(
+                """() => {
+                  ['#errormsg','#scontentbar','.errormsg','#lookup','#divlookup',
+                   '#divFind','#finddiv','#layerFind'].forEach(sel => {
+                    const el = document.querySelector(sel);
+                    if (el) {
+                      try { el.style.display = 'none'; } catch (e) {}
+                    }
+                  });
+                }"""
+            )
+        except Exception:
+            pass
+        try:
+            if not popup.is_closed():
+                popup.bring_to_front()
+        except Exception:
+            pass
 
     def _clicar_gerar_36(self, popup) -> None:
+        self._fechar_lookup_36(popup)
         btn = popup.locator("#btn_env_periodo")
         try:
             if btn.count() > 0 and btn.first.is_visible():
