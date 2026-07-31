@@ -555,8 +555,8 @@ class AceSswClient:
             popup.on("dialog", lambda d: d.accept())
             self._preencher_tela_36(popup, unidade=unidade)
             popup.wait_for_timeout(400)
-            # Download pode vir no popup ou em nova aba do mesmo context
-            with page.context.expect_download(timeout=180000) as download_info:
+            # Mesmo padrao do 50/103: expect_download e da Page (popup), nao do Context
+            with popup.expect_download(timeout=180000) as download_info:
                 self._clicar_gerar_36(popup)
             suffix = (unidade or "todas").lower()
             dest_name = (
