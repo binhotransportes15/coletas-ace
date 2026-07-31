@@ -5,27 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BINHO · COLETA</title>
   <script src="config.js"></script>
-  <script>
-    /* boot rápido: se status.json marcar offline, cobre a tela já no carregamento */
-    (function () {
-      fetch('status.json?t=' + Date.now(), { cache: 'no-store' })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) {
-          if (!d) return;
-          if (d.online === false || d.online === 'false' || d.online === 0) {
-            document.documentElement.classList.add('site-offline');
-            document.addEventListener('DOMContentLoaded', function () {
-              document.body.classList.add('site-offline');
-              var msg = document.getElementById('siteOffMsg');
-              var when = document.getElementById('siteOffWhen');
-              if (msg) msg.textContent = d.message || 'Sistema temporariamente interrompido.';
-              if (when && d.updated_at) when.textContent = 'Desde ' + String(d.updated_at).replace('T', ' ');
-            });
-          }
-        })
-        .catch(function () {});
-    })();
-  </script>
   <style>
     :root {
       color-scheme: dark;
@@ -525,61 +504,6 @@
     }
     body.tv-mode .tv-hint.show { opacity: 1; }
 
-    .site-off {
-      position: fixed; inset: 0; z-index: 99999;
-      display: none !important;
-      align-items: center; justify-content: center;
-      padding: 24px;
-      background:
-        radial-gradient(800px 400px at 50% 20%, rgba(237,28,36,.18), transparent 60%),
-        rgba(5, 8, 15, .96);
-      backdrop-filter: blur(8px);
-      text-align: center;
-    }
-    html.site-offline .site-off,
-    body.site-offline .site-off {
-      display: flex !important;
-    }
-    html.site-offline .board,
-    body.site-offline .board {
-      visibility: hidden !important;
-      pointer-events: none !important;
-    }
-    .site-off-card {
-      max-width: 560px;
-      border: 1px solid #7f1d1d;
-      border-radius: 20px;
-      padding: clamp(28px, 4vmin, 48px) clamp(24px, 3vmin, 40px);
-      background: linear-gradient(180deg, #1a0a0a, #0b1220);
-      box-shadow: 0 24px 60px rgba(0,0,0,.5);
-    }
-    .site-off-card .badge {
-      display: inline-block;
-      background: #7f1d1d; color: #fff;
-      font-size: clamp(12px, 1.4vmin, 16px);
-      font-weight: 800; letter-spacing: .14em;
-      text-transform: uppercase;
-      padding: 8px 14px; border-radius: 999px;
-      margin-bottom: 18px;
-    }
-    .site-off-card h1 {
-      margin: 0 0 10px;
-      font-size: clamp(28px, 4.5vmin, 44px);
-      font-weight: 800; letter-spacing: .04em;
-      color: #fff;
-    }
-    .site-off-card p {
-      margin: 0;
-      color: #cbd5e1;
-      font-size: clamp(14px, 1.8vmin, 20px);
-      line-height: 1.45;
-    }
-    .site-off-card .when {
-      margin-top: 16px;
-      color: #94a3b8;
-      font-size: clamp(12px, 1.3vmin, 15px);
-    }
-
     @media (orientation: portrait) {
       body.tv-mode .arena-body {
         grid-template-columns: 1fr;
@@ -594,14 +518,6 @@
 </head>
 <body class="live-mode">
   <div class="tv-hint" id="tvHint">Modo TV · F ou ESC para sair · ideal para televisão</div>
-  <div class="site-off" id="siteOff" role="status" aria-live="polite">
-    <div class="site-off-card">
-      <div class="badge">BINHO · COLETA</div>
-      <h1>INTERROMPIDO</h1>
-      <p id="siteOffMsg">Sistema temporariamente interrompido.</p>
-      <div class="when" id="siteOffWhen"></div>
-    </div>
-  </div>
   <div class="board">
     <header class="topbar">
       <div class="brand">
@@ -1466,39 +1382,8 @@
       if (hash === '50' || hash === '103') setRel(hash);
     }
 
-    function applySiteOffline(data) {
-      const offline = !!(
-        data &&
-        (data.online === false || data.online === 'false' || data.online === 0)
-      );
-      document.documentElement.classList.toggle('site-offline', offline);
-      document.body.classList.toggle('site-offline', offline);
-      if (offline) {
-        const msg = document.getElementById('siteOffMsg');
-        const when = document.getElementById('siteOffWhen');
-        if (msg) msg.textContent = (data && data.message) || 'Sistema temporariamente interrompido.';
-        if (when) {
-          when.textContent = data && data.updated_at
-            ? `Desde ${String(data.updated_at).replace('T', ' ')}`
-            : '';
-        }
-      }
-      return !offline;
-    }
-
-    async function checkSiteStatus() {
-      try {
-        const resp = await fetch(`status.json?t=${Date.now()}`, { cache: 'no-store' });
-        if (!resp.ok) return;
-        const data = await resp.json();
-        applySiteOffline(data);
-      } catch (_) { /* se status.json falhar, mantem online */ }
-    }
-
     tickClock();
     setInterval(tickClock, 1000);
-    checkSiteStatus();
-    setInterval(checkSiteStatus, 5000);
     refresh();
     setInterval(refresh, 20000);
   </script>
