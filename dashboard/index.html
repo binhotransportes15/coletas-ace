@@ -214,6 +214,9 @@
       border-color: #29abe2;
       box-shadow: 0 10px 28px rgba(41, 171, 226, .28);
     }
+    .pop-placa.done {
+      border-color: #8cc63f;
+    }
     .pop-placa.hot {
       border-color: #8cc63f;
       box-shadow: 0 0 0 1px rgba(140, 198, 63, .45), 0 12px 32px rgba(140, 198, 63, .35);
@@ -972,11 +975,11 @@
 
       const nextPrev = new Map();
       const rows = Array.from(byPlaca.values()).map(r => {
-        const prev = placaPrevFeitas.has(r.placa) ? placaPrevFeitas.get(r.placa) : r.feitas;
-        const delta = Math.max(0, r.feitas - prev);
-        if (delta > 0) {
-          placaHotUntil.set(r.placa, now + PLACA_HOT_MS);
-        }
+        const hadPrev = placaPrevFeitas.has(r.placa);
+        const prev = hadPrev ? placaPrevFeitas.get(r.placa) : r.feitas;
+        // so conta delta apos o 1º ciclo (evita falso +N no load)
+        const delta = hadPrev ? Math.max(0, r.feitas - prev) : 0;
+        if (delta > 0) placaHotUntil.set(r.placa, now + PLACA_HOT_MS);
         const hotUntil = placaHotUntil.get(r.placa) || 0;
         const hot = hotUntil > now;
         if (!hot) placaHotUntil.delete(r.placa);
@@ -984,34 +987,57 @@
         const emProgresso = r.feitas > 0 && r.feitas < r.total;
         const concluida = r.total > 0 && r.feitas >= r.total;
         nextPrev.set(r.placa, r.feitas);
-        return {
-          ...r,
-          pct,
-          delta,
-          hot,
-          emProgresso,
-          concluida,
-          // Prioridade: quente (acabou de dar baixa) > em progresso > parada em 0% > 100%
-          focusScore:
-            (hot ? 3000 : 0) +
-            (emProgresso ? 2000 : 0) +
-            (concluida ? -1000 : 0) +
-            (delta * 50) +
-            (emProgresso ? pct : 0) +
-            Math.min(r.total, 20),
-        };
+        return { ...r, pct, delta, hot, emProgresso, concluida };
       });
       placaPrevFeitas = nextPrev;
 
-      // Foco nas que estao dando baixa, mas a lista ainda gira (nao fica fixa)
+      // Preferencia: quem JA deu baixa (feitas>0), inclusive 100%
       return rows.sort((a, b) =>
-        (b.focusScore - a.focusScore) ||
-        (b.delta - a.delta) ||
-        (a.concluida - b.concluida) ||
-        (b.emProgresso - a.emProgresso) ||
+        (Number(b.hot) - Number(a.hot)) ||
+        (b.feitas - a.feitas) ||
         (b.pct - a.pct) ||
-        (b.total - a.total)
+        (Number(b.emProgresso) - Number(a.emProgresso)) ||
+        (b.total - a.total) ||
+        a.placa.localeCompare(b.placa)
       );
+    }
+
+    /** Lista da vitrine: prioriza placas com realizadas; completa com as demais. */
+    function placaVitrineList() {
+      const comBaixa = PLACAS.filter(p => p.feitas > 0);
+      const semBaixa = PLACAS.filter(p => p.feitas <= 0);
+      if (comBaixa.length) return comBaixa.concat(semBaixa);
+      return semBaixa.length ? semBaixa : PLACAS;
+    }
+
+    function visiblePlacas() {
+      const lista = placaVitrineList();
+      if (!lista.length) return [];
+      const n = Math.min(PLACA_VISIBLE, lista.length);
+      const comBaixa = lista.filter(p => p.feitas > 0);
+      const semBaixa = lista.filter(p => p.feitas <= 0);
+
+      // Se tem quem ja coletou: mantem elas no topo (gira entre elas) e completa o resto
+      if (comBaixa.length) {
+        const out = [];
+        const take = Math.min(n, comBaixa.length);
+        for (let i = 0; i < take; i++) {
+          out.push(comBaixa[(placaCursor + i) % comBaixa.length]);
+        }
+        let zi = placaCursor;
+        let guard = 0;
+        while (out.length < n && semBaixa.length && guard < semBaixa.length + 2) {
+          const z = semBaixa[zi % semBaixa.length];
+          if (!out.some(p => p.placa === z.placa)) out.push(z);
+          zi += 1;
+          guard += 1;
+        }
+        return out;
+      }
+
+      const out = [];
+      for (let i = 0; i < n; i++) out.push(lista[(placaCursor + i) % lista.length]);
+      return out;
     }
 
     function buildUrgentes() {
@@ -1069,14 +1095,7 @@
         stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem placas</div></div>';
         return;
       }
-      // Prefere mostrar as em foco (progresso / hot); ainda rotaciona entre elas
-      const focusPool = PLACAS.filter(p => p.hot || p.emProgresso);
-      const pool = focusPool.length ? focusPool : PLACAS.filter(p => !p.concluida);
-      const lista = pool.length ? pool : PLACAS;
-      const visible = [];
-      const n = Math.min(PLACA_VISIBLE, lista.length);
-      const cur = lista.length ? (placaCursor % lista.length) : 0;
-      for (let i = 0; i < n; i++) visible.push(lista[(cur + i) % lista.length]);
+      const visible = visiblePlacas();
       Array.from(stack.querySelectorAll('.pop')).forEach(el => {
         el.classList.remove('show'); el.classList.add('leaving');
         setTimeout(() => { try { el.remove(); } catch (_) {} }, 480);
@@ -1086,12 +1105,15 @@
         const nodes = visible.map(p => {
           const color = p.pct >= 100 ? '#8cc63f' : p.pct >= 50 ? '#29abe2' : '#fff200';
           const el = document.createElement('div');
-          el.className = 'pop pop-placa' + (p.hot ? ' hot' : p.emProgresso ? ' progressing' : '');
+          el.className = 'pop pop-placa'
+            + (p.hot ? ' hot' : '')
+            + (p.emProgresso ? ' progressing' : '')
+            + (p.concluida ? ' done' : '');
           const deltaTxt = p.delta > 0 ? `<span class="delta">+${p.delta}</span>` : '';
           el.innerHTML = `
             <div class="donut">${donutSvg(p.pct, color)}<div class="pct">0%</div></div>
             <div><div class="name">${esc(p.placa)}</div><div class="meta">${p.feitas}/${p.total}${deltaTxt}</div></div>
-            <div class="badge${p.delta > 0 ? ' up' : ''}">${p.pct}%</div>`;
+            <div class="badge${p.feitas > 0 ? ' up' : ''}">${p.pct}%</div>`;
           stack.appendChild(el);
           requestAnimationFrame(() => el.classList.add('show'));
           animateDonut(el, p.pct);
@@ -1141,11 +1163,10 @@
       renderPlacaPops();
       renderPrazoPops();
       placaTimer = setInterval(() => {
-        const focusPool = PLACAS.filter(p => p.hot || p.emProgresso);
-        const pool = focusPool.length ? focusPool : PLACAS.filter(p => !p.concluida);
-        const lista = pool.length ? pool : PLACAS;
-        if (!lista.length) return;
-        placaCursor = (placaCursor + 1) % lista.length;
+        const comBaixa = PLACAS.filter(p => p.feitas > 0);
+        const base = comBaixa.length || PLACAS.length;
+        if (!base) return;
+        placaCursor = (placaCursor + 1) % base;
         renderPlacaPops();
       }, PLACA_TICK_MS);
       prazoTimer = setInterval(() => {
