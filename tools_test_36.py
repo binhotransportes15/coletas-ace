@@ -67,7 +67,7 @@ def _snapshot(popup) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Teste visual preenchimento SSW 36")
-    parser.add_argument("--unidade", default="", help="Sigla unica (ex SPO). Vazio = 1a da config")
+    parser.add_argument("--unidade", default="SPO", help="Sigla (36 sempre SPO)")
     parser.add_argument(
         "--gerar",
         action="store_true",

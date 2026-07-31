@@ -510,31 +510,15 @@ class AceSswClient:
         """
         36 - Consulta romaneios/CTRCs (ssw0146):
           Excel = S
-          Unidade vazia = todas (campo opc) — evita 3x REL2 em paralelo com 50/103
+          Unidade = sempre SPO (entregas)
           Periodo = D-1 .. hoje (DDMMYY)
-          Gerar = ajaxEnvia('REL2') via #btn_env_periodo
+          Gerar = #btn_env_periodo → ajaxEnvia('REL2')
         """
-        units = self._coleta_units()
-        # Unidade (opc): se varias siglas na config, 1 download sem filtro
-        # (SSW devolve SPO+LEO+RIS). Override: 1 sigla sozinha ainda filtra.
-        if len(units) == 1:
-            passes = units
-            label = units[0]
-        else:
-            passes = [""]
-            label = "TODAS" if not units else ",".join(units) + " (1x sem filtro)"
+        unidade = "SPO"
         self.on_status(
-            f"Gerando 36 Excel | periodo {self.start_date_yy} a {self.end_date_yy} | un={label}..."
+            f"Gerando 36 Excel | periodo {self.start_date_yy} a {self.end_date_yy} | un={unidade}..."
         )
-        paths: list[Path] = []
-        for un in passes:
-            paths.append(self._download_report_36_once(page, un))
-        if len(paths) == 1:
-            return paths[0]
-        return self._merge_downloaded_files(
-            paths,
-            f"entrega_36_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}_merged.sswweb",
-        )
+        return self._download_report_36_once(page, unidade)
 
     def _download_report_36_once(self, page, unidade: str) -> Path:
         popup = self._open_menu_option(
@@ -555,10 +539,9 @@ class AceSswClient:
             popup.on("dialog", lambda d: d.accept())
             self._preencher_tela_36(popup, unidade=unidade)
             popup.wait_for_timeout(400)
-            # Mesmo padrao do 50/103: expect_download e da Page (popup), nao do Context
             with popup.expect_download(timeout=180000) as download_info:
                 self._clicar_gerar_36(popup)
-            suffix = (unidade or "todas").lower()
+            suffix = (unidade or "spo").lower()
             dest_name = (
                 f"entrega_36_{self.start_date_yy}_{self.end_date_yy}_{suffix}_{self.timestamp}.sswweb"
             )
@@ -579,62 +562,64 @@ class AceSswClient:
             except Exception:
                 pass
 
-    def _preencher_tela_36(self, popup, *, unidade: str = "") -> None:
+    def _preencher_tela_36(self, popup, *, unidade: str = "SPO") -> None:
         """
-        ssw0146:
-          t_excel = S
-          t_unidade = sigla ou vazio (todas)
-          t_dt_ini / t_dt_fin = DDMMYY
+        ssw0146 (mesmo padrao CyberMap / teste que baixou OK):
+          t_excel = S, t_unidade = SPO, t_dt_ini/t_dt_fin = DDMMYY
           limpa busca pontual (romaneio/ciot/mdfe/placa/cpf)
         """
         ini, fim = self.start_date_yy, self.end_date_yy
-        un = (unidade or "").strip().upper()
-        result = popup.evaluate(
-            """([ini, fim, unidade]) => {
-              const setVal = (id, v) => {
-                const el = document.getElementById(String(id));
-                if (!el) return false;
-                el.focus();
-                el.value = v;
-                el.dispatchEvent(new Event('input', {bubbles:true}));
-                el.dispatchEvent(new Event('change', {bubbles:true}));
-                try { el.blur(); } catch (e) {}
-                return true;
-              };
-              // Limpa busca pontual — usa so "Romaneios do periodo"
-              ['t_sigla_rom','t_nro_rom','t_cod_barras_rom','t_ciot','t_ser_mdfe',
-               't_nro_mdfe','t_placa_veic','t_cpf_motorista'].forEach(id => setVal(id, ''));
-              const okExcel = setVal('t_excel', 'S');
-              const okUn = setVal('t_unidade', unidade || '');
-              const okIni = setVal('t_dt_ini', ini);
-              const okFim = setVal('t_dt_fin', fim);
-              return {
-                ok: okExcel && okUn && okIni && okFim,
-                values: {
-                  excel: (document.getElementById('t_excel') || {}).value || '',
-                  unidade: (document.getElementById('t_unidade') || {}).value || '',
-                  periodo: [
-                    (document.getElementById('t_dt_ini') || {}).value || '',
-                    (document.getElementById('t_dt_fin') || {}).value || '',
-                  ],
-                },
-              };
-            }""",
-            [ini, fim, un],
+        un = (unidade or "SPO").strip().upper() or "SPO"
+        popup.locator("#t_excel").wait_for()
+        for fid in (
+            "t_sigla_rom",
+            "t_nro_rom",
+            "t_cod_barras_rom",
+            "t_ciot",
+            "t_ser_mdfe",
+            "t_nro_mdfe",
+            "t_placa_veic",
+            "t_cpf_motorista",
+        ):
+            try:
+                popup.locator(f"#{fid}").fill("")
+            except Exception:
+                pass
+        popup.locator("#t_excel").fill("S")
+        popup.locator("#t_unidade").fill(un)
+        popup.locator("#t_dt_ini").fill(ini)
+        popup.locator("#t_dt_fin").fill(fim)
+        values = popup.evaluate(
+            """() => ({
+              excel: (document.getElementById('t_excel') || {}).value || '',
+              unidade: (document.getElementById('t_unidade') || {}).value || '',
+              periodo: [
+                (document.getElementById('t_dt_ini') || {}).value || '',
+                (document.getElementById('t_dt_fin') || {}).value || '',
+              ],
+            })"""
         )
-        if not result or not result.get("ok"):
-            raise RuntimeError(f"36: falha ao preencher ssw0146: {result}")
+        if (values.get("excel") or "").upper() != "S" or (values.get("unidade") or "").upper() != un:
+            raise RuntimeError(f"36: falha ao preencher ssw0146: {values}")
         self.on_status(
-            f"36 preenchido: periodo {ini}-{fim} | excel=S | un={un or 'TODAS'} | {result.get('values')}"
+            f"36 preenchido: periodo {ini}-{fim} | excel=S | un={un} | {values}"
         )
         popup.wait_for_timeout(500)
 
     def _clicar_gerar_36(self, popup) -> None:
-        loc = popup.locator('#btn_env_periodo, a[onclick*="REL2"]')
+        btn = popup.locator("#btn_env_periodo")
+        try:
+            if btn.count() > 0 and btn.first.is_visible():
+                btn.first.click()
+                self.on_status("36: clique gerar via #btn_env_periodo (REL2)")
+                return
+        except Exception:
+            pass
+        loc = popup.locator('a[onclick*="REL2"]')
         try:
             if loc.count() > 0 and loc.first.is_visible():
                 loc.first.click()
-                self.on_status("36: clique gerar via #btn_env_periodo (REL2)")
+                self.on_status("36: clique gerar via a[REL2]")
                 return
         except Exception:
             pass
