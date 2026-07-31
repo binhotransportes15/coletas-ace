@@ -241,12 +241,16 @@
       border: none; background: transparent; padding: 0; color: inherit;
     }
     .torre .pin {
-      width: 36px; height: 36px; border-radius: 50% 50% 50% 0;
+      width: 42px; height: 42px; border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg); display: grid; place-items: center;
       margin-bottom: 12px; box-shadow: 0 6px 14px rgba(0,0,0,.4);
       border: 2px solid rgba(255,255,255,.25);
     }
-    .torre .pin span { transform: rotate(45deg); font-size: 14px; font-weight: 800; color: #fff; }
+    .torre .pin span {
+      transform: rotate(45deg); font-size: 15px; font-weight: 800; color: #fff;
+      line-height: 1; letter-spacing: -0.02em;
+    }
+    .torre .pin span.pin-lg { font-size: 12px; }
     .torre .barra {
       width: 100%; min-height: 56px; border-radius: 8px 8px 0 0;
       display: flex; align-items: center; justify-content: center;
@@ -447,6 +451,7 @@
       margin-bottom: clamp(10px, 1.4vmin, 18px);
     }
     body.tv-mode .torre .pin span { font-size: clamp(14px, 1.8vmin, 22px); }
+    body.tv-mode .torre .pin span.pin-lg { font-size: clamp(11px, 1.4vmin, 16px); }
     body.tv-mode .torre .barra {
       min-height: clamp(64px, 8vmin, 120px);
       border-radius: clamp(8px, 1vmin, 14px) clamp(8px, 1vmin, 14px) 0 0;
@@ -563,22 +568,22 @@
           <div class="col-center">
             <div class="torres">
               <div class="torre t-col">
-                <div class="pin"><span id="rankReal">1</span></div>
+                <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
                 <div class="barra" id="barReal"><strong id="nReal">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Realizada</div></div>
               </div>
               <div class="torre t-com">
-                <div class="pin"><span id="rankRota">2</span></div>
+                <div class="pin" title="Quantidade"><span id="rankRota">0</span></div>
                 <div class="barra" id="barRota"><strong id="nRota">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Em rota</div></div>
               </div>
               <div class="torre t-cad">
-                <div class="pin"><span id="rankPar">3</span></div>
+                <div class="pin" title="Quantidade"><span id="rankPar">0</span></div>
                 <div class="barra" id="barPar"><strong id="nPar">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Parado</div></div>
               </div>
               <div class="torre t-can">
-                <div class="pin"><span id="rankCan">4</span></div>
+                <div class="pin" title="Quantidade"><span id="rankCan">0</span></div>
                 <div class="barra" id="barCan"><strong id="nCan">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Cancelada</div></div>
               </div>
@@ -798,19 +803,16 @@
       const total = Math.max(0, Number(counts.total) || 0);
       const max = Math.max(...items.map(i => i.val), 1);
 
-      // Ranking: 1 = maior quantidade, 2 = segundo, etc. Empate mantém ordem estável.
-      const ranked = items
-        .map((item, idx) => ({ ...item, idx }))
-        .sort((a, b) => (b.val - a.val) || (a.idx - b.idx));
-      const rankOf = {};
-      ranked.forEach((item, i) => { rankOf[item.suf] = i + 1; });
-
       items.forEach(({ suf, bar, val }) => {
         const pct = total > 0 ? Math.round((val / total) * 100) : 0;
         const nEl = document.getElementById('n' + suf);
         nEl.innerHTML = `${pct}<span class="pct-sign">%</span>`;
         nEl.title = `${val} de ${total}`;
-        document.getElementById('rank' + suf).textContent = String(rankOf[suf]);
+        // Pin = quantidade (antes era ranking 1–4)
+        const pin = document.getElementById('rank' + suf);
+        pin.textContent = String(val);
+        pin.classList.toggle('pin-lg', val >= 100);
+        pin.title = `${val} coleta(s)`;
         document.getElementById(bar).style.height = alturaTorre(val, max) + 'px';
       });
       document.getElementById('totalColetas').textContent = String(total);
