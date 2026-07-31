@@ -204,6 +204,8 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print("    7 /automatica  Loop auto (intervalo = loop_intervalo) ate fechar")
     print("    8 /status      Mostra alteracoes locais (git)")
     print("    9 /push        Commit + sobe TUDO pro GitHub (Pages)")
+    print("    /site off      INTERROMPE o dashboard na TV/site (sobe GitHub)")
+    print("    /site on       LIGA o dashboard de novo")
     print("    /pull          Baixa alteracoes do GitHub")
     print("    /e             Lista campos editaveis")
     print("    /e intervalo 5m   Define tempo do /automatica (30s|5m|1h|2d)")
@@ -224,9 +226,9 @@ def cmd_help() -> str:
         "  periodo_modo: diario | sexta\n"
         "  loop_intervalo: 30s | 5m | 1h | 2d  (min 5s, max 30d)\n"
         "    /e intervalo 30s\n"
-        "    /e loop_intervalo 1h\n"
-        "  /automatica [intervalo]: usa config ou override (ex.: /automatica 90s)\n"
-        "  /status | /push [msg] | /pull"
+        "  /site off [msg] | /interromper  → pausa o site na TV (push GitHub)\n"
+        "  /site on | /ligar               → liga o site de novo\n"
+        "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
 
 
@@ -448,6 +450,48 @@ def run_git_pull() -> str:
     return git_pull(on_status=on_status)
 
 
+def run_site_cmd(parts: list[str]) -> str:
+    """
+    /site off [mensagem]
+    /site on
+    /interromper [mensagem]
+    /ligar
+    """
+    from site_control import publish_site_status, read_site_status
+
+    def on_status(msg: str) -> None:
+        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
+
+    cmd0 = (parts[0] if parts else "").lower().lstrip("/")
+    rest = parts[1:]
+
+    if cmd0 in {"interromper", "desligar", "pausar", "off"}:
+        msg = " ".join(rest).strip()
+        return publish_site_status(online=False, message=msg, on_status=on_status)
+
+    if cmd0 in {"ligar", "reativar", "on"}:
+        return publish_site_status(online=True, message="", on_status=on_status)
+
+    # /site ...
+    if not rest:
+        st = read_site_status()
+        estado = "ONLINE" if st.get("online", True) else "INTERROMPIDO"
+        extra = f" · {st.get('message')}" if st.get("message") else ""
+        when = f" · {st.get('updated_at')}" if st.get("updated_at") else ""
+        return (
+            f"Site agora: {estado}{extra}{when}\n"
+            "Use: /site off [msg]  |  /site on  |  /interromper  |  /ligar"
+        )
+
+    action = rest[0].lower().lstrip("/")
+    msg = " ".join(rest[1:]).strip()
+    if action in {"off", "interromper", "desligar", "pausar", "0", "false", "nao"}:
+        return publish_site_status(online=False, message=msg, on_status=on_status)
+    if action in {"on", "ligar", "online", "1", "true", "sim"}:
+        return publish_site_status(online=True, message=msg, on_status=on_status)
+    return f"Acao desconhecida: {action}. Use /site off ou /site on"
+
+
 def show_config(payload: dict[str, Any]) -> str:
     lines = ["Config atual:"]
     for key, (_, typ, secret) in EDITABLE.items():
@@ -479,6 +523,20 @@ def _is_pull_token(token: str) -> bool:
     return t in {"pull", "baixar"}
 
 
+def _is_site_token(token: str) -> bool:
+    t = token.strip().lower().lstrip("/")
+    return t in {
+        "site",
+        "interromper",
+        "desligar",
+        "pausar",
+        "ligar",
+        "reativar",
+        "off",
+        "on",
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     if os.name == "nt":
         try:
@@ -502,9 +560,12 @@ def main(argv: list[str] | None = None) -> int:
     if args and _is_pull_token(args[0]):
         print(run_git_pull())
         return 0
+    if args and _is_site_token(args[0]):
+        print(run_site_cmd(args))
+        return 0
 
     payload = _load_payload()
-    message = "Pronto. /push sobe alteracoes | /automatica roda sozinho | /e edita."
+    message = "Pronto. /site off interrompe a TV | /site on liga | /automatica roda sozinho."
     draw_menu(payload, message=message)
 
     while True:
@@ -576,6 +637,21 @@ def main(argv: list[str] | None = None) -> int:
                 message = run_git_push(parts)
             elif cmd in {"pull", "/pull", "baixar", "/baixar"}:
                 message = run_git_pull()
+            elif cmd in {
+                "site",
+                "/site",
+                "interromper",
+                "/interromper",
+                "desligar",
+                "/desligar",
+                "pausar",
+                "/pausar",
+                "ligar",
+                "/ligar",
+                "reativar",
+                "/reativar",
+            }:
+                message = run_site_cmd(parts)
             elif cmd in {"6", "show", "/show", "config"}:
                 message = show_config(payload)
             elif cmd == "cls" or cmd == "clear":
