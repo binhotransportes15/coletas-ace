@@ -6,7 +6,7 @@
   "password": "",
   "unit": "SPO,LEO,RIS",
   "coleta_option": "50",
-  "entrega_option": "",
+  "entrega_option": "36",
   "periodo_modo": "diario",
   "auto_baixar_ao_abrir": true,
   "loop_intervalo": "5m",

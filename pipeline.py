@@ -5,12 +5,13 @@ from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, LOG_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import format_period, normalize_date, periodo_103_hoje, periodo_50_coleta_hoje, sugestao_periodo
+from dates import format_period, normalize_date, periodo_103_hoje, periodo_36_ontem_hoje, periodo_50_coleta_hoje, sugestao_periodo
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
-from sheets_sync import sync_google_sheets, sync_google_sheets_103
-from ssw_client import cleanup_downloads, download_ace_103, download_ace_reports
+from sheets_sync import sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36
+from ssw_client import cleanup_downloads, download_ace_103, download_ace_36, download_ace_reports
 from parser_ssw103 import analyze_report_103
+from parser_ssw0146 import analyze_report_36
 
 StatusCallback = Callable[[str], None]
 
@@ -253,6 +254,101 @@ def run_full_pipeline_103(
     }
 
 
+def find_latest_36(download_dir: Path | None = None) -> Path | None:
+    folder = Path(download_dir or DOWNLOAD_DIR)
+    if not folder.exists():
+        return None
+    candidates: list[Path] = []
+    for pattern in ("entrega_36*", "CSV*ssw0146*", "*ssw0146*", "coleta_36*"):
+        candidates.extend(folder.glob(pattern))
+    files = sorted(
+        {p.resolve() for p in candidates if p.is_file()},
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    return files[0] if files else None
+
+
+def run_analysis_36(
+    report_path: Path | str,
+    *,
+    periodo: str = "",
+    settings: AceSettings | None = None,
+    on_status: StatusCallback | None = None,
+    sync: bool = True,
+) -> dict[str, Any]:
+    status = on_status or _noop
+    cfg = settings or load_settings()
+    path = Path(report_path)
+    status(f"Analisando 36: {path.name}")
+    meta = analyze_report_36(path, periodo=periodo)
+    tot = meta.get("totais") or {}
+    status(
+        f"36: {meta.get('lote')} CTRC(s) | "
+        f"REAL {tot.get('realizada', 0)} / "
+        f"ROTA {tot.get('em_rota', 0)} / "
+        f"PEND {tot.get('pendencia', 0)} | "
+        f"excluidos ontem {meta.get('excluido', 0)}"
+    )
+    result: dict[str, Any] = {"analysis": meta, "report": str(path)}
+    if sync:
+        result["sheets"] = sync_google_sheets_36(cfg, on_status=status)
+        result["dashboard"] = publish_dashboard(cfg, on_status=status)
+    return result
+
+
+def run_full_pipeline_36(
+    *,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    keep_open: bool = False,
+    headless: bool = False,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    status = on_status or _noop
+
+    def emit(msg: str) -> None:
+        status(msg)
+        _log_file(msg)
+
+    cfg = settings or load_settings()
+    creds = credentials or load_credentials()
+    ini, fim = periodo_36_ontem_hoje()
+    emit(f"Pipeline ACE 36 | periodo {format_period(ini, fim)} (D-1..hoje)")
+
+    download = download_ace_36(
+        ini,
+        fim,
+        keep_open=keep_open,
+        headless=headless,
+        on_status=emit,
+        credentials=creds,
+        settings=cfg,
+    )
+    report = Path((download.get("paths") or {}).get("entrega_36") or "")
+    if not report.exists():
+        latest = find_latest_36()
+        if latest:
+            report = latest
+            emit(f"Usando ultimo relatorio 36: {report.name}")
+        else:
+            raise RuntimeError("Download da entrega 36 nao gerou arquivo")
+
+    analysis = run_analysis_36(
+        report,
+        periodo=format_period(ini, fim),
+        settings=cfg,
+        on_status=emit,
+        sync=True,
+    )
+    return {
+        "download": download,
+        **analysis,
+        "period": format_period(ini, fim),
+        "modo": "ontem_hoje",
+    }
+
+
 def run_dual_cycle(
     *,
     credentials: SswCredentials | None = None,
@@ -262,11 +358,12 @@ def run_dual_cycle(
     sync: bool = True,
 ) -> dict[str, Any]:
     """
-    Baixa 50 + 103 EM PARALELO (dois navegadores), analisa e sobe Sheets/dashboard.
+    Baixa 50 + 103 (+ 36 se entrega_option=36) EM PARALELO, analisa e sobe Sheets/dashboard.
 
     Periodos automaticos (recalculados a cada ciclo / virada de dia):
       50  → periodo de COLETA = HOJE
       103 → data LIMITE HOJE (Por data de = L)
+      36  → D-1 .. HOJE (romaneios/CTRCs entrega)
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -280,16 +377,21 @@ def run_dual_cycle(
     creds = credentials or load_credentials()
     ini50, fim50 = periodo_50_coleta_hoje()
     ini103, fim103 = periodo_103_hoje()
+    ini36, fim36 = periodo_36_ontem_hoje()
+    run_36 = str(getattr(cfg, "entrega_option", "") or "").strip() == "36"
     emit(
         f"CICLO dual | 50 coleta={format_period(ini50, fim50)} "
-        f"| 103 limite={format_period(ini103, fim103)} | paralelo"
+        f"| 103 limite={format_period(ini103, fim103)}"
+        + (f" | 36 periodo={format_period(ini36, fim36)}" if run_36 else "")
+        + " | paralelo"
     )
 
-    # Limpa antigos UMA vez antes do paralelo (evita race 50 vs 103)
+    # Limpa antigos UMA vez antes do paralelo (evita race)
     cleanup_downloads(DOWNLOAD_DIR, on_status=emit)
 
     result_50: dict[str, Any] = {}
     result_103: dict[str, Any] = {}
+    result_36: dict[str, Any] = {}
     errors: dict[str, str] = {}
 
     def job_50() -> dict[str, Any]:
@@ -346,19 +448,54 @@ def run_dual_cycle(
         )
         return {"download": download, **analysis, "period": format_period(ini103, fim103)}
 
-    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="ace") as pool:
+    def job_36() -> dict[str, Any]:
+        def st(m: str) -> None:
+            emit(f"[36] {m}")
+
+        download = download_ace_36(
+            ini36,
+            fim36,
+            keep_open=False,
+            headless=headless,
+            on_status=st,
+            credentials=creds,
+            settings=cfg,
+            clean_downloads=False,
+        )
+        report = Path((download.get("paths") or {}).get("entrega_36") or "")
+        if not report.exists():
+            latest = find_latest_36()
+            if not latest:
+                raise RuntimeError("36 sem arquivo")
+            report = latest
+            st(f"Usando ultimo: {report.name}")
+        analysis = run_analysis_36(
+            report,
+            periodo=format_period(ini36, fim36),
+            settings=cfg,
+            on_status=st,
+            sync=False,
+        )
+        return {"download": download, **analysis, "period": format_period(ini36, fim36)}
+
+    workers = 3 if run_36 else 2
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="ace") as pool:
         futures = {
             pool.submit(job_50): "50",
             pool.submit(job_103): "103",
         }
+        if run_36:
+            futures[pool.submit(job_36)] = "36"
         for fut in as_completed(futures):
             label = futures[fut]
             try:
                 data = fut.result()
                 if label == "50":
                     result_50 = data
-                else:
+                elif label == "103":
                     result_103 = data
+                else:
+                    result_36 = data
                 emit(f"{label} concluido.")
             except Exception as err:  # noqa: BLE001
                 errors[label] = str(err)
@@ -366,9 +503,9 @@ def run_dual_cycle(
 
     # Mantem so os relatorios finais deste ciclo
     keep: list[Path] = []
-    for block in (result_50, result_103):
+    for block in (result_50, result_103, result_36):
         paths = (block.get("download") or {}).get("paths") or {}
-        for key in ("coleta", "coleta_103"):
+        for key in ("coleta", "coleta_103", "entrega_36"):
             p = Path(paths.get(key) or "")
             if p.exists():
                 keep.append(p)
@@ -377,25 +514,30 @@ def run_dual_cycle(
             keep.append(report)
     cleanup_downloads(DOWNLOAD_DIR, keep=keep, on_status=emit)
 
-    sheets50 = sheets103 = dash = {"ok": False, "skipped": True}
-    if sync and (result_50 or result_103):
+    sheets50 = sheets103 = sheets36 = dash = {"ok": False, "skipped": True}
+    if sync and (result_50 or result_103 or result_36):
         if result_50:
             sheets50 = sync_google_sheets(cfg, on_status=emit)
         if result_103:
             sheets103 = sync_google_sheets_103(cfg, on_status=emit)
+        if result_36:
+            sheets36 = sync_google_sheets_36(cfg, on_status=emit)
         dash = publish_dashboard(cfg, on_status=emit)
 
-    if errors and not result_50 and not result_103:
+    if errors and not result_50 and not result_103 and not result_36:
         raise RuntimeError("; ".join(f"{k}: {v}" for k, v in errors.items()))
 
     return {
-        "ok": not errors or bool(result_50 or result_103),
+        "ok": not errors or bool(result_50 or result_103 or result_36),
         "errors": errors,
         "period_50": format_period(ini50, fim50),
         "period_103": format_period(ini103, fim103),
+        "period_36": format_period(ini36, fim36) if run_36 else "",
         "50": result_50,
         "103": result_103,
+        "36": result_36,
         "sheets_50": sheets50,
         "sheets_103": sheets103,
+        "sheets_36": sheets36,
         "dashboard": dash,
     }

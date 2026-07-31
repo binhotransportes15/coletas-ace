@@ -74,6 +74,7 @@ def cleanup_downloads(
 MENU_PROGRAM = {
     "50": "/bin/ssw0157",  # Relacao das Coletas
     "103": "/bin/ssw0166",  # 103 - Situacao de Coletas (coletas normais / Excel)
+    "36": "/bin/ssw0146",  # 36 - Relacao de romaneios e CTRCs de entrega
 }
 
 _PATCH_CREATE_NEW_DOC = """
@@ -503,9 +504,194 @@ class AceSswClient:
         code = (option_code or "").strip()
         if not code:
             raise RuntimeError("Opcao de entrega nao definida.")
+        if code == "36":
+            return self._download_report_36(page)
         raise RuntimeError(
-            f"Opcao de entrega '{code}' ainda esta em aberto — automacao sera definida depois."
+            f"Opcao de entrega '{code}' ainda nao tem automacao. Use 36 (ssw0146)."
         )
+
+    def _download_report_36(self, page) -> Path:
+        """
+        36 - Consulta romaneios/CTRCs (ssw0146):
+          Excel = S
+          Unidade = cada sigla (SPO/LEO/RIS) ou vazio
+          Periodo = D-1 .. hoje (DDMMYY)
+          Gerar = ajaxEnvia('REL2') via #btn_env_periodo
+        """
+        units = self._coleta_units()
+        passes = units if units else [""]
+        label = ",".join(passes) if units else "TODAS"
+        self.on_status(
+            f"Gerando 36 Excel | periodo {self.start_date_yy} a {self.end_date_yy} | un={label}..."
+        )
+        paths: list[Path] = []
+        for un in passes:
+            paths.append(self._download_report_36_once(page, un))
+        if len(paths) == 1:
+            return paths[0]
+        return self._merge_downloaded_files(
+            paths,
+            f"entrega_36_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}_merged.sswweb",
+        )
+
+    def _download_report_36_once(self, page, unidade: str) -> Path:
+        popup = self._open_menu_option(
+            page,
+            "36",
+            markers=(
+                "romaneio",
+                "entrega",
+                "periodo",
+                "unidade",
+                "excel",
+                "0146",
+                "36",
+            ),
+        )
+        try:
+            self._preencher_tela_36(popup, unidade=unidade)
+            with popup.expect_download(timeout=180000) as download_info:
+                self._clicar_gerar_36(popup)
+            suffix = (unidade or "todas").lower()
+            dest_name = (
+                f"entrega_36_{self.start_date_yy}_{self.end_date_yy}_{suffix}_{self.timestamp}.sswweb"
+            )
+            download = download_info.value
+            suggested = (download.suggested_filename or "").lower()
+            if suggested.endswith(".xlsx"):
+                dest_name = dest_name.replace(".sswweb", ".xlsx")
+            elif suggested.endswith(".csv"):
+                dest_name = dest_name.replace(".sswweb", ".csv")
+            elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
+                dest_name = dest_name.replace(".sswweb", ".xls")
+            return self._save_download(download, dest_name)
+        finally:
+            try:
+                popup.close()
+            except Exception:
+                pass
+
+    def _preencher_tela_36(self, popup, *, unidade: str = "") -> None:
+        """
+        ssw0146:
+          t_excel = S
+          t_unidade = sigla ou vazio
+          t_dt_ini / t_dt_fin = DDMMYY
+          limpa busca pontual (romaneio/ciot/mdfe/placa/cpf)
+        """
+        ini, fim = self.start_date_yy, self.end_date_yy
+        un = (unidade or "").strip().upper()
+        result = popup.evaluate(
+            """([ini, fim, unidade]) => {
+              const setVal = (id, v) => {
+                const el = document.getElementById(String(id));
+                if (!el) return false;
+                el.focus();
+                el.value = v;
+                el.dispatchEvent(new Event('input', {bubbles:true}));
+                el.dispatchEvent(new Event('change', {bubbles:true}));
+                return true;
+              };
+              // Limpa busca pontual — usa so "Romaneios do periodo"
+              ['t_sigla_rom','t_nro_rom','t_cod_barras_rom','t_ciot','t_ser_mdfe',
+               't_nro_mdfe','t_placa_veic','t_cpf_motorista'].forEach(id => setVal(id, ''));
+              const okExcel = setVal('t_excel', 'S');
+              const okUn = setVal('t_unidade', unidade || '');
+              const okIni = setVal('t_dt_ini', ini);
+              const okFim = setVal('t_dt_fin', fim);
+              return {
+                ok: okExcel && okUn && okIni && okFim,
+                values: {
+                  excel: (document.getElementById('t_excel') || {}).value || '',
+                  unidade: (document.getElementById('t_unidade') || {}).value || '',
+                  periodo: [
+                    (document.getElementById('t_dt_ini') || {}).value || '',
+                    (document.getElementById('t_dt_fin') || {}).value || '',
+                  ],
+                },
+              };
+            }""",
+            [ini, fim, un],
+        )
+        if not result or not result.get("ok"):
+            raise RuntimeError(f"36: falha ao preencher ssw0146: {result}")
+        self.on_status(
+            f"36 preenchido: periodo {ini}-{fim} | excel=S | un={un or 'TODAS'} | {result.get('values')}"
+        )
+        popup.wait_for_timeout(300)
+
+    def _clicar_gerar_36(self, popup) -> None:
+        loc = popup.locator('#btn_env_periodo, a[onclick*="REL2"]')
+        try:
+            if loc.count() > 0 and loc.first.is_visible():
+                loc.first.click()
+                self.on_status("36: clique gerar via #btn_env_periodo (REL2)")
+                return
+        except Exception:
+            pass
+        clicked = popup.evaluate(
+            """() => {
+              if (typeof ajaxEnvia === 'function') {
+                ajaxEnvia('REL2', 1);
+                return true;
+              }
+              return false;
+            }"""
+        )
+        if clicked:
+            self.on_status("36: clique gerar via ajaxEnvia('REL2')")
+            return
+        raise RuntimeError("36: nao achei botao REL2 / #btn_env_periodo.")
+
+    def run_36(self) -> dict[str, Any]:
+        """Baixa somente a opcao 36 (Excel romaneios/CTRCs entrega)."""
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError as error:
+            raise RuntimeError(
+                "Playwright nao esta instalado. Rode: pip install playwright && playwright install chromium"
+            ) from error
+
+        ensure_dirs()
+        self.download_dir.mkdir(parents=True, exist_ok=True)
+        self._cleanup_before_download()
+        period = format_period(self.start_date_ui, self.end_date_ui)
+        self.on_status(f"ACE 36 | romaneios/CTRCs {period} | Excel")
+
+        browser = None
+        context = None
+        with sync_playwright() as playwright:
+            try:
+                launch_kwargs: dict[str, Any] = {
+                    "headless": self.headless,
+                    "slow_mo": 0,
+                }
+                if self.headless:
+                    launch_kwargs["args"] = ["--disable-dev-shm-usage"]
+                browser = playwright.chromium.launch(**launch_kwargs)
+                context = browser.new_context(accept_downloads=True)
+                page = context.new_page()
+                page.set_default_timeout(30000)
+                self._login(page)
+                self._ensure_unit(page)
+                self._patch_blank_popup_fix(page)
+                path = self._download_report_36(page)
+                self.paths["entrega_36"] = str(path)
+                self.on_status(f"36 Excel salvo: {path.name}")
+                return {
+                    "paths": dict(self.paths),
+                    "errors": {},
+                    "period": period,
+                    "entrega_option": "36",
+                    "download_dir": str(self.download_dir),
+                }
+            finally:
+                if not self.keep_open:
+                    if context is not None:
+                        context.close()
+                    if browser is not None:
+                        browser.close()
+
 
     def _download_report_50(self, page) -> Path:
         """050 - Relacao das Coletas (ssw0157) pelo Periodo de COLETA (hoje)."""
@@ -921,3 +1107,27 @@ def download_ace_103(
         clean_downloads=clean_downloads,
     )
     return client.run_103()
+
+
+def download_ace_36(
+    start_date: str,
+    end_date: str,
+    *,
+    keep_open: bool = False,
+    headless: bool = False,
+    on_status: StatusCallback | None = None,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    clean_downloads: bool = True,
+) -> dict[str, Any]:
+    client = AceSswClient(
+        start_date,
+        end_date,
+        keep_open=keep_open,
+        headless=headless,
+        on_status=on_status,
+        credentials=credentials,
+        settings=settings,
+        clean_downloads=clean_downloads,
+    )
+    return client.run_36()

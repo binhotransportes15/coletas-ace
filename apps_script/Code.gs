@@ -15,10 +15,12 @@
  *
  * Leitura do site (sem token):
  *   GET ?action=resumo | ?action=coletas | ?action=historico&coleta_id=SPO071651
- *       | ?action=coletas103 | ?action=resumo103 | ?action=ping
+ *       | ?action=coletas103 | ?action=resumo103
+ *       | ?action=entregas36 | ?action=romaneios36 | ?action=resumo36 | ?action=ping
  * Escrita do ACE (com token): POST JSON action clear/append/replace
  * Abas 50: Coletas, Historico, ResumoDiario
  * Abas 103: Coletas103, Resumo103
+ * Abas 36: Entregas36, Romaneios36, Resumo36
  */
 
 var SPREADSHEET_ID = '1VOkCF1Hn-VUZC7aKu_pa0Hgo1VjjuEJOqFqNSAErCzU';
@@ -34,7 +36,7 @@ function doGet(e) {
         ok: true,
         service: 'ACE Sheets Bridge',
         spreadsheet: SPREADSHEET_ID,
-        hint: 'GET action=resumo|coletas|historico|coletas103|resumo103 | POST com token para gravar',
+        hint: 'GET action=resumo|coletas|historico|coletas103|resumo103|entregas36|romaneios36|resumo36 | POST com token para gravar',
       });
     }
 
@@ -125,6 +127,40 @@ function doGet(e) {
         updated_at: new Date().toISOString(),
         rows: sheetToObjects_('Resumo103'),
         report: '103',
+      });
+    }
+
+    if (action === 'entregas36' || action === 'entregas' || action === '36') {
+      var rows36 = sheetToObjects_('Entregas36').filter(function (r) {
+        if (!(r.ctrc_id || r.romaneio)) return false;
+        if (String(r.excluido || '') === '1') return false;
+        var st = String(r.status_ace || '').toLowerCase();
+        return st !== 'excluido';
+      });
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: rows36,
+        total: rows36.length,
+        report: '36',
+      });
+    }
+
+    if (action === 'romaneios36' || action === 'romaneios') {
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: sheetToObjects_('Romaneios36'),
+        report: '36',
+      });
+    }
+
+    if (action === 'resumo36') {
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: sheetToObjects_('Resumo36'),
+        report: '36',
       });
     }
 

@@ -17,7 +17,7 @@ GOOGLE_SA_PATH = SECRETS_DIR / "google_service_account.json"
 SSW_LOGIN_URL = "https://sistema.ssw.inf.br/bin/ssw0422"
 
 DEFAULT_COLETA_OPTION = "50"
-DEFAULT_ENTREGA_OPTION = ""
+DEFAULT_ENTREGA_OPTION = "36"
 
 
 @dataclass(slots=True)

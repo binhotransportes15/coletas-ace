@@ -90,6 +90,16 @@ def periodo_103_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
     return to_ddmm(today), to_ddmm(today)
 
 
+def periodo_36_ontem_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
+    """
+    Relatorio 36 · periodo de pesquisa: D-1 (inicio) ate HOJE (fim).
+    Baixas com data de ocorrencia = ontem sao descartadas no parser.
+    """
+    today = _as_date(hoje)
+    ontem = today - timedelta(days=1)
+    return to_ddmm(ontem), to_ddmm(today)
+
+
 def periodo_analise_diaria(hoje: date | datetime | None = None) -> tuple[str, str]:
     """Alias historico → agora D-1 (ver periodo_50_cadastramento)."""
     return periodo_50_cadastramento(hoje)

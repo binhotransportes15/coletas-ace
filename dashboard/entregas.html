@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BINHO · COLETA</title>
+  <title>BINHO · ENTREGA</title>
   <script src="config.js"></script>
   <style>
     :root {
@@ -547,11 +547,11 @@
     <header class="topbar">
       <div class="brand">
         <img src="logo-binho.png" alt="BINHO Transportes" />
-        <div class="title">COLETA</div>
+        <div class="title">ENTREGA</div>
       </div>
       <nav class="nav">
-        <a class="nav-btn active" href="index.html" style="text-decoration:none;">Coleta</a>
-        <a class="nav-btn" href="entregas.html" style="text-decoration:none;">Entrega</a>
+        <a class="nav-btn" href="index.html" style="text-decoration:none;">Coleta</a>
+        <a class="nav-btn active" href="entregas.html" style="text-decoration:none;">Entrega</a>
         <button type="button" class="nav-btn active" data-view="live">Ao vivo</button>
         <button type="button" class="nav-btn" data-view="gestao">Gestão</button>
         <button type="button" class="nav-btn tv-btn" id="btnTv" title="Modo TV / tela inteira (F)">TV</button>
@@ -575,13 +575,13 @@
                 <span class="m-real" id="mixReal" style="flex:1"></span>
                 <span class="m-rota" id="mixRota" style="flex:1"></span>
                 <span class="m-par" id="mixPar" style="flex:1"></span>
-                <span class="m-can" id="mixCan" style="flex:1"></span>
+                <span class="m-can" id="mixCan" style="flex:0;display:none"></span>
               </div>
               <div class="total-stats">
                 <div class="s-real"><span>Realizada</span><b id="statReal">0</b></div>
                 <div class="s-rota"><span>Em rota</span><b id="statRota">0</b></div>
-                <div class="s-par"><span>Parado</span><b id="statPar">0</b></div>
-                <div class="s-can"><span>Cancelada</span><b id="statCan">0</b></div>
+                <div class="s-par"><span>Pendência</span><b id="statPar">0</b></div>
+                <div class="s-can" style="display:none"><span>Cancelada</span><b id="statCan">0</b></div>
               </div>
               <div class="total-sub" id="totalSub" hidden></div>
             </div>
@@ -602,9 +602,9 @@
               <div class="torre t-cad">
                 <div class="pin" title="Quantidade"><span id="rankPar">0</span></div>
                 <div class="barra" id="barPar"><strong id="nPar">0<span class="pct-sign">%</span></strong></div>
-                <div class="base"><div class="lbl">Parado</div></div>
+                <div class="base"><div class="lbl">Pendência</div></div>
               </div>
-              <div class="torre t-can">
+              <div class="torre t-can" style="display:none">
                 <div class="pin" title="Quantidade"><span id="rankCan">0</span></div>
                 <div class="barra" id="barCan"><strong id="nCan">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Cancelada</div></div>
@@ -621,12 +621,11 @@
     <!-- GESTÃO -->
     <div class="view" id="viewGestao">
       <section class="panel">
-        <h2>Gestão de coletas</h2>
+        <h2>Gestão de entregas</h2>
         <div class="toolbar" id="tabsRelatorio">
-          <button type="button" class="chip" data-rel="103">103 · Tempo real</button>
-          <button type="button" class="chip active" data-rel="50">50 · Situações / histórico</button>
+          <button type="button" class="chip active" data-rel="36">36 · Romaneios</button>
           <div class="search">
-            <input id="buscaColeta" type="search" placeholder="Buscar nº coleta (ex: 071655 ou SPO071655)" />
+            <input id="buscaColeta" type="search" placeholder="Buscar romaneio / placa / motorista" />
             <button type="button" class="btn" id="btnBuscar">Buscar</button>
             <button type="button" class="btn" id="btnLimparBusca" style="background:#1e293b;border-color:#334155;">Limpar</button>
           </div>
@@ -641,13 +640,13 @@
       </section>
     </div>
 
-    <p class="status-line" id="statusLine">BINHO · COLETA</p>
+    <p class="status-line" id="statusLine">BINHO · ENTREGA</p>
   </div>
 
   <div class="modal-backdrop" id="modalHist" role="dialog" aria-modal="true">
     <div class="modal">
       <button type="button" class="close" id="btnFecharHist">Fechar</button>
-      <h2 id="histTitulo">Histórico</h2>
+      <h2 id="histTitulo">CTRCs do romaneio</h2>
       <p class="sub-hist" id="histSub"></p>
       <div id="histLista"></div>
     </div>
@@ -665,18 +664,18 @@
     const PLACA_HOT_MS = 45000;
 
     let VIEW = 'live';
-    let REL = '50';
+    let REL = '36';
     let TV_MODE = false;
     let wakeLock = null;
     let tvIdleTimer = null;
     let lastCounts = null;
     let FILTRO = 'TODAS';
     let BUSCA = '';
-    let COLETAS = [];      // ao vivo (torres) — somente 103
-    let COLETAS_50 = [];   // gestao / historico
-    let COLETAS_103 = [];
+    let COLETAS = [];      // ao vivo — CTRCs 36
+    let ROMANEIOS = [];    // gestao
+    let ENTREGAS_ALL = []; // todos CTRCs para modal
     let refreshSeq = 0;
-    let lastGood103 = [];
+    let lastGood36 = [];
     let PLACAS = [];
     let URGENTES = [];
     let placaCursor = 0;
@@ -717,14 +716,15 @@
     }
 
     function coletaKey(r) {
-      return String(r.coleta_id || r.coleta || `${r.unidade || ''}${r.numero || ''}`)
+      return String(r.ctrc_id || r.romaneio || r.coleta_id || r.coleta || '')
         .toUpperCase().replace(/\s+/g, '').trim();
     }
 
-    function uniqueRows(rows) {
+    function uniqueRows(rows, keyFn) {
       const map = new Map();
+      const getKey = keyFn || ((r) => coletaKey(r));
       (rows || []).forEach(r => {
-        const key = coletaKey(r);
+        const key = getKey(r);
         if (!key) return;
         if (!map.has(key)) map.set(key, r);
       });
@@ -733,22 +733,15 @@
 
     function statusAce(c) {
       const raw = String(c.status_ace || '').toLowerCase().trim();
-      if (['parado', 'em_rota', 'realizada', 'cancelada'].includes(raw)) return raw;
-      const s = String(c.situacao_atual || '').toUpperCase();
-      if (s.includes('CANCEL')) return 'cancelada';
-      if (s.includes('COLET') || s.includes('REALIZ')) return 'realizada';
-      if (s.includes('COMAND') || s.includes('ROTA')) return 'em_rota';
-      if (s.includes('CADASTR') || s.includes('PARADO')) return 'parado';
+      if (raw === 'realizada') return 'realizada';
+      if (raw === 'em_rota') return 'em_rota';
+      if (raw === 'pendencia') return 'parado'; // torre Pendência
+      if (raw === 'excluido') return 'cancelada';
       return 'outro';
     }
 
     function situacaoNorm50(c) {
-      const s = String(c.situacao_atual || '').toUpperCase();
-      if (s.includes('CANCEL')) return 'CANCELADA';
-      if (s.includes('COLET')) return 'COLETADA';
-      if (s.includes('COMAND')) return 'COMANDADA';
-      if (s.includes('CADASTR')) return 'CADASTRADA';
-      return '';
+      return String(c.status_ace || c.situacao || '').toUpperCase();
     }
 
     function parsePlaca(raw) {
@@ -1043,22 +1036,21 @@
     }
 
     function buildUrgentes() {
+      // Lado direito: CTRCs em pendencia (ocorrencia diferente de realizada)
       const out = [];
-      COLETAS_50.forEach(c => {
-        const sit = situacaoNorm50(c);
-        if (!sit || sit === 'CANCELADA' || sit === 'COLETADA') return;
-        const limite = parseLimite(c);
-        if (!limite) return;
-        const mins = minsUntil(limite);
-        if (mins > JANELA_MIN) return;
+      COLETAS.forEach(c => {
+        if (statusAce(c) !== 'parado') return;
         out.push({
-          label: c.coleta || c.coleta_id || coletaKey(c),
-          sit, limite, mins,
-          veiculo: parsePlaca(c.veiculo || ''),
+          label: c.ctrc_id || c.romaneio || '',
+          sit: c.ocorrencia || 'PENDÊNCIA',
+          limite: null,
+          mins: 0,
+          veiculo: parsePlaca(c.placa || ''),
+          destinatario: c.destinatario || '',
+          romaneio: c.romaneio || '',
         });
       });
-      out.sort((a, b) => a.mins - b.mins);
-      return out;
+      return out.slice(0, 40);
     }
 
     function animateDonut(el, targetPct) {
@@ -1140,17 +1132,15 @@
       });
       setTimeout(() => {
         const nodes = visible.map(r => {
-          const atrasada = r.mins < 0;
           const el = document.createElement('div');
-          el.className = 'pop pop-prazo' + (atrasada ? ' perdida' : ' warn');
-          const tag = atrasada ? 'PERDIDA' : `${r.mins}m`;
+          el.className = 'pop pop-prazo warn';
           el.innerHTML = `
-            <div class="hora">${pad(r.limite.getHours())}:${pad(r.limite.getMinutes())}</div>
+            <div class="hora" style="font-size:12px;">PEND</div>
             <div>
               <div class="name" style="font-size:13px;">${esc(r.label)}</div>
-              <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
+              <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}${r.destinatario ? ' · ' + esc(r.destinatario) : ''}</div>
             </div>
-            <div class="tag">${esc(tag)}</div>`;
+            <div class="tag">PENDÊNCIA</div>`;
           stack.appendChild(el);
           requestAnimationFrame(() => el.classList.add('show'));
           return el;
@@ -1180,29 +1170,24 @@
 
     /* ===== GESTÃO ===== */
     function labelStatus103(s) {
-      return ({ parado: 'Parado', em_rota: 'Em rota', realizada: 'Realizada', cancelada: 'Cancelada' })[s] || s;
+      return ({ parado: 'Pendência', em_rota: 'Em rota', realizada: 'Realizada', cancelada: 'Excluída' })[s] || s;
     }
 
     function matchBusca(c) {
       if (!BUSCA) return true;
       const q = BUSCA.toUpperCase().replace(/\s+/g, '');
-      const id = coletaKey(c);
-      const num = String(c.numero || '').replace(/\D/g, '');
-      const qNum = q.replace(/\D/g, '');
-      return id.includes(q) || (qNum && (id.includes(qNum) || num.includes(qNum)));
+      const blob = [
+        c.romaneio, c.placa, c.motorista, c.ctrc_id, c.destinatario, c.ocorrencia,
+      ].join(' ').toUpperCase().replace(/\s+/g, '');
+      return blob.includes(q);
     }
 
     function renderFiltrosGestao() {
       const box = document.getElementById('filtrosGestao');
-      const opts103 = [
+      const opts = [
         ['TODAS', 'Todas'], ['realizada', 'Realizada'], ['em_rota', 'Em rota'],
-        ['parado', 'Parado'], ['cancelada', 'Cancelada'],
+        ['parado', 'Pendência'],
       ];
-      const opts50 = [
-        ['TODAS', 'Todas'], ['COLETADA', 'Coletada'], ['COMANDADA', 'Comandada'],
-        ['CADASTRADA', 'Cadastrada'], ['CANCELADA', 'Cancelada'],
-      ];
-      const opts = REL === '50' ? opts50 : opts103;
       if (!opts.some(([k]) => k === FILTRO)) FILTRO = 'TODAS';
       box.innerHTML = opts.map(([k, lbl]) =>
         `<button type="button" class="chip${FILTRO === k ? ' active' : ''}" data-filtro="${k}">${lbl}</button>`
@@ -1219,61 +1204,130 @@
     function renderTabelaGestao() {
       const thead = document.getElementById('theadGestao');
       const tbody = document.getElementById('tbodyGestao');
-      if (REL === '50') {
-        thead.innerHTML = `<tr>
-          <th>Coleta</th><th>Situação atual</th><th>Quando</th>
-          <th>Destino</th><th>Motorista</th><th></th></tr>`;
-        let rows = COLETAS_50.filter(matchBusca);
-        if (FILTRO !== 'TODAS') rows = rows.filter(c => situacaoNorm50(c) === FILTRO);
-        rows = rows.slice().reverse().slice(0, 300);
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="6" class="muted">Nenhuma coleta 50.</td></tr>';
-          return;
-        }
-        tbody.innerHTML = rows.map(c => {
-          const sit = situacaoNorm50(c);
-          const id = coletaKey(c);
-          const label = c.coleta || c.coleta_id || id;
-          return `<tr>
-            <td>${esc(label)}</td>
-            <td class="sit sit-${esc(sit)}">${esc(c.situacao_atual || sit)}</td>
-            <td>${esc(fmtDataHora(c.situacao_atual_data, c.situacao_atual_hora))}</td>
-            <td>${esc(c.dest_cidade || c.dest || '')}</td>
-            <td>${esc(c.motorista || '')}</td>
-            <td><button type="button" class="btn" data-hist="${esc(id)}" data-label="${esc(label)}" data-sit="${esc(sit)}">Histórico</button></td>
-          </tr>`;
-        }).join('');
-        tbody.querySelectorAll('[data-hist]').forEach(btn => {
-          btn.addEventListener('click', () => abrirHistorico(
-            btn.getAttribute('data-hist'),
-            btn.getAttribute('data-label'),
-            btn.getAttribute('data-sit'),
-            btn
-          ));
-        });
+      thead.innerHTML = `<tr>
+        <th>Romaneio</th><th>Placa</th><th>Motorista</th>
+        <th>Total</th><th>Realizada</th><th>Em rota</th><th>Pendência</th><th>%</th><th></th></tr>`;
+      let rows = ROMANEIOS.filter(matchBusca);
+      if (FILTRO === 'realizada') rows = rows.filter(r => Number(r.realizada) > 0);
+      if (FILTRO === 'em_rota') rows = rows.filter(r => Number(r.em_rota) > 0);
+      if (FILTRO === 'parado') rows = rows.filter(r => Number(r.pendencia) > 0);
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="muted">Nenhum romaneio 36.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(r => `<tr>
+        <td>${esc(r.romaneio || '')}</td>
+        <td>${esc(r.placa || '')}</td>
+        <td>${esc(r.motorista || '')}</td>
+        <td>${esc(r.total || '0')}</td>
+        <td class="sit sit-realizada">${esc(r.realizada || '0')}</td>
+        <td class="sit sit-em_rota">${esc(r.em_rota || '0')}</td>
+        <td class="sit sit-parado">${esc(r.pendencia || '0')}</td>
+        <td>${esc(r.pct || '0')}%</td>
+        <td><button type="button" class="btn" data-rom="${esc(r.romaneio || '')}">CTRCs</button></td>
+      </tr>`).join('');
+      tbody.querySelectorAll('[data-rom]').forEach(btn => {
+        btn.addEventListener('click', () => abrirCtrcsRomaneio(btn.getAttribute('data-rom')));
+      });
+    }
+
+    function abrirCtrcsRomaneio(romaneio) {
+      const modal = document.getElementById('modalHist');
+      const titulo = document.getElementById('histTitulo');
+      const sub = document.getElementById('histSub');
+      const lista = document.getElementById('histLista');
+      const rows = ENTREGAS_ALL.filter(c =>
+        String(c.romaneio || '').toUpperCase() === String(romaneio || '').toUpperCase()
+      );
+      titulo.textContent = `CTRCs · ${romaneio}`;
+      sub.textContent = `${rows.length} CTRC(s)`;
+      if (!rows.length) {
+        lista.innerHTML = '<p class="muted">Sem CTRCs neste romaneio.</p>';
       } else {
-        thead.innerHTML = `<tr>
-          <th>Coleta</th><th>Status</th><th>Situação</th>
-          <th>Hora</th><th>Placa</th><th>Carreta</th><th>Motorista</th></tr>`;
-        let rows = COLETAS_103.filter(matchBusca);
-        if (FILTRO !== 'TODAS') rows = rows.filter(c => statusAce(c) === FILTRO);
-        rows = rows.slice().reverse().slice(0, 300);
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="7" class="muted">Nenhuma coleta 103.</td></tr>';
-          return;
-        }
-        tbody.innerHTML = rows.map(c => {
+        lista.innerHTML = `<table><thead><tr>
+          <th>CTRC</th><th>Status</th><th>Destinatário</th><th>Ocorrência</th><th>Data</th>
+        </tr></thead><tbody>${rows.map(c => {
           const st = statusAce(c);
           return `<tr>
-            <td>${esc(c.coleta_id || '')}</td>
+            <td>${esc(c.ctrc_id || '')}</td>
             <td class="sit sit-${esc(st)}">${esc(labelStatus103(st))}</td>
-            <td>${esc(c.situacao_atual || '')}</td>
-            <td>${esc(fmtCampo(c.hora, 'hora'))}</td>
-            <td>${esc(c.placa || '')}</td>
-            <td>${esc(c.placa_carreta || '')}</td>
-            <td>${esc(c.motorista || '')}</td>
+            <td>${esc(c.destinatario || '')}</td>
+            <td>${esc(c.ocorrencia || '—')}</td>
+            <td>${esc(c.data_ocorrencia || '')}</td>
           </tr>`;
-        }).join('');
+        }).join('')}</tbody></table>`;
+      }
+      modal.classList.add('open');
+    }
+
+    function setRel(rel) {
+      REL = '36';
+      FILTRO = 'TODAS';
+      renderFiltrosGestao();
+      renderTabelaGestao();
+    }
+
+    async function refresh() {
+      const status = document.getElementById('statusLine');
+      const seq = ++refreshSeq;
+      try {
+        const [r36, rRom] = await Promise.all([
+          chamarPlanilha('entregas36').catch(() => null),
+          chamarPlanilha('romaneios36').catch(() => ({ rows: [] })),
+        ]);
+        if (seq !== refreshSeq) return;
+
+        const incoming = uniqueRows((r36 && r36.rows) || [], (r) =>
+          String(r.ctrc_id || `${r.romaneio || ''}|${r.destinatario || ''}`).toUpperCase()
+        );
+        if (incoming.length > 0) {
+          const prev = lastGood36.length;
+          const dropBrusca = prev > 0 && incoming.length < Math.max(3, Math.floor(prev * 0.5));
+          if (dropBrusca) {
+            ENTREGAS_ALL = lastGood36.slice();
+          } else {
+            lastGood36 = incoming.slice();
+            ENTREGAS_ALL = incoming;
+          }
+        } else if (lastGood36.length) {
+          ENTREGAS_ALL = lastGood36.slice();
+        } else {
+          ENTREGAS_ALL = [];
+        }
+
+        COLETAS = ENTREGAS_ALL.filter(c => String(c.excluido || '') !== '1' && statusAce(c) !== 'cancelada');
+        ROMANEIOS = (rRom && rRom.rows) || [];
+
+        const counts = countByStatus(COLETAS);
+        renderTorres(counts);
+        PLACAS = buildPlacas();
+        URGENTES = buildUrgentes();
+        if (placaCursor >= PLACAS.length) placaCursor = 0;
+        if (prazoCursor >= URGENTES.length) prazoCursor = 0;
+        if (!placaTimer || !prazoTimer) {
+          startPopLoops();
+        } else {
+          renderPlacaPops();
+          renderPrazoPops();
+        }
+        if (VIEW === 'gestao') {
+          renderFiltrosGestao();
+          renderTabelaGestao();
+        }
+        status.textContent =
+          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · CTRCs(36): ${COLETAS.length} · romaneios: ${ROMANEIOS.length}`;
+      } catch (err) {
+        if (seq !== refreshSeq) return;
+        status.textContent = err.message;
+        const sub = document.getElementById('totalSub');
+        if (sub) {
+          sub.hidden = false;
+          sub.style.display = 'block';
+          sub.style.color = '#fca5a5';
+          sub.style.fontSize = '11px';
+          sub.style.marginTop = '8px';
+          sub.textContent = err.message;
+        }
       }
     }
 
@@ -1324,27 +1378,6 @@
         </tr></thead><tbody>${body || '<tr><td colspan="8">Sem eventos</td></tr>'}</tbody></table></div>`;
     }
 
-    async function abrirHistorico(coletaId, label, situacao, btn) {
-      const modal = document.getElementById('modalHist');
-      const lista = document.getElementById('histLista');
-      document.getElementById('histTitulo').textContent = `Histórico · ${label || coletaId}`;
-      document.getElementById('histSub').textContent = `Situação atual: ${situacao || '—'}`;
-      lista.innerHTML = '<p class="sub-hist">Carregando…</p>';
-      modal.classList.add('open');
-      if (btn) btn.disabled = true;
-      try {
-        const resp = await chamarPlanilha('historico', { coleta_id: coletaId });
-        const rows = resp.rows || [];
-        lista.innerHTML = rows.length
-          ? renderHistoricoSsw(rows)
-          : '<p class="sub-hist">Sem histórico nesta coleta.</p>';
-      } catch (err) {
-        lista.innerHTML = `<p class="sub-hist">${esc(err.message)}</p>`;
-      } finally {
-        if (btn) btn.disabled = false;
-      }
-    }
-
     function setView(view) {
       VIEW = view === 'gestao' ? 'gestao' : 'live';
       if (VIEW === 'gestao' && TV_MODE) setTvMode(false, { syncHash: true });
@@ -1360,84 +1393,6 @@
       }
     }
 
-    function setRel(rel) {
-      REL = rel === '50' ? '50' : '103';
-      FILTRO = 'TODAS';
-      document.querySelectorAll('#tabsRelatorio [data-rel]').forEach(b => {
-        b.classList.toggle('active', b.getAttribute('data-rel') === REL);
-      });
-      renderFiltrosGestao();
-      renderTabelaGestao();
-    }
-
-    async function refresh() {
-      const status = document.getElementById('statusLine');
-      const seq = ++refreshSeq;
-      try {
-        const [r103, r50] = await Promise.all([
-          chamarPlanilha('coletas103').catch(() => null),
-          chamarPlanilha('coletas').catch(() => ({ rows: [] })),
-        ]);
-        // Resposta antiga nao sobrescreve a mais nova
-        if (seq !== refreshSeq) return;
-
-        COLETAS_50 = uniqueRows((r50 && r50.rows) || []);
-
-        const incoming103 = uniqueRows((r103 && r103.rows) || []);
-        // Durante o sync a aba pode vir vazia/parcial — mantem o ultimo 103 bom.
-        if (incoming103.length > 0) {
-          const prev = lastGood103.length;
-          const dropBrusca = prev > 0 && incoming103.length < Math.max(3, Math.floor(prev * 0.5));
-          if (dropBrusca) {
-            // queda brusca: provavelmente sync no meio; ignora 1 ciclo
-            COLETAS_103 = lastGood103.slice();
-          } else {
-            lastGood103 = incoming103.slice();
-            COLETAS_103 = incoming103;
-          }
-        } else if (lastGood103.length) {
-          COLETAS_103 = lastGood103.slice();
-        } else {
-          COLETAS_103 = [];
-        }
-
-        // Torres ao vivo = somente 103 (nunca usa o 50 aqui)
-        COLETAS = COLETAS_103.slice();
-
-        const counts = countByStatus(COLETAS);
-        renderTorres(counts);
-        PLACAS = buildPlacas();
-        URGENTES = buildUrgentes();
-        // Nao zera o cursor a cada refresh — evita "pulo" / sensacao de pagina cair
-        if (placaCursor >= PLACAS.length) placaCursor = 0;
-        if (prazoCursor >= URGENTES.length) prazoCursor = 0;
-        if (!placaTimer || !prazoTimer) {
-          startPopLoops();
-        } else {
-          renderPlacaPops();
-          renderPrazoPops();
-        }
-        if (VIEW === 'gestao') {
-          renderFiltrosGestao();
-          renderTabelaGestao();
-        }
-        status.textContent =
-          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · torres(103): ${COLETAS.length} · gestao(50): ${COLETAS_50.length}`;
-      } catch (err) {
-        if (seq !== refreshSeq) return;
-        status.textContent = err.message;
-        const sub = document.getElementById('totalSub');
-        if (sub) {
-          sub.hidden = false;
-          sub.style.display = 'block';
-          sub.style.color = '#fca5a5';
-          sub.style.fontSize = '11px';
-          sub.style.marginTop = '8px';
-          sub.textContent = err.message;
-        }
-      }
-    }
-
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
       btn.addEventListener('click', () => setView(btn.getAttribute('data-view')));
     });
@@ -1445,67 +1400,44 @@
     document.querySelectorAll('#tabsRelatorio [data-rel]').forEach(btn => {
       btn.addEventListener('click', () => setRel(btn.getAttribute('data-rel')));
     });
+    document.getElementById('filtrosGestao').addEventListener('click', () => {});
     document.getElementById('btnBuscar').addEventListener('click', () => {
       BUSCA = document.getElementById('buscaColeta').value.trim();
       renderTabelaGestao();
-    });
-    document.getElementById('buscaColeta').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        BUSCA = e.target.value.trim();
-        renderTabelaGestao();
-      }
     });
     document.getElementById('btnLimparBusca').addEventListener('click', () => {
       BUSCA = '';
       document.getElementById('buscaColeta').value = '';
       renderTabelaGestao();
     });
+    document.getElementById('buscaColeta').addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        BUSCA = document.getElementById('buscaColeta').value.trim();
+        renderTabelaGestao();
+      }
+    });
     document.getElementById('btnFecharHist').addEventListener('click', () => {
       document.getElementById('modalHist').classList.remove('open');
     });
-    document.getElementById('modalHist').addEventListener('click', (e) => {
-      if (e.target.id === 'modalHist') e.currentTarget.classList.remove('open');
+    document.getElementById('modalHist').addEventListener('click', (ev) => {
+      if (ev.target.id === 'modalHist') ev.currentTarget.classList.remove('open');
     });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'F11') return; // deixa o browser cuidar
-      const tag = (e.target && e.target.tagName) || '';
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (e.key === 'f' || e.key === 'F' || e.key === 't' || e.key === 'T') {
-        e.preventDefault();
-        toggleTvMode();
-      } else if (e.key === 'Escape' && TV_MODE) {
-        setTvMode(false);
-      }
-    });
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement && TV_MODE) {
-        // saiu do fullscreen pelo ESC nativo — mantém layout TV ou sai?
-        // mantém CSS tv-mode para caber na TV sem fullscreen se o browser bloquear
-      }
-    });
-    ['mousemove', 'mousedown', 'touchstart', 'keydown'].forEach(ev => {
-      document.addEventListener(ev, bumpTvIdle, { passive: true });
+    document.addEventListener('keydown', (ev) => {
+      const tag = (ev.target && ev.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+      if (ev.key === 'f' || ev.key === 'F') toggleTvMode();
+      if (ev.key === 'Escape' && TV_MODE) setTvMode(false);
     });
     window.addEventListener('resize', () => {
       clearTimeout(window._tvResize);
       window._tvResize = setTimeout(rerenderTorres, 120);
     });
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && TV_MODE) requestWakeLock();
-    });
-
-    const hash = (location.hash || '').replace('#', '').toLowerCase();
-    if (hash === 'tv' || hash === 'fullscreen' || hash === 'tela') {
-      setView('live');
-      setTvMode(true, { syncHash: false });
-    } else if (hash === 'gestao' || hash === '50' || hash === '103') {
-      setView('gestao');
-      if (hash === '50' || hash === '103') setRel(hash);
-    }
 
     tickClock();
     setInterval(tickClock, 1000);
+    document.body.classList.add('live-mode');
+    if (location.hash.replace('#', '') === 'tv') setTvMode(true, { syncHash: false });
+    else if (['gestao', '36'].includes(location.hash.replace('#', ''))) setView('gestao');
     refresh();
     setInterval(refresh, 20000);
   </script>

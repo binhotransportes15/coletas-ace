@@ -12,6 +12,7 @@ from typing import Any, Callable
 from config import DASHBOARD_DIR, BASE_DIR, AceSettings, load_settings
 from parser_ssw0157 import COLETAS_CSV, RESUMO_CSV
 from parser_ssw103 import COLETAS_103_CSV, RESUMO_103_CSV
+from parser_ssw0146 import ENTREGAS_36_CSV, ROMANEIOS_36_CSV, RESUMO_36_CSV
 
 StatusCallback = Callable[[str], None]
 
@@ -29,6 +30,9 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
         (RESUMO_CSV, "resumo_diario.csv"),
         (COLETAS_103_CSV, "coletas_103.csv"),
         (RESUMO_103_CSV, "resumo_103.csv"),
+        (ENTREGAS_36_CSV, "entregas_36.csv"),
+        (ROMANEIOS_36_CSV, "romaneios_36.csv"),
+        (RESUMO_36_CSV, "resumo_36.csv"),
     ):
         dest = data_dir / name
         if src.exists():
@@ -45,6 +49,17 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
                         "coleta_id,situacao_atual,status_ace,hora,hora_antes_meio_dia,"
                         "cadastrada_ref_AI,placa,placa_carreta,motorista\n"
                     )
+                elif name == "entregas_36.csv":
+                    fh.write(
+                        "ctrc_id,romaneio,situacao,status_ace,placa,placa_carreta,"
+                        "motorista,destinatario,ocorrencia,data_ocorrencia,excluido,motivo_exclusao\n"
+                    )
+                elif name == "romaneios_36.csv":
+                    fh.write(
+                        "romaneio,placa,placa_carreta,motorista,total,realizada,em_rota,pendencia,pct\n"
+                    )
+                elif name == "resumo_36.csv":
+                    fh.write("periodo,total,realizada,em_rota,pendencia,excluido\n")
                 else:
                     fh.write("coleta_id,coleta,situacao_atual\n")
             paths[name] = str(dest)

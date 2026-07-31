@@ -23,6 +23,14 @@ from parser_ssw103 import (
     COLETA_103_FIELDS,
     RESUMO_103_FIELDS,
 )
+from parser_ssw0146 import (
+    ENTREGAS_36_CSV,
+    ROMANEIOS_36_CSV,
+    RESUMO_36_CSV,
+    ENTREGA_36_FIELDS,
+    ROMANEIO_36_FIELDS,
+    RESUMO_36_FIELDS,
+)
 
 StatusCallback = Callable[[str], None]
 
@@ -266,4 +274,61 @@ def sync_google_sheets_103(
     except Exception as error:  # noqa: BLE001
         result["error"] = str(error)
         status(f"Sheets 103 falhou: {error}")
+        return result
+
+
+def sync_google_sheets_36(
+    settings: AceSettings | None = None,
+    *,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    """Envia cache 36 (Entregas36 + Romaneios36 + Resumo36) para a planilha."""
+    status = on_status or _noop
+    cfg = settings or load_settings()
+    gate = _ensure_apps_script(cfg, status)
+    if not gate.get("ok"):
+        return gate
+
+    url = gate["url"]
+    token = gate["token"]
+    entregas = _read_csv(ENTREGAS_36_CSV)
+    romaneios = _read_csv(ROMANEIOS_36_CSV)
+    resumo = _read_csv(RESUMO_36_CSV)
+    result: dict[str, Any] = {"ok": False, "skipped": False}
+
+    try:
+        status(
+            f"Sheets 36: gravando {len(entregas)} CTRC(s) / {len(romaneios)} romaneio(s)..."
+        )
+        stats: dict[str, Any] = {}
+        for sheet, headers, rows in (
+            ("Entregas36", ENTREGA_36_FIELDS, entregas),
+            ("Romaneios36", ROMANEIO_36_FIELDS, romaneios),
+            ("Resumo36", RESUMO_36_FIELDS, resumo),
+        ):
+            resp = _send_sheet(url, token, sheet, headers, rows, on_status=status)
+            if not resp.get("ok"):
+                result["error"] = resp.get("error") or str(resp)
+                status(f"Sheets falhou em {sheet}: {result['error']}")
+                return result
+            stats[sheet] = resp
+
+        result.update({
+            "ok": True,
+            "via": "apps_script",
+            "mode": "replace",
+            "entregas": len(entregas),
+            "romaneios": len(romaneios),
+            "stats": stats,
+        })
+        status(f"Sheets 36 atualizada: {len(entregas)} CTRC(s).")
+        return result
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:300]
+        result["error"] = f"HTTP {error.code}: {detail}"
+        status(f"Sheets 36 falhou: {result['error']}")
+        return result
+    except Exception as error:  # noqa: BLE001
+        result["error"] = str(error)
+        status(f"Sheets 36 falhou: {error}")
         return result

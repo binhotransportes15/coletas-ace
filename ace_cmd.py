@@ -350,8 +350,20 @@ def run_pipeline_103() -> str:
     return f"103 OK · totais={tot}"
 
 
+def run_pipeline_36() -> str:
+    from pipeline import run_full_pipeline_36
+
+    def on_status(msg: str) -> None:
+        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
+
+    print("\n=== Pipeline 36 (entregas) ===")
+    result = run_full_pipeline_36(on_status=on_status, headless=False)
+    tot = ((result.get("analysis") or {}).get("totais") or {})
+    return f"36 OK · totais={tot}"
+
+
 def run_sync() -> str:
-    from sheets_sync import sync_google_sheets, sync_google_sheets_103
+    from sheets_sync import sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36
 
     def on_status(msg: str) -> None:
         print(f"  [{datetime.now():%H:%M:%S}] {msg}")
@@ -360,7 +372,9 @@ def run_sync() -> str:
     r50 = sync_google_sheets(on_status=on_status)
     print("\n=== Sync Sheets 103 ===")
     r103 = sync_google_sheets_103(on_status=on_status)
-    return f"sync 50={r50.get('ok')} 103={r103.get('ok')}"
+    print("\n=== Sync Sheets 36 ===")
+    r36 = sync_google_sheets_36(on_status=on_status)
+    return f"sync 50={r50.get('ok')} 103={r103.get('ok')} 36={r36.get('ok')}"
 
 
 def run_dash() -> str:
@@ -536,6 +550,9 @@ def main(argv: list[str] | None = None) -> int:
                 payload = _load_payload()
             elif cmd in {"2", "103", "/103"}:
                 message = run_pipeline_103()
+                payload = _load_payload()
+            elif cmd in {"36", "/36", "entrega", "/entrega"}:
+                message = run_pipeline_36()
                 payload = _load_payload()
             elif cmd in {"3", "sync", "/sync"}:
                 message = run_sync()
