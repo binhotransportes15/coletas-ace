@@ -596,8 +596,8 @@
       <section class="panel">
         <h2>Gestão de coletas</h2>
         <div class="toolbar" id="tabsRelatorio">
-          <button type="button" class="chip active" data-rel="103">103 · Tempo real</button>
-          <button type="button" class="chip" data-rel="50">50 · Situações</button>
+          <button type="button" class="chip" data-rel="103">103 · Tempo real</button>
+          <button type="button" class="chip active" data-rel="50">50 · Situações / histórico</button>
           <div class="search">
             <input id="buscaColeta" type="search" placeholder="Buscar nº coleta (ex: 071655 ou SPO071655)" />
             <button type="button" class="btn" id="btnBuscar">Buscar</button>
@@ -636,7 +636,7 @@
     const PCT_ANIM_MS = 900;
 
     let VIEW = 'live';
-    let REL = '103';
+    let REL = '50';
     let TV_MODE = false;
     let wakeLock = null;
     let tvIdleTimer = null;
@@ -1265,22 +1265,6 @@
       renderTabelaGestao();
     }
 
-    function map50ToAce(rows) {
-      return uniqueRows(rows || []).map(c => {
-        const sit = situacaoNorm50(c);
-        const map = {
-          COLETADA: 'realizada', COMANDADA: 'em_rota',
-          CADASTRADA: 'parado', CANCELADA: 'cancelada',
-        };
-        return {
-          ...c,
-          status_ace: map[sit] || statusAce(c),
-          placa: parsePlaca(c.veiculo || c.placa || ''),
-          hora: c.situacao_atual_hora || c.hora || '',
-        };
-      });
-    }
-
     async function refresh() {
       const status = document.getElementById('statusLine');
       try {
@@ -1291,12 +1275,9 @@
         COLETAS_50 = uniqueRows((r50 && r50.rows) || []);
         COLETAS_103 = uniqueRows((r103 && r103.rows) || []);
 
-        // Torres ao vivo: usa o 50 (situacao atual completa).
-        // O 103 de hoje muitas vezes so traz cadastradas — nao deve zerar Em rota/Realizada.
-        COLETAS = map50ToAce(COLETAS_50);
-        if (!COLETAS.length && COLETAS_103.length) {
-          COLETAS = COLETAS_103.slice();
-        }
+        // Torres ao vivo = somente 103 (situacao atual tempo real)
+        // 50 fica so na Gestao (busca + historico)
+        COLETAS = COLETAS_103.slice();
 
         const counts = countByStatus(COLETAS);
         renderTorres(counts);
@@ -1310,7 +1291,7 @@
           renderTabelaGestao();
         }
         status.textContent =
-          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · torres(50): ${COLETAS.length} · 103: ${COLETAS_103.length}`;
+          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · torres(103): ${COLETAS.length} · gestao(50): ${COLETAS_50.length}`;
       } catch (err) {
         status.textContent = err.message;
         const sub = document.getElementById('totalSub');
