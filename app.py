@@ -94,11 +94,12 @@ class LoginDialog(QDialog):
         self.password_edit = QLineEdit(credentials.password)
         self.password_edit.setEchoMode(QLineEdit.EchoMode.Password)
         self.unit_edit = QLineEdit(credentials.unit)
+        self.unit_edit.setPlaceholderText("SPO,LEO,RIS  ou  *")
         form.addRow("Dominio", self.domain_edit)
         form.addRow("Documento", self.document_edit)
         form.addRow("Usuario", self.user_edit)
         form.addRow("Senha", self.password_edit)
-        form.addRow("Unidade", self.unit_edit)
+        form.addRow("Unidades", self.unit_edit)
         root.addLayout(form)
 
         buttons = QDialogButtonBox(
@@ -115,7 +116,9 @@ class LoginDialog(QDialog):
         credentials.document = self.document_edit.text().strip() or credentials.document
         credentials.user = self.user_edit.text().strip() or credentials.user
         credentials.password = self.password_edit.text()
-        credentials.unit = self.unit_edit.text().strip().lower() or credentials.unit
+        credentials.unit = (
+            self.unit_edit.text().strip().upper().replace(" ", "") or credentials.unit
+        )
         return credentials
 
 

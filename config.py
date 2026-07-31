@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
 import json
+import re
 
 BASE_DIR = Path(__file__).resolve().parent
 DOWNLOAD_DIR = BASE_DIR / "data" / "downloads"
@@ -26,7 +27,39 @@ class SswCredentials:
     document: str = "11491465832"
     user: str = "m.aguir"
     password: str = "114@mig"
-    unit: str = "spo"
+    # Uma ou varias siglas: "SPO" | "SPO,LEO,RIS" | "*" (todas, sem filtro)
+    unit: str = "SPO,LEO,RIS"
+
+
+def parse_coleta_units(raw: str | None) -> list[str]:
+    """
+    Interpreta credencial/config `unit`.
+    - "SPO,LEO,RIS" → ["SPO", "LEO", "RIS"]
+    - "*" / "todas" / "all" / "" → []  (sem filtro de unidade no relatorio)
+    """
+    text = str(raw or "").strip()
+    if not text:
+        return []
+    low = text.lower().replace(" ", "")
+    if low in {"*", "todas", "all", "tudo"}:
+        return []
+    units: list[str] = []
+    seen: set[str] = set()
+    for part in re.split(r"[,;|/+\s]+", text):
+        u = part.strip().upper()
+        if not u or u in seen:
+            continue
+        if u in {"*", "TODAS", "ALL", "TUDO"}:
+            return []
+        seen.add(u)
+        units.append(u)
+    return units
+
+
+def login_unit(raw: str | None) -> str:
+    """Unidade usada no menu apos login (primeira da lista, se houver)."""
+    units = parse_coleta_units(raw)
+    return units[0] if units else ""
 
 
 @dataclass(slots=True)

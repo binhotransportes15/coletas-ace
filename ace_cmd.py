@@ -4,7 +4,7 @@ Menu no topo + comando /e para editar qualquer config da automacao.
 
 Exemplos:
   /e user m.aguir
-  /e unit SPO
+  /e unit SPO,LEO,RIS
   /e enable_sheets true
   /e periodo_modo diario
   /automatica
@@ -207,7 +207,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print("    /pull          Baixa alteracoes do GitHub")
     print("    /e             Lista campos editaveis")
     print("    /e intervalo 5m   Define tempo do /automatica (30s|5m|1h|2d)")
-    print("    /e chave v     Edita direto: /e unit SPO")
+    print("    /e chave v     Edita direto: /e unit SPO,LEO,RIS")
     print("=" * 72)
     if message:
         print(f"  >> {message}")
@@ -304,7 +304,8 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
                 return str(err)
             payload[key] = format_duration(sec)
         elif key == "unit":
-            payload[key] = raw.strip().lower()
+            # Aceita varias siglas: SPO,LEO,RIS | * = todas
+            payload[key] = raw.strip().upper().replace(" ", "")
         elif key in {"domain", "user"}:
             payload[key] = raw.strip()
         else:

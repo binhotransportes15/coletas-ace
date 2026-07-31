@@ -9,7 +9,7 @@ from dates import format_period, normalize_date, periodo_103_hoje, periodo_50_co
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
 from sheets_sync import sync_google_sheets, sync_google_sheets_103
-from ssw_client import download_ace_103, download_ace_reports
+from ssw_client import cleanup_downloads, download_ace_103, download_ace_reports
 from parser_ssw103 import analyze_report_103
 
 StatusCallback = Callable[[str], None]
@@ -285,6 +285,9 @@ def run_dual_cycle(
         f"| 103 limite={format_period(ini103, fim103)} | paralelo"
     )
 
+    # Limpa antigos UMA vez antes do paralelo (evita race 50 vs 103)
+    cleanup_downloads(DOWNLOAD_DIR, on_status=emit)
+
     result_50: dict[str, Any] = {}
     result_103: dict[str, Any] = {}
     errors: dict[str, str] = {}
@@ -301,6 +304,7 @@ def run_dual_cycle(
             on_status=st,
             credentials=creds,
             settings=cfg,
+            clean_downloads=False,
         )
         report = Path((download.get("paths") or {}).get("coleta") or "")
         if not report.exists():
@@ -324,6 +328,7 @@ def run_dual_cycle(
             on_status=st,
             credentials=creds,
             settings=cfg,
+            clean_downloads=False,
         )
         report = Path((download.get("paths") or {}).get("coleta_103") or "")
         if not report.exists():
@@ -358,6 +363,19 @@ def run_dual_cycle(
             except Exception as err:  # noqa: BLE001
                 errors[label] = str(err)
                 emit(f"{label} FALHOU: {err}")
+
+    # Mantem so os relatorios finais deste ciclo
+    keep: list[Path] = []
+    for block in (result_50, result_103):
+        paths = (block.get("download") or {}).get("paths") or {}
+        for key in ("coleta", "coleta_103"):
+            p = Path(paths.get(key) or "")
+            if p.exists():
+                keep.append(p)
+        report = Path(block.get("report") or "")
+        if report.exists():
+            keep.append(report)
+    cleanup_downloads(DOWNLOAD_DIR, keep=keep, on_status=emit)
 
     sheets50 = sheets103 = dash = {"ok": False, "skipped": True}
     if sync and (result_50 or result_103):

@@ -13,12 +13,62 @@ from config import (
     default_credentials,
     default_settings,
     ensure_dirs,
+    login_unit,
+    parse_coleta_units,
 )
 from dates import format_period, normalize_date, to_ssw_ddmmyy
 
 StatusCallback = Callable[[str], None]
 
 SSW_ORIGIN = "https://sistema.ssw.inf.br"
+
+# Extensoes / padroes de relatorios SSW na pasta de downloads
+_DOWNLOAD_CLEAN_PATTERNS = (
+    "*.sswweb",
+    "*.csv",
+    "*.xlsx",
+    "*.xls",
+    "ssw0157*",
+    "CSV*",
+    "coleta_*",
+)
+
+
+def cleanup_downloads(
+    download_dir: Path | None = None,
+    *,
+    keep: list[Path] | None = None,
+    on_status: StatusCallback | None = None,
+) -> int:
+    """
+    Remove relatorios antigos de data/downloads.
+    Mantem apenas os caminhos em `keep` (ex.: arquivos recem-baixados).
+    """
+    folder = Path(download_dir or DOWNLOAD_DIR)
+    if not folder.exists():
+        return 0
+    keep_set = {Path(p).resolve() for p in (keep or []) if p}
+    seen: set[Path] = set()
+    removed = 0
+    for pattern in _DOWNLOAD_CLEAN_PATTERNS:
+        for path in folder.glob(pattern):
+            if not path.is_file():
+                continue
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            if resolved in keep_set:
+                continue
+            try:
+                path.unlink()
+                removed += 1
+            except OSError:
+                continue
+    if on_status and removed:
+        on_status(f"Limpeza downloads: {removed} arquivo(s) antigo(s) removido(s)")
+    return removed
+
 
 # Codigo menu → programa SSW
 MENU_PROGRAM = {
@@ -102,6 +152,7 @@ class AceSswClient:
         keep_open: bool = False,
         headless: bool = False,
         on_status: StatusCallback | None = None,
+        clean_downloads: bool = True,
     ) -> None:
         self.start_date_ui = normalize_date(start_date)
         self.end_date_ui = normalize_date(end_date)
@@ -115,8 +166,14 @@ class AceSswClient:
         self.keep_open = bool(keep_open)
         self.headless = bool(headless)
         self.on_status = on_status or _noop
+        self.clean_downloads = bool(clean_downloads)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.paths: dict[str, str] = {}
+
+    def _cleanup_before_download(self) -> None:
+        if not self.clean_downloads:
+            return
+        cleanup_downloads(self.download_dir, on_status=self.on_status)
 
     def run(self) -> dict[str, Any]:
         try:
@@ -128,6 +185,7 @@ class AceSswClient:
 
         ensure_dirs()
         self.download_dir.mkdir(parents=True, exist_ok=True)
+        self._cleanup_before_download()
         period = format_period(self.start_date_ui, self.end_date_ui)
         coleta = (self.settings.coleta_option or "50").strip()
         entrega = (self.settings.entrega_option or "").strip()
@@ -226,8 +284,13 @@ class AceSswClient:
             raise RuntimeError("Falha no login: menu principal do SSW nao foi carregado.")
         self.on_status("Login concluido.")
 
+    def _coleta_units(self) -> list[str]:
+        return parse_coleta_units(getattr(self.credentials, "unit", "") or "")
+
     def _ensure_unit(self, page) -> None:
-        unit = str(getattr(self.credentials, "unit", "") or "").strip().upper()
+        # Menu pos-login: usa so a 1ª sigla (contexto do operador).
+        # Relatorios 50/103 iteram SPO/LEO/RIS conforme config.
+        unit = login_unit(getattr(self.credentials, "unit", "") or "")
         if not unit:
             return
         campo = page.locator('input[name="f2"][id="2"]')
@@ -236,10 +299,43 @@ class AceSswClient:
         atual = (campo.first.input_value() or "").strip().upper()
         if atual == unit:
             return
-        self.on_status(f"Ajustando unidade para {unit}...")
+        self.on_status(f"Ajustando unidade do menu para {unit}...")
         campo.first.fill(unit)
         campo.first.press("Tab")
         page.wait_for_timeout(500)
+
+    def _merge_downloaded_files(self, paths: list[Path], dest_name: str) -> Path:
+        """Concatena varios downloads (texto/CSV). Pula cabecalho repetido em CSV."""
+        if not paths:
+            raise RuntimeError("Nenhum arquivo para mesclar.")
+        if len(paths) == 1:
+            return paths[0]
+        dest = self.download_dir / dest_name
+        first_bytes = paths[0].read_bytes()
+        is_csv_like = b"," in first_bytes[:800] or b";" in first_bytes[:800]
+        with dest.open("wb") as out:
+            for idx, src in enumerate(paths):
+                data = src.read_bytes()
+                if idx == 0 or not is_csv_like:
+                    out.write(data)
+                    if not data.endswith(b"\n"):
+                        out.write(b"\n")
+                    continue
+                # Pula 1ª linha (cabecalho) nos arquivos seguintes
+                nl = data.find(b"\n")
+                if nl >= 0:
+                    data = data[nl + 1 :]
+                out.write(data)
+                if data and not data.endswith(b"\n"):
+                    out.write(b"\n")
+        self.on_status(f"Mesclado {len(paths)} arquivo(s) → {dest.name}")
+        for src in paths:
+            try:
+                if src.resolve() != dest.resolve() and src.exists():
+                    src.unlink()
+            except OSError:
+                pass
+        return dest
 
     def _patch_blank_popup_fix(self, page) -> None:
         try:
@@ -413,11 +509,26 @@ class AceSswClient:
 
     def _download_report_50(self, page) -> Path:
         """050 - Relacao das Coletas (ssw0157) pelo Periodo de COLETA (hoje)."""
+        units = self._coleta_units()
+        # [] = sem filtro (1 download); varias siglas = 1 download por unidade
+        passes = units if units else [""]
+        label = ",".join(passes) if units else "TODAS"
         self.on_status(
             f"Gerando coleta (50) | periodo de coleta "
             f"{format_period(self.start_date_ui, self.end_date_ui)} "
-            f"({self.start_date_yy} a {self.end_date_yy})..."
+            f"({self.start_date_yy} a {self.end_date_yy}) | un={label}..."
         )
+        paths: list[Path] = []
+        for un in passes:
+            paths.append(self._download_report_50_once(page, un))
+        if len(paths) == 1:
+            return paths[0]
+        return self._merge_downloaded_files(
+            paths,
+            f"coleta_50_col_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}_merged.sswweb",
+        )
+
+    def _download_report_50_once(self, page, unidade: str) -> Path:
         popup = self._open_menu_option(
             page,
             "50",
@@ -425,12 +536,13 @@ class AceSswClient:
         )
         try:
             popup.locator('[id="4"]').wait_for()
-            self._preencher_periodo_coleta_50(popup)
+            self._preencher_periodo_coleta_50(popup, unidade=unidade)
             with popup.expect_download(timeout=120000) as download_info:
                 popup.locator('[id="21"]').click()
+            suffix = (unidade or "todas").lower()
             return self._save_download(
                 download_info.value,
-                f"coleta_50_col_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}.sswweb",
+                f"coleta_50_col_{self.start_date_yy}_{self.end_date_yy}_{suffix}_{self.timestamp}.sswweb",
             )
         finally:
             try:
@@ -438,18 +550,20 @@ class AceSswClient:
             except Exception:
                 pass
 
-    def _preencher_periodo_coleta_50(self, popup) -> None:
+    def _preencher_periodo_coleta_50(self, popup, *, unidade: str = "") -> None:
         """
         Tela ssw0157:
         - Usa 'Periodo de coleta (opc)' = HOJE (DDMMYY)
         - Limpa 'Periodo de cadastramento (opc)'
+        - Unidade = sigla (SPO/LEO/RIS) ou vazio = todas
         Layout tipico CyberMap: 4/5 = coleta, 6/7 = cadastramento
         """
         ini = self.start_date_yy
         fim = self.end_date_yy
+        un = (unidade or "").strip().upper()
 
         filled = popup.evaluate(
-            """([ini, fim]) => {
+            """([ini, fim, unidade]) => {
               const norm = (t) => String(t || '')
                 .toLowerCase()
                 .normalize('NFD')
@@ -465,6 +579,14 @@ class AceSswClient:
                 return true;
               };
               const clearPair = (a, b) => setPair(a, b, '', '');
+              const setVal = (el, v) => {
+                if (!el) return false;
+                el.focus();
+                el.value = v;
+                el.dispatchEvent(new Event('input', {bubbles:true}));
+                el.dispatchEvent(new Event('change', {bubbles:true}));
+                return true;
+              };
               const nodes = Array.from(document.querySelectorAll('div, span, td, label, font'));
               const findInputsAfter = (pred) => {
                 const label = nodes.find(n => pred(norm(n.textContent || '')));
@@ -480,6 +602,28 @@ class AceSswClient:
                 }
                 return inputs;
               };
+              // Unidade (filtro): limpa ou preenche
+              let unOk = false;
+              const unLabel = nodes.find(n => {
+                const t = norm(n.textContent || '');
+                return t.includes('unidade') && !t.includes('cadastr') && (t.length < 40);
+              });
+              if (unLabel) {
+                let el = unLabel;
+                for (let i = 0; i < 6 && el; i++) {
+                  el = el.nextElementSibling || (el.parentElement && el.parentElement.nextElementSibling);
+                  if (!el) break;
+                  const inp = el.tagName === 'INPUT' ? el : (el.querySelector && el.querySelector('input'));
+                  if (inp && inp.type !== 'hidden') {
+                    unOk = setVal(inp, unidade || '');
+                    break;
+                  }
+                }
+              }
+              if (!unOk) {
+                const cand = document.getElementById('2') || document.getElementById('3');
+                if (cand) unOk = setVal(cand, unidade || '');
+              }
               const coletaInputs = findInputsAfter(t =>
                 t.includes('periodo') && t.includes('coleta') && !t.includes('cadastr')
               );
@@ -493,15 +637,18 @@ class AceSswClient:
                   ok: true,
                   via: 'label',
                   ids: [coletaInputs[0].id, coletaInputs[1].id],
+                  unidade: unidade || '',
+                  unOk,
                 };
               }
-              return {ok: false};
+              return {ok: false, unOk, unidade: unidade || ''};
             }""",
-            [ini, fim],
+            [ini, fim, un],
         )
         if filled and filled.get("ok"):
             self.on_status(
-                f"Periodo de coleta preenchido ({filled.get('via')}): {ini} a {fim}"
+                f"Periodo de coleta preenchido ({filled.get('via')}): {ini} a {fim} | "
+                f"un={un or 'TODAS'}"
             )
             return
 
@@ -515,7 +662,18 @@ class AceSswClient:
                 popup.locator(f'[id="{fid}"]').fill("")
             except Exception:
                 pass
-        self.on_status(f"Periodo de coleta (campos 4/5): {ini} a {fim} | cadastramento limpo")
+        # tenta unidade em campos comuns
+        for fid in ("2", "3", "8"):
+            try:
+                loc = popup.locator(f'[id="{fid}"]')
+                if loc.count() > 0:
+                    loc.first.fill(un)
+                    break
+            except Exception:
+                pass
+        self.on_status(
+            f"Periodo de coleta (campos 4/5): {ini} a {fim} | un={un or 'TODAS'} | cadastramento limpo"
+        )
 
     def run_103(self) -> dict[str, Any]:
         """Baixa somente a opcao 103 (Excel coletas normais)."""
@@ -528,6 +686,7 @@ class AceSswClient:
 
         ensure_dirs()
         self.download_dir.mkdir(parents=True, exist_ok=True)
+        self._cleanup_before_download()
         period = format_period(self.start_date_ui, self.end_date_ui)
         self.on_status(f"ACE 103 | data limite {period} | Excel")
 
@@ -571,11 +730,29 @@ class AceSswClient:
           Periodo de pesquisa = HOJE (DDMMYY)
           Por data de = L (limite)
           Mostrar em = E (excel)
-          Unidade = SPO (credencial)
+          Unidade = cada sigla em config (SPO,LEO,RIS) ou vazio = todas
         """
+        units = self._coleta_units()
+        passes = units if units else [""]
+        label = ",".join(passes) if units else "TODAS"
         self.on_status(
-            f"Gerando 103 Excel | limite {self.start_date_yy} a {self.end_date_yy}..."
+            f"Gerando 103 Excel | limite {self.start_date_yy} a {self.end_date_yy} | un={label}..."
         )
+        paths: list[Path] = []
+        for un in passes:
+            paths.append(self._download_report_103_once(page, un))
+        if len(paths) == 1:
+            return paths[0]
+        # Mescla CSV/sswweb; xlsx multi nao mescla binario — usa o 1º e avisa se misturado
+        exts = {p.suffix.lower() for p in paths}
+        if exts & {".xlsx", ".xls"} and len(exts) > 1:
+            self.on_status("103: formatos mistos no merge — usando concatenacao texto.")
+        return self._merge_downloaded_files(
+            paths,
+            f"coleta_103_lim_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}_merged.sswweb",
+        )
+
+    def _download_report_103_once(self, page, unidade: str) -> Path:
         popup = self._open_menu_option(
             page,
             "103",
@@ -592,13 +769,13 @@ class AceSswClient:
             ),
         )
         try:
-            self._preencher_tela_103(popup)
+            self._preencher_tela_103(popup, unidade=unidade)
             with popup.expect_download(timeout=180000) as download_info:
                 self._clicar_gerar_103(popup)
+            suffix = (unidade or "todas").lower()
             dest_name = (
-                f"coleta_103_lim_{self.start_date_yy}_{self.end_date_yy}_{self.timestamp}.sswweb"
+                f"coleta_103_lim_{self.start_date_yy}_{self.end_date_yy}_{suffix}_{self.timestamp}.sswweb"
             )
-            # SSW "Excel" (E) da 103 costuma vir como CSV*.sswweb
             download = download_info.value
             suggested = (download.suggested_filename or "").lower()
             if suggested.endswith(".xlsx"):
@@ -607,8 +784,6 @@ class AceSswClient:
                 dest_name = dest_name.replace(".sswweb", ".xls")
             elif suggested.endswith(".csv"):
                 dest_name = dest_name.replace(".sswweb", ".csv")
-            elif suggested.endswith(".sswweb"):
-                dest_name = dest_name  # keep
             return self._save_download(download, dest_name)
         finally:
             try:
@@ -616,16 +791,16 @@ class AceSswClient:
             except Exception:
                 pass
 
-    def _preencher_tela_103(self, popup) -> None:
+    def _preencher_tela_103(self, popup, *, unidade: str = "") -> None:
         """
         ssw0166 · bloco Coletas normais:
           #14/#15 periodo DDMMYY
           #16 Por data de (L=limite)
           #17 Mostrar em (E=excel)
-          #19 Unidade de coleta
+          #19 Unidade de coleta (opc) — SPO/LEO/RIS ou vazio
         """
         ini, fim = self.start_date_yy, self.end_date_yy
-        unidade = (self.credentials.unit or "spo").strip().upper()
+        un = (unidade or "").strip().upper()
         result = popup.evaluate(
             """([ini, fim, unidade]) => {
               const setVal = (id, v) => {
@@ -641,7 +816,7 @@ class AceSswClient:
               const ok15 = setVal(15, fim);
               const ok16 = setVal(16, 'L');
               const ok17 = setVal(17, 'E');
-              const ok19 = setVal(19, unidade);
+              const ok19 = setVal(19, unidade || '');
               return {
                 ok: ok14 && ok15 && ok16 && ok17 && ok19,
                 values: {
@@ -655,14 +830,15 @@ class AceSswClient:
                 },
               };
             }""",
-            [ini, fim, unidade],
+            [ini, fim, un],
         )
         if not result or not result.get("ok"):
             raise RuntimeError(
                 f"103: falha ao preencher campos ssw0166 (ids 14-17/19): {result}"
             )
         self.on_status(
-            f"103 preenchido: periodo {ini}-{fim} | data=L (limite) | excel=E | un={unidade} | {result.get('values')}"
+            f"103 preenchido: periodo {ini}-{fim} | data=L (limite) | excel=E | "
+            f"un={un or 'TODAS'} | {result.get('values')}"
         )
         popup.wait_for_timeout(300)
 
@@ -708,6 +884,7 @@ def download_ace_reports(
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
+    clean_downloads: bool = True,
 ) -> dict[str, Any]:
     client = AceSswClient(
         start_date,
@@ -717,6 +894,7 @@ def download_ace_reports(
         on_status=on_status,
         credentials=credentials,
         settings=settings,
+        clean_downloads=clean_downloads,
     )
     return client.run()
 
@@ -730,6 +908,7 @@ def download_ace_103(
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
+    clean_downloads: bool = True,
 ) -> dict[str, Any]:
     client = AceSswClient(
         start_date,
@@ -739,5 +918,6 @@ def download_ace_103(
         on_status=on_status,
         credentials=credentials,
         settings=settings,
+        clean_downloads=clean_downloads,
     )
     return client.run_103()
