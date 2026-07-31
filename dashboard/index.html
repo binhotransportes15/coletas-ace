@@ -114,12 +114,29 @@
     }
     .arena-body {
       display: grid;
-      grid-template-columns: 200px minmax(280px, 1fr) 340px;
-      gap: 14px;
+      grid-template-rows: minmax(180px, 0.95fr) minmax(240px, 1.15fr);
+      grid-template-columns: 1fr;
+      gap: 12px;
       min-height: 0;
       height: 100%;
     }
-    .col-left, .col-right, .col-center {
+    .zone {
+      min-height: 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .zone-ent {
+      border-bottom: 1px dashed #1e293b;
+      padding-bottom: 10px;
+    }
+    .zone-col {
+      display: grid;
+      grid-template-columns: 200px minmax(260px, 1fr);
+      gap: 14px;
+      min-height: 0;
+    }
+    .col-left, .col-center {
       min-height: 0; min-width: 0;
       display: flex; flex-direction: column;
     }
@@ -132,7 +149,7 @@
       margin: 0 0 8px;
       flex-shrink: 0;
     }
-    .col-right .col-label { color: #fbb03b; }
+    .zone-ent .col-label { color: #fbb03b; }
     .col-left .pop-stack { flex: 1.1; }
     .col-left #prazoStack {
       flex: 0.9;
@@ -141,13 +158,21 @@
       padding-top: 8px;
     }
 
-    /* ===== Cilindro ENTREGA ===== */
+    /* ===== Cilindro ENTREGA (topo) ===== */
     .ent-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      display: grid;
+      grid-template-columns: minmax(280px, 1.2fr) minmax(200px, 0.8fr);
+      gap: 12px;
       min-height: 0;
       height: 100%;
+      align-items: stretch;
+    }
+    .ent-main {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+      min-width: 0;
     }
     .ent-head {
       display: flex;
@@ -169,21 +194,21 @@
       line-height: 1;
       font-variant-numeric: tabular-nums;
       color: #fff;
+      transition: transform .35s ease;
     }
     .cyl-wrap {
       display: grid;
-      grid-template-columns: 56px 1fr;
-      gap: 10px;
+      grid-template-columns: 64px 1fr;
+      gap: 12px;
       align-items: stretch;
-      flex: 0 0 auto;
-      min-height: 168px;
-      max-height: 42vh;
+      flex: 1 1 auto;
+      min-height: 120px;
     }
     .cyl {
       position: relative;
       display: flex;
       flex-direction: column;
-      border-radius: 28px;
+      border-radius: 32px;
       overflow: hidden;
       box-shadow:
         inset 8px 0 14px rgba(255,255,255,.18),
@@ -191,6 +216,7 @@
         0 10px 24px rgba(0,0,0,.4);
       background: #0b1220;
       border: 1px solid #243044;
+      min-height: 0;
     }
     .cyl::before {
       content: "";
@@ -203,10 +229,16 @@
     }
     .cyl-seg {
       flex: 1 1 0;
-      min-height: 18px;
-      transition: flex-grow .45s ease;
+      flex-grow: 1;
+      flex-shrink: 1;
+      flex-basis: 0;
+      min-height: 0;
+      transition:
+        flex-grow .75s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity .45s ease;
       position: relative;
     }
+    .cyl-seg.is-zero { opacity: 0.15; flex-grow: 0.08 !important; }
     .cyl-seg.c-real {
       background: linear-gradient(180deg, #a3e048, var(--col) 40%, var(--col-dark));
     }
@@ -219,23 +251,32 @@
     .cyl-banners {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
       min-width: 0;
+      min-height: 0;
     }
     .cyl-ban {
       position: relative;
       flex: 1 1 0;
-      min-height: 44px;
+      flex-grow: 1;
+      flex-shrink: 1;
+      flex-basis: 0;
+      min-height: 28px;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 8px 28px 8px 12px;
+      padding: 6px 28px 6px 12px;
       clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
       box-shadow: 0 6px 16px rgba(0,0,0,.28);
       border: 1px solid rgba(255,255,255,.08);
+      transition:
+        flex-grow .75s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity .45s ease,
+        transform .45s ease;
     }
+    .cyl-ban.is-zero { opacity: 0.35; flex-grow: 0.12 !important; }
     .cyl-ban .ban-title {
-      font-size: 11px;
+      font-size: clamp(11px, 1.2vw, 13px);
       font-weight: 800;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -261,7 +302,7 @@
     .cyl-ban.b-par .ban-title,
     .cyl-ban.b-par .ban-meta,
     .cyl-ban.b-par .ban-meta b { color: #1a1200; }
-    #pendenciaStack { flex: 1; min-height: 0; }
+    #pendenciaStack { min-height: 0; height: 100%; }
 
     .total-hero {
       position: relative;
@@ -311,7 +352,7 @@
     }
     .total-mix span {
       display: block; height: 100%; min-width: 2px;
-      transition: flex-grow .45s ease, flex-basis .45s ease;
+      transition: flex-grow .75s cubic-bezier(0.22, 1, 0.36, 1), flex-basis .75s cubic-bezier(0.22, 1, 0.36, 1);
       border-radius: 999px;
     }
     .total-mix .m-real { background: var(--col); }
@@ -413,7 +454,8 @@
     .torre .barra {
       width: 100%; min-height: 56px; border-radius: 8px 8px 0 0;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 10px 22px rgba(0,0,0,.4); transition: height .45s ease;
+      box-shadow: 0 10px 22px rgba(0,0,0,.4);
+      transition: height .75s cubic-bezier(0.22, 1, 0.36, 1);
       position: relative;
     }
     .torre .barra::after {
@@ -525,8 +567,14 @@
 
     @media (max-width: 980px) {
       body.live-mode:not(.tv-mode) { overflow: auto; height: auto; }
-      body.live-mode:not(.tv-mode) .arena-body { grid-template-columns: 1fr; height: auto; }
-      body.live-mode:not(.tv-mode) .pop-stack { min-height: 200px; }
+      body.live-mode:not(.tv-mode) .arena-body {
+        grid-template-rows: auto auto;
+        height: auto;
+      }
+      body.live-mode:not(.tv-mode) .zone-col { grid-template-columns: 1fr; }
+      body.live-mode:not(.tv-mode) .ent-panel { grid-template-columns: 1fr; }
+      body.live-mode:not(.tv-mode) .cyl-wrap { min-height: 160px; }
+      body.live-mode:not(.tv-mode) .pop-stack { min-height: 160px; }
       body.live-mode:not(.tv-mode) .torres { min-height: 280px; }
       body.live-mode:not(.tv-mode) .topbar { grid-template-columns: 1fr; }
       .search { margin-left: 0; width: 100%; }
@@ -581,9 +629,14 @@
       height: 100%;
     }
     body.tv-mode .arena-body {
-      grid-template-columns: minmax(160px, 16vw) 1fr minmax(260px, 28vw);
-      gap: clamp(12px, 1.8vmin, 28px);
+      grid-template-rows: minmax(200px, 0.9fr) minmax(260px, 1.2fr);
+      grid-template-columns: 1fr;
+      gap: clamp(10px, 1.4vmin, 20px);
       height: 100%;
+    }
+    body.tv-mode .zone-col {
+      grid-template-columns: minmax(160px, 18vw) 1fr;
+      gap: clamp(12px, 1.8vmin, 28px);
     }
     body.tv-mode .total-hero {
       padding: clamp(14px, 1.8vmin, 24px);
@@ -671,12 +724,11 @@
     @media (orientation: portrait) {
       body.tv-mode .arena-body {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr auto;
+        grid-template-rows: auto 1fr;
       }
-      body.tv-mode .col-left,
-      body.tv-mode .col-right {
-        max-height: 22vh;
-      }
+      body.tv-mode .zone-col { grid-template-columns: 1fr; }
+      body.tv-mode .ent-panel { grid-template-columns: 1fr; }
+      body.tv-mode .col-left { max-height: 28vh; }
     }
   </style>
 </head>
@@ -700,87 +752,93 @@
       </div>
     </header>
 
-    <!-- AO VIVO: Coleta (esq/centro) + Entrega (dir) -->
+    <!-- AO VIVO: Entrega em cima · Coleta embaixo -->
     <div class="view active" id="viewLive">
       <section class="arena">
         <div class="arena-body">
-          <div class="col-left">
-            <div class="col-label">Coleta</div>
-            <div class="total-hero">
-              <span class="total-lbl">Total</span>
-              <strong class="total-num" id="totalColetas">0</strong>
-              <div class="total-mix" id="totalMix" aria-hidden="true">
-                <span class="m-real" id="mixReal" style="flex:1"></span>
-                <span class="m-rota" id="mixRota" style="flex:1"></span>
-                <span class="m-par" id="mixPar" style="flex:1"></span>
-                <span class="m-can" id="mixCan" style="flex:1"></span>
-              </div>
-              <div class="total-stats">
-                <div class="s-real"><span>Realizada</span><b id="statReal">0</b></div>
-                <div class="s-rota"><span>Em rota</span><b id="statRota">0</b></div>
-                <div class="s-par"><span>Parado</span><b id="statPar">0</b></div>
-                <div class="s-can"><span>Cancelada</span><b id="statCan">0</b></div>
-              </div>
-              <div class="total-sub" id="totalSub" hidden></div>
-            </div>
-            <div class="pop-stack" id="placaStack"></div>
-            <div class="pop-stack" id="prazoStack"></div>
-          </div>
-          <div class="col-center">
-            <div class="col-label">Coleta · situações</div>
-            <div class="torres">
-              <div class="torre t-col">
-                <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
-                <div class="barra" id="barReal"><strong id="nReal">0<span class="pct-sign">%</span></strong></div>
-                <div class="base"><div class="lbl">Realizada</div></div>
-              </div>
-              <div class="torre t-com">
-                <div class="pin" title="Quantidade"><span id="rankRota">0</span></div>
-                <div class="barra" id="barRota"><strong id="nRota">0<span class="pct-sign">%</span></strong></div>
-                <div class="base"><div class="lbl">Em rota</div></div>
-              </div>
-              <div class="torre t-cad">
-                <div class="pin" title="Quantidade"><span id="rankPar">0</span></div>
-                <div class="barra" id="barPar"><strong id="nPar">0<span class="pct-sign">%</span></strong></div>
-                <div class="base"><div class="lbl">Parado</div></div>
-              </div>
-              <div class="torre t-can">
-                <div class="pin" title="Quantidade"><span id="rankCan">0</span></div>
-                <div class="barra" id="barCan"><strong id="nCan">0<span class="pct-sign">%</span></strong></div>
-                <div class="base"><div class="lbl">Cancelada</div></div>
-              </div>
-            </div>
-          </div>
-          <div class="col-right">
+          <section class="zone zone-ent">
+            <div class="col-label">Entrega</div>
             <div class="ent-panel">
-              <div class="ent-head">
-                <span class="lbl">Entrega</span>
-                <strong class="num" id="entTotal">0</strong>
-              </div>
-              <div class="cyl-wrap" aria-label="Resumo de entregas">
-                <div class="cyl">
-                  <div class="cyl-seg c-real" id="cylSegReal" style="flex:1"></div>
-                  <div class="cyl-seg c-rota" id="cylSegRota" style="flex:1"></div>
-                  <div class="cyl-seg c-par" id="cylSegPar" style="flex:1"></div>
+              <div class="ent-main">
+                <div class="ent-head">
+                  <span class="lbl">Total CTRCs</span>
+                  <strong class="num" id="entTotal">0</strong>
                 </div>
-                <div class="cyl-banners">
-                  <div class="cyl-ban b-real">
-                    <div class="ban-title">Realizada</div>
-                    <div class="ban-meta"><b id="entNReal">0</b> · <span id="entPReal">0%</span></div>
+                <div class="cyl-wrap" aria-label="Resumo de entregas">
+                  <div class="cyl">
+                    <div class="cyl-seg c-real" id="cylSegReal" style="flex-grow:1"></div>
+                    <div class="cyl-seg c-rota" id="cylSegRota" style="flex-grow:1"></div>
+                    <div class="cyl-seg c-par" id="cylSegPar" style="flex-grow:1"></div>
                   </div>
-                  <div class="cyl-ban b-rota">
-                    <div class="ban-title">Em rota</div>
-                    <div class="ban-meta"><b id="entNRota">0</b> · <span id="entPRota">0%</span></div>
-                  </div>
-                  <div class="cyl-ban b-par">
-                    <div class="ban-title">Pendência</div>
-                    <div class="ban-meta"><b id="entNPar">0</b> · <span id="entPPar">0%</span></div>
+                  <div class="cyl-banners">
+                    <div class="cyl-ban b-real" id="cylBanReal" style="flex-grow:1">
+                      <div class="ban-title">Realizada</div>
+                      <div class="ban-meta"><b id="entNReal">0</b> · <span id="entPReal">0%</span></div>
+                    </div>
+                    <div class="cyl-ban b-rota" id="cylBanRota" style="flex-grow:1">
+                      <div class="ban-title">Em rota</div>
+                      <div class="ban-meta"><b id="entNRota">0</b> · <span id="entPRota">0%</span></div>
+                    </div>
+                    <div class="cyl-ban b-par" id="cylBanPar" style="flex-grow:1">
+                      <div class="ban-title">Pendência</div>
+                      <div class="ban-meta"><b id="entNPar">0</b> · <span id="entPPar">0%</span></div>
+                    </div>
                   </div>
                 </div>
               </div>
               <div class="pop-stack" id="pendenciaStack"></div>
             </div>
-          </div>
+          </section>
+
+          <section class="zone zone-col">
+            <div class="col-left">
+              <div class="col-label">Coleta</div>
+              <div class="total-hero">
+                <span class="total-lbl">Total</span>
+                <strong class="total-num" id="totalColetas">0</strong>
+                <div class="total-mix" id="totalMix" aria-hidden="true">
+                  <span class="m-real" id="mixReal" style="flex:1"></span>
+                  <span class="m-rota" id="mixRota" style="flex:1"></span>
+                  <span class="m-par" id="mixPar" style="flex:1"></span>
+                  <span class="m-can" id="mixCan" style="flex:1"></span>
+                </div>
+                <div class="total-stats">
+                  <div class="s-real"><span>Realizada</span><b id="statReal">0</b></div>
+                  <div class="s-rota"><span>Em rota</span><b id="statRota">0</b></div>
+                  <div class="s-par"><span>Parado</span><b id="statPar">0</b></div>
+                  <div class="s-can"><span>Cancelada</span><b id="statCan">0</b></div>
+                </div>
+                <div class="total-sub" id="totalSub" hidden></div>
+              </div>
+              <div class="pop-stack" id="placaStack"></div>
+              <div class="pop-stack" id="prazoStack"></div>
+            </div>
+            <div class="col-center">
+              <div class="col-label">Coleta · situações</div>
+              <div class="torres">
+                <div class="torre t-col">
+                  <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
+                  <div class="barra" id="barReal"><strong id="nReal">0<span class="pct-sign">%</span></strong></div>
+                  <div class="base"><div class="lbl">Realizada</div></div>
+                </div>
+                <div class="torre t-com">
+                  <div class="pin" title="Quantidade"><span id="rankRota">0</span></div>
+                  <div class="barra" id="barRota"><strong id="nRota">0<span class="pct-sign">%</span></strong></div>
+                  <div class="base"><div class="lbl">Em rota</div></div>
+                </div>
+                <div class="torre t-cad">
+                  <div class="pin" title="Quantidade"><span id="rankPar">0</span></div>
+                  <div class="barra" id="barPar"><strong id="nPar">0<span class="pct-sign">%</span></strong></div>
+                  <div class="base"><div class="lbl">Parado</div></div>
+                </div>
+                <div class="torre t-can">
+                  <div class="pin" title="Quantidade"><span id="rankCan">0</span></div>
+                  <div class="barra" id="barCan"><strong id="nCan">0<span class="pct-sign">%</span></strong></div>
+                  <div class="base"><div class="lbl">Cancelada</div></div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
     </div>
@@ -944,18 +1002,30 @@
     function renderCilindroEntrega(counts) {
       const total = Math.max(0, Number(counts.total) || 0);
       const items = [
-        { seg: 'cylSegReal', n: 'entNReal', p: 'entPReal', val: counts.realizada || 0 },
-        { seg: 'cylSegRota', n: 'entNRota', p: 'entPRota', val: counts.em_rota || 0 },
-        { seg: 'cylSegPar', n: 'entNPar', p: 'entPPar', val: counts.parado || 0 },
+        { seg: 'cylSegReal', ban: 'cylBanReal', n: 'entNReal', p: 'entPReal', val: counts.realizada || 0 },
+        { seg: 'cylSegRota', ban: 'cylBanRota', n: 'entNRota', p: 'entPRota', val: counts.em_rota || 0 },
+        { seg: 'cylSegPar', ban: 'cylBanPar', n: 'entNPar', p: 'entPPar', val: counts.parado || 0 },
       ];
       const entTotal = document.getElementById('entTotal');
-      if (entTotal) entTotal.textContent = String(total);
-      items.forEach(({ seg, n, p, val }) => {
+      if (entTotal) {
+        entTotal.textContent = String(total);
+        entTotal.style.transform = 'scale(1.06)';
+        setTimeout(() => { entTotal.style.transform = 'scale(1)'; }, 280);
+      }
+      items.forEach(({ seg, ban, n, p, val }) => {
         const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+        // Cresce/diminui junto com o percentual (minimo visual quando zero)
+        const grow = total > 0 ? Math.max(val, 0) : 1;
+        const isZero = total > 0 && val <= 0;
         const segEl = document.getElementById(seg);
+        const banEl = document.getElementById(ban);
         if (segEl) {
-          segEl.style.flex = String(Math.max(val, total > 0 ? 0.15 : 1));
-          segEl.style.display = total > 0 && val <= 0 ? 'none' : 'block';
+          segEl.style.flexGrow = String(isZero ? 0.08 : Math.max(grow, 0.35));
+          segEl.classList.toggle('is-zero', isZero);
+        }
+        if (banEl) {
+          banEl.style.flexGrow = String(isZero ? 0.12 : Math.max(grow, 0.35));
+          banEl.classList.toggle('is-zero', isZero);
         }
         const nEl = document.getElementById(n);
         const pEl = document.getElementById(p);
@@ -1052,6 +1122,7 @@
         { suf: 'Can', bar: 'barCan', val: counts.cancelada || 0 },
       ];
       const total = Math.max(0, Number(counts.total) || 0);
+      // Escala pelo maior valor (torres "andam" juntas quando % muda)
       const max = Math.max(...items.map(i => i.val), 1);
 
       items.forEach(({ suf, bar, val }) => {
@@ -1059,7 +1130,6 @@
         const nEl = document.getElementById('n' + suf);
         nEl.innerHTML = `${pct}<span class="pct-sign">%</span>`;
         nEl.title = `${val} de ${total}`;
-        // Pin = quantidade (antes era ranking 1–4)
         const pin = document.getElementById('rank' + suf);
         if (pin) {
           pin.textContent = String(val);
@@ -1067,7 +1137,10 @@
           pin.title = `${val} coleta(s)`;
         }
         const barEl = document.getElementById(bar);
-        if (barEl) barEl.style.height = alturaTorre(val, max) + 'px';
+        if (barEl) {
+          // Altura segue o percentual relativo (sobe/desce suavemente via CSS transition)
+          barEl.style.height = alturaTorre(val, max) + 'px';
+        }
       });
       document.getElementById('totalColetas').textContent = String(total);
       const parts = [
