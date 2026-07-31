@@ -5,10 +5,11 @@ chcp 65001 >nul
 REM Exemplos:
 REM   ace.bat
 REM   ace.bat /automatica
-REM   ace.bat /automatica 5
-REM   ace.bat /status
+REM   ace.bat /site off
+REM   ace.bat /site off Manutencao ate 14h
+REM   ace.bat /site on
+REM   ace.bat /interromper
+REM   ace.bat /ligar
 REM   ace.bat /push
-REM   ace.bat /push atualiza torres
-REM   ace.bat /pull
 python ace_cmd.py %*
 if errorlevel 1 pause

@@ -106,7 +106,23 @@ def publish_site_status(
             "Tente /push depois."
         )
 
+    # Garante arquivos do fluxo index -> offline/app
+    offline = DASHBOARD_DIR / "offline.html"
+    app = DASHBOARD_DIR / "app.html"
+    extra = []
+    if offline.exists():
+        extra.append("dashboard/offline.html")
+    if app.exists():
+        extra.append("dashboard/app.html")
+    if (DASHBOARD_DIR / "index.html").exists():
+        extra.append("dashboard/index.html")
+    if extra:
+        _run(["git", "add", *extra])
+
     pages = "https://binhotransportes15.github.io/coletas-ace/dashboard/"
     if online:
         return f"SITE LIGADO · {pages}"
-    return f"SITE INTERROMPIDO · {pages} (em ~20s a TV mostra a tela de pausa)"
+    return (
+        f"SITE INTERROMPIDO · {pages}\n"
+        "Abra de novo (ou aguarde ~5s). Deve ir para a tela INTERROMPIDO."
+    )
