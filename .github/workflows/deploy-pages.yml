@@ -22,6 +22,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Stamp dashboard version
+        run: |
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import os
+          path = Path("dashboard/version.json")
+          payload = {
+              "build": os.environ.get("GITHUB_SHA", "")[:12] or "local",
+              "run": os.environ.get("GITHUB_RUN_ID", ""),
+              "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+          }
+          path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          print("wrote", path, payload)
+          PY
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload dashboard

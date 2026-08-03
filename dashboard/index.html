@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
   <title>BINHO · OPERACIONAL</title>
   <script src="config.js"></script>
   <style>
@@ -4462,6 +4464,30 @@
     setInterval(tickClock, 1000);
     refresh();
     setInterval(refresh, 20000);
+
+    // Depois de um /push + deploy Pages, TVs recarregam sozinhas
+    const VERSION_KEY = 'ace_operacional_build';
+    const VERSION_POLL_MS = 45000;
+    async function checkDashboardVersion() {
+      try {
+        const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const build = String(data.build || data.at || '').trim();
+        if (!build) return;
+        const prev = sessionStorage.getItem(VERSION_KEY);
+        if (!prev) {
+          sessionStorage.setItem(VERSION_KEY, build);
+          return;
+        }
+        if (prev === build) return;
+        sessionStorage.setItem(VERSION_KEY, build);
+        // Mantém hash (#tv/armazem etc.) no reload
+        location.reload();
+      } catch (_) { /* offline / Pages ainda propagando */ }
+    }
+    checkDashboardVersion();
+    setInterval(checkDashboardVersion, VERSION_POLL_MS);
   </script>
 </body>
 </html>
