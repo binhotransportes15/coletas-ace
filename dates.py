@@ -1,6 +1,22 @@
 from __future__ import annotations
 
+from calendar import monthrange
 from datetime import date, datetime, timedelta
+
+MESES_PT = (
+    "JANEIRO",
+    "FEVEREIRO",
+    "MARCO",
+    "ABRIL",
+    "MAIO",
+    "JUNHO",
+    "JULHO",
+    "AGOSTO",
+    "SETEMBRO",
+    "OUTUBRO",
+    "NOVEMBRO",
+    "DEZEMBRO",
+)
 
 
 def _digits_only(value: str) -> str:
@@ -110,13 +126,36 @@ def periodo_36_ontem_hoje(hoje: date | datetime | None = None) -> tuple[str, str
 
 def periodo_semana_seg_dom(hoje: date | datetime | None = None) -> tuple[str, str]:
     """
-    Relatorio 225 · previsao de entrega da semana corrente.
-    Segunda (ini) ate domingo (fim) da semana do dia informado.
+    Relatorio 225 (legado) · semana corrente seg→dom.
+    Preferir periodo_mes_corrente para o fluxo atual.
     """
     today = _as_date(hoje)
     monday = today - timedelta(days=today.weekday())  # 0=seg
     sunday = monday + timedelta(days=6)
     return to_ddmm(monday), to_ddmm(sunday)
+
+
+def periodo_mes_corrente(hoje: date | datetime | None = None) -> tuple[str, str]:
+    """
+    Relatorio 225 · previsao de entrega do mes corrido.
+    Dia 1 ate o ultimo dia do mes (DDMM).
+    """
+    today = _as_date(hoje)
+    last = monthrange(today.year, today.month)[1]
+    return to_ddmm(date(today.year, today.month, 1)), to_ddmm(
+        date(today.year, today.month, last)
+    )
+
+
+def nome_mes_pt(hoje: date | datetime | None = None) -> str:
+    """Nome do mes em portugues maiusculo (ex.: AGOSTO)."""
+    today = _as_date(hoje)
+    return MESES_PT[today.month - 1]
+
+
+def titulo_agendamento_mes(hoje: date | datetime | None = None) -> str:
+    """Rotulo de tela: Agendamento AGOSTO."""
+    return f"Agendamento {nome_mes_pt(hoje)}"
 
 
 def periodo_analise_diaria(hoje: date | datetime | None = None) -> tuple[str, str]:

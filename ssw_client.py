@@ -75,6 +75,7 @@ MENU_PROGRAM = {
     "50": "/bin/ssw0157",  # Relacao das Coletas
     "103": "/bin/ssw0166",  # 103 - Situacao de Coletas (coletas normais / Excel)
     "36": "/bin/ssw0146",  # 36 - Relacao de romaneios e CTRCs de entrega
+    "225": "/bin/ssw2862",  # 225 - Acompanhamento dos agendamentos de entrega
 }
 
 _PATCH_CREATE_NEW_DOC = """
@@ -744,6 +745,176 @@ class AceSswClient:
                     if browser is not None:
                         browser.close()
 
+    def _download_report_225(self, page) -> Path:
+        """
+        225 - Acompanhamento agendamentos (ssw2862):
+          Agendamento obrigatorio = S
+          Situacao = A
+          Unidade entrega = SPO
+          Arquivo = R (relatorio .sswweb — inclui hora em AGEND PARA)
+          Previsao entrega = mes corrente 01→ultimo dia (DDMMYY)
+          Gerar = #act_rel → ajaxEnvia('REL', 0)
+        """
+        unidade = "SPO"
+        self.on_status(
+            f"Gerando 225 relatorio R | mes {self.start_date_yy} a {self.end_date_yy} | un={unidade}..."
+        )
+        popup = self._open_menu_option(
+            page,
+            "225",
+            markers=(
+                "agend",
+                "225",
+                "previs",
+                "entrega",
+                "obrigat",
+                "situac",
+                "arquivo",
+                "2862",
+            ),
+        )
+        try:
+            popup.on("dialog", lambda d: d.accept())
+            self._preencher_tela_225(popup, unidade=unidade)
+            popup.wait_for_timeout(400)
+            with popup.expect_download(timeout=180000) as download_info:
+                self._clicar_gerar_225(popup)
+            dest_name = (
+                f"agendamento_225_{self.start_date_yy}_{self.end_date_yy}_{unidade.lower()}_{self.timestamp}.sswweb"
+            )
+            download = download_info.value
+            suggested = (download.suggested_filename or "").lower()
+            if suggested.endswith(".xlsx"):
+                dest_name = dest_name.replace(".sswweb", ".xlsx")
+            elif suggested.endswith(".csv"):
+                dest_name = dest_name.replace(".sswweb", ".csv")
+            elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
+                dest_name = dest_name.replace(".sswweb", ".xls")
+            path = self._save_download(download, dest_name)
+            self.on_status(f"225 arquivo: {path.name} ({path.stat().st_size} bytes)")
+            return path
+        finally:
+            try:
+                popup.close()
+            except Exception:
+                pass
+
+    def _preencher_tela_225(self, popup, *, unidade: str = "SPO") -> None:
+        """ssw2862 — campos a_rel_* + tp_arquivo=R (relatorio com horario)."""
+        ini, fim = self.start_date_yy, self.end_date_yy
+        un = (unidade or "SPO").strip().upper() or "SPO"
+        popup.locator("#a_rel_prev_ini").wait_for()
+        values = popup.evaluate(
+            """([ini, fim, unidade]) => {
+              const setSilent = (id, v) => {
+                const el = document.getElementById(String(id));
+                if (!el) return false;
+                el.value = v;
+                el.dispatchEvent(new Event('input', {bubbles:true}));
+                el.dispatchEvent(new Event('change', {bubbles:true}));
+                return true;
+              };
+              const okObrig = setSilent('a_rel_agend_obrig', 'S');
+              const okSit = setSilent('a_rel_situacao', 'A');
+              const okUn = setSilent('a_rel_unid_ent', unidade);
+              setSilent('a_rel_cnpj_emit', '');
+              setSilent('a_rel_cnpj_dest', '');
+              const okIni = setSilent('a_rel_prev_ini', ini);
+              const okFim = setSilent('a_rel_prev_fin', fim);
+              const okArq = setSilent('tp_arquivo', 'R');
+              try {
+                const arq = document.getElementById('tp_arquivo');
+                if (arq) arq.focus();
+              } catch (e) {}
+              return {
+                ok: okObrig && okSit && okUn && okIni && okFim && okArq,
+                obrig: (document.getElementById('a_rel_agend_obrig') || {}).value || '',
+                situacao: (document.getElementById('a_rel_situacao') || {}).value || '',
+                unidade: (document.getElementById('a_rel_unid_ent') || {}).value || '',
+                ini: (document.getElementById('a_rel_prev_ini') || {}).value || '',
+                fim: (document.getElementById('a_rel_prev_fin') || {}).value || '',
+                arquivo: (document.getElementById('tp_arquivo') || {}).value || '',
+              };
+            }""",
+            [ini, fim, un],
+        )
+        if not values or not values.get("ok"):
+            raise RuntimeError(f"225: falha ao preencher ssw2862: {values}")
+        self.on_status(
+            f"225 preenchido: obrig={values.get('obrig')} sit={values.get('situacao')} "
+            f"un={values.get('unidade')} periodo={values.get('ini')}-{values.get('fim')} "
+            f"arquivo={values.get('arquivo')}"
+        )
+
+    def _clicar_gerar_225(self, popup) -> None:
+        btn = popup.locator("#act_rel")
+        if btn.count() and btn.first.is_visible():
+            btn.first.click()
+            self.on_status("225: clique gerar via #act_rel (REL)")
+            return
+        clicked = popup.evaluate(
+            """() => {
+              if (typeof ajaxEnvia === 'function') {
+                ajaxEnvia('REL', 0);
+                return true;
+              }
+              return false;
+            }"""
+        )
+        if clicked:
+            self.on_status("225: clique gerar via ajaxEnvia('REL')")
+            return
+        raise RuntimeError("225: nao achei botao #act_rel / ajaxEnvia('REL').")
+
+    def run_225(self) -> dict[str, Any]:
+        """Baixa somente a opcao 225 (relatorio R agendamentos do mes)."""
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError as error:
+            raise RuntimeError(
+                "Playwright nao esta instalado. Rode: pip install playwright && playwright install chromium"
+            ) from error
+
+        ensure_dirs()
+        self.download_dir.mkdir(parents=True, exist_ok=True)
+        self._cleanup_before_download()
+        period = format_period(self.start_date_ui, self.end_date_ui)
+        self.on_status(f"ACE 225 | agendamentos mes {period} | relatorio R")
+
+        browser = None
+        context = None
+        with sync_playwright() as playwright:
+            try:
+                launch_kwargs: dict[str, Any] = {
+                    "headless": self.headless,
+                    "slow_mo": 0,
+                }
+                if self.headless:
+                    launch_kwargs["args"] = ["--disable-dev-shm-usage"]
+                browser = playwright.chromium.launch(**launch_kwargs)
+                context = browser.new_context(accept_downloads=True)
+                page = context.new_page()
+                page.set_default_timeout(30000)
+                self._login(page)
+                self._ensure_unit(page)
+                self._patch_blank_popup_fix(page)
+                path = self._download_report_225(page)
+                self.paths["agendamento_225"] = str(path)
+                self.on_status(f"225 relatorio R salvo: {path.name}")
+                return {
+                    "paths": dict(self.paths),
+                    "errors": {},
+                    "period": period,
+                    "agendamento_option": "225",
+                    "download_dir": str(self.download_dir),
+                }
+            finally:
+                if not self.keep_open:
+                    if context is not None:
+                        context.close()
+                    if browser is not None:
+                        browser.close()
+
 
     def _download_report_50(self, page) -> Path:
         """050 - Relacao das Coletas (ssw0157) pelo Periodo de COLETA (hoje)."""
@@ -1183,3 +1354,27 @@ def download_ace_36(
         clean_downloads=clean_downloads,
     )
     return client.run_36()
+
+
+def download_ace_225(
+    start_date: str,
+    end_date: str,
+    *,
+    keep_open: bool = False,
+    headless: bool = False,
+    on_status: StatusCallback | None = None,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    clean_downloads: bool = True,
+) -> dict[str, Any]:
+    client = AceSswClient(
+        start_date,
+        end_date,
+        keep_open=keep_open,
+        headless=headless,
+        on_status=on_status,
+        credentials=credentials,
+        settings=settings,
+        clean_downloads=clean_downloads,
+    )
+    return client.run_225()

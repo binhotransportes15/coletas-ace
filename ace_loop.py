@@ -3,9 +3,11 @@ ACE · Loop CMD (tempo real)
 
 Roda sem parar:
   - a cada N segundos/minutos/horas/dias baixa 50 + 103 EM PARALELO
+  - depois 36 (entregas) e 225 (agendamentos do MES corrente)
   - 50  = periodo de COLETA HOJE
   - 103 = data LIMITE HOJE (Por data de = L)
-  - na virada do dia recalcula sozinho os periodos
+  - 225 = previsao entrega do mes (dia 1 → ultimo), arquivo R
+  - na virada do dia/mes recalcula sozinho os periodos
   - intervalo vem de config loop_intervalo (ex.: 5m, 30s, 1h)
 
 Ctrl+C para parar.

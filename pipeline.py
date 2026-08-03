@@ -5,11 +5,11 @@ from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, LOG_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import format_period, normalize_date, periodo_103_hoje, periodo_36_ontem_hoje, periodo_50_coleta_hoje, periodo_semana_seg_dom, sugestao_periodo
+from dates import format_period, normalize_date, periodo_103_hoje, periodo_36_ontem_hoje, periodo_50_coleta_hoje, periodo_mes_corrente, sugestao_periodo, titulo_agendamento_mes
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
 from sheets_sync import sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36, sync_google_sheets_225
-from ssw_client import cleanup_downloads, download_ace_103, download_ace_36, download_ace_reports
+from ssw_client import cleanup_downloads, download_ace_103, download_ace_36, download_ace_225, download_ace_reports
 from parser_ssw103 import analyze_report_103
 from parser_ssw0146 import analyze_report_36
 from parser_ssw225 import analyze_report_225
@@ -260,20 +260,31 @@ def find_latest_225(download_dir: Path | None = None) -> Path | None:
     if not folder.exists():
         return None
     candidates: list[Path] = []
-    for pattern in ("*225*", "*agend*", "CSV*100432*", "*BIN*.csv", "*.csv"):
+    for pattern in (
+        "agendamento_225*",
+        "*225*",
+        "*agend*",
+        "*BIN*.sswweb",
+        "*2862*.sswweb",
+        "*.sswweb",
+        "CSV*100432*",
+        "*BIN*.csv",
+        "*.csv",
+    ):
         candidates.extend(folder.glob(pattern))
     files = sorted(
         {p.resolve() for p in candidates if p.is_file()},
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )
-    # Prefere CSV com cabecalho de agendamento
     for p in files:
         try:
-            head = p.read_text(encoding="latin-1", errors="replace")[:200].upper()
+            head = p.read_text(encoding="latin-1", errors="replace")[:400].upper()
         except OSError:
             continue
-        if "AGENDADO" in head and "CTRC" in head:
+        if "AGEND PARA" in head or ("AGENDADO" in head and "CTRC" in head):
+            return p
+        if p.suffix.lower() == ".sswweb" and "CTRC" in head:
             return p
     return files[0] if files else None
 
@@ -398,6 +409,60 @@ def run_full_pipeline_36(
     }
 
 
+def run_full_pipeline_225(
+    *,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    keep_open: bool = False,
+    headless: bool = False,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    status = on_status or _noop
+
+    def emit(msg: str) -> None:
+        status(msg)
+        _log_file(msg)
+
+    cfg = settings or load_settings()
+    creds = credentials or load_credentials()
+    ini, fim = periodo_mes_corrente()
+    titulo = titulo_agendamento_mes()
+    emit(f"Pipeline ACE 225 | {titulo} | mes {format_period(ini, fim)} | arquivo R")
+
+    download = download_ace_225(
+        ini,
+        fim,
+        keep_open=keep_open,
+        headless=headless,
+        on_status=emit,
+        credentials=creds,
+        settings=cfg,
+    )
+    report = Path((download.get("paths") or {}).get("agendamento_225") or "")
+    if not report.exists():
+        latest = find_latest_225()
+        if latest:
+            report = latest
+            emit(f"Usando ultimo relatorio 225: {report.name}")
+        else:
+            raise RuntimeError("Download do agendamento 225 nao gerou arquivo")
+
+    analysis = run_analysis_225(
+        report,
+        periodo=titulo,
+        settings=cfg,
+        on_status=emit,
+        sync=True,
+    )
+    return {
+        "download": download,
+        **analysis,
+        "period": format_period(ini, fim),
+        "titulo": titulo,
+        "modo": "mes_corrente",
+    }
+
+
 def run_dual_cycle(
     *,
     credentials: SswCredentials | None = None,
@@ -407,12 +472,13 @@ def run_dual_cycle(
     sync: bool = True,
 ) -> dict[str, Any]:
     """
-    Baixa 50 + 103 (+ 36 se entrega_option=36) EM PARALELO, analisa e sobe Sheets/dashboard.
+    Baixa 50 + 103 (+ 36 se entrega_option=36) + 225 EM CICLO automatico.
 
     Periodos automaticos (recalculados a cada ciclo / virada de dia):
       50  → periodo de COLETA = HOJE
       103 → data LIMITE HOJE (Por data de = L)
-      36  → seg: SEXTA..HOJE | demais: D-1..HOJE (romaneios/CTRCs entrega)
+      36  → seg: SEXTA..HOJE | demais: D-1..HOJE
+      225 → sempre mes corrente (dia 1 → ultimo dia), arquivo R
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -427,15 +493,18 @@ def run_dual_cycle(
     ini50, fim50 = periodo_50_coleta_hoje()
     ini103, fim103 = periodo_103_hoje()
     ini36, fim36 = periodo_36_ontem_hoje()
+    ini225, fim225 = periodo_mes_corrente()
+    titulo225 = titulo_agendamento_mes()
     run_36 = str(getattr(cfg, "entrega_option", "") or "").strip() == "36"
     emit(
         f"CICLO dual | 50 coleta={format_period(ini50, fim50)} "
         f"| 103 limite={format_period(ini103, fim103)}"
         + (
-            f" | 36 periodo={format_period(ini36, fim36)} (apos 50/103)"
+            f" | 36 periodo={format_period(ini36, fim36)}"
             if run_36
             else ""
         )
+        + f" | 225 {titulo225} mes={format_period(ini225, fim225)}"
         + " | paralelo 50+103"
     )
 
@@ -445,6 +514,7 @@ def run_dual_cycle(
     result_50: dict[str, Any] = {}
     result_103: dict[str, Any] = {}
     result_36: dict[str, Any] = {}
+    result_225: dict[str, Any] = {}
     errors: dict[str, str] = {}
 
     def job_50() -> dict[str, Any]:
@@ -531,7 +601,42 @@ def run_dual_cycle(
         )
         return {"download": download, **analysis, "period": format_period(ini36, fim36)}
 
-    # 50 + 103 em paralelo; 36 depois (sozinha) para nao disputar SSW/download
+    def job_225() -> dict[str, Any]:
+        def st(m: str) -> None:
+            emit(f"[225] {m}")
+
+        download = download_ace_225(
+            ini225,
+            fim225,
+            keep_open=False,
+            headless=headless,
+            on_status=st,
+            credentials=creds,
+            settings=cfg,
+            clean_downloads=False,
+        )
+        report = Path((download.get("paths") or {}).get("agendamento_225") or "")
+        if not report.exists():
+            latest = find_latest_225()
+            if not latest:
+                raise RuntimeError("225 sem arquivo")
+            report = latest
+            st(f"Usando ultimo: {report.name}")
+        analysis = run_analysis_225(
+            report,
+            periodo=titulo225,
+            settings=cfg,
+            on_status=st,
+            sync=False,
+        )
+        return {
+            "download": download,
+            **analysis,
+            "period": format_period(ini225, fim225),
+            "titulo": titulo225,
+        }
+
+    # 50 + 103 em paralelo; 36 e 225 depois (sozinhas) para nao disputar SSW/download
     with ThreadPoolExecutor(max_workers=2, thread_name_prefix="ace") as pool:
         futures = {
             pool.submit(job_50): "50",
@@ -559,11 +664,19 @@ def run_dual_cycle(
             errors["36"] = str(err)
             emit(f"36 FALHOU: {err}")
 
+    emit(f"225 sequencial | {titulo225} mes={format_period(ini225, fim225)}")
+    try:
+        result_225 = job_225()
+        emit("225 concluido.")
+    except Exception as err:  # noqa: BLE001
+        errors["225"] = str(err)
+        emit(f"225 FALHOU: {err}")
+
     # Mantem so os relatorios finais deste ciclo
     keep: list[Path] = []
-    for block in (result_50, result_103, result_36):
+    for block in (result_50, result_103, result_36, result_225):
         paths = (block.get("download") or {}).get("paths") or {}
-        for key in ("coleta", "coleta_103", "entrega_36"):
+        for key in ("coleta", "coleta_103", "entrega_36", "agendamento_225"):
             p = Path(paths.get(key) or "")
             if p.exists():
                 keep.append(p)
@@ -572,30 +685,35 @@ def run_dual_cycle(
             keep.append(report)
     cleanup_downloads(DOWNLOAD_DIR, keep=keep, on_status=emit)
 
-    sheets50 = sheets103 = sheets36 = dash = {"ok": False, "skipped": True}
-    if sync and (result_50 or result_103 or result_36):
+    sheets50 = sheets103 = sheets36 = sheets225 = dash = {"ok": False, "skipped": True}
+    if sync and (result_50 or result_103 or result_36 or result_225):
         if result_50:
             sheets50 = sync_google_sheets(cfg, on_status=emit)
         if result_103:
             sheets103 = sync_google_sheets_103(cfg, on_status=emit)
         if result_36:
             sheets36 = sync_google_sheets_36(cfg, on_status=emit)
+        if result_225:
+            sheets225 = sync_google_sheets_225(cfg, on_status=emit)
         dash = publish_dashboard(cfg, on_status=emit)
 
-    if errors and not result_50 and not result_103 and not result_36:
+    if errors and not result_50 and not result_103 and not result_36 and not result_225:
         raise RuntimeError("; ".join(f"{k}: {v}" for k, v in errors.items()))
 
     return {
-        "ok": not errors or bool(result_50 or result_103 or result_36),
+        "ok": not errors or bool(result_50 or result_103 or result_36 or result_225),
         "errors": errors,
         "period_50": format_period(ini50, fim50),
         "period_103": format_period(ini103, fim103),
         "period_36": format_period(ini36, fim36) if run_36 else "",
+        "period_225": format_period(ini225, fim225),
         "50": result_50,
         "103": result_103,
         "36": result_36,
+        "225": result_225,
         "sheets_50": sheets50,
         "sheets_103": sheets103,
         "sheets_36": sheets36,
+        "sheets_225": sheets225,
         "dashboard": dash,
     }

@@ -892,9 +892,17 @@
       min-height: 0;
       height: 100%;
     }
-    #viewAgendamento.active { display: block; }
+    #viewAgendamento.active {
+      display: flex;
+      flex-direction: column;
+    }
     body.live-mode.swap-agenda #viewLive { display: none !important; }
-    body.live-mode.swap-agenda #viewAgendamento { display: block !important; }
+    body.live-mode.swap-agenda #viewAgendamento {
+      display: flex !important;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
     body.live-mode.swap-agenda .brand .title { color: #fbb03b; }
     .agenda-arena {
       height: 100%;
@@ -904,7 +912,8 @@
       gap: 12px;
       background:
         radial-gradient(90% 70% at 0% 0%, rgba(251,176,59,.12), transparent 55%),
-        radial-gradient(80% 60% at 100% 0%, rgba(239,68,68,.1), transparent 50%),
+        radial-gradient(80% 60% at 100% 0%, rgba(41,171,226,.12), transparent 50%),
+        radial-gradient(70% 50% at 50% 100%, rgba(140,198,63,.1), transparent 55%),
         linear-gradient(165deg, #0b1220 0%, #05080f 100%);
       border: 1px solid #243044;
       border-radius: 18px;
@@ -936,38 +945,202 @@
       font-size: 12px;
       font-weight: 600;
     }
-    .agenda-stats {
+    .agenda-kpis {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 8px;
       flex-shrink: 0;
     }
-    .agenda-stat {
-      background: rgba(2,6,23,.65);
+    .agenda-kpi {
+      background: rgba(2,6,23,.72);
       border: 1px solid #1e293b;
       border-radius: 12px;
-      padding: 10px 12px;
+      padding: 8px 10px 9px;
+      min-width: 0;
+      border-top: 3px solid #334155;
     }
-    .agenda-stat span {
+    .agenda-kpi.k-peso { border-top-color: #94a3b8; }
+    .agenda-kpi.k-frete { border-top-color: #fbb03b; }
+    .agenda-kpi.k-ok { border-top-color: var(--col); }
+    .agenda-kpi.k-arm { border-top-color: var(--cad-dark); }
+    .agenda-kpi.k-amanha { border-top-color: var(--com); }
+    .agenda-kpi span {
       display: block;
-      font-size: 10px;
-      font-weight: 700;
+      font-size: 9px;
+      font-weight: 800;
       letter-spacing: 0.1em;
       text-transform: uppercase;
       color: #64748b;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .agenda-stat b {
-      font-size: clamp(22px, 3vw, 34px);
-      font-weight: 800;
-      font-variant-numeric: tabular-nums;
-      line-height: 1;
+    .agenda-kpi b {
+      display: block;
+      font-size: clamp(16px, 2vw, 24px);
+      font-weight: 900;
+      line-height: 1.1;
       color: #fff;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .agenda-stat.s-rota b { color: var(--com); }
-    .agenda-stat.s-par b { color: var(--cad); }
-    .agenda-stat.s-ok b { color: var(--col); }
-    .agenda-stat.s-alert b { color: #f87171; }
+    .agenda-kpi.k-ok b { color: var(--col); }
+    .agenda-kpi.k-arm b { color: var(--cad); }
+    .agenda-kpi.k-amanha b { color: var(--com); }
+    .agenda-kpi.k-frete b { color: #fbb03b; }
+    .agenda-kpi small {
+      display: block;
+      margin-top: 3px;
+      font-size: 10px;
+      color: #64748b;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    @media (max-width: 900px) {
+      .agenda-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .agenda-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .agenda-hero {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      align-items: stretch;
+      overflow: hidden;
+    }
+    .agenda-chart-stage {
+      position: relative;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .agenda-ribbon {
+      position: relative;
+      z-index: 2;
+      flex-shrink: 0;
+      min-width: min(420px, 72%);
+      max-width: 560px;
+      padding: 10px 36px;
+      text-align: center;
+      color: #fff;
+      font-size: clamp(13px, 1.6vw, 18px);
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      background: linear-gradient(180deg, #3aa8d8, var(--com-dark) 55%, #12103a);
+      border: 1px solid rgba(103,232,249,.25);
+      box-shadow: 0 8px 22px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.18);
+      clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%);
+    }
+    .agenda-ribbon span { display: inline-block; text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+    .agenda-pizza-wrap {
+      position: relative;
+      display: grid;
+      place-items: center;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+    .agenda-pizza {
+      width: min(100%, 760px);
+      height: 100%;
+      max-height: 100%;
+      filter: drop-shadow(0 16px 28px rgba(0,0,0,.4));
+    }
+    .agenda-pizza .slice-depth { opacity: 0.5; }
+    .agenda-pizza .slice.s-rota { fill: var(--com); }
+    .agenda-pizza .slice.s-par { fill: var(--cad-dark); }
+    .agenda-pizza .slice.s-ok { fill: var(--col); }
+    .agenda-pizza .slice-depth.s-rota { fill: var(--com-dark); }
+    .agenda-pizza .slice-depth.s-par { fill: #b57a12; }
+    .agenda-pizza .slice-depth.s-ok { fill: var(--col-dark); }
+    .agenda-pizza .callout-line { fill: none; stroke: rgba(226,232,240,.78); stroke-width: 1.5; }
+    .agenda-pizza .callout-dot { stroke: #fff; stroke-width: 1.6; }
+    .agenda-pizza .callout-dot.s-rota { fill: var(--com); }
+    .agenda-pizza .callout-dot.s-par { fill: var(--cad-dark); }
+    .agenda-pizza .callout-dot.s-ok { fill: var(--col); }
+    .agenda-pizza .callout-pct {
+      fill: #f8fafc; font-weight: 900; font-size: 24px;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    .agenda-pizza .callout-rule { stroke: rgba(226,232,240,.55); stroke-width: 1.3; }
+    .agenda-pizza .callout-lab {
+      fill: #94a3b8; font-weight: 700; font-size: 11px; letter-spacing: 0.08em;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    .agenda-pizza .callout-count {
+      fill: #cbd5e1; font-weight: 600; font-size: 11px;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    .agenda-side { display: none; }
+    @media (min-width: 1100px) {
+      .agenda-hero {
+        grid-template-columns: 1fr minmax(220px, 280px);
+        gap: 16px;
+      }
+      .agenda-side {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        justify-content: center;
+        min-height: 0;
+      }
+    }
+    .agenda-leg {
+      display: grid;
+      grid-template-columns: 8px 1fr auto;
+      gap: 12px;
+      align-items: stretch;
+      background: rgba(2,6,23,.7);
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      overflow: hidden;
+      min-height: 64px;
+    }
+    .agenda-leg .bar { background: var(--muted); }
+    .agenda-leg.l-rota .bar { background: linear-gradient(180deg, #5ec8f0, var(--com)); }
+    .agenda-leg.l-par .bar { background: linear-gradient(180deg, #fff566, var(--cad-dark)); }
+    .agenda-leg.l-ok .bar { background: linear-gradient(180deg, #a3e048, var(--col)); }
+    .agenda-leg .body { padding: 10px 4px 10px 0; min-width: 0; }
+    .agenda-leg .lab {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.12em;
+      text-transform: uppercase; color: #94a3b8; margin-bottom: 2px;
+    }
+    .agenda-leg.l-rota .lab { color: var(--com); }
+    .agenda-leg.l-par .lab { color: var(--cad-dark); }
+    .agenda-leg.l-ok .lab { color: var(--col); }
+    .agenda-leg .desc { font-size: 12px; color: #cbd5e1; line-height: 1.3; }
+    .agenda-leg .num {
+      padding: 10px 14px 10px 0; display: flex; flex-direction: column;
+      align-items: flex-end; justify-content: center; gap: 2px;
+    }
+    .agenda-leg .num b {
+      font-size: clamp(22px, 2.6vw, 34px); font-weight: 900; line-height: 1;
+      color: #fff; font-variant-numeric: tabular-nums;
+    }
+    .agenda-leg .num span { font-size: 12px; font-weight: 700; color: #64748b; }
+    .agenda-leg.l-rota .num b { color: var(--com); }
+    .agenda-leg.l-par .num b { color: var(--cad); }
+    .agenda-leg.l-ok .num b { color: var(--col); }
+    .agenda-alert-chip {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 10px 14px; border-radius: 12px; border: 1px solid #7f1d1d;
+      background: rgba(127,29,29,.35); color: #fecaca; font-weight: 800;
+      font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .agenda-alert-chip b { font-size: 22px; color: #fff; font-variant-numeric: tabular-nums; }
     .agenda-alerts {
       display: flex;
       flex-direction: column;
@@ -1032,13 +1205,17 @@
       white-space: nowrap;
     }
     .agenda-table-wrap {
-      flex: 1;
+      flex: 0 0 auto;
+      max-height: 22%;
       min-height: 0;
       overflow: auto;
       border: 1px solid #1e293b;
       border-radius: 14px;
       background: rgba(2,6,23,.55);
     }
+    /* No vivo a pizza é o hero — tabela só na Gestão */
+    body.live-mode .agenda-table-wrap { display: none; }
+    body.live-mode .agenda-alerts { max-height: 18%; }
     .agenda-table-wrap table {
       width: 100%;
       border-collapse: collapse;
@@ -1081,6 +1258,54 @@
     .swap-dot i.on { background: #fbb03b; box-shadow: 0 0 8px rgba(251,176,59,.7); }
     body:not(.swap-agenda) .swap-dot i.d-live { background: #67e8f9; box-shadow: 0 0 8px rgba(103,232,249,.6); }
     body.swap-agenda .swap-dot i.d-ag { background: #fbb03b; box-shadow: 0 0 8px rgba(251,176,59,.7); }
+    .swap-dot { cursor: pointer; }
+    .swap-nav {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 40;
+      width: 46px;
+      height: 72px;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      background: rgba(2,6,23,.78);
+      color: #e2e8f0;
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+      display: none;
+      place-items: center;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 10px 28px rgba(0,0,0,.35);
+    }
+    .swap-nav:hover {
+      border-color: #67e8f9;
+      color: #67e8f9;
+      background: rgba(15,23,42,.92);
+    }
+    .swap-nav:active { transform: translateY(-50%) scale(0.97); }
+    .swap-nav.prev { left: 10px; }
+    .swap-nav.next { right: 10px; }
+    body.live-mode .swap-nav { display: grid; }
+    body.live-mode:not(.swap-agenda) .swap-nav.prev { opacity: 0.35; pointer-events: none; }
+    body.live-mode.swap-agenda .swap-nav.next { opacity: 0.35; pointer-events: none; }
+    .agenda-swap-btns {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .agenda-swap-btns button {
+      border: 1px solid #334155;
+      background: #020617;
+      color: #94a3b8;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .agenda-swap-btns button:hover { color: #fbb03b; border-color: #fbb03b; }
 
     @media (orientation: portrait) {
       body.tv-mode .arena-body {
@@ -1096,6 +1321,8 @@
 </head>
 <body class="live-mode">
   <div class="tv-hint" id="tvHint">Modo TV · F ou ESC para sair · ideal para televisão</div>
+  <button type="button" class="swap-nav prev" id="btnSwapPrev" title="Distribuição (←)" aria-label="Ir para Distribuição">‹</button>
+  <button type="button" class="swap-nav next" id="btnSwapNext" title="Agendamento (→)" aria-label="Ir para Agendamento">›</button>
   <div class="board">
     <header class="topbar">
       <div class="brand">
@@ -1241,21 +1468,92 @@
 
     <!-- AGENDAMENTO 225 (intercala com Distribuição a cada 15s) -->
     <div class="view" id="viewAgendamento">
-      <section class="agenda-arena" aria-label="Agendamentos da semana">
+      <section class="agenda-arena" aria-label="Agendamentos do mês">
         <header class="agenda-head">
           <div>
-            <h2>Agendamento</h2>
-            <div class="sub" id="agendaPeriodo">Semana corrente · relatório 225</div>
+            <h2 id="agendaTitulo">Agendamento</h2>
+            <div class="sub" id="agendaPeriodo">Mês corrente · relatório 225</div>
           </div>
-          <div class="sub" id="agendaTick">troca em 15s</div>
+          <div class="agenda-swap-btns">
+            <button type="button" id="btnAgendaPrev" title="Distribuição">‹ Dist.</button>
+            <div class="sub" id="agendaTick">troca em 15s</div>
+            <button type="button" id="btnAgendaNext" title="Manter / avançar">›</button>
+          </div>
         </header>
-        <div class="agenda-stats" id="agendaStats">
-          <div class="agenda-stat"><span>Total</span><b id="agTotal">0</b></div>
-          <div class="agenda-stat s-rota"><span>Em rota</span><b id="agRota">0</b></div>
-          <div class="agenda-stat s-par"><span>Parado</span><b id="agPar">0</b></div>
-          <div class="agenda-stat s-ok"><span>Concluído</span><b id="agOk">0</b></div>
-          <div class="agenda-stat s-alert"><span>Sem saída</span><b id="agAlert">0</b></div>
+
+        <div class="agenda-kpis" id="agendaKpis" aria-label="Totais do mês">
+          <div class="agenda-kpi">
+            <span>Agendamentos</span>
+            <b id="kpiTotal">0</b>
+            <small>CTRC no mês</small>
+          </div>
+          <div class="agenda-kpi k-peso">
+            <span>Peso</span>
+            <b id="kpiPeso">0</b>
+            <small>kg no mês</small>
+          </div>
+          <div class="agenda-kpi k-frete">
+            <span>Frete</span>
+            <b id="kpiFrete">0</b>
+            <small>R$ no mês</small>
+          </div>
+          <div class="agenda-kpi k-ok">
+            <span>Realizado</span>
+            <b id="kpiReal">0</b>
+            <small id="kpiRealSub">0 kg · R$ 0</small>
+          </div>
+          <div class="agenda-kpi k-arm">
+            <span>No armazém</span>
+            <b id="kpiArm">0</b>
+            <small id="kpiArmSub">parado · 0 kg</small>
+          </div>
+          <div class="agenda-kpi k-amanha">
+            <span>Amanhã</span>
+            <b id="kpiAmanha">0</b>
+            <small id="kpiAmanhaSub">agendados</small>
+          </div>
         </div>
+
+        <div class="agenda-hero">
+          <div class="agenda-chart-stage">
+            <div class="agenda-ribbon"><span id="agendaRibbon">AGENDAMENTO</span></div>
+            <div class="agenda-pizza-wrap">
+              <svg id="agendaPizza" class="agenda-pizza" viewBox="0 0 520 360" role="img" aria-label="Gráfico pizza de agendamentos"></svg>
+            </div>
+          </div>
+          <div class="agenda-side" id="agendaLegend">
+            <div class="agenda-leg l-rota">
+              <div class="bar" aria-hidden="true"></div>
+              <div class="body">
+                <div class="lab">Em rota</div>
+                <div class="desc">Saída para entrega</div>
+              </div>
+              <div class="num"><b id="agRota">0</b><span id="agRotaPct">0%</span></div>
+            </div>
+            <div class="agenda-leg l-par">
+              <div class="bar" aria-hidden="true"></div>
+              <div class="body">
+                <div class="lab">Parado</div>
+                <div class="desc">No armazém / agendado</div>
+              </div>
+              <div class="num"><b id="agPar">0</b><span id="agParPct">0%</span></div>
+            </div>
+            <div class="agenda-leg l-ok">
+              <div class="bar" aria-hidden="true"></div>
+              <div class="body">
+                <div class="lab">Concluído</div>
+                <div class="desc">Entrega realizada</div>
+              </div>
+              <div class="num"><b id="agOk">0</b><span id="agOkPct">0%</span></div>
+            </div>
+            <div class="agenda-alert-chip" id="agendaAlertChip" hidden>
+              <span>⚠ Sem saída hoje</span>
+              <b id="agAlert">0</b>
+            </div>
+          </div>
+          <span id="agTotal" hidden>0</span>
+        </div>
+
         <div class="agenda-alerts" id="agendaAlerts"></div>
         <div class="agenda-table-wrap">
           <table>
@@ -1278,6 +1576,7 @@
         <div class="toolbar" id="tabsRelatorio">
           <button type="button" class="chip active" data-rel="coleta">Coleta</button>
           <button type="button" class="chip" data-rel="36">Entrega</button>
+          <button type="button" class="chip" data-rel="225">Agendamento</button>
           <div class="search">
             <input id="buscaColeta" type="search" placeholder="Buscar coleta / romaneio / placa / CTRC" />
             <button type="button" class="btn" id="btnBuscar">Buscar</button>
@@ -1339,7 +1638,13 @@
     let URGENTES = [];
     let PENDENCIAS_36 = [];
     let AGENDAMENTOS_225 = [];
-    let RESUMO_225 = { total: 0, em_rota: 0, parado: 0, concluido: 0, alerta: 0, periodo: '' };
+    let RESUMO_225 = {
+      total: 0, em_rota: 0, parado: 0, concluido: 0, alerta: 0, periodo: '',
+      peso_total: '0,00', frete_total: '0,00',
+      realizado: 0, peso_realizado: '0,00', frete_realizado: '0,00',
+      armazem: 0, peso_armazem: '0,00', frete_armazem: '0,00',
+      amanha: 0, peso_amanha: '0,00', frete_amanha: '0,00',
+    };
     let swapTimer = null;
     let swapCountdown = null;
     let SWAP_ON_AGENDA = false;
@@ -2013,6 +2318,13 @@
         ].join(' ').toUpperCase().replace(/\s+/g, '');
         return blob.includes(q);
       }
+      if (REL === '225') {
+        const blob = [
+          c.ctrc, c.remetente, c.destinatario, c.destino, c.status_raw, c.status_ace,
+          c.agendado_para, c.agendado_em,
+        ].join(' ').toUpperCase().replace(/\s+/g, '');
+        return blob.includes(q);
+      }
       // Grupo por placa (gestão coleta) ou linha individual
       const blob = [
         c.placa, c.placa_key, c.grupo, c.motorista, c.coleta_id, c.coleta,
@@ -2091,7 +2403,11 @@
         ['TODAS', 'Todas'], ['realizada', 'Realizada'], ['em_rota', 'Em rota'],
         ['parado', 'Pendência'],
       ];
-      const opts = REL === '36' ? opts36 : optsColeta;
+      const opts225 = [
+        ['TODAS', 'Todas'], ['em_rota', 'Em rota'], ['parado', 'Parado'],
+        ['concluido', 'Concluído'], ['alerta', 'Sem saída'],
+      ];
+      const opts = REL === '36' ? opts36 : (REL === '225' ? opts225 : optsColeta);
       if (!opts.some(([k]) => k === FILTRO)) FILTRO = 'TODAS';
       box.innerHTML = opts.map(([k, lbl]) =>
         `<button type="button" class="chip${FILTRO === k ? ' active' : ''}" data-filtro="${k}">${lbl}</button>`
@@ -2108,6 +2424,35 @@
     function renderTabelaGestao() {
       const thead = document.getElementById('theadGestao');
       const tbody = document.getElementById('tbodyGestao');
+      if (REL === '225') {
+        thead.innerHTML = `<tr>
+          <th>CTRC</th><th>Remetente</th><th>Destinatário</th>
+          <th>Peso</th><th>Frete</th><th>Agendado</th><th>Para</th><th>Status</th></tr>`;
+        let rows = (AGENDAMENTOS_225 || []).filter(matchBusca);
+        if (FILTRO === 'em_rota') rows = rows.filter(r => String(r.status_ace || '') === 'em_rota');
+        if (FILTRO === 'parado') rows = rows.filter(r => String(r.status_ace || '') === 'parado');
+        if (FILTRO === 'concluido') rows = rows.filter(r => String(r.status_ace || '') === 'concluido');
+        if (FILTRO === 'alerta') rows = rows.filter(r => String(r.alerta_sem_saida || '') === '1');
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="8" class="muted">Nenhum agendamento 225.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(r => {
+          const st = String(r.status_ace || 'parado').toLowerCase();
+          const isAlert = String(r.alerta_sem_saida || '') === '1';
+          return `<tr class="${isAlert ? 'is-alert' : ''}">
+            <td><strong>${esc(r.ctrc || '')}</strong>${isAlert ? ' <span class="sit sit-parado">!</span>' : ''}</td>
+            <td>${esc(r.remetente || '')}</td>
+            <td>${esc(r.destinatario || '')}<div class="muted" style="font-size:11px">${esc(r.destino || '')}</div></td>
+            <td>${esc(r.peso || '')}</td>
+            <td>${esc(r.frete || '')}</td>
+            <td>${esc(r.agendado_em || '')}</td>
+            <td>${esc(r.agendado_para || r.agendado_para_data || '')}</td>
+            <td class="sit-${esc(st)}">${esc(labelStatus225(st))}</td>
+          </tr>`;
+        }).join('');
+        return;
+      }
       if (REL === '36') {
         thead.innerHTML = `<tr>
           <th>Romaneio</th><th>Placa</th><th>Motorista</th>
@@ -2366,14 +2711,7 @@
           const rSum = await chamarPlanilha('resumo225').catch(() => null);
           const row = (rSum && rSum.rows && rSum.rows[0]) || null;
           if (row) {
-            RESUMO_225 = {
-              total: Number(row.total || AGENDAMENTOS_225.length) || 0,
-              em_rota: Number(row.em_rota || 0) || 0,
-              parado: Number(row.parado || 0) || 0,
-              concluido: Number(row.concluido || 0) || 0,
-              alerta: Number(row.alerta || 0) || 0,
-              periodo: row.periodo || '',
-            };
+            RESUMO_225 = mergeResumo225(row, resumoFromAgendaRows(AGENDAMENTOS_225));
           } else {
             RESUMO_225 = resumoFromAgendaRows(AGENDAMENTOS_225);
           }
@@ -2390,14 +2728,7 @@
           const rs = await fetch(`data/resumo_225.csv?t=${Date.now()}`, { cache: 'no-store' });
           if (rs.ok) {
             const rows = parseCsvText(await rs.text());
-            if (rows[0]) {
-              RESUMO_225.periodo = rows[0].periodo || RESUMO_225.periodo;
-              RESUMO_225.total = Number(rows[0].total || RESUMO_225.total) || RESUMO_225.total;
-              RESUMO_225.em_rota = Number(rows[0].em_rota || RESUMO_225.em_rota) || RESUMO_225.em_rota;
-              RESUMO_225.parado = Number(rows[0].parado || RESUMO_225.parado) || RESUMO_225.parado;
-              RESUMO_225.concluido = Number(rows[0].concluido || RESUMO_225.concluido) || RESUMO_225.concluido;
-              RESUMO_225.alerta = Number(rows[0].alerta || RESUMO_225.alerta) || RESUMO_225.alerta;
-            }
+            if (rows[0]) RESUMO_225 = mergeResumo225(rows[0], RESUMO_225);
           }
         } catch (_) {}
       } catch (err) {
@@ -2405,30 +2736,248 @@
       }
     }
 
+    function parseNumBr(v) {
+      const s = String(v || '').trim();
+      if (!s) return 0;
+      const n = Number(s.replace(/\./g, '').replace(',', '.'));
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function fmtNumBr(n, casas = 2) {
+      return (Number(n) || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: casas,
+        maximumFractionDigits: casas,
+      });
+    }
+
+    function parseDataBrAgenda(value) {
+      const m = String(value || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      if (!m) return null;
+      let y = Number(m[3]);
+      if (y < 100) y += 2000;
+      const d = new Date(y, Number(m[2]) - 1, Number(m[1]));
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function sameDay(a, b) {
+      return a && b
+        && a.getFullYear() === b.getFullYear()
+        && a.getMonth() === b.getMonth()
+        && a.getDate() === b.getDate();
+    }
+
     function resumoFromAgendaRows(rows) {
-      const out = { total: 0, em_rota: 0, parado: 0, concluido: 0, alerta: 0, periodo: '' };
+      const out = {
+        total: 0, em_rota: 0, parado: 0, concluido: 0, alerta: 0, periodo: RESUMO_225.periodo || '',
+        peso_total: 0, frete_total: 0,
+        realizado: 0, peso_realizado: 0, frete_realizado: 0,
+        armazem: 0, peso_armazem: 0, frete_armazem: 0,
+        amanha: 0, peso_amanha: 0, frete_amanha: 0,
+      };
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const amanha = new Date(hoje);
+      amanha.setDate(amanha.getDate() + 1);
+
       (rows || []).forEach(r => {
         out.total += 1;
         const st = String(r.status_ace || '').toLowerCase();
         if (out[st] != null) out[st] += 1;
         if (String(r.alerta_sem_saida || '') === '1') out.alerta += 1;
+        const p = parseNumBr(r.peso);
+        const f = parseNumBr(r.frete);
+        out.peso_total += p;
+        out.frete_total += f;
+        if (st === 'concluido') {
+          out.realizado += 1;
+          out.peso_realizado += p;
+          out.frete_realizado += f;
+        }
+        if (st === 'parado') {
+          out.armazem += 1;
+          out.peso_armazem += p;
+          out.frete_armazem += f;
+        }
+        const dt = parseDataBrAgenda(r.agendado_para);
+        if (sameDay(dt, amanha)) {
+          out.amanha += 1;
+          out.peso_amanha += p;
+          out.frete_amanha += f;
+        }
       });
+
+      out.peso_total = fmtNumBr(out.peso_total);
+      out.frete_total = fmtNumBr(out.frete_total);
+      out.peso_realizado = fmtNumBr(out.peso_realizado);
+      out.frete_realizado = fmtNumBr(out.frete_realizado);
+      out.peso_armazem = fmtNumBr(out.peso_armazem);
+      out.frete_armazem = fmtNumBr(out.frete_armazem);
+      out.peso_amanha = fmtNumBr(out.peso_amanha);
+      out.frete_amanha = fmtNumBr(out.frete_amanha);
       return out;
+    }
+
+    function mergeResumo225(row, base) {
+      if (!row) return base;
+      const pick = (k, fb) => (row[k] != null && String(row[k]).trim() !== '' ? row[k] : fb);
+      return {
+        ...base,
+        periodo: pick('periodo', base.periodo),
+        total: Number(pick('total', base.total)) || base.total,
+        em_rota: Number(pick('em_rota', base.em_rota)) || base.em_rota,
+        parado: Number(pick('parado', base.parado)) || base.parado,
+        concluido: Number(pick('concluido', base.concluido)) || base.concluido,
+        alerta: Number(pick('alerta', base.alerta)) || base.alerta,
+        peso_total: String(pick('peso_total', base.peso_total)),
+        frete_total: String(pick('frete_total', base.frete_total)),
+        realizado: Number(pick('realizado', base.realizado ?? base.concluido)) || base.realizado,
+        peso_realizado: String(pick('peso_realizado', base.peso_realizado)),
+        frete_realizado: String(pick('frete_realizado', base.frete_realizado)),
+        armazem: Number(pick('armazem', base.armazem ?? base.parado)) || base.armazem,
+        peso_armazem: String(pick('peso_armazem', base.peso_armazem)),
+        frete_armazem: String(pick('frete_armazem', base.frete_armazem)),
+        amanha: Number(pick('amanha', base.amanha)) || base.amanha,
+        peso_amanha: String(pick('peso_amanha', base.peso_amanha)),
+        frete_amanha: String(pick('frete_amanha', base.frete_amanha)),
+      };
+    }
+
+    function polar(cx, cy, r, angDeg) {
+      const a = (angDeg - 90) * Math.PI / 180;
+      return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+    }
+
+    function pieSlicePath(cx, cy, r, startDeg, endDeg, explode) {
+      const mid = (startDeg + endDeg) / 2;
+      const off = polar(0, 0, explode, mid);
+      const ox = cx + off.x;
+      const oy = cy + off.y;
+      let sweep = endDeg - startDeg;
+      if (sweep <= 0) return '';
+      if (sweep >= 359.9) {
+        return `M ${ox} ${oy - r} A ${r} ${r} 0 1 1 ${ox} ${oy + r} A ${r} ${r} 0 1 1 ${ox} ${oy - r} Z`;
+      }
+      const large = sweep > 180 ? 1 : 0;
+      const p1 = polar(ox, oy, r, startDeg);
+      const p2 = polar(ox, oy, r, endDeg);
+      return [
+        `M ${ox} ${oy}`,
+        `L ${p1.x} ${p1.y}`,
+        `A ${r} ${r} 0 ${large} 1 ${p2.x} ${p2.y}`,
+        'Z',
+      ].join(' ');
+    }
+
+    function renderAgendaPizza(rota, parado, ok) {
+      const svg = document.getElementById('agendaPizza');
+      if (!svg) return;
+      const parts = [
+        { cls: 's-rota', label: 'EM ROTA', desc: 'Saída para entrega', value: Number(rota) || 0 },
+        { cls: 's-par', label: 'PARADO', desc: 'No armazém / agendado', value: Number(parado) || 0 },
+        { cls: 's-ok', label: 'CONCLUÍDO', desc: 'Entrega realizada', value: Number(ok) || 0 },
+      ].filter(p => p.value > 0);
+      const total = parts.reduce((s, p) => s + p.value, 0);
+      const W = 520, H = 360;
+      const cx = 260, cy = 185, r = 108, explode = 14, depthY = 8;
+      if (!total) {
+        svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#1e293b"/><text x="${cx}" y="${cy}" text-anchor="middle" fill="#64748b" font-size="14" font-weight="700">Sem dados</text>`;
+        return;
+      }
+
+      let angle = -10; // leve giro visual
+      const slices = [];
+      const depths = [];
+      const callouts = [];
+
+      parts.forEach((p) => {
+        const sweep = (p.value / total) * 360;
+        const start = angle;
+        const end = angle + Math.max(sweep, 2);
+        const mid = start + (end - start) / 2;
+        const pct = Math.round((p.value / total) * 100);
+
+        depths.push(`<path class="slice-depth ${p.cls}" d="${pieSlicePath(cx, cy + depthY, r, start, end - 0.6, explode)}" />`);
+        slices.push(`<path class="slice ${p.cls}" d="${pieSlicePath(cx, cy, r, start, end - 0.6, explode)}" />`);
+
+        const anchor = polar(cx, cy, r * 0.62, mid);
+        const off = polar(0, 0, explode, mid);
+        const ax = anchor.x + off.x;
+        const ay = anchor.y + off.y;
+        const right = Math.cos((mid - 90) * Math.PI / 180) >= 0;
+        const elbow = polar(cx, cy, r + 28, mid);
+        const ex = elbow.x + off.x;
+        const ey = elbow.y + off.y;
+        const lx = right ? Math.min(W - 18, ex + 58) : Math.max(18, ex - 58);
+        const ly = Math.max(28, Math.min(H - 40, ey));
+        const anchorText = right ? 'start' : 'end';
+        const ruleX1 = right ? lx : lx - 52;
+        const ruleX2 = right ? lx + 52 : lx;
+
+        callouts.push(`
+          <circle class="callout-dot ${p.cls}" cx="${ax}" cy="${ay}" r="4.5" />
+          <path class="callout-line" d="M ${ax} ${ay} L ${ex} ${ey} L ${lx} ${ly}" />
+          <text class="callout-pct" x="${lx}" y="${ly - 8}" text-anchor="${anchorText}">${pct}%</text>
+          <line class="callout-rule" x1="${ruleX1}" y1="${ly - 2}" x2="${ruleX2}" y2="${ly - 2}" />
+          <text class="callout-lab" x="${lx}" y="${ly + 14}" text-anchor="${anchorText}">${p.label}</text>
+          <text class="callout-count" x="${lx}" y="${ly + 28}" text-anchor="${anchorText}">${p.value} CTRC · ${p.desc}</text>
+        `);
+        angle = end;
+      });
+
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      svg.innerHTML = depths.join('') + slices.join('') + callouts.join('');
     }
 
     function renderAgendamento() {
       const periodoEl = document.getElementById('agendaPeriodo');
+      const tituloEl = document.getElementById('agendaTitulo');
+      // Totais sempre recalculados das linhas (amanhã / peso / frete ficam frescos)
+      const live = resumoFromAgendaRows(AGENDAMENTOS_225);
+      live.periodo = RESUMO_225.periodo || live.periodo;
+      RESUMO_225 = { ...RESUMO_225, ...live };
+
+      const per = String(RESUMO_225.periodo || '').trim();
+      if (tituloEl) tituloEl.textContent = per || 'Agendamento';
+      const ribbon = document.getElementById('agendaRibbon');
+      if (ribbon) ribbon.textContent = (per || 'Agendamento').toUpperCase();
       if (periodoEl) {
-        periodoEl.textContent = RESUMO_225.periodo
-          ? `${RESUMO_225.periodo} · relatório 225`
-          : 'Semana corrente · relatório 225';
+        periodoEl.textContent = 'Mês corrente · relatório 225 (R · com horário)';
       }
+      const total = Number(RESUMO_225.total || AGENDAMENTOS_225.length) || 0;
+      const rota = Number(RESUMO_225.em_rota) || 0;
+      const parado = Number(RESUMO_225.parado) || 0;
+      const ok = Number(RESUMO_225.concluido) || 0;
+      const alerta = Number(RESUMO_225.alerta) || 0;
+      const realizado = Number(RESUMO_225.realizado ?? ok) || 0;
+      const armazem = Number(RESUMO_225.armazem ?? parado) || 0;
+      const amanhaN = Number(RESUMO_225.amanha) || 0;
+      const pct = (n) => total ? `${Math.round((n / total) * 100)}%` : '0%';
+
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = String(v); };
-      set('agTotal', RESUMO_225.total || AGENDAMENTOS_225.length || 0);
-      set('agRota', RESUMO_225.em_rota || 0);
-      set('agPar', RESUMO_225.parado || 0);
-      set('agOk', RESUMO_225.concluido || 0);
-      set('agAlert', RESUMO_225.alerta || 0);
+      set('agTotal', total);
+      set('agRota', rota);
+      set('agPar', parado);
+      set('agOk', ok);
+      set('agAlert', alerta);
+      set('agRotaPct', pct(rota));
+      set('agParPct', pct(parado));
+      set('agOkPct', pct(ok));
+      set('kpiTotal', total);
+      set('kpiPeso', RESUMO_225.peso_total || '0,00');
+      set('kpiFrete', RESUMO_225.frete_total || '0,00');
+      set('kpiReal', realizado);
+      set('kpiRealSub', `${RESUMO_225.peso_realizado || '0,00'} kg · R$ ${RESUMO_225.frete_realizado || '0,00'}`);
+      set('kpiArm', armazem);
+      set('kpiArmSub', `${RESUMO_225.peso_armazem || '0,00'} kg · R$ ${RESUMO_225.frete_armazem || '0,00'}`);
+      set('kpiAmanha', amanhaN);
+      set('kpiAmanhaSub', amanhaN
+        ? `${RESUMO_225.peso_amanha || '0,00'} kg · R$ ${RESUMO_225.frete_amanha || '0,00'}`
+        : 'nenhum agendado');
+
+      const chip = document.getElementById('agendaAlertChip');
+      if (chip) chip.hidden = !alerta;
+
+      renderAgendaPizza(rota, parado, ok);
 
       const alerts = (AGENDAMENTOS_225 || []).filter(r => String(r.alerta_sem_saida || '') === '1');
       const box = document.getElementById('agendaAlerts');
@@ -2454,7 +3003,7 @@
       const body = document.getElementById('agendaBody');
       if (!body) return;
       if (!AGENDAMENTOS_225.length) {
-        body.innerHTML = '<tr><td colspan="8" class="muted">Sem agendamentos na semana.</td></tr>';
+        body.innerHTML = '<tr><td colspan="8" class="muted">Sem agendamentos no mês.</td></tr>';
         return;
       }
       body.innerHTML = AGENDAMENTOS_225.map(r => {
@@ -2479,7 +3028,7 @@
       const brandTitle = document.querySelector('.brand .title');
       if (brandTitle) {
         brandTitle.innerHTML = (SWAP_ON_AGENDA ? 'AGENDAMENTO' : 'DISTRIBUIÇÃO')
-          + ' <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span>';
+          + ' <span class="swap-dot" role="button" tabindex="0" title="Trocar tela" aria-label="Trocar entre Distribuição e Agendamento"><i class="d-live"></i><i class="d-ag"></i></span>';
       }
       const live = document.getElementById('viewLive');
       const ag = document.getElementById('viewAgendamento');
@@ -2491,13 +3040,37 @@
       resetSwapCountdown();
     }
 
+    function restartSwapTimer() {
+      if (VIEW !== 'live') return;
+      if (swapTimer) clearInterval(swapTimer);
+      swapTimer = setInterval(() => {
+        if (VIEW !== 'live') return;
+        setSwapScreen(!SWAP_ON_AGENDA);
+      }, SWAP_MS);
+      resetSwapCountdown();
+    }
+
+    /** Troca manual: força a tela e reinicia o ciclo de 15s. */
+    function goSwapScreen(showAgenda) {
+      if (VIEW !== 'live') setView('live');
+      setSwapScreen(!!showAgenda);
+      restartSwapTimer();
+    }
+
+    function stepSwap(dir) {
+      // dir < 0 = Distribuição · dir > 0 = Agendamento
+      if (dir < 0) goSwapScreen(false);
+      else if (dir > 0) goSwapScreen(true);
+      else goSwapScreen(!SWAP_ON_AGENDA);
+    }
+
     function resetSwapCountdown() {
       let left = Math.round(SWAP_MS / 1000);
       const tick = document.getElementById('agendaTick');
       const paint = () => {
         if (tick) tick.textContent = SWAP_ON_AGENDA
-          ? `volta à distribuição em ${left}s`
-          : `agendamento em ${left}s`;
+          ? `volta em ${left}s · ← →`
+          : `agenda em ${left}s · ← →`;
       };
       paint();
       if (swapCountdown) clearInterval(swapCountdown);
@@ -2511,10 +3084,7 @@
     function startSwapLoop() {
       if (swapTimer) clearInterval(swapTimer);
       setSwapScreen(false);
-      swapTimer = setInterval(() => {
-        if (VIEW !== 'live') return;
-        setSwapScreen(!SWAP_ON_AGENDA);
-      }, SWAP_MS);
+      restartSwapTimer();
     }
 
     function stopSwapLoop() {
@@ -2552,8 +3122,9 @@
 
     function setRel(rel) {
       const raw = String(rel || '').toLowerCase();
-      // 50/103 unificados em "coleta" (lista 103 + hist do 50)
-      REL = (raw === '36' || raw === 'entrega') ? '36' : 'coleta';
+      if (raw === '36' || raw === 'entrega') REL = '36';
+      else if (raw === '225' || raw === 'agenda' || raw === 'agendamento') REL = '225';
+      else REL = 'coleta';
       FILTRO = 'TODAS';
       document.querySelectorAll('#tabsRelatorio [data-rel]').forEach(b => {
         b.classList.toggle('active', b.getAttribute('data-rel') === REL);
@@ -2686,10 +3257,33 @@
       if (e.target.id === 'modalHist') e.currentTarget.classList.remove('open');
     });
 
+    const btnSwapPrev = document.getElementById('btnSwapPrev');
+    const btnSwapNext = document.getElementById('btnSwapNext');
+    if (btnSwapPrev) btnSwapPrev.addEventListener('click', () => stepSwap(-1));
+    if (btnSwapNext) btnSwapNext.addEventListener('click', () => stepSwap(1));
+    const btnAgendaPrev = document.getElementById('btnAgendaPrev');
+    const btnAgendaNext = document.getElementById('btnAgendaNext');
+    if (btnAgendaPrev) btnAgendaPrev.addEventListener('click', () => stepSwap(-1));
+    if (btnAgendaNext) btnAgendaNext.addEventListener('click', () => stepSwap(1));
+    document.querySelector('.brand')?.addEventListener('click', (e) => {
+      if (!e.target.closest('.swap-dot')) return;
+      stepSwap(0);
+    });
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'F11') return; // deixa o browser cuidar
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        stepSwap(-1);
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        stepSwap(1);
+        return;
+      }
       if (e.key === 'f' || e.key === 'F' || e.key === 't' || e.key === 'T') {
         e.preventDefault();
         toggleTvMode();
@@ -2725,9 +3319,10 @@
     if (hash === 'tv' || hash === 'fullscreen' || hash === 'tela') {
       setView('live');
       setTvMode(true, { syncHash: false });
-    } else if (hash === 'gestao' || hash === '50' || hash === '103' || hash === 'coleta' || hash === '36') {
+    } else if (hash === 'gestao' || hash === '50' || hash === '103' || hash === 'coleta' || hash === '36' || hash === '225' || hash === 'agenda') {
       setView('gestao');
       if (hash === '36') setRel('36');
+      else if (hash === '225' || hash === 'agenda') setRel('225');
       else if (hash === '50' || hash === '103' || hash === 'coleta') setRel('coleta');
     }
 

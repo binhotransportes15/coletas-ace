@@ -362,8 +362,28 @@ def run_pipeline_36() -> str:
     return f"36 OK · totais={tot}"
 
 
+def run_pipeline_225() -> str:
+    from pipeline import run_full_pipeline_225
+
+    def on_status(msg: str) -> None:
+        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
+
+    print("\n=== Pipeline 225 (agendamentos mes corrente · arquivo R) ===")
+    result = run_full_pipeline_225(on_status=on_status, headless=False)
+    tot = result.get("analysis") or {}
+    return (
+        f"225 OK · total={tot.get('total')} rota={tot.get('em_rota')} "
+        f"parado={tot.get('parado')} concluido={tot.get('concluido')} alerta={tot.get('alerta')}"
+    )
+
+
 def run_sync() -> str:
-    from sheets_sync import sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36
+    from sheets_sync import (
+        sync_google_sheets,
+        sync_google_sheets_103,
+        sync_google_sheets_36,
+        sync_google_sheets_225,
+    )
 
     def on_status(msg: str) -> None:
         print(f"  [{datetime.now():%H:%M:%S}] {msg}")
@@ -374,7 +394,12 @@ def run_sync() -> str:
     r103 = sync_google_sheets_103(on_status=on_status)
     print("\n=== Sync Sheets 36 ===")
     r36 = sync_google_sheets_36(on_status=on_status)
-    return f"sync 50={r50.get('ok')} 103={r103.get('ok')} 36={r36.get('ok')}"
+    print("\n=== Sync Sheets 225 ===")
+    r225 = sync_google_sheets_225(on_status=on_status)
+    return (
+        f"sync 50={r50.get('ok')} 103={r103.get('ok')} "
+        f"36={r36.get('ok')} 225={r225.get('ok')}"
+    )
 
 
 def run_dash() -> str:
@@ -409,10 +434,13 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
 
     print("\n" + "=" * 72)
     print("  MODO /AUTOMATICA")
-    print("  50 = periodo de COLETA HOJE")
+    print("  50  = periodo de COLETA HOJE")
     print("  103 = data LIMITE HOJE (L)")
+    print("  36  = entregas (se habilitado)")
+    print("  225 = agendamentos do MES (1→ultimo dia) · arquivo R")
     print(f"  Ciclo a cada {format_duration_long(sec)}: baixar + analisar + Sheets/dashboard")
-    print("  Em paralelo. Virada de dia recalcula sozinho.")
+    print("  50+103 em paralelo; 36 e 225 em sequencia.")
+    print("  Virada de dia/mes recalcula sozinho (225 segue o mes corrente).")
     print("  Altere com: /e intervalo 30s | 5m | 1h | 2d")
     if return_to_menu:
         print("  Ctrl+C volta ao menu. Fechar a janela encerra.")
@@ -553,6 +581,9 @@ def main(argv: list[str] | None = None) -> int:
                 payload = _load_payload()
             elif cmd in {"36", "/36", "entrega", "/entrega"}:
                 message = run_pipeline_36()
+                payload = _load_payload()
+            elif cmd in {"225", "/225", "agenda", "/agenda", "agendamento"}:
+                message = run_pipeline_225()
                 payload = _load_payload()
             elif cmd in {"3", "sync", "/sync"}:
                 message = run_sync()
