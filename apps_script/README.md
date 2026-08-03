@@ -42,9 +42,10 @@ Copie o **ID** da URL:
 ## 5) Site (igual Vale Pallet)
 Em `dashboard/config.js` já vai a mesma URL do App da Web.  
 O site chama:
-- `?action=resumo`
-- `?action=coletas` — situações (1 SPO = 1 coleta)
-- `?action=historico&coleta_id=SPO071651` — histórico SIT/INSTR sob demanda
+- `?action=resumo` / `coletas` / `historico` / `coletas103` / …
+- `?action=veiculos78` / `resumo78` — Armazém (tela 078)
+
+Abas criadas sob demanda pelo ACE: `Veiculos78`, `Resumo78` (mesma planilha).
 
 **GitHub token só é necessário** se você for alterar o HTML do site e fizer `git push` (igual quando atualiza o Vale Pallet).  
 Atualização diária de dados = só o ACE gravando na planilha.

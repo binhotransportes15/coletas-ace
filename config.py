@@ -19,7 +19,6 @@ SSW_78_PATH = "/bin/ssw1257"  # 078 - Descarga de Veículos
 
 DEFAULT_COLETA_OPTION = "50"
 DEFAULT_ENTREGA_OPTION = "36"
-DEFAULT_ARMAZEM_SCRIPT_TOKEN = "armazem-ace"
 
 
 @dataclass(slots=True)
@@ -81,11 +80,8 @@ class AceSettings:
     github_repo: str = ""  # owner/repo
     github_branch: str = "main"
     github_token_env: str = "GH_TOKEN"
-    # Armazém 078 — planilha SEPARADA da distribuição
-    armazem_enable_sheets: bool = False
-    armazem_apps_script_url: str = ""
-    armazem_apps_script_token: str = DEFAULT_ARMAZEM_SCRIPT_TOKEN
     # Se true, /automatica também captura a tela 078 no fim do ciclo
+    # (Sheets 078 usa a mesma enable_sheets / apps_script_url / token)
     armazem_in_loop: bool = True
     headless: bool = True
 
@@ -136,17 +132,6 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
             payload.get("github_token_env") or defaults.github_token_env
         ).strip()
         or defaults.github_token_env,
-        armazem_enable_sheets=bool(
-            payload.get("armazem_enable_sheets", defaults.armazem_enable_sheets)
-        ),
-        armazem_apps_script_url=str(
-            payload.get("armazem_apps_script_url") or defaults.armazem_apps_script_url
-        ).strip(),
-        armazem_apps_script_token=str(
-            payload.get("armazem_apps_script_token")
-            or defaults.armazem_apps_script_token
-        ).strip()
-        or defaults.armazem_apps_script_token,
         armazem_in_loop=bool(payload.get("armazem_in_loop", defaults.armazem_in_loop)),
         headless=bool(payload.get("headless", defaults.headless)),
     )

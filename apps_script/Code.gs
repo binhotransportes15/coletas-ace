@@ -17,12 +17,14 @@
  *   GET ?action=resumo | ?action=coletas | ?action=historico&coleta_id=SPO071651
  *       | ?action=coletas103 | ?action=resumo103
  *       | ?action=entregas36 | ?action=romaneios36 | ?action=resumo36
- *       | ?action=agendamentos225 | ?action=resumo225 | ?action=alertas225 | ?action=ping
+ *       | ?action=agendamentos225 | ?action=resumo225 | ?action=alertas225
+ *       | ?action=veiculos78 | ?action=resumo78 | ?action=ping
  * Escrita do ACE (com token): POST JSON action clear/append/replace
  * Abas 50: Coletas, Historico, ResumoDiario
  * Abas 103: Coletas103, Resumo103
  * Abas 36: Entregas36, Romaneios36, Resumo36
  * Abas 225: Agendamentos225, Resumo225, Alertas225
+ * Abas 078: Veiculos78, Resumo78
  */
 
 var SPREADSHEET_ID = '1VOkCF1Hn-VUZC7aKu_pa0Hgo1VjjuEJOqFqNSAErCzU';
@@ -38,7 +40,7 @@ function doGet(e) {
         ok: true,
         service: 'ACE Sheets Bridge',
         spreadsheet: SPREADSHEET_ID,
-        hint: 'GET action=resumo|coletas|historico|coletas103|resumo103|entregas36|romaneios36|resumo36 | POST com token para gravar',
+        hint: 'GET action=resumo|coletas|historico|coletas103|resumo103|entregas36|romaneios36|resumo36|agendamentos225|resumo225|alertas225|veiculos78|resumo78 | POST com token para gravar',
       });
     }
 
@@ -195,6 +197,27 @@ function doGet(e) {
       });
     }
 
+    // Armazém 078 — mesmas planilha/SECRET da distribuição
+    if (action === 'resumo78') {
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: sheetToObjects_('Resumo78'),
+        report: '078',
+      });
+    }
+
+    if (action === 'veiculos78' || action === 'veiculos' || action === '78') {
+      var rows78 = sheetToObjects_('Veiculos78');
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: rows78,
+        total: rows78.length,
+        report: '078',
+      });
+    }
+
     return json_({ ok: false, error: 'action invalida: ' + action });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -346,17 +369,18 @@ function cellToText_(val, key) {
     var year = val.getFullYear();
     var isHoraCol = /(^hora$|_hora$|hora_)/.test(k);
     var isDataCol = /(^data$|_data$|data_)/.test(k) || k === 'data_cadastro' || k === 'data_limite_inicial';
+    var isChegadaCol = /(chegada|saida|prev_|inicio_descarga|final_descarga)/.test(k);
     // Serial de hora no Sheets (epoch 1899)
     if (year < 1900 || isHoraCol) {
       return Utilities.formatDate(val, 'America/Sao_Paulo', 'HH:mm');
     }
-    if (isDataCol) {
+    if (isDataCol && !isChegadaCol) {
       return Utilities.formatDate(val, 'America/Sao_Paulo', 'dd/MM');
     }
-    // Date com hora relevante
+    // Date com hora relevante (inclui colunas 078 de chegada/descarga)
     var h = val.getHours();
     var m = val.getMinutes();
-    if (h === 0 && m === 0) {
+    if (h === 0 && m === 0 && !isChegadaCol) {
       return Utilities.formatDate(val, 'America/Sao_Paulo', 'dd/MM');
     }
     return Utilities.formatDate(val, 'America/Sao_Paulo', 'dd/MM HH:mm');

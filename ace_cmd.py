@@ -64,10 +64,7 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "github_repo": ("cloud", "str", False),
     "github_branch": ("cloud", "str", False),
     "github_token_env": ("cloud", "str", False),
-    # Armazém 078 (planilha separada)
-    "armazem_enable_sheets": ("armazem", "bool", False),
-    "armazem_apps_script_url": ("armazem", "str", False),
-    "armazem_apps_script_token": ("armazem", "str", True),
+    # Armazém 078 (mesmo Sheets da distribuição)
     "armazem_in_loop": ("armazem", "bool", False),
     "headless": ("auto", "bool", False),
 }
@@ -129,11 +126,6 @@ def _save_payload(payload: dict[str, Any]) -> None:
         github_repo=str(payload.get("github_repo") or ""),
         github_branch=str(payload.get("github_branch") or "main"),
         github_token_env=str(payload.get("github_token_env") or "GH_TOKEN"),
-        armazem_enable_sheets=bool(payload.get("armazem_enable_sheets", False)),
-        armazem_apps_script_url=str(payload.get("armazem_apps_script_url") or ""),
-        armazem_apps_script_token=str(
-            payload.get("armazem_apps_script_token") or "armazem-ace"
-        ),
         armazem_in_loop=bool(payload.get("armazem_in_loop", True)),
         headless=bool(payload.get("headless", True)),
     )
@@ -207,22 +199,12 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
                 shown = shown[:45] + "..."
         print(f"    {key:<22} {shown}")
     print("  [ARMAZÉM · 078]")
-    for key in (
-        "armazem_enable_sheets",
-        "armazem_apps_script_url",
-        "armazem_apps_script_token",
-        "armazem_in_loop",
-        "headless",
-    ):
+    for key in ("armazem_in_loop", "headless"):
         _, typ, secret = EDITABLE[key]
         val = payload.get(key, "")
-        if typ == "bool":
-            shown = str(bool(val)).lower()
-        else:
-            shown = _mask(str(val), secret)
-            if "url" in key and len(shown) > 48:
-                shown = shown[:45] + "..."
+        shown = str(bool(val)).lower() if typ == "bool" else _mask(str(val), secret)
         print(f"    {key:<28} {shown}")
+    print("    (078 grava Veiculos78/Resumo78 na mesma planilha/Apps Script)")
     print("-" * 72)
     print("  ACOES RAPIDAS")
     print("    1 / 50      Baixar+analisar relatorio 50 (situacoes)")
@@ -256,7 +238,7 @@ def cmd_help() -> str:
         "  periodo_modo: diario | sexta\n"
         "  loop_intervalo: 30s | 5m | 1h | 2d  (min 5s, max 30d)\n"
         "    /e intervalo 30s\n"
-        "  Armazém: /e armazem_in_loop true | /e armazem_enable_sheets true\n"
+        "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
 
@@ -289,9 +271,6 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "interval": "loop_intervalo",
         "tempo": "loop_intervalo",
         "loop": "loop_intervalo",
-        "script_armazem": "armazem_apps_script_url",
-        "token_armazem": "armazem_apps_script_token",
-        "sheets_armazem": "armazem_enable_sheets",
         "armazem_loop": "armazem_in_loop",
     }
     key = aliases.get(key, key)

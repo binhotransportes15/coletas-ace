@@ -1,4 +1,4 @@
-"""Sync Google Sheets · só Armazém (planilha SEPARADA da distribuição)."""
+"""Sync Google Sheets · Armazém 078 na MESMA planilha/Apps Script da distribuição."""
 from __future__ import annotations
 
 import csv
@@ -83,7 +83,7 @@ def _post_json(url: str, payload: dict[str, Any], *, timeout: int = 180) -> dict
                 if "<html" in detail.lower() or "google" in detail.lower():
                     raise RuntimeError(
                         "HTTP 302: resposta HTML do Google no echo. Confira "
-                        "armazem_apps_script_url (/exec) e publique Nova versao."
+                        "apps_script_url (/exec) e publique Nova versao do Code.gs unificado."
                     ) from err2
                 raise RuntimeError(f"HTTP {err2.code} no echo: {detail}") from err2
         detail = error.read().decode("utf-8", errors="replace")[:300]
@@ -99,7 +99,7 @@ def _replace_sheet(
     *,
     status: StatusCallback,
 ) -> int:
-    status(f"Sheets/Armazém: atualizando {sheet} ({len(rows)} linhas)...")
+    status(f"Sheets/078: atualizando {sheet} ({len(rows)} linhas)...")
     resp = _post_json(
         url,
         {
@@ -120,21 +120,21 @@ def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, A
     import time
 
     result: dict[str, Any] = {"ok": False, "skipped": False}
-    if not cfg.armazem_enable_sheets:
+    if not cfg.enable_sheets:
         result["skipped"] = True
-        result["reason"] = "armazem_enable_sheets=false"
-        status("Sheets Armazém desabilitado.")
+        result["reason"] = "enable_sheets=false"
+        status("Sheets desabilitado — 078 so grava CSV local.")
         return result
 
-    url = (cfg.armazem_apps_script_url or "").strip()
-    token = (cfg.armazem_apps_script_token or "").strip()
+    url = (cfg.apps_script_url or "").strip()
+    token = (cfg.apps_script_token or "").strip()
     if not url:
         result["skipped"] = True
-        status("Sheets Armazém: configure armazem_apps_script_url.")
+        status("Sheets: configure apps_script_url (mesmo da distribuição).")
         return result
     if not token:
         result["skipped"] = True
-        status("Sheets Armazém: configure armazem_apps_script_token (padrao: armazem-ace).")
+        status("Sheets: configure apps_script_token (coletas-ace).")
         return result
 
     last_error = ""
@@ -147,22 +147,22 @@ def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, A
             )
             if auth.get("ok"):
                 if attempt > 1:
-                    status(f"Sheets Armazém ping OK na tentativa {attempt}.")
+                    status(f"Sheets ping OK na tentativa {attempt}.")
                 result.update({"ok": True, "url": url, "token": token})
                 return result
             last_error = str(auth.get("error") or auth)
             if "nao autorizado" in last_error.lower():
-                status(f"Sheets Armazém nao autorizado: {last_error}")
+                status(f"Sheets nao autorizado: {last_error}")
                 result["error"] = last_error
                 return result
         except Exception as error:  # noqa: BLE001
             last_error = str(error)
         if attempt < 3:
-            status(f"Sheets Armazém ping falhou ({last_error}); tentativa {attempt + 1}/3...")
+            status(f"Sheets ping falhou ({last_error}); tentativa {attempt + 1}/3...")
             time.sleep(2.5 * attempt)
 
     result["error"] = last_error or "ping falhou"
-    status(f"Sheets Armazém falhou no ping: {result['error']}")
+    status(f"Sheets falhou no ping: {result['error']}")
     return result
 
 
@@ -186,15 +186,15 @@ def sync_sheets_78(
 
     try:
         status(
-            f"Sheets Armazém: Veiculos78/Resumo78 ({len(veiculos)} linha(s)) "
-            "— planilha isolada da distribuição."
+            f"Sheets 078: Veiculos78/Resumo78 ({len(veiculos)} linha(s)) "
+            "na planilha única da distribuição."
         )
         n_v = _replace_sheet(url, token, "Veiculos78", VEICULO_FIELDS_OUT, veiculos, status=status)
         n_r = _replace_sheet(url, token, "Resumo78", RESUMO_FIELDS, resumo, status=status)
         result.update({"ok": True, "veiculos": n_v, "resumo": n_r})
-        status(f"Sheets Armazém OK: {n_v} veículo(s)/linha(s), {n_r} resumo.")
+        status(f"Sheets 078 OK: {n_v} veículo(s)/linha(s), {n_r} resumo.")
         return result
     except Exception as error:  # noqa: BLE001
         result["error"] = str(error)
-        status(f"Sheets Armazém falhou (cache local ok): {error}")
+        status(f"Sheets 078 falhou (cache local ok): {error}")
         return result

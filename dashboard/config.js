@@ -1,18 +1,16 @@
 /**
  * BINHO · OPERACIONAL
- * GitHub Pages hospeda o HTML; dados vêm do Apps Script / planilha por setor.
+ * GitHub Pages hospeda o HTML; dados vêm do Apps Script / planilha única.
  *
- * Distribuição = coleta + entrega + agendamento (planilha coletas-ace)
- * Armazém = tela 078 (planilha armazem-ace — separada)
+ * Mesma URL para Distribuição (50/103/36/225) e Armazém (078).
+ * Abas 078: Veiculos78 | Resumo78
  */
 window.ACE_CONFIG = {
   scriptUrl:
     "https://script.google.com/macros/s/AKfycbxse6pGIoSJ8CQAZNuRhNsk_xYY-bqY34HtYxAczx3XQz97fjlEIYFISGiGCGHGjUI6/exec",
-  armazem: {
-    scriptUrl:
-      "https://script.google.com/macros/s/AKfycbxaSLfrT7_DKhjZMzBDShU3dFJMQ0vyu6jYYZIF6LZ0oxKaICJF5ywLlPKF-9h-OZfY/exec",
-    /** fallback local / Pages se Sheets falhar */
-    csvResumo: "data/armazem/resumo_78.csv",
-    csvVeiculos: "data/armazem/veiculos_78.csv",
+  /** fallback local / Pages se Sheets falhar */
+  armazemCsv: {
+    resumo: "data/armazem/resumo_78.csv",
+    veiculos: "data/armazem/veiculos_78.csv",
   },
 };

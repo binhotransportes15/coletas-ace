@@ -72,7 +72,7 @@ def _banner(interval_sec: int, headless: bool) -> None:
     )
     print(
         f"  Armazém 078: {'ON no ciclo' if load_settings().armazem_in_loop else 'OFF'} "
-        f"| sheets={'ON' if load_settings().armazem_enable_sheets else 'OFF'}",
+        f"| sheets={'ON' if load_settings().enable_sheets else 'OFF'} (planilha unica)",
         flush=True,
     )
     print(f"  Config:      {CONFIG_PATH}", flush=True)

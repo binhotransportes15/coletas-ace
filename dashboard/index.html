@@ -2273,8 +2273,7 @@
 
   <script>
     const SCRIPT_URL = (window.ACE_CONFIG && window.ACE_CONFIG.scriptUrl) || '';
-    const ARMA_CFG = (window.ACE_CONFIG && window.ACE_CONFIG.armazem) || {};
-    const ARMA_SCRIPT_URL = ARMA_CFG.scriptUrl || '';
+    const ARMA_CSV = (window.ACE_CONFIG && window.ACE_CONFIG.armazemCsv) || {};
     const JANELA_MIN = 120;
     const PLACA_VISIBLE = 3;
     const PRAZO_VISIBLE = 4;
@@ -2759,17 +2758,8 @@
     const ARM_STATUS_RANK = { atrasado: 0, descarregando: 1, chegou: 2, aguardando: 3, finalizado: 4 };
 
     async function chamarPlanilhaArmazem(action) {
-      if (!ARMA_SCRIPT_URL) throw new Error('Configure ACE_CONFIG.armazem.scriptUrl');
-      const url = new URL(ARMA_SCRIPT_URL);
-      url.searchParams.set('action', action);
-      url.searchParams.set('t', String(Date.now()));
-      const res = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
-      const text = await res.text();
-      let dados;
-      try { dados = JSON.parse(text); }
-      catch { throw new Error('Apps Script Armazém inválido'); }
-      if (!dados.ok) throw new Error(dados.error || 'Erro na planilha Armazém');
-      return dados;
+      // Mesma URL/planilha da distribuição — actions dedicadas 078
+      return chamarPlanilha(action);
     }
 
     async function loadCsvLocal(path) {
@@ -2860,14 +2850,14 @@
         let veicRows = [];
         try {
           const [rSum, rVeic] = await Promise.all([
-            chamarPlanilhaArmazem('resumo'),
-            chamarPlanilhaArmazem('veiculos'),
+            chamarPlanilhaArmazem('resumo78'),
+            chamarPlanilhaArmazem('veiculos78'),
           ]);
           resumoRows = rSum.rows || [];
           veicRows = rVeic.rows || [];
         } catch (_) {
-          resumoRows = await loadCsvLocal(ARMA_CFG.csvResumo || 'data/armazem/resumo_78.csv');
-          veicRows = await loadCsvLocal(ARMA_CFG.csvVeiculos || 'data/armazem/veiculos_78.csv');
+          resumoRows = await loadCsvLocal(ARMA_CSV.resumo || 'data/armazem/resumo_78.csv');
+          veicRows = await loadCsvLocal(ARMA_CSV.veiculos || 'data/armazem/veiculos_78.csv');
         }
         if (err) err.hidden = true;
         const r = resumoRows[0] || {};
