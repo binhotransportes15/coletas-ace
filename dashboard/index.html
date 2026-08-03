@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BINHO · DISTRIBUIÇÃO</title>
+  <title>BINHO · OPERACIONAL</title>
   <script src="config.js"></script>
   <style>
     :root {
@@ -39,7 +39,7 @@
     .board {
       width: min(1500px, 100%);
       margin: 0 auto;
-      padding: 12px 14px 16px;
+      padding: 12px 14px 16px 56px;
       display: grid;
       gap: 10px;
     }
@@ -1585,9 +1585,290 @@
       body.tv-mode .col-left,
       body.tv-mode .col-right { max-height: 24vh; }
     }
+
+    /* ——— Hub OPERACIONAL · setores ——— */
+    .sector-fab {
+      position: fixed;
+      z-index: 120;
+      top: 10px;
+      left: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid #334155;
+      background: rgba(2, 6, 23, 0.88);
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.35);
+    }
+    .sector-fab:hover { border-color: #67e8f9; color: #67e8f9; }
+    .sector-fab .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #8cc63f; box-shadow: 0 0 0 3px rgba(140,198,63,.2);
+    }
+    body.tv-mode.tv-idle .sector-fab { opacity: 0; pointer-events: none; transition: opacity .4s; }
+    .sector-overlay {
+      position: fixed; inset: 0; z-index: 130;
+      background: rgba(2, 6, 23, 0.72);
+      display: grid; place-items: center;
+      padding: 16px;
+    }
+    .sector-overlay[hidden] { display: none !important; }
+    .sector-sheet {
+      width: min(720px, 100%);
+      background: linear-gradient(180deg, #0f172a, #0b1220);
+      border: 1px solid #1e293b;
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.45);
+    }
+    .sector-sheet header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 12px; margin-bottom: 14px;
+    }
+    .sector-sheet .kicker {
+      color: var(--muted); font-size: 11px;
+      letter-spacing: 0.14em; text-transform: uppercase; margin: 0;
+    }
+    .sector-sheet h2 {
+      margin: 4px 0 0; font-size: 22px; letter-spacing: 0.08em;
+    }
+    .sector-sheet .close-sheet {
+      background: #020617; border: 1px solid #1e293b; color: #94a3b8;
+      border-radius: 8px; padding: 8px 12px; cursor: pointer; font-weight: 700;
+    }
+    .sector-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .sector-card {
+      text-align: left;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      padding: 14px 12px;
+      color: #e2e8f0;
+      cursor: pointer;
+      min-height: 96px;
+      display: grid;
+      gap: 6px;
+      align-content: start;
+    }
+    .sector-card:hover { border-color: #475569; }
+    .sector-card.active {
+      border-color: #67e8f9;
+      box-shadow: inset 0 0 0 1px rgba(103,232,249,.25);
+    }
+    .sector-card.soon { opacity: 0.55; }
+    .sector-card .name {
+      font-size: 14px; font-weight: 800; letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .sector-card .desc { color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .sector-card .tag {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #67e8f9;
+    }
+    .sector-card.soon .tag { color: #fbb03b; }
+    @media (max-width: 720px) {
+      .sector-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .sector-root[hidden] { display: none !important; }
+    body:not([data-sector="distribuicao"]) .swap-nav { display: none !important; }
+    body:not([data-sector="distribuicao"]) > .tv-hint { display: none !important; }
+
+    /* Armazém embutido */
+    .arm-wrap {
+      height: 100vh;
+      padding: 12px 14px 12px 56px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 10px;
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+    .arm-top {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      background: linear-gradient(180deg, #101a2c, #0b1422);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 16px;
+    }
+    .arm-brand .kicker {
+      color: var(--muted); font-size: 11px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .arm-brand h1 {
+      margin: 2px 0 0;
+      font-size: clamp(22px, 2.8vw, 32px);
+      font-weight: 800; letter-spacing: 0.06em;
+    }
+    .arm-kpis {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .arm-kpi {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      min-width: 0;
+    }
+    .arm-kpi .lbl {
+      color: var(--muted); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .arm-kpi .val {
+      margin-top: 4px;
+      font-size: clamp(20px, 2.4vw, 28px);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.05;
+    }
+    .arm-kpi.atrasado .val { color: #ef4444; }
+    .arm-kpi.descarregando .val { color: #f59e0b; }
+    .arm-kpi.chegou .val { color: #38bdf8; }
+    .arm-kpi.aguardando .val { color: #94a3b8; }
+    .arm-kpi.finalizado .val { color: #22c55e; }
+    .arm-kpi.peso .val { color: #a78bfa; font-size: clamp(16px, 1.8vw, 22px); }
+    .arm-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .arm-panel > header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+    }
+    .arm-panel > header h2 {
+      margin: 0; font-size: 12px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #7dd3fc;
+    }
+    .arm-panel > header .meta { color: var(--muted); font-size: 12px; }
+    .arm-table-wrap { overflow: auto; min-height: 0; }
+    .arm-table-wrap table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    .arm-table-wrap th, .arm-table-wrap td {
+      padding: 8px 10px; border-bottom: 1px solid #132033;
+      text-align: left; white-space: nowrap;
+    }
+    .arm-table-wrap th {
+      position: sticky; top: 0; background: #0d1728;
+      color: var(--muted); font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.06em; z-index: 1;
+    }
+    .arm-badge {
+      display: inline-block; padding: 3px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+    }
+    .st-atrasado { background: rgba(239,68,68,.18); color: #fca5a5; }
+    .st-descarregando { background: rgba(245,158,11,.18); color: #fcd34d; }
+    .st-chegou { background: rgba(56,189,248,.15); color: #7dd3fc; }
+    .st-aguardando { background: rgba(148,163,184,.12); color: #cbd5e1; }
+    .st-finalizado { background: rgba(34,197,94,.15); color: #86efac; }
+    .arm-err { padding: 24px; color: #fca5a5; }
+    .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, Consolas, monospace; }
+    .muted { color: var(--muted); }
+    .right { text-align: right; }
+
+    .sector-soon-panel {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px 24px 24px 64px;
+      text-align: center;
+    }
+    .sector-soon-panel .box {
+      max-width: 520px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 28px 24px;
+    }
+    .sector-soon-panel .tag {
+      color: #fbb03b; font-size: 11px; font-weight: 800;
+      letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .sector-soon-panel h1 {
+      margin: 8px 0 10px; font-size: clamp(26px, 4vw, 36px);
+      letter-spacing: 0.06em;
+    }
+    .sector-soon-panel p { color: var(--muted); margin: 0; line-height: 1.5; }
+    @media (max-width: 1100px) {
+      .arm-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .arm-wrap { height: auto; min-height: 100vh; }
+    }
   </style>
 </head>
-<body class="live-mode">
+<body class="live-mode" data-sector="distribuicao">
+  <button type="button" class="sector-fab" id="btnSetores" title="Trocar setor">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="sectorFabLabel">Operacional</span>
+  </button>
+  <div class="sector-overlay" id="sectorOverlay" hidden>
+    <div class="sector-sheet" role="dialog" aria-modal="true" aria-labelledby="sectorSheetTitle">
+      <header>
+        <div>
+          <p class="kicker">BINHO · hub único</p>
+          <h2 id="sectorSheetTitle">SETORES</h2>
+        </div>
+        <button type="button" class="close-sheet" id="btnCloseSetores">Fechar</button>
+      </header>
+      <div class="sector-grid" id="sectorGrid">
+        <button type="button" class="sector-card active" data-sector="distribuicao">
+          <span class="tag">Ativo</span>
+          <span class="name">Distribuição</span>
+          <span class="desc">Coleta · Entrega · Agendamento</span>
+        </button>
+        <button type="button" class="sector-card" data-sector="armazem">
+          <span class="tag">078</span>
+          <span class="name">Armazém</span>
+          <span class="desc">Descarga · pátio · status</span>
+        </button>
+        <button type="button" class="sector-card soon" data-sector="contratacao" data-soon="1">
+          <span class="tag">Em breve</span>
+          <span class="name">Contratação</span>
+          <span class="desc">Em desenvolvimento</span>
+        </button>
+        <button type="button" class="sector-card soon" data-sector="pendencia" data-soon="1">
+          <span class="tag">Em breve</span>
+          <span class="name">Pendência</span>
+          <span class="desc">Em desenvolvimento</span>
+        </button>
+        <button type="button" class="sector-card soon" data-sector="rastreamento" data-soon="1">
+          <span class="tag">Em breve</span>
+          <span class="name">Rastreamento</span>
+          <span class="desc">Em desenvolvimento</span>
+        </button>
+        <button type="button" class="sector-card soon" data-sector="emissao" data-soon="1">
+          <span class="tag">Em breve</span>
+          <span class="name">Emissão</span>
+          <span class="desc">Em desenvolvimento</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-distribuicao" class="sector-root">
   <div class="tv-hint" id="tvHint">Modo TV · F ou ESC para sair · ideal para televisão</div>
   <div id="alertaLock" role="alertdialog" aria-modal="true" aria-labelledby="alertaLockTitle" hidden>
     <div class="alerta-lock-box">
@@ -1879,7 +2160,90 @@
       </section>
     </div>
 
-    <p class="status-line" id="statusLine">BINHO · DISTRIBUIÇÃO</p>
+    <p class="status-line" id="statusLine">BINHO · OPERACIONAL · DISTRIBUIÇÃO</p>
+  </div>
+  </div><!-- /panel-distribuicao -->
+
+  <div id="panel-armazem" class="sector-root" hidden>
+    <div class="arm-wrap">
+      <div class="arm-top">
+        <div class="arm-brand">
+          <div class="kicker">BINHO · OPERACIONAL · tela 078</div>
+          <h1>ARMAZÉM</h1>
+        </div>
+        <nav class="nav">
+          <button type="button" class="nav-btn tv-btn" id="btnTvArmazem" title="Modo TV / tela inteira (F)">TV</button>
+        </nav>
+        <div class="clock-box">
+          <div class="lbl">Tempo real</div>
+          <div class="time" id="armClock">--:--:--</div>
+          <div class="date" id="armDate">—</div>
+        </div>
+      </div>
+      <div class="arm-kpis">
+        <div class="arm-kpi"><div class="lbl">Veículos</div><div class="val" id="kVeic">0</div></div>
+        <div class="arm-kpi peso"><div class="lbl">Peso total</div><div class="val" id="kPeso">0</div></div>
+        <div class="arm-kpi atrasado"><div class="lbl">Atrasado</div><div class="val" id="kAtr">0</div></div>
+        <div class="arm-kpi descarregando"><div class="lbl">Descarregando</div><div class="val" id="kDes">0</div></div>
+        <div class="arm-kpi chegou"><div class="lbl">Chegou</div><div class="val" id="kChe">0</div></div>
+        <div class="arm-kpi aguardando"><div class="lbl">Aguardando</div><div class="val" id="kAgu">0</div></div>
+        <div class="arm-kpi finalizado"><div class="lbl">Finalizado</div><div class="val" id="kFin">0</div></div>
+      </div>
+      <section class="arm-panel">
+        <header>
+          <h2>Veículos no pátio / descarga</h2>
+          <div class="meta" id="armAtualizado">atualizado —</div>
+        </header>
+        <div class="arm-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Sigla</th>
+                <th>Cavalo</th>
+                <th>Carreta</th>
+                <th class="right">Peso veic.</th>
+                <th>Chegada</th>
+                <th>Previsão</th>
+                <th>Tempo descarga</th>
+                <th class="right">Manif.</th>
+              </tr>
+            </thead>
+            <tbody id="armTbody"></tbody>
+          </table>
+          <div class="arm-err" id="armErr" hidden></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="panel-contratacao" class="sector-root" hidden>
+    <div class="sector-soon-panel"><div class="box">
+      <div class="tag">Em breve</div>
+      <h1>CONTRATAÇÃO</h1>
+      <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/contratacao</code>.</p>
+    </div></div>
+  </div>
+  <div id="panel-pendencia" class="sector-root" hidden>
+    <div class="sector-soon-panel"><div class="box">
+      <div class="tag">Em breve</div>
+      <h1>PENDÊNCIA</h1>
+      <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/pendencia</code>.</p>
+    </div></div>
+  </div>
+  <div id="panel-rastreamento" class="sector-root" hidden>
+    <div class="sector-soon-panel"><div class="box">
+      <div class="tag">Em breve</div>
+      <h1>RASTREAMENTO</h1>
+      <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/rastreamento</code>.</p>
+    </div></div>
+  </div>
+  <div id="panel-emissao" class="sector-root" hidden>
+    <div class="sector-soon-panel"><div class="box">
+      <div class="tag">Em breve</div>
+      <h1>EMISSÃO</h1>
+      <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/emissao</code>.</p>
+    </div></div>
   </div>
 
   <div class="modal-backdrop" id="modalHist" role="dialog" aria-modal="true">
@@ -1893,6 +2257,8 @@
 
   <script>
     const SCRIPT_URL = (window.ACE_CONFIG && window.ACE_CONFIG.scriptUrl) || '';
+    const ARMA_CFG = (window.ACE_CONFIG && window.ACE_CONFIG.armazem) || {};
+    const ARMA_SCRIPT_URL = ARMA_CFG.scriptUrl || '';
     const JANELA_MIN = 120;
     const PLACA_VISIBLE = 3;
     const PRAZO_VISIBLE = 4;
@@ -1901,6 +2267,16 @@
     const PCT_ANIM_MS = 900;
     // Destaque temporario quando a placa acaba de dar baixa (nao fica fixo)
     const PLACA_HOT_MS = 45000;
+
+    const SECTORS = {
+      distribuicao: { id: 'distribuicao', label: 'Distribuição', ready: true },
+      armazem: { id: 'armazem', label: 'Armazém', ready: true },
+      contratacao: { id: 'contratacao', label: 'Contratação', ready: false },
+      pendencia: { id: 'pendencia', label: 'Pendência', ready: false },
+      rastreamento: { id: 'rastreamento', label: 'Rastreamento', ready: false },
+      emissao: { id: 'emissao', label: 'Emissão', ready: false },
+    };
+    let CURRENT_SECTOR = 'distribuicao';
 
     let VIEW = 'live';
     let REL = 'coleta'; // coleta (103+hist 50) | 36
@@ -1948,16 +2324,27 @@
     let placaHotUntil = new Map();
     const PEND_VISIBLE = 4;
     const PEND_TICK_MS = 3200;
+    let armRefreshTimer = null;
 
     function pad(n) { return String(n).padStart(2, '0'); }
 
     function tickClock() {
       const now = new Date();
-      document.getElementById('clock').textContent =
-        `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
       const dias = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-      document.getElementById('clockDate').textContent =
-        `${dias[now.getDay()]} · ${pad(now.getDate())}/${pad(now.getMonth() + 1)}`;
+      const date = `${dias[now.getDay()]} · ${pad(now.getDate())}/${pad(now.getMonth() + 1)}`;
+      const clock = document.getElementById('clock');
+      const clockDate = document.getElementById('clockDate');
+      if (clock) clock.textContent = time;
+      if (clockDate) clockDate.textContent = date;
+      const armClock = document.getElementById('armClock');
+      const armDate = document.getElementById('armDate');
+      if (armClock) armClock.textContent = time;
+      if (armDate) {
+        armDate.textContent = now.toLocaleDateString('pt-BR', {
+          weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+        });
+      }
     }
 
     async function chamarPlanilha(action, params = {}) {
@@ -2266,27 +2653,25 @@
     async function setTvMode(on, { syncHash = true } = {}) {
       TV_MODE = !!on;
       document.body.classList.toggle('tv-mode', TV_MODE);
-      const btn = document.getElementById('btnTv');
-      if (btn) btn.textContent = TV_MODE ? 'Sair TV' : 'TV';
+      const btns = [document.getElementById('btnTv'), document.getElementById('btnTvArmazem')];
+      btns.forEach((btn) => {
+        if (btn) btn.textContent = TV_MODE ? 'Sair TV' : 'TV';
+      });
 
       if (TV_MODE) {
-        setView('live');
+        if (CURRENT_SECTOR === 'distribuicao') setView('live');
         await enterFullscreen();
         await requestWakeLock();
         showTvHint();
         bumpTvIdle();
-        if (syncHash && location.hash.replace('#', '') !== 'tv') {
-          history.replaceState(null, '', '#tv');
-        }
+        if (syncHash) writeRouteHash({ tv: true });
       } else {
         await exitFullscreen();
         await releaseWakeLock();
         document.body.classList.remove('tv-idle');
         clearTimeout(tvIdleTimer);
         document.getElementById('tvHint')?.classList.remove('show');
-        if (syncHash && location.hash.replace('#', '') === 'tv') {
-          history.replaceState(null, '', location.pathname + location.search);
-        }
+        if (syncHash) writeRouteHash({ tv: false });
       }
       requestAnimationFrame(rerenderTorres);
       setTimeout(rerenderTorres, 80);
@@ -2294,6 +2679,264 @@
 
     function toggleTvMode() {
       setTvMode(!TV_MODE);
+    }
+
+    function writeRouteHash({ tv = TV_MODE, sector = CURRENT_SECTOR, gestaoHash = null } = {}) {
+      let next;
+      if (gestaoHash) {
+        next = gestaoHash;
+      } else if (tv) {
+        next = `tv/${sector}`;
+      } else if (sector === 'distribuicao') {
+        next = '';
+      } else {
+        next = sector;
+      }
+      const cur = (location.hash || '').replace(/^#/, '');
+      if (cur === next) return;
+      history.replaceState(null, '', next ? `#${next}` : (location.pathname + location.search));
+    }
+
+    function openSectorMenu(open = true) {
+      const el = document.getElementById('sectorOverlay');
+      if (!el) return;
+      el.hidden = !open;
+    }
+
+    function setSector(sectorId, { syncHash = true, forceTv = null } = {}) {
+      const id = String(sectorId || 'distribuicao').toLowerCase();
+      const meta = SECTORS[id] || SECTORS.distribuicao;
+      CURRENT_SECTOR = meta.id;
+      document.body.setAttribute('data-sector', CURRENT_SECTOR);
+
+      Object.keys(SECTORS).forEach((key) => {
+        const panel = document.getElementById(`panel-${key}`);
+        if (panel) panel.hidden = key !== CURRENT_SECTOR;
+      });
+
+      document.querySelectorAll('#sectorGrid .sector-card').forEach((card) => {
+        card.classList.toggle('active', card.getAttribute('data-sector') === CURRENT_SECTOR);
+      });
+
+      const fab = document.getElementById('sectorFabLabel');
+      if (fab) fab.textContent = meta.label;
+
+      openSectorMenu(false);
+
+      if (CURRENT_SECTOR === 'armazem') {
+        stopSwapLoop();
+        refreshArmazem();
+        if (!armRefreshTimer) armRefreshTimer = setInterval(refreshArmazem, 15000);
+      } else if (armRefreshTimer) {
+        clearInterval(armRefreshTimer);
+        armRefreshTimer = null;
+      }
+
+      if (CURRENT_SECTOR === 'distribuicao' && VIEW === 'live') {
+        startSwapLoop();
+      }
+
+      const wantTv = forceTv == null ? TV_MODE : !!forceTv;
+      if (wantTv !== TV_MODE) {
+        setTvMode(wantTv, { syncHash: false });
+      }
+      if (syncHash) writeRouteHash({ tv: wantTv, sector: CURRENT_SECTOR });
+    }
+
+    const ARM_STATUS_RANK = { atrasado: 0, descarregando: 1, chegou: 2, aguardando: 3, finalizado: 4 };
+
+    async function chamarPlanilhaArmazem(action) {
+      if (!ARMA_SCRIPT_URL) throw new Error('Configure ACE_CONFIG.armazem.scriptUrl');
+      const url = new URL(ARMA_SCRIPT_URL);
+      url.searchParams.set('action', action);
+      url.searchParams.set('t', String(Date.now()));
+      const res = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
+      const text = await res.text();
+      let dados;
+      try { dados = JSON.parse(text); }
+      catch { throw new Error('Apps Script Armazém inválido'); }
+      if (!dados.ok) throw new Error(dados.error || 'Erro na planilha Armazém');
+      return dados;
+    }
+
+    async function loadCsvLocal(path) {
+      const res = await fetch(path + '?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('Falha ao ler ' + path);
+      const text = await res.text();
+      const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
+      if (!lines.length) return [];
+      const headers = splitCsvLineArm(lines[0]);
+      return lines.slice(1).filter(Boolean).map((line) => {
+        const cols = splitCsvLineArm(line);
+        const row = {};
+        headers.forEach((h, i) => { row[h] = cols[i] ?? ''; });
+        return row;
+      });
+    }
+
+    function splitCsvLineArm(line) {
+      const out = [];
+      let cur = '', q = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          if (q && line[i + 1] === '"') { cur += '"'; i++; }
+          else q = !q;
+        } else if (c === ',' && !q) { out.push(cur); cur = ''; }
+        else cur += c;
+      }
+      out.push(cur);
+      return out;
+    }
+
+    function armBadge(status) {
+      const s = (status || '').toLowerCase();
+      return `<span class="arm-badge st-${s}">${s || '—'}</span>`;
+    }
+
+    function aggVeiculosArm(rows) {
+      const map = new Map();
+      for (const r of rows) {
+        const key = `${r.cavalo}|${r.carreta}`;
+        let slot = map.get(key);
+        if (!slot) {
+          slot = {
+            origem: r.origem,
+            cavalo: r.cavalo,
+            carreta: r.carreta,
+            peso_veiculo: r.peso_veiculo || r.peso,
+            chegada: r.chegada,
+            prev_chegada: r.prev_chegada,
+            status: r.status,
+            tempo_descarga: r.tempo_descarga,
+            manifestos: 0,
+          };
+          map.set(key, slot);
+        }
+        slot.manifestos += 1;
+        if ((r.peso_veiculo || '').length) slot.peso_veiculo = r.peso_veiculo;
+        const a = ARM_STATUS_RANK[slot.status] ?? 9;
+        const b = ARM_STATUS_RANK[r.status] ?? 9;
+        if (b < a) {
+          slot.status = r.status;
+          slot.chegada = r.chegada || slot.chegada;
+          slot.prev_chegada = r.prev_chegada || slot.prev_chegada;
+          slot.tempo_descarga = r.tempo_descarga || slot.tempo_descarga;
+          slot.origem = r.origem || slot.origem;
+        } else if (b === a && (r.tempo_descarga || '').length > (slot.tempo_descarga || '').length) {
+          slot.tempo_descarga = r.tempo_descarga;
+        }
+      }
+      return [...map.values()].sort((x, y) => {
+        const d = (ARM_STATUS_RANK[x.status] ?? 9) - (ARM_STATUS_RANK[y.status] ?? 9);
+        if (d) return d;
+        return String(x.cavalo).localeCompare(String(y.cavalo));
+      });
+    }
+
+    function setArmText(id, v) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = v;
+    }
+
+    async function refreshArmazem() {
+      if (CURRENT_SECTOR !== 'armazem') return;
+      const err = document.getElementById('armErr');
+      try {
+        let resumoRows = [];
+        let veicRows = [];
+        try {
+          const [rSum, rVeic] = await Promise.all([
+            chamarPlanilhaArmazem('resumo'),
+            chamarPlanilhaArmazem('veiculos'),
+          ]);
+          resumoRows = rSum.rows || [];
+          veicRows = rVeic.rows || [];
+        } catch (_) {
+          resumoRows = await loadCsvLocal(ARMA_CFG.csvResumo || 'data/armazem/resumo_78.csv');
+          veicRows = await loadCsvLocal(ARMA_CFG.csvVeiculos || 'data/armazem/veiculos_78.csv');
+        }
+        if (err) err.hidden = true;
+        const r = resumoRows[0] || {};
+        setArmText('kVeic', r.total_veiculos || '0');
+        setArmText('kPeso', (r.peso_total || '0') + ' kg');
+        setArmText('kAtr', r.atrasado || '0');
+        setArmText('kDes', r.descarregando || '0');
+        setArmText('kChe', r.chegou || '0');
+        setArmText('kAgu', r.aguardando || '0');
+        setArmText('kFin', r.finalizado || '0');
+        setArmText('armAtualizado', 'atualizado ' + (r.atualizado || '—'));
+
+        const veics = aggVeiculosArm(veicRows);
+        const tb = document.getElementById('armTbody');
+        if (!tb) return;
+        tb.innerHTML = veics.map((v) => {
+          const chegou = (v.chegada || '').trim();
+          const prev = (v.prev_chegada || '').trim();
+          const chegCell = chegou
+            ? `<span class="mono">${chegou}</span>`
+            : `<span class="muted">—</span>`;
+          const prevCell = !chegou && prev
+            ? `<span class="mono">${prev}</span>`
+            : (chegou ? `<span class="muted">—</span>` : `<span class="mono">${prev || '—'}</span>`);
+          return `<tr>
+            <td>${armBadge(v.status)}</td>
+            <td>${v.origem || '—'}</td>
+            <td class="mono">${v.cavalo || '—'}</td>
+            <td class="mono">${v.carreta || '—'}</td>
+            <td class="right mono">${v.peso_veiculo || '—'}</td>
+            <td>${chegCell}</td>
+            <td>${prevCell}</td>
+            <td class="mono">${v.tempo_descarga || '—'}</td>
+            <td class="right mono">${v.manifestos}</td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="9" class="muted">Sem veículos</td></tr>`;
+      } catch (e) {
+        if (err) {
+          err.hidden = false;
+          err.textContent = 'Sem dados do Armazém (Sheets/CSV). ' + e.message;
+        }
+      }
+    }
+
+    function applyRouteFromHash() {
+      const raw = (location.hash || '').replace(/^#/, '').toLowerCase().replace(/^\/+/, '');
+      const parts = raw.split('/').filter(Boolean);
+      let tv = false;
+      let sector = 'distribuicao';
+      let gestao = false;
+      let rel = null;
+
+      if (!parts.length) {
+        setSector('distribuicao', { syncHash: false, forceTv: false });
+        return;
+      }
+
+      if (parts[0] === 'tv' || parts[0] === 'fullscreen' || parts[0] === 'tela') {
+        tv = true;
+        sector = parts[1] && SECTORS[parts[1]] ? parts[1] : 'distribuicao';
+      } else if (SECTORS[parts[0]]) {
+        sector = parts[0];
+        tv = parts[1] === 'tv';
+      } else if (['gestao', '50', '103', 'coleta', '36', '225', 'agenda'].includes(parts[0])) {
+        sector = 'distribuicao';
+        gestao = true;
+        if (parts[0] === '36') rel = '36';
+        else if (parts[0] === '225' || parts[0] === 'agenda') rel = '225';
+        else if (parts[0] === '50' || parts[0] === '103' || parts[0] === 'coleta') rel = 'coleta';
+      } else {
+        sector = 'distribuicao';
+      }
+
+      setSector(sector, { syncHash: false, forceTv: tv });
+      if (sector === 'distribuicao') {
+        if (gestao) {
+          setView('gestao');
+          if (rel) setRel(rel);
+        } else if (tv) {
+          setView('live');
+        }
+      }
     }
 
     function donutSvg(pct, color) {
@@ -3519,6 +4162,7 @@
     }
 
     function startSwapLoop() {
+      if (CURRENT_SECTOR !== 'distribuicao') return;
       if (swapTimer) clearInterval(swapTimer);
       setSwapScreen(false);
       restartSwapTimer();
@@ -3644,7 +4288,7 @@
           renderPrazoPops();
           renderPendenciaPops();
         }
-        if (VIEW === 'live' && !swapTimer) startSwapLoop();
+        if (VIEW === 'live' && !swapTimer && CURRENT_SECTOR === 'distribuicao') startSwapLoop();
         if (VIEW === 'gestao') {
           renderFiltrosGestao();
           renderTabelaGestao();
@@ -3669,7 +4313,19 @@
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
       btn.addEventListener('click', () => setView(btn.getAttribute('data-view')));
     });
-    document.getElementById('btnTv').addEventListener('click', () => toggleTvMode());
+    document.getElementById('btnTv')?.addEventListener('click', () => toggleTvMode());
+    document.getElementById('btnTvArmazem')?.addEventListener('click', () => toggleTvMode());
+    document.getElementById('btnSetores')?.addEventListener('click', () => openSectorMenu(true));
+    document.getElementById('btnCloseSetores')?.addEventListener('click', () => openSectorMenu(false));
+    document.getElementById('sectorOverlay')?.addEventListener('click', (e) => {
+      if (e.target.id === 'sectorOverlay') openSectorMenu(false);
+    });
+    document.querySelectorAll('#sectorGrid .sector-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        const id = card.getAttribute('data-sector');
+        setSector(id, { syncHash: true, forceTv: TV_MODE ? true : null });
+      });
+    });
     document.querySelectorAll('#tabsRelatorio [data-rel]').forEach(btn => {
       btn.addEventListener('click', () => setRel(btn.getAttribute('data-rel')));
     });
@@ -3703,7 +4359,7 @@
     const btnAgendaNext = document.getElementById('btnAgendaNext');
     if (btnAgendaPrev) btnAgendaPrev.addEventListener('click', () => stepSwap(-1));
     if (btnAgendaNext) btnAgendaNext.addEventListener('click', () => stepSwap(1));
-    document.querySelector('.brand')?.addEventListener('click', (e) => {
+    document.querySelector('#panel-distribuicao .brand')?.addEventListener('click', (e) => {
       if (!e.target.closest('.swap-dot')) return;
       stepSwap(0);
     });
@@ -3712,12 +4368,22 @@
       if (e.key === 'F11') return; // deixa o browser cuidar
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (e.key === 'ArrowLeft') {
+      if (e.key === 'Escape') {
+        const overlay = document.getElementById('sectorOverlay');
+        if (overlay && !overlay.hidden) {
+          e.preventDefault();
+          openSectorMenu(false);
+          return;
+        }
+        if (TV_MODE) setTvMode(false);
+        return;
+      }
+      if (CURRENT_SECTOR === 'distribuicao' && e.key === 'ArrowLeft') {
         e.preventDefault();
         stepSwap(-1);
         return;
       }
-      if (e.key === 'ArrowRight') {
+      if (CURRENT_SECTOR === 'distribuicao' && e.key === 'ArrowRight') {
         e.preventDefault();
         stepSwap(1);
         return;
@@ -3725,8 +4391,6 @@
       if (e.key === 'f' || e.key === 'F' || e.key === 't' || e.key === 'T') {
         e.preventDefault();
         toggleTvMode();
-      } else if (e.key === 'Escape' && TV_MODE) {
-        setTvMode(false);
       }
     });
     document.addEventListener('fullscreenchange', () => {
@@ -3752,16 +4416,12 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && TV_MODE) requestWakeLock();
     });
+    window.addEventListener('hashchange', () => applyRouteFromHash());
 
-    const hash = (location.hash || '').replace('#', '').toLowerCase();
-    if (hash === 'tv' || hash === 'fullscreen' || hash === 'tela') {
-      setView('live');
-      setTvMode(true, { syncHash: false });
-    } else if (hash === 'gestao' || hash === '50' || hash === '103' || hash === 'coleta' || hash === '36' || hash === '225' || hash === 'agenda') {
-      setView('gestao');
-      if (hash === '36') setRel('36');
-      else if (hash === '225' || hash === 'agenda') setRel('225');
-      else if (hash === '50' || hash === '103' || hash === 'coleta') setRel('coleta');
+    applyRouteFromHash();
+    // normaliza legado #tv → #tv/distribuicao
+    if (/^#?(tv|fullscreen|tela)$/i.test((location.hash || '').replace(/^#/, ''))) {
+      writeRouteHash({ tv: true, sector: 'distribuicao' });
     }
 
     tickClock();
