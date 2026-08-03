@@ -951,14 +951,14 @@
       grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 8px;
       flex-shrink: 0;
-      order: 3;
     }
     .agenda-kpi {
-      background: linear-gradient(180deg, rgba(15,23,42,.9), rgba(2,6,23,.85));
-      border: 1px solid #1e293b;
-      border-radius: 12px;
-      padding: 8px 10px 9px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px 11px;
       min-width: 0;
+      box-shadow: 0 6px 20px rgba(0,0,0,.2);
       position: relative;
       overflow: hidden;
     }
@@ -976,23 +976,24 @@
     .agenda-kpi.k-amanha::before { background: var(--com); }
     .agenda-kpi span {
       display: block;
-      font-size: 9px;
-      font-weight: 800;
+      font-size: 10px;
+      font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: #64748b;
-      margin-bottom: 2px;
+      margin-bottom: 4px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .agenda-kpi b {
       display: block;
-      font-size: clamp(15px, 1.7vw, 22px);
-      font-weight: 900;
-      line-height: 1.15;
+      font-size: clamp(22px, 2.6vw, 34px);
+      font-weight: 800;
+      line-height: 0.95;
       color: #fff;
       font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1003,7 +1004,7 @@
     .agenda-kpi.k-frete b { color: #fbb03b; }
     .agenda-kpi small {
       display: block;
-      margin-top: 2px;
+      margin-top: 4px;
       font-size: 10px;
       color: #64748b;
       font-weight: 600;
@@ -1022,7 +1023,6 @@
       min-height: 0;
       display: flex;
       flex-direction: column;
-      order: 2;
       overflow: hidden;
     }
     .agenda-chart-stage {
@@ -1125,7 +1125,6 @@
       background: rgba(127,29,29,.35); color: #fecaca; font-weight: 800;
       font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
       flex-shrink: 0;
-      order: 4;
     }
     .agenda-alert-chip b { font-size: 18px; color: #fff; font-variant-numeric: tabular-nums; }
     body.live-mode .agenda-alert-chip:not([hidden]) {
@@ -1140,7 +1139,6 @@
       flex-shrink: 0;
       max-height: 28%;
       overflow: hidden;
-      order: 4;
     }
     .agenda-alert {
       display: grid;
@@ -1208,7 +1206,7 @@
     }
     /* No vivo a pizza é o hero — tabela só na Gestão */
     body.live-mode .agenda-table-wrap { display: none; }
-    body.live-mode .agenda-alerts { max-height: 12%; order: 5; }
+    body.live-mode .agenda-alerts { max-height: 12%; }
     body.live-mode .agenda-head h2 { display: none; }
     .agenda-table-wrap table {
       width: 100%;
@@ -1692,6 +1690,14 @@
     }
 
     function statusAce36(c) {
+      // Ocorrências tratadas como realizada (mesmo se cache antigo marcou pendência)
+      const o = String(c.ocorrencia || '')
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      if (o.includes('ENTREGA REALIZADA') || o.includes('PRE-ENTREGUE') || o.includes('PRE ENTREGUE')) {
+        return 'realizada';
+      }
       const raw = String(c.status_ace || '').toLowerCase().trim();
       if (raw === 'realizada') return 'realizada';
       if (raw === 'em_rota') return 'em_rota';

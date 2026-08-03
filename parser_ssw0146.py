@@ -150,7 +150,8 @@ def mapear_status_entrega(
     Retorna (status_ace, excluido, motivo).
     - data ocorrencia = ontem → excluir
     - ocorrencia vazia → em_rota
-    - contem ENTREGA REALIZADA → realizada
+    - ENTREGA REALIZADA [COM RESSALVAS] → realizada
+    - MERCADORIA PRE-ENTREGUE (MOBILE) → realizada
     - contem SAIDA PARA ENTREGA → em_rota
     - outra ocorrencia → pendencia
     - SITUACAO PENDENTE reforça em_rota se nao for realizada
@@ -178,7 +179,10 @@ def mapear_status_entrega(
     if data_ocorr is not None and data_ocorr == ontem:
         return "excluido", True, "ocorrencia_ontem"
 
+    # Realizado (inclui COM RESSALVAS e pré-entrega mobile)
     if "ENTREGA REALIZADA" in ocorr_n:
+        return "realizada", False, ""
+    if "PRE-ENTREGUE" in ocorr_n or "PRE ENTREGUE" in ocorr_n:
         return "realizada", False, ""
 
     if not ocorr:
@@ -429,7 +433,7 @@ def analyze_report_36(
         "romaneios": len(romaneios),
         "modelo": (
             "36 ssw0146: CTRC ativo se data ocorrencia != ontem. "
-            "blank/SAIDA PARA ENTREGA→em_rota, ENTREGA REALIZADA→realizada, outra→pendencia."
+            "blank/SAIDA PARA ENTREGA→em_rota, ENTREGA REALIZADA[+RESSALVAS]/PRE-ENTREGUE→realizada, outra→pendencia."
         ),
     }
     LAST_36_JSON.write_text(
