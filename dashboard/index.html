@@ -1048,9 +1048,8 @@
       <section class="panel">
         <h2>Gestão</h2>
         <div class="toolbar" id="tabsRelatorio">
-          <button type="button" class="chip" data-rel="103">103 · Coleta live</button>
-          <button type="button" class="chip active" data-rel="50">50 · Situações</button>
-          <button type="button" class="chip" data-rel="36">36 · Entregas</button>
+          <button type="button" class="chip active" data-rel="coleta">Coleta</button>
+          <button type="button" class="chip" data-rel="36">Entrega</button>
           <div class="search">
             <input id="buscaColeta" type="search" placeholder="Buscar coleta / romaneio / placa / CTRC" />
             <button type="button" class="btn" id="btnBuscar">Buscar</button>
@@ -1091,7 +1090,7 @@
     const PLACA_HOT_MS = 45000;
 
     let VIEW = 'live';
-    let REL = '50';
+    let REL = 'coleta'; // coleta (103+hist 50) | 36
     let TV_MODE = false;
     let wakeLock = null;
     let tvIdleTimer = null;
@@ -1780,27 +1779,85 @@
         ].join(' ').toUpperCase().replace(/\s+/g, '');
         return blob.includes(q);
       }
+      // Grupo por placa (gestão coleta) ou linha individual
+      const blob = [
+        c.placa, c.placa_key, c.grupo, c.motorista, c.coleta_id, c.coleta,
+        c.numero, c.situacao_atual, c.carreta, c.placa_carreta,
+      ].join(' ').toUpperCase().replace(/\s+/g, '');
       const id = coletaKey(c);
       const num = String(c.numero || '').replace(/\D/g, '');
       const qNum = q.replace(/\D/g, '');
-      return id.includes(q) || (qNum && (id.includes(qNum) || num.includes(qNum)));
+      return blob.includes(q) || id.includes(q) || (qNum && (id.includes(qNum) || num.includes(qNum)));
+    }
+
+    const SEM_PLACA_LABEL = 'SEM ROMANEIO';
+
+    /** Agrupa 103 por placa — espelha o resumo do 36 por romaneio. */
+    function agregarPlacasColeta(rows) {
+      const by = new Map();
+      (rows || []).forEach(c => {
+        const st = statusAce(c);
+        const placaNorm = parsePlaca(c.placa || c.veiculo || '');
+        // Sem placa (em especial parado) → SEM ROMANEIO
+        const key = placaNorm || SEM_PLACA_LABEL;
+        if (!by.has(key)) {
+          by.set(key, {
+            placa: key,
+            placa_key: key,
+            motorista: c.motorista || '',
+            carreta: c.placa_carreta || '',
+            total: 0,
+            realizada: 0,
+            em_rota: 0,
+            parado: 0,
+            cancelada: 0,
+            items: [],
+          });
+        }
+        const row = by.get(key);
+        row.total += 1;
+        if (st === 'realizada') row.realizada += 1;
+        else if (st === 'em_rota') row.em_rota += 1;
+        else if (st === 'parado') row.parado += 1;
+        else if (st === 'cancelada') row.cancelada += 1;
+        if (!row.motorista && c.motorista) row.motorista = c.motorista;
+        if (!row.carreta && c.placa_carreta) row.carreta = c.placa_carreta;
+        row.items.push(c);
+      });
+      return Array.from(by.values()).map(r => {
+        const feitas = r.realizada;
+        const pct = r.total ? Math.round((feitas / r.total) * 100) : 0;
+        return { ...r, pct };
+      }).sort((a, b) => {
+        const aSem = a.placa === SEM_PLACA_LABEL ? 1 : 0;
+        const bSem = b.placa === SEM_PLACA_LABEL ? 1 : 0;
+        return aSem - bSem
+          || (b.realizada - a.realizada)
+          || (b.total - a.total)
+          || a.placa.localeCompare(b.placa);
+      });
+    }
+
+    function mapaColetas50() {
+      const map = new Map();
+      COLETAS_50.forEach(c => {
+        const key = coletaKey(c);
+        if (key) map.set(key, c);
+      });
+      return map;
     }
 
     function renderFiltrosGestao() {
       const box = document.getElementById('filtrosGestao');
-      const opts103 = [
+      const optsColeta = [
         ['TODAS', 'Todas'], ['realizada', 'Realizada'], ['em_rota', 'Em rota'],
         ['parado', 'Parado'], ['cancelada', 'Cancelada'],
-      ];
-      const opts50 = [
-        ['TODAS', 'Todas'], ['COLETADA', 'Coletada'], ['COMANDADA', 'Comandada'],
-        ['CADASTRADA', 'Cadastrada'], ['CANCELADA', 'Cancelada'],
       ];
       const opts36 = [
         ['TODAS', 'Todas'], ['realizada', 'Realizada'], ['em_rota', 'Em rota'],
         ['parado', 'Pendência'],
       ];
-      const opts = REL === '50' ? opts50 : (REL === '36' ? opts36 : opts103);
+      const opts = REL === '36' ? opts36 : optsColeta;
       if (!opts.some(([k]) => k === FILTRO)) FILTRO = 'TODAS';
       box.innerHTML = opts.map(([k, lbl]) =>
         `<button type="button" class="chip${FILTRO === k ? ' active' : ''}" data-filtro="${k}">${lbl}</button>`
@@ -1845,31 +1902,88 @@
         });
         return;
       }
-      if (REL === '50') {
-        thead.innerHTML = `<tr>
-          <th>Coleta</th><th>Situação atual</th><th>Quando</th>
-          <th>Destino</th><th>Motorista</th><th></th></tr>`;
-        let rows = COLETAS_50.filter(matchBusca);
-        if (FILTRO !== 'TODAS') rows = rows.filter(c => situacaoNorm50(c) === FILTRO);
-        rows = rows.slice().reverse().slice(0, 300);
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="6" class="muted">Nenhuma coleta 50.</td></tr>';
-          return;
+
+      // Coleta unificada: resumo por placa (padrão do 36) + detalhe com histórico 50
+      thead.innerHTML = `<tr>
+        <th>Placa</th><th>Motorista</th>
+        <th>Total</th><th>Realizada</th><th>Em rota</th><th>Parado</th><th>%</th><th></th></tr>`;
+      let groups = agregarPlacasColeta(COLETAS_103).filter(g => {
+        if (!matchBusca(g)) {
+          // ainda casa se alguma coleta do grupo bater na busca
+          if (!BUSCA) return false;
+          const q = BUSCA.toUpperCase().replace(/\s+/g, '');
+          const qNum = q.replace(/\D/g, '');
+          return (g.items || []).some(c => {
+            const id = coletaKey(c);
+            const num = String(c.numero || '').replace(/\D/g, '');
+            return id.includes(q) || (qNum && (id.includes(qNum) || num.includes(qNum)));
+          });
         }
-        tbody.innerHTML = rows.map(c => {
-          const sit = situacaoNorm50(c);
+        return true;
+      });
+      if (FILTRO === 'realizada') groups = groups.filter(r => r.realizada > 0);
+      if (FILTRO === 'em_rota') groups = groups.filter(r => r.em_rota > 0);
+      if (FILTRO === 'parado') groups = groups.filter(r => r.parado > 0);
+      if (FILTRO === 'cancelada') groups = groups.filter(r => r.cancelada > 0);
+      if (!groups.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="muted">Nenhuma placa / coleta.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = groups.map(r => {
+        const isSem = r.placa === SEM_PLACA_LABEL;
+        return `<tr>
+          <td>${esc(r.placa)}${r.carreta && !isSem ? ` <span class="muted">· ${esc(r.carreta)}</span>` : ''}</td>
+          <td>${esc(isSem ? '—' : (r.motorista || ''))}</td>
+          <td>${esc(String(r.total))}</td>
+          <td class="sit sit-realizada">${esc(String(r.realizada))}</td>
+          <td class="sit sit-em_rota">${esc(String(r.em_rota))}</td>
+          <td class="sit sit-parado">${esc(String(r.parado))}</td>
+          <td>${esc(String(r.pct))}%</td>
+          <td><button type="button" class="btn" data-placa="${esc(r.placa)}">Coletas</button></td>
+        </tr>`;
+      }).join('');
+      tbody.querySelectorAll('[data-placa]').forEach(btn => {
+        btn.addEventListener('click', () => abrirColetasPlaca(btn.getAttribute('data-placa')));
+      });
+    }
+
+    function abrirColetasPlaca(placaKey) {
+      const modal = document.getElementById('modalHist');
+      const titulo = document.getElementById('histTitulo');
+      const sub = document.getElementById('histSub');
+      const lista = document.getElementById('histLista');
+      const key = String(placaKey || '').toUpperCase().trim();
+      const groups = agregarPlacasColeta(COLETAS_103);
+      const group = groups.find(g => g.placa === key);
+      const rows = (group && group.items) || [];
+      const by50 = mapaColetas50();
+      titulo.textContent = `Coletas · ${key}`;
+      sub.textContent = group
+        ? `${group.total} coleta(s) · ${group.realizada} realizada · ${group.em_rota} em rota · ${group.parado} parado · ${group.pct}%`
+        : '';
+      if (!rows.length) {
+        lista.innerHTML = '<p class="muted">Sem coletas neste grupo.</p>';
+      } else {
+        lista.innerHTML = `<table><thead><tr>
+          <th>Coleta</th><th>Status</th><th>Situação</th><th>Hora</th><th>Motorista</th><th></th>
+        </tr></thead><tbody>${rows.map(c => {
+          const st = statusAce(c);
           const id = coletaKey(c);
-          const label = c.coleta || c.coleta_id || id;
+          const label = c.coleta_id || c.coleta || id;
+          const c50 = by50.get(id);
+          const sitHist = c50
+            ? (c50.situacao_atual || situacaoNorm50(c50))
+            : (c.situacao_atual || labelStatus103(st));
           return `<tr>
             <td>${esc(label)}</td>
-            <td class="sit sit-${esc(sit)}">${esc(c.situacao_atual || sit)}</td>
-            <td>${esc(fmtDataHora(c.situacao_atual_data, c.situacao_atual_hora))}</td>
-            <td>${esc(c.dest_cidade || c.dest || '')}</td>
+            <td class="sit sit-${esc(st)}">${esc(labelStatus103(st))}</td>
+            <td>${esc(c.situacao_atual || '')}</td>
+            <td>${esc(fmtCampo(c.hora, 'hora'))}</td>
             <td>${esc(c.motorista || '')}</td>
-            <td><button type="button" class="btn" data-hist="${esc(id)}" data-label="${esc(label)}" data-sit="${esc(sit)}">Histórico</button></td>
+            <td><button type="button" class="btn" data-hist="${esc(id)}" data-label="${esc(label)}" data-sit="${esc(sitHist)}">Histórico</button></td>
           </tr>`;
-        }).join('');
-        tbody.querySelectorAll('[data-hist]').forEach(btn => {
+        }).join('')}</tbody></table>`;
+        lista.querySelectorAll('[data-hist]').forEach(btn => {
           btn.addEventListener('click', () => abrirHistorico(
             btn.getAttribute('data-hist'),
             btn.getAttribute('data-label'),
@@ -1877,30 +1991,8 @@
             btn
           ));
         });
-      } else {
-        thead.innerHTML = `<tr>
-          <th>Coleta</th><th>Status</th><th>Situação</th>
-          <th>Hora</th><th>Placa</th><th>Carreta</th><th>Motorista</th></tr>`;
-        let rows = COLETAS_103.filter(matchBusca);
-        if (FILTRO !== 'TODAS') rows = rows.filter(c => statusAce(c) === FILTRO);
-        rows = rows.slice().reverse().slice(0, 300);
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="7" class="muted">Nenhuma coleta 103.</td></tr>';
-          return;
-        }
-        tbody.innerHTML = rows.map(c => {
-          const st = statusAce(c);
-          return `<tr>
-            <td>${esc(c.coleta_id || '')}</td>
-            <td class="sit sit-${esc(st)}">${esc(labelStatus103(st))}</td>
-            <td>${esc(c.situacao_atual || '')}</td>
-            <td>${esc(fmtCampo(c.hora, 'hora'))}</td>
-            <td>${esc(c.placa || '')}</td>
-            <td>${esc(c.placa_carreta || '')}</td>
-            <td>${esc(c.motorista || '')}</td>
-          </tr>`;
-        }).join('');
       }
+      modal.classList.add('open');
     }
 
     function abrirCtrcsRomaneio(romaneio) {
@@ -1982,17 +2074,19 @@
     async function abrirHistorico(coletaId, label, situacao, btn) {
       const modal = document.getElementById('modalHist');
       const lista = document.getElementById('histLista');
-      document.getElementById('histTitulo').textContent = `Histórico · ${label || coletaId}`;
-      document.getElementById('histSub').textContent = `Situação atual: ${situacao || '—'}`;
+      const id = String(coletaId || '').toUpperCase().replace(/\s+/g, '').trim();
+      document.getElementById('histTitulo').textContent = `Histórico · ${label || id}`;
+      document.getElementById('histSub').textContent =
+        `Situação atual: ${situacao || '—'} · histórico do relatório 50`;
       lista.innerHTML = '<p class="sub-hist">Carregando…</p>';
       modal.classList.add('open');
       if (btn) btn.disabled = true;
       try {
-        const resp = await chamarPlanilha('historico', { coleta_id: coletaId });
+        const resp = await chamarPlanilha('historico', { coleta_id: id });
         const rows = resp.rows || [];
         lista.innerHTML = rows.length
           ? renderHistoricoSsw(rows)
-          : '<p class="sub-hist">Sem histórico nesta coleta.</p>';
+          : '<p class="sub-hist">Sem histórico nesta coleta (relatório 50).</p>';
       } catch (err) {
         lista.innerHTML = `<p class="sub-hist">${esc(err.message)}</p>`;
       } finally {
@@ -2016,7 +2110,9 @@
     }
 
     function setRel(rel) {
-      REL = rel === '50' ? '50' : (rel === '36' ? '36' : '103');
+      const raw = String(rel || '').toLowerCase();
+      // 50/103 unificados em "coleta" (lista 103 + hist do 50)
+      REL = (raw === '36' || raw === 'entrega') ? '36' : 'coleta';
       FILTRO = 'TODAS';
       document.querySelectorAll('#tabsRelatorio [data-rel]').forEach(b => {
         b.classList.toggle('active', b.getAttribute('data-rel') === REL);
@@ -2184,9 +2280,10 @@
     if (hash === 'tv' || hash === 'fullscreen' || hash === 'tela') {
       setView('live');
       setTvMode(true, { syncHash: false });
-    } else if (hash === 'gestao' || hash === '50' || hash === '103' || hash === '36') {
+    } else if (hash === 'gestao' || hash === '50' || hash === '103' || hash === 'coleta' || hash === '36') {
       setView('gestao');
-      if (hash === '50' || hash === '103' || hash === '36') setRel(hash);
+      if (hash === '36') setRel('36');
+      else if (hash === '50' || hash === '103' || hash === 'coleta') setRel('coleta');
     }
 
     tickClock();
