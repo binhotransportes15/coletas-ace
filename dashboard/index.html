@@ -886,6 +886,202 @@
     }
     body.tv-mode .tv-hint.show { opacity: 1; }
 
+    /* ===== AGENDAMENTO 225 + TROCA DE TELAS ===== */
+    #viewAgendamento {
+      display: none;
+      min-height: 0;
+      height: 100%;
+    }
+    #viewAgendamento.active { display: block; }
+    body.live-mode.swap-agenda #viewLive { display: none !important; }
+    body.live-mode.swap-agenda #viewAgendamento { display: block !important; }
+    body.live-mode.swap-agenda .brand .title { color: #fbb03b; }
+    .agenda-arena {
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background:
+        radial-gradient(90% 70% at 0% 0%, rgba(251,176,59,.12), transparent 55%),
+        radial-gradient(80% 60% at 100% 0%, rgba(239,68,68,.1), transparent 50%),
+        linear-gradient(165deg, #0b1220 0%, #05080f 100%);
+      border: 1px solid #243044;
+      border-radius: 18px;
+      padding: 12px 14px 14px;
+      overflow: hidden;
+      animation: agendaIn .55s ease;
+    }
+    @keyframes agendaIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+    .agenda-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .agenda-head h2 {
+      margin: 0;
+      font-size: clamp(18px, 2.4vw, 28px);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fbb03b;
+    }
+    .agenda-head .sub {
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .agenda-stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .agenda-stat {
+      background: rgba(2,6,23,.65);
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .agenda-stat span {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .agenda-stat b {
+      font-size: clamp(22px, 3vw, 34px);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      color: #fff;
+    }
+    .agenda-stat.s-rota b { color: var(--com); }
+    .agenda-stat.s-par b { color: var(--cad); }
+    .agenda-stat.s-ok b { color: var(--col); }
+    .agenda-stat.s-alert b { color: #f87171; }
+    .agenda-alerts {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+      max-height: 28%;
+      overflow: hidden;
+    }
+    .agenda-alert {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: 1px solid #7f1d1d;
+      background: linear-gradient(90deg, rgba(127,29,29,.55), rgba(2,6,23,.85));
+      box-shadow: 0 0 0 1px rgba(248,113,113,.25), 0 10px 28px rgba(127,29,29,.35);
+      animation: alertPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes alertPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 1px rgba(248,113,113,.25), 0 10px 28px rgba(127,29,29,.3); }
+      50% { transform: scale(1.01); box-shadow: 0 0 0 3px rgba(248,113,113,.45), 0 14px 36px rgba(239,68,68,.45); }
+    }
+    .agenda-alert .siren {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      display: grid; place-items: center;
+      background: #991b1b;
+      color: #fecaca;
+      font-size: 20px;
+      font-weight: 900;
+      animation: sirenBlink 0.8s steps(2) infinite;
+    }
+    @keyframes sirenBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    .agenda-alert .tag {
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #fecaca;
+    }
+    .agenda-alert .ctrc {
+      font-size: clamp(16px, 2vw, 22px);
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.02em;
+    }
+    .agenda-alert .dest {
+      font-size: 13px;
+      color: #fca5a5;
+      margin-top: 2px;
+    }
+    .agenda-alert .when {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fecaca;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .agenda-table-wrap {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      background: rgba(2,6,23,.55);
+    }
+    .agenda-table-wrap table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .agenda-table-wrap th {
+      position: sticky; top: 0;
+      background: #0f172a;
+      color: #94a3b8;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 10px 10px;
+      text-align: left;
+      border-bottom: 1px solid #1e293b;
+      z-index: 1;
+    }
+    .agenda-table-wrap td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #111827;
+      color: #e2e8f0;
+      vertical-align: top;
+    }
+    .agenda-table-wrap tr.is-alert td {
+      background: rgba(127,29,29,.22);
+    }
+    .agenda-table-wrap .sit-em_rota { color: var(--com); font-weight: 800; }
+    .agenda-table-wrap .sit-parado { color: var(--cad); font-weight: 800; }
+    .agenda-table-wrap .sit-concluido { color: var(--col); font-weight: 800; }
+    .swap-dot {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      margin-left: 8px;
+    }
+    .swap-dot i {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #334155;
+    }
+    .swap-dot i.on { background: #fbb03b; box-shadow: 0 0 8px rgba(251,176,59,.7); }
+    body:not(.swap-agenda) .swap-dot i.d-live { background: #67e8f9; box-shadow: 0 0 8px rgba(103,232,249,.6); }
+    body.swap-agenda .swap-dot i.d-ag { background: #fbb03b; box-shadow: 0 0 8px rgba(251,176,59,.7); }
+
     @media (orientation: portrait) {
       body.tv-mode .arena-body {
         grid-template-columns: 1fr;
@@ -904,7 +1100,7 @@
     <header class="topbar">
       <div class="brand">
         <img src="logo-binho.png" alt="BINHO Transportes" />
-        <div class="title">DISTRIBUIÇÃO</div>
+        <div class="title">DISTRIBUIÇÃO <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span></div>
       </div>
       <nav class="nav">
         <button type="button" class="nav-btn active" data-view="live">Ao vivo</button>
@@ -1043,6 +1239,38 @@
       </section>
     </div>
 
+    <!-- AGENDAMENTO 225 (intercala com Distribuição a cada 15s) -->
+    <div class="view" id="viewAgendamento">
+      <section class="agenda-arena" aria-label="Agendamentos da semana">
+        <header class="agenda-head">
+          <div>
+            <h2>Agendamento</h2>
+            <div class="sub" id="agendaPeriodo">Semana corrente · relatório 225</div>
+          </div>
+          <div class="sub" id="agendaTick">troca em 15s</div>
+        </header>
+        <div class="agenda-stats" id="agendaStats">
+          <div class="agenda-stat"><span>Total</span><b id="agTotal">0</b></div>
+          <div class="agenda-stat s-rota"><span>Em rota</span><b id="agRota">0</b></div>
+          <div class="agenda-stat s-par"><span>Parado</span><b id="agPar">0</b></div>
+          <div class="agenda-stat s-ok"><span>Concluído</span><b id="agOk">0</b></div>
+          <div class="agenda-stat s-alert"><span>Sem saída</span><b id="agAlert">0</b></div>
+        </div>
+        <div class="agenda-alerts" id="agendaAlerts"></div>
+        <div class="agenda-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>CTRC</th><th>Remetente</th><th>Destinatário</th>
+                <th>Peso</th><th>Frete</th><th>Agendado</th><th>Para</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="agendaBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
     <!-- GESTÃO -->
     <div class="view" id="viewGestao">
       <section class="panel">
@@ -1110,6 +1338,12 @@
     let PLACAS = [];
     let URGENTES = [];
     let PENDENCIAS_36 = [];
+    let AGENDAMENTOS_225 = [];
+    let RESUMO_225 = { total: 0, em_rota: 0, parado: 0, concluido: 0, alerta: 0, periodo: '' };
+    let swapTimer = null;
+    let swapCountdown = null;
+    let SWAP_ON_AGENDA = false;
+    const SWAP_MS = 15000;
     let placaCursor = 0;
     let prazoCursor = 0;
     let pendCursor = 0;
@@ -2094,6 +2328,208 @@
       }
     }
 
+    function labelStatus225(s) {
+      return ({ em_rota: 'Em rota', parado: 'Parado', concluido: 'Concluído' })[s] || s;
+    }
+
+    function parseCsvText(text) {
+      const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(Boolean);
+      if (!lines.length) return [];
+      const delim = lines[0].includes(';') ? ';' : ',';
+      const split = (line) => {
+        const out = [];
+        let cur = '';
+        let q = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') { q = !q; continue; }
+          if (!q && ch === delim) { out.push(cur); cur = ''; continue; }
+          cur += ch;
+        }
+        out.push(cur);
+        return out;
+      };
+      const headers = split(lines[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+      return lines.slice(1).map(line => {
+        const cols = split(line);
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = (cols[i] || '').trim(); });
+        return obj;
+      });
+    }
+
+    async function carregarAgendamentos225() {
+      try {
+        const resp = await chamarPlanilha('agendamentos225');
+        if (resp && Array.isArray(resp.rows) && resp.rows.length) {
+          AGENDAMENTOS_225 = resp.rows;
+          const rSum = await chamarPlanilha('resumo225').catch(() => null);
+          const row = (rSum && rSum.rows && rSum.rows[0]) || null;
+          if (row) {
+            RESUMO_225 = {
+              total: Number(row.total || AGENDAMENTOS_225.length) || 0,
+              em_rota: Number(row.em_rota || 0) || 0,
+              parado: Number(row.parado || 0) || 0,
+              concluido: Number(row.concluido || 0) || 0,
+              alerta: Number(row.alerta || 0) || 0,
+              periodo: row.periodo || '',
+            };
+          } else {
+            RESUMO_225 = resumoFromAgendaRows(AGENDAMENTOS_225);
+          }
+          return;
+        }
+      } catch (_) { /* fallback local */ }
+      try {
+        const res = await fetch(`data/agendamentos_225.csv?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('CSV 225 local indisponivel');
+        const text = await res.text();
+        AGENDAMENTOS_225 = parseCsvText(text);
+        RESUMO_225 = resumoFromAgendaRows(AGENDAMENTOS_225);
+        try {
+          const rs = await fetch(`data/resumo_225.csv?t=${Date.now()}`, { cache: 'no-store' });
+          if (rs.ok) {
+            const rows = parseCsvText(await rs.text());
+            if (rows[0]) {
+              RESUMO_225.periodo = rows[0].periodo || RESUMO_225.periodo;
+              RESUMO_225.total = Number(rows[0].total || RESUMO_225.total) || RESUMO_225.total;
+              RESUMO_225.em_rota = Number(rows[0].em_rota || RESUMO_225.em_rota) || RESUMO_225.em_rota;
+              RESUMO_225.parado = Number(rows[0].parado || RESUMO_225.parado) || RESUMO_225.parado;
+              RESUMO_225.concluido = Number(rows[0].concluido || RESUMO_225.concluido) || RESUMO_225.concluido;
+              RESUMO_225.alerta = Number(rows[0].alerta || RESUMO_225.alerta) || RESUMO_225.alerta;
+            }
+          }
+        } catch (_) {}
+      } catch (err) {
+        AGENDAMENTOS_225 = AGENDAMENTOS_225 || [];
+      }
+    }
+
+    function resumoFromAgendaRows(rows) {
+      const out = { total: 0, em_rota: 0, parado: 0, concluido: 0, alerta: 0, periodo: '' };
+      (rows || []).forEach(r => {
+        out.total += 1;
+        const st = String(r.status_ace || '').toLowerCase();
+        if (out[st] != null) out[st] += 1;
+        if (String(r.alerta_sem_saida || '') === '1') out.alerta += 1;
+      });
+      return out;
+    }
+
+    function renderAgendamento() {
+      const periodoEl = document.getElementById('agendaPeriodo');
+      if (periodoEl) {
+        periodoEl.textContent = RESUMO_225.periodo
+          ? `${RESUMO_225.periodo} · relatório 225`
+          : 'Semana corrente · relatório 225';
+      }
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = String(v); };
+      set('agTotal', RESUMO_225.total || AGENDAMENTOS_225.length || 0);
+      set('agRota', RESUMO_225.em_rota || 0);
+      set('agPar', RESUMO_225.parado || 0);
+      set('agOk', RESUMO_225.concluido || 0);
+      set('agAlert', RESUMO_225.alerta || 0);
+
+      const alerts = (AGENDAMENTOS_225 || []).filter(r => String(r.alerta_sem_saida || '') === '1');
+      const box = document.getElementById('agendaAlerts');
+      if (box) {
+        if (!alerts.length) {
+          box.innerHTML = '';
+          box.style.display = 'none';
+        } else {
+          box.style.display = 'flex';
+          box.innerHTML = alerts.slice(0, 4).map(r => `
+            <div class="agenda-alert" role="alert">
+              <div class="siren">!</div>
+              <div>
+                <div class="tag">Agendamento sem saída</div>
+                <div class="ctrc">${esc(r.ctrc || '')}</div>
+                <div class="dest">${esc(r.destinatario || r.destino || '')}</div>
+              </div>
+              <div class="when">${esc(r.agendado_para || r.agendado_para_data || '')}</div>
+            </div>`).join('');
+        }
+      }
+
+      const body = document.getElementById('agendaBody');
+      if (!body) return;
+      if (!AGENDAMENTOS_225.length) {
+        body.innerHTML = '<tr><td colspan="8" class="muted">Sem agendamentos na semana.</td></tr>';
+        return;
+      }
+      body.innerHTML = AGENDAMENTOS_225.map(r => {
+        const st = String(r.status_ace || 'parado').toLowerCase();
+        const isAlert = String(r.alerta_sem_saida || '') === '1';
+        return `<tr class="${isAlert ? 'is-alert' : ''}">
+          <td><strong>${esc(r.ctrc || '')}</strong></td>
+          <td>${esc(r.remetente || '')}</td>
+          <td>${esc(r.destinatario || '')}<div class="muted" style="font-size:11px">${esc(r.destino || '')}</div></td>
+          <td>${esc(r.peso || '')}</td>
+          <td>${esc(r.frete || '')}</td>
+          <td>${esc(r.agendado_em || '')}</td>
+          <td>${esc(r.agendado_para || r.agendado_para_data || '')}</td>
+          <td class="sit-${esc(st)}">${esc(labelStatus225(st))}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function setSwapScreen(showAgenda) {
+      SWAP_ON_AGENDA = !!showAgenda;
+      document.body.classList.toggle('swap-agenda', SWAP_ON_AGENDA);
+      const brandTitle = document.querySelector('.brand .title');
+      if (brandTitle) {
+        brandTitle.innerHTML = (SWAP_ON_AGENDA ? 'AGENDAMENTO' : 'DISTRIBUIÇÃO')
+          + ' <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span>';
+      }
+      const live = document.getElementById('viewLive');
+      const ag = document.getElementById('viewAgendamento');
+      if (VIEW === 'live') {
+        if (live) live.classList.toggle('active', !SWAP_ON_AGENDA);
+        if (ag) ag.classList.toggle('active', SWAP_ON_AGENDA);
+      }
+      if (SWAP_ON_AGENDA) renderAgendamento();
+      resetSwapCountdown();
+    }
+
+    function resetSwapCountdown() {
+      let left = Math.round(SWAP_MS / 1000);
+      const tick = document.getElementById('agendaTick');
+      const paint = () => {
+        if (tick) tick.textContent = SWAP_ON_AGENDA
+          ? `volta à distribuição em ${left}s`
+          : `agendamento em ${left}s`;
+      };
+      paint();
+      if (swapCountdown) clearInterval(swapCountdown);
+      swapCountdown = setInterval(() => {
+        left -= 1;
+        if (left <= 0) left = Math.round(SWAP_MS / 1000);
+        paint();
+      }, 1000);
+    }
+
+    function startSwapLoop() {
+      if (swapTimer) clearInterval(swapTimer);
+      setSwapScreen(false);
+      swapTimer = setInterval(() => {
+        if (VIEW !== 'live') return;
+        setSwapScreen(!SWAP_ON_AGENDA);
+      }, SWAP_MS);
+    }
+
+    function stopSwapLoop() {
+      if (swapTimer) clearInterval(swapTimer);
+      swapTimer = null;
+      if (swapCountdown) clearInterval(swapCountdown);
+      swapCountdown = null;
+      document.body.classList.remove('swap-agenda');
+      SWAP_ON_AGENDA = false;
+      const brandTitle = document.querySelector('.brand .title');
+      if (brandTitle) {
+        brandTitle.innerHTML = 'DISTRIBUIÇÃO <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span>';
+      }
+    }
+
     function setView(view) {
       VIEW = view === 'gestao' ? 'gestao' : 'live';
       if (VIEW === 'gestao' && TV_MODE) setTvMode(false, { syncHash: true });
@@ -2101,11 +2537,16 @@
       document.querySelectorAll('.nav-btn[data-view]').forEach(b => {
         b.classList.toggle('active', b.getAttribute('data-view') === VIEW);
       });
-      document.getElementById('viewLive').classList.toggle('active', VIEW === 'live');
+      document.getElementById('viewLive').classList.toggle('active', VIEW === 'live' && !SWAP_ON_AGENDA);
       document.getElementById('viewGestao').classList.toggle('active', VIEW === 'gestao');
+      const va = document.getElementById('viewAgendamento');
+      if (va) va.classList.toggle('active', VIEW === 'live' && SWAP_ON_AGENDA);
       if (VIEW === 'gestao') {
+        stopSwapLoop();
         renderFiltrosGestao();
         renderTabelaGestao();
+      } else {
+        startSwapLoop();
       }
     }
 
@@ -2175,6 +2616,9 @@
         );
         ROMANEIOS_36 = (rRom && rRom.rows) || [];
 
+        await carregarAgendamentos225();
+        renderAgendamento();
+
         const counts = countByStatus(COLETAS);
         renderTorres(counts);
         renderCilindroEntrega(countByStatus36(ENTREGAS_36));
@@ -2191,12 +2635,13 @@
           renderPrazoPops();
           renderPendenciaPops();
         }
+        if (VIEW === 'live' && !swapTimer) startSwapLoop();
         if (VIEW === 'gestao') {
           renderFiltrosGestao();
           renderTabelaGestao();
         }
         status.textContent =
-          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · coleta(103): ${COLETAS.length} · entrega(36): ${ENTREGAS_36.length}`;
+          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · coleta(103): ${COLETAS.length} · entrega(36): ${ENTREGAS_36.length} · agenda(225): ${AGENDAMENTOS_225.length}`;
       } catch (err) {
         if (seq !== refreshSeq) return;
         status.textContent = err.message;

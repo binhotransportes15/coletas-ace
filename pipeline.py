@@ -5,13 +5,14 @@ from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, LOG_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import format_period, normalize_date, periodo_103_hoje, periodo_36_ontem_hoje, periodo_50_coleta_hoje, sugestao_periodo
+from dates import format_period, normalize_date, periodo_103_hoje, periodo_36_ontem_hoje, periodo_50_coleta_hoje, periodo_semana_seg_dom, sugestao_periodo
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
-from sheets_sync import sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36
+from sheets_sync import sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36, sync_google_sheets_225
 from ssw_client import cleanup_downloads, download_ace_103, download_ace_36, download_ace_reports
 from parser_ssw103 import analyze_report_103
 from parser_ssw0146 import analyze_report_36
+from parser_ssw225 import analyze_report_225
 
 StatusCallback = Callable[[str], None]
 
@@ -252,6 +253,54 @@ def run_full_pipeline_103(
         "period": format_period(ini, fim),
         "modo": "hoje",
     }
+
+
+def find_latest_225(download_dir: Path | None = None) -> Path | None:
+    folder = Path(download_dir or DOWNLOAD_DIR)
+    if not folder.exists():
+        return None
+    candidates: list[Path] = []
+    for pattern in ("*225*", "*agend*", "CSV*100432*", "*BIN*.csv", "*.csv"):
+        candidates.extend(folder.glob(pattern))
+    files = sorted(
+        {p.resolve() for p in candidates if p.is_file()},
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    # Prefere CSV com cabecalho de agendamento
+    for p in files:
+        try:
+            head = p.read_text(encoding="latin-1", errors="replace")[:200].upper()
+        except OSError:
+            continue
+        if "AGENDADO" in head and "CTRC" in head:
+            return p
+    return files[0] if files else None
+
+
+def run_analysis_225(
+    report_path: Path | str,
+    *,
+    periodo: str = "",
+    settings: AceSettings | None = None,
+    on_status: StatusCallback | None = None,
+    sync: bool = True,
+) -> dict[str, Any]:
+    status = on_status or _noop
+    cfg = settings or load_settings()
+    path = Path(report_path)
+    status(f"Analisando 225: {path.name}")
+    meta = analyze_report_225(path, periodo=periodo)
+    status(
+        f"225: {meta.get('total')} CTRC(s) | "
+        f"ROTA {meta.get('em_rota', 0)} / PARADO {meta.get('parado', 0)} / "
+        f"CONCLUIDO {meta.get('concluido', 0)} | ALERTA {meta.get('alerta', 0)}"
+    )
+    result: dict[str, Any] = {"analysis": meta, "report": str(path)}
+    if sync:
+        result["sheets"] = sync_google_sheets_225(cfg, on_status=status)
+        result["dashboard"] = publish_dashboard(cfg, on_status=status)
+    return result
 
 
 def find_latest_36(download_dir: Path | None = None) -> Path | None:

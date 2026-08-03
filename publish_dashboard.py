@@ -13,6 +13,7 @@ from config import DASHBOARD_DIR, BASE_DIR, AceSettings, load_settings
 from parser_ssw0157 import COLETAS_CSV, RESUMO_CSV
 from parser_ssw103 import COLETAS_103_CSV, RESUMO_103_CSV
 from parser_ssw0146 import ENTREGAS_36_CSV, ROMANEIOS_36_CSV, RESUMO_36_CSV
+from parser_ssw225 import AGENDAMENTOS_225_CSV, RESUMO_225_CSV, ALERTAS_225_CSV
 
 StatusCallback = Callable[[str], None]
 
@@ -33,6 +34,9 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
         (ENTREGAS_36_CSV, "entregas_36.csv"),
         (ROMANEIOS_36_CSV, "romaneios_36.csv"),
         (RESUMO_36_CSV, "resumo_36.csv"),
+        (AGENDAMENTOS_225_CSV, "agendamentos_225.csv"),
+        (RESUMO_225_CSV, "resumo_225.csv"),
+        (ALERTAS_225_CSV, "alertas_225.csv"),
     ):
         dest = data_dir / name
         if src.exists():
@@ -60,6 +64,15 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
                     )
                 elif name == "resumo_36.csv":
                     fh.write("periodo,total,realizada,em_rota,pendencia,excluido\n")
+                elif name == "agendamentos_225.csv":
+                    fh.write(
+                        "ctrc,remetente,destinatario,destino,peso,frete,"
+                        "agendado_em,agendado_para,agendado_para_data,status_raw,status_ace,alerta_sem_saida\n"
+                    )
+                elif name == "resumo_225.csv":
+                    fh.write("periodo,total,em_rota,parado,concluido,alerta\n")
+                elif name == "alertas_225.csv":
+                    fh.write("ctrc,destinatario,destino,agendado_para,status_raw\n")
                 else:
                     fh.write("coleta_id,coleta,situacao_atual\n")
             paths[name] = str(dest)

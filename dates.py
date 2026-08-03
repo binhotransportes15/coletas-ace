@@ -108,6 +108,17 @@ def periodo_36_ontem_hoje(hoje: date | datetime | None = None) -> tuple[str, str
     return to_ddmm(ini), to_ddmm(today)
 
 
+def periodo_semana_seg_dom(hoje: date | datetime | None = None) -> tuple[str, str]:
+    """
+    Relatorio 225 · previsao de entrega da semana corrente.
+    Segunda (ini) ate domingo (fim) da semana do dia informado.
+    """
+    today = _as_date(hoje)
+    monday = today - timedelta(days=today.weekday())  # 0=seg
+    sunday = monday + timedelta(days=6)
+    return to_ddmm(monday), to_ddmm(sunday)
+
+
 def periodo_analise_diaria(hoje: date | datetime | None = None) -> tuple[str, str]:
     """Alias historico → agora D-1 (ver periodo_50_cadastramento)."""
     return periodo_50_cadastramento(hoje)

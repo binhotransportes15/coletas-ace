@@ -31,6 +31,14 @@ from parser_ssw0146 import (
     ROMANEIO_36_FIELDS,
     RESUMO_36_FIELDS,
 )
+from parser_ssw225 import (
+    AGENDAMENTOS_225_CSV,
+    RESUMO_225_CSV,
+    ALERTAS_225_CSV,
+    AGENDAMENTO_225_FIELDS,
+    RESUMO_225_FIELDS,
+    ALERTA_225_FIELDS,
+)
 
 StatusCallback = Callable[[str], None]
 
@@ -448,4 +456,54 @@ def sync_google_sheets_36(
     except Exception as error:  # noqa: BLE001
         result["error"] = str(error)
         status(f"Sheets 36 falhou: {error}")
+        return result
+
+
+def sync_google_sheets_225(
+    settings: AceSettings | None = None,
+    *,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    """Envia cache 225 (Agendamentos225 + Resumo225 + Alertas225)."""
+    status = on_status or _noop
+    cfg = settings or load_settings()
+    gate = _ensure_apps_script(cfg, status)
+    if not gate.get("ok"):
+        return gate
+
+    url = gate["url"]
+    token = gate["token"]
+    rows = _read_csv(AGENDAMENTOS_225_CSV)
+    resumo = _read_csv(RESUMO_225_CSV)
+    alertas = _read_csv(ALERTAS_225_CSV)
+    result: dict[str, Any] = {"ok": False, "skipped": False}
+
+    try:
+        status(f"Sheets 225: gravando {len(rows)} agendamento(s) / {len(alertas)} alerta(s)...")
+        stats: dict[str, Any] = {}
+        for sheet, headers, data in (
+            ("Agendamentos225", AGENDAMENTO_225_FIELDS, rows),
+            ("Resumo225", RESUMO_225_FIELDS, resumo),
+            ("Alertas225", ALERTA_225_FIELDS, alertas),
+        ):
+            resp = _send_sheet(url, token, sheet, headers, data, on_status=status)
+            if not resp.get("ok"):
+                result["error"] = resp.get("error") or str(resp)
+                status(f"Sheets falhou em {sheet}: {result['error']}")
+                return result
+            stats[sheet] = resp
+
+        result.update({
+            "ok": True,
+            "via": "apps_script",
+            "mode": "replace",
+            "agendamentos": len(rows),
+            "alertas": len(alertas),
+            "stats": stats,
+        })
+        status(f"Sheets 225 atualizada: {len(rows)} agendamento(s).")
+        return result
+    except Exception as error:  # noqa: BLE001
+        result["error"] = str(error)
+        status(f"Sheets 225 falhou: {error}")
         return result

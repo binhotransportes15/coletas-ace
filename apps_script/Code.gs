@@ -16,11 +16,13 @@
  * Leitura do site (sem token):
  *   GET ?action=resumo | ?action=coletas | ?action=historico&coleta_id=SPO071651
  *       | ?action=coletas103 | ?action=resumo103
- *       | ?action=entregas36 | ?action=romaneios36 | ?action=resumo36 | ?action=ping
+ *       | ?action=entregas36 | ?action=romaneios36 | ?action=resumo36
+ *       | ?action=agendamentos225 | ?action=resumo225 | ?action=alertas225 | ?action=ping
  * Escrita do ACE (com token): POST JSON action clear/append/replace
  * Abas 50: Coletas, Historico, ResumoDiario
  * Abas 103: Coletas103, Resumo103
  * Abas 36: Entregas36, Romaneios36, Resumo36
+ * Abas 225: Agendamentos225, Resumo225, Alertas225
  */
 
 var SPREADSHEET_ID = '1VOkCF1Hn-VUZC7aKu_pa0Hgo1VjjuEJOqFqNSAErCzU';
@@ -161,6 +163,35 @@ function doGet(e) {
         updated_at: new Date().toISOString(),
         rows: sheetToObjects_('Resumo36'),
         report: '36',
+      });
+    }
+
+    if (action === 'agendamentos225' || action === 'agendamentos' || action === '225') {
+      var rows225 = sheetToObjects_('Agendamentos225');
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: rows225,
+        total: rows225.length,
+        report: '225',
+      });
+    }
+
+    if (action === 'resumo225') {
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: sheetToObjects_('Resumo225'),
+        report: '225',
+      });
+    }
+
+    if (action === 'alertas225') {
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: sheetToObjects_('Alertas225'),
+        report: '225',
       });
     }
 
