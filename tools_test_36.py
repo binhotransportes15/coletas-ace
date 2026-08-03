@@ -2,7 +2,7 @@
 Teste interativo do relatorio 36 (ssw0146).
 
 1) Login SSW + abre opcao 36 (browser visivel)
-2) Mostra o que a automacao ACE preencheria (D-1..hoje, Excel=S, unidade)
+2) Mostra o que a automacao ACE preencheria (seg=sex..hoje / demais=D-1..hoje, Excel=S, unidade)
 3) Aplica o preenchimento automatico
 4) Deixa o browser aberto para voce conferir / corrigir campos
 5) A cada 20s re-dumpa os valores atuais em data/cache/dump_36_live.json
@@ -97,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
     _safe_print("=" * 60)
     _safe_print("TESTE SSW 36 · Relacao romaneios/CTRCs (ssw0146)")
     _safe_print("=" * 60)
-    _safe_print(f"Periodo ACE (D-1..hoje): {format_period(ini_ui, fim_ui)}  =>  {ini} a {fim}")
+    _safe_print(f"Periodo ACE (36): {format_period(ini_ui, fim_ui)}  =>  {ini} a {fim}")
     _safe_print(f"Excel: S")
     _safe_print(f"Unidade neste teste: {unidade or '(vazia = TODAS)'}")
     _safe_print(f"Unidades config: {','.join(units) or '*'}")

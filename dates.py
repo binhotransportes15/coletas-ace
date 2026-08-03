@@ -92,12 +92,20 @@ def periodo_103_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
 
 def periodo_36_ontem_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
     """
-    Relatorio 36 · periodo de pesquisa: D-1 (inicio) ate HOJE (fim).
-    Baixas com data de ocorrencia = ontem sao descartadas no parser.
+    Relatorio 36 · periodo de pesquisa no SSW.
+
+    - Segunda-feira (sem expediente no fim de semana): SEXTA → HOJE
+      (sexta, sabado, domingo e segunda).
+    - Demais dias: D-1 (ontem) → HOJE.
+
+    O parser continua descartando ocorrencia = ontem de calendario.
     """
     today = _as_date(hoje)
-    ontem = today - timedelta(days=1)
-    return to_ddmm(ontem), to_ddmm(today)
+    if today.weekday() == 0:  # segunda
+        ini = today - timedelta(days=3)  # sexta
+    else:
+        ini = today - timedelta(days=1)
+    return to_ddmm(ini), to_ddmm(today)
 
 
 def periodo_analise_diaria(hoje: date | datetime | None = None) -> tuple[str, str]:

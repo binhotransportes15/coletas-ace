@@ -314,7 +314,7 @@ def run_full_pipeline_36(
     cfg = settings or load_settings()
     creds = credentials or load_credentials()
     ini, fim = periodo_36_ontem_hoje()
-    emit(f"Pipeline ACE 36 | periodo {format_period(ini, fim)} (D-1..hoje)")
+    emit(f"Pipeline ACE 36 | periodo {format_period(ini, fim)} (seg=sex..hoje / demais=D-1..hoje)")
 
     download = download_ace_36(
         ini,
@@ -363,7 +363,7 @@ def run_dual_cycle(
     Periodos automaticos (recalculados a cada ciclo / virada de dia):
       50  → periodo de COLETA = HOJE
       103 → data LIMITE HOJE (Por data de = L)
-      36  → D-1 .. HOJE (romaneios/CTRCs entrega)
+      36  → seg: SEXTA..HOJE | demais: D-1..HOJE (romaneios/CTRCs entrega)
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 

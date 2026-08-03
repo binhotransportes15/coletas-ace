@@ -511,7 +511,7 @@ class AceSswClient:
         36 - Consulta romaneios/CTRCs (ssw0146):
           Excel = S
           Unidade = sempre SPO (entregas)
-          Periodo = D-1 .. hoje (DDMMYY)
+          Periodo = seg: SEXTA..hoje | demais: D-1..hoje (DDMMYY)
           Gerar = #btn_env_periodo → ajaxEnvia('REL2')
         """
         unidade = "SPO"
@@ -566,7 +566,7 @@ class AceSswClient:
     def _preencher_tela_36(self, popup, *, unidade: str = "SPO") -> None:
         """
         ssw0146:
-          t_excel = S, t_unidade = SPO (sempre), periodo D-1..hoje
+          t_excel = S, t_unidade = SPO (sempre), periodo seg=sex..hoje / demais=D-1..hoje
           Unidade NAO usa fill/focus — o SSW abre findfil (tela de selecao).
         """
         ini, fim = self.start_date_yy, self.end_date_yy
