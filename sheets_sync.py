@@ -55,17 +55,7 @@ def _chunks(rows: list[dict[str, str]], size: int) -> list[list[dict[str, str]]]
     return [rows[i : i + size] for i in range(0, len(rows), size)]
 
 
-def _post_json(url: str, payload: dict[str, Any], *, timeout: int = 180) -> dict[str, Any]:
-    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=body,
-        headers={"Content-Type": "application/json; charset=utf-8"},
-        method="POST",
-    )
-    context = ssl.create_default_context()
-    with urllib.request.urlopen(req, timeout=timeout, context=context) as resp:
-        raw = resp.read().decode("utf-8", errors="replace")
+def _parse_apps_script_response(raw: str) -> dict[str, Any]:
     if not raw.strip():
         return {"ok": True}
     try:
@@ -73,6 +63,101 @@ def _post_json(url: str, payload: dict[str, Any], *, timeout: int = 180) -> dict
     except json.JSONDecodeError:
         # Algumas respostas do Google redirecionam / devolvem HTML
         return {"ok": False, "error": f"resposta nao-JSON: {raw[:200]}"}
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Impede o urllib de seguir 302 trocando POST→GET (quebra Apps Script)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001, N802
+        return None
+
+
+def _apps_script_opener() -> urllib.request.OpenerDirector:
+    context = ssl.create_default_context()
+    return urllib.request.build_opener(
+        _NoRedirect,
+        urllib.request.HTTPSHandler(context=context),
+    )
+
+
+def _post_json(url: str, payload: dict[str, Any], *, timeout: int = 180) -> dict[str, Any]:
+    """
+    POST JSON para Apps Script Web App.
+
+    Fluxo real do Google:
+      1) POST /macros/s/.../exec  → 302 para script.googleusercontent.com/macros/echo?...
+      2) GET nessa Location (o POST ja foi processado; o echo devolve o JSON)
+
+    Se reenviarmos POST no echo, o Google responde 405/404 HTML do Docs.
+    """
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json, text/plain, */*",
+    }
+    opener = _apps_script_opener()
+
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    try:
+        with opener.open(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+        return _parse_apps_script_response(raw)
+    except urllib.error.HTTPError as error:
+        code = int(error.code)
+        location = error.headers.get("Location") or error.headers.get("location")
+        try:
+            error.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+        if not (location and code in {301, 302, 303, 307, 308}):
+            detail = ""
+            try:
+                # corpo ja pode ter sido consumido no close; reabre nao e preciso
+                pass
+            except Exception:  # noqa: BLE001
+                pass
+            return {
+                "ok": False,
+                "error": (
+                    f"HTTP {code}: falha no POST Apps Script. "
+                    "Confira apps_script_url (/exec) e publique Nova versao "
+                    "(acesso: Qualquer pessoa)."
+                ),
+            }
+
+        echo = urllib.request.urljoin(url, location)
+        get_req = urllib.request.Request(
+            echo,
+            headers={"Accept": "application/json, text/plain, */*"},
+            method="GET",
+        )
+        try:
+            with opener.open(get_req, timeout=timeout) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+            return _parse_apps_script_response(raw)
+        except urllib.error.HTTPError as get_err:
+            detail = get_err.read().decode("utf-8", errors="replace")
+            try:
+                get_err.close()
+            except Exception:  # noqa: BLE001
+                pass
+            if "<!DOCTYPE" in detail or "<html" in detail.lower():
+                return {
+                    "ok": False,
+                    "error": (
+                        f"HTTP {get_err.code}: resposta HTML do Google no echo. "
+                        "Confira apps_script_url (/exec) e publique Nova versao "
+                        "(acesso: Qualquer pessoa)."
+                    ),
+                }
+            try:
+                parsed = json.loads(detail)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+            return {"ok": False, "error": f"HTTP {get_err.code}: {detail[:300]}"}
 
 
 def _send_sheet(
@@ -248,7 +333,7 @@ def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, A
     result["error"] = last_error or "ping falhou"
     status(f"Sheets falhou no ping: {result['error']}")
     status(
-        "Dica: se for HTTP 404, abra o Apps Script → Implantar → Gerenciar → "
+        "Dica: se for HTTP 404/405 HTML, abra o Apps Script > Implantar > Gerenciar > "
         "confirme a URL /exec no config (Nova versao apos editar o Code.gs)."
     )
     return result

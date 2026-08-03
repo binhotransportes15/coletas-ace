@@ -451,6 +451,12 @@
     }
     .cyl-ban.b-par .ban-pct { color: #1a1200; text-shadow: none; }
     #pendenciaStack { min-height: 0; height: 100%; }
+    #pendenciaStack .pop-prazo {
+      padding: 11px 12px;
+      min-height: 58px;
+    }
+    #pendenciaStack .pop-prazo .hora { font-size: 18px; }
+    #pendenciaStack .pop-prazo .name { font-size: 14px; }
     #prazoStack .pop { margin-bottom: 0; }
 
     .total-hero {
@@ -1307,6 +1313,18 @@
       return Math.min(bySpace, tv ? 9 : 6);
     }
 
+    /** Quantos cards de pendencia cabem inteiros (sem cortar o ultimo). */
+    function pendenciaVisivel() {
+      const tv = document.body.classList.contains('tv-mode');
+      const stack = document.getElementById('pendenciaStack');
+      if (!stack) return tv ? 3 : 2;
+      const h = stack.clientHeight || 0;
+      // Card + gap; margem menor para nao clipar a borda inferior
+      const slot = tv ? 78 : 72;
+      const bySpace = Math.max(1, Math.floor(Math.max(0, h - 6) / slot));
+      return Math.min(bySpace, tv ? 4 : 3);
+    }
+
     function countByStatus(rows) {
       const out = { total: 0, parado: 0, em_rota: 0, realizada: 0, cancelada: 0, outro: 0 };
       rows.forEach(c => {
@@ -1596,11 +1614,20 @@
     }
 
     function layoutPops(stack, nodes) {
+      const maxH = stack.clientHeight || 0;
       let top = 0;
       nodes.forEach((node, i) => {
+        const h = node.offsetHeight || 0;
+        // Nao posiciona card que ficaria cortado no fim da coluna
+        if (maxH > 0 && top + h > maxH + 1) {
+          node.style.visibility = 'hidden';
+          node.style.pointerEvents = 'none';
+          return;
+        }
+        node.style.visibility = '';
         node.style.top = top + 'px';
         node.style.zIndex = String(100 - i);
-        top += node.offsetHeight + 10;
+        top += h + 10;
       });
     }
 
@@ -1684,7 +1711,8 @@
         return;
       }
       const visible = [];
-      const n = Math.min(PEND_VISIBLE, PENDENCIAS_36.length);
+      const nVis = pendenciaVisivel();
+      const n = Math.min(nVis, PENDENCIAS_36.length);
       for (let i = 0; i < n; i++) visible.push(PENDENCIAS_36[(pendCursor + i) % PENDENCIAS_36.length]);
       Array.from(stack.querySelectorAll('.pop')).forEach(el => {
         el.classList.remove('show'); el.classList.add('leaving');
@@ -1732,7 +1760,8 @@
       }, PRAZO_TICK_MS);
       pendTimer = setInterval(() => {
         if (!PENDENCIAS_36.length) return;
-        if (PENDENCIAS_36.length > PEND_VISIBLE) pendCursor = (pendCursor + 1) % PENDENCIAS_36.length;
+        const nVis = pendenciaVisivel();
+        if (PENDENCIAS_36.length > nVis) pendCursor = (pendCursor + 1) % PENDENCIAS_36.length;
         renderPendenciaPops();
       }, PEND_TICK_MS);
     }
@@ -2138,7 +2167,14 @@
     });
     window.addEventListener('resize', () => {
       clearTimeout(window._tvResize);
-      window._tvResize = setTimeout(rerenderTorres, 120);
+      window._tvResize = setTimeout(() => {
+        rerenderTorres();
+        if (typeof startPopLoops === 'function') {
+          renderPendenciaPops();
+          renderPrazoPops();
+          renderPlacaPops();
+        }
+      }, 120);
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && TV_MODE) requestWakeLock();
