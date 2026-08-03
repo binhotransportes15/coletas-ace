@@ -39,7 +39,7 @@
     .board {
       width: min(1500px, 100%);
       margin: 0 auto;
-      padding: 12px 14px 16px 56px;
+      padding: 12px 14px 16px;
       display: grid;
       gap: 10px;
     }
@@ -59,7 +59,23 @@
       padding: 8px 14px;
     }
     .brand { display: flex; align-items: center; gap: 14px; }
-    .brand img { height: 46px; width: auto; display: block; object-fit: contain; }
+    .brand img,
+    .js-sector-menu {
+      height: 46px; width: auto; display: block; object-fit: contain;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: transform .15s ease, filter .15s ease;
+    }
+    .brand img:hover,
+    .js-sector-menu:hover {
+      transform: scale(1.04);
+      filter: brightness(1.08);
+    }
+    .brand img:focus-visible,
+    .js-sector-menu:focus-visible {
+      outline: 2px solid #67e8f9;
+      outline-offset: 3px;
+    }
     .brand .title {
       font-size: clamp(22px, 3vw, 30px);
       font-weight: 800;
@@ -1586,34 +1602,7 @@
       body.tv-mode .col-right { max-height: 24vh; }
     }
 
-    /* ——— Hub OPERACIONAL · setores ——— */
-    .sector-fab {
-      position: fixed;
-      z-index: 120;
-      top: 10px;
-      left: 10px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid #334155;
-      background: rgba(2, 6, 23, 0.88);
-      color: #e2e8f0;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      cursor: pointer;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 8px 24px rgba(0,0,0,.35);
-    }
-    .sector-fab:hover { border-color: #67e8f9; color: #67e8f9; }
-    .sector-fab .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #8cc63f; box-shadow: 0 0 0 3px rgba(140,198,63,.2);
-    }
-    body.tv-mode.tv-idle .sector-fab { opacity: 0; pointer-events: none; transition: opacity .4s; }
+    /* ——— Hub OPERACIONAL · setores (menu escondido: clicar no logo) ——— */
     .sector-overlay {
       position: fixed; inset: 0; z-index: 130;
       background: rgba(2, 6, 23, 0.72);
@@ -1689,7 +1678,7 @@
     /* Armazém embutido */
     .arm-wrap {
       height: 100vh;
-      padding: 12px 14px 12px 56px;
+      padding: 12px 14px;
       display: grid;
       grid-template-rows: auto auto 1fr;
       gap: 10px;
@@ -1706,6 +1695,12 @@
       border-radius: 14px;
       padding: 10px 16px;
     }
+    .arm-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .arm-brand .arm-titles { min-width: 0; }
     .arm-brand .kicker {
       color: var(--muted); font-size: 11px;
       letter-spacing: 0.14em; text-transform: uppercase;
@@ -1794,7 +1789,7 @@
       min-height: 100vh;
       display: grid;
       place-items: center;
-      padding: 24px 24px 24px 64px;
+      padding: 24px;
       text-align: center;
     }
     .sector-soon-panel .box {
@@ -1803,6 +1798,10 @@
       border: 1px solid var(--line);
       border-radius: 18px;
       padding: 28px 24px;
+    }
+    .sector-soon-panel .js-sector-menu {
+      margin: 0 auto 16px;
+      height: 52px;
     }
     .sector-soon-panel .tag {
       color: #fbb03b; font-size: 11px; font-weight: 800;
@@ -1820,10 +1819,6 @@
   </style>
 </head>
 <body class="live-mode" data-sector="distribuicao">
-  <button type="button" class="sector-fab" id="btnSetores" title="Trocar setor">
-    <span class="dot" aria-hidden="true"></span>
-    <span id="sectorFabLabel">Operacional</span>
-  </button>
   <div class="sector-overlay" id="sectorOverlay" hidden>
     <div class="sector-sheet" role="dialog" aria-modal="true" aria-labelledby="sectorSheetTitle">
       <header>
@@ -1885,7 +1880,14 @@
   <div class="board">
     <header class="topbar">
       <div class="brand">
-        <img src="logo-binho.png" alt="BINHO Transportes" />
+        <img
+          class="js-sector-menu"
+          src="logo-binho.png"
+          alt="BINHO Transportes"
+          title="Trocar setor"
+          role="button"
+          tabindex="0"
+        />
         <div class="title">DISTRIBUIÇÃO <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span></div>
       </div>
       <nav class="nav">
@@ -2168,8 +2170,18 @@
     <div class="arm-wrap">
       <div class="arm-top">
         <div class="arm-brand">
-          <div class="kicker">BINHO · OPERACIONAL · tela 078</div>
-          <h1>ARMAZÉM</h1>
+          <img
+            class="js-sector-menu"
+            src="logo-binho.png"
+            alt="BINHO Transportes"
+            title="Trocar setor"
+            role="button"
+            tabindex="0"
+          />
+          <div class="arm-titles">
+            <div class="kicker">BINHO · OPERACIONAL · tela 078</div>
+            <h1>ARMAZÉM</h1>
+          </div>
         </div>
         <nav class="nav">
           <button type="button" class="nav-btn tv-btn" id="btnTvArmazem" title="Modo TV / tela inteira (F)">TV</button>
@@ -2219,6 +2231,7 @@
 
   <div id="panel-contratacao" class="sector-root" hidden>
     <div class="sector-soon-panel"><div class="box">
+      <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
       <div class="tag">Em breve</div>
       <h1>CONTRATAÇÃO</h1>
       <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/contratacao</code>.</p>
@@ -2226,6 +2239,7 @@
   </div>
   <div id="panel-pendencia" class="sector-root" hidden>
     <div class="sector-soon-panel"><div class="box">
+      <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
       <div class="tag">Em breve</div>
       <h1>PENDÊNCIA</h1>
       <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/pendencia</code>.</p>
@@ -2233,6 +2247,7 @@
   </div>
   <div id="panel-rastreamento" class="sector-root" hidden>
     <div class="sector-soon-panel"><div class="box">
+      <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
       <div class="tag">Em breve</div>
       <h1>RASTREAMENTO</h1>
       <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/rastreamento</code>.</p>
@@ -2240,6 +2255,7 @@
   </div>
   <div id="panel-emissao" class="sector-root" hidden>
     <div class="sector-soon-panel"><div class="box">
+      <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
       <div class="tag">Em breve</div>
       <h1>EMISSÃO</h1>
       <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/emissao</code>.</p>
@@ -2717,9 +2733,6 @@
       document.querySelectorAll('#sectorGrid .sector-card').forEach((card) => {
         card.classList.toggle('active', card.getAttribute('data-sector') === CURRENT_SECTOR);
       });
-
-      const fab = document.getElementById('sectorFabLabel');
-      if (fab) fab.textContent = meta.label;
 
       openSectorMenu(false);
 
@@ -4315,7 +4328,19 @@
     });
     document.getElementById('btnTv')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvArmazem')?.addEventListener('click', () => toggleTvMode());
-    document.getElementById('btnSetores')?.addEventListener('click', () => openSectorMenu(true));
+    document.querySelectorAll('.js-sector-menu').forEach((logo) => {
+      logo.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openSectorMenu(true);
+      });
+      logo.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openSectorMenu(true);
+        }
+      });
+    });
     document.getElementById('btnCloseSetores')?.addEventListener('click', () => openSectorMenu(false));
     document.getElementById('sectorOverlay')?.addEventListener('click', (e) => {
       if (e.target.id === 'sectorOverlay') openSectorMenu(false);
