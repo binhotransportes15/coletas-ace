@@ -360,19 +360,65 @@
       height: 100%;
       overflow: hidden;
     }
-    .cyl-ban {
-      position: relative;
+    .cyl-ban-row {
       flex: 1 1 0;
-      width: 100%;
-      min-width: 0;
       min-height: 0;
       max-height: 72px;
+      display: grid;
+      grid-template-columns: minmax(92px, 118px) minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .cyl-ban-row .ban-left {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-left: 2px;
+    }
+    .cyl-ban-row .ban-title {
+      font-size: clamp(10px, 1.1vw, 12px);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #e2e8f0;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+    .cyl-ban-row .ban-meta {
+      font-size: 12px;
+      color: #94a3b8;
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+    .cyl-ban-row .ban-meta b {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .cyl-ban-row.r-real .ban-title { color: var(--col); }
+    .cyl-ban-row.r-rota .ban-title { color: var(--com); }
+    .cyl-ban-row.r-par .ban-title { color: var(--cad); }
+    .cyl-ban-track {
+      min-width: 0;
+      height: 100%;
+      display: flex;
+      align-items: stretch;
+    }
+    .cyl-ban {
+      position: relative;
+      flex: 0 0 auto;
+      width: 100%;
+      min-width: 72px;
+      height: 100%;
+      min-height: 0;
       display: flex;
       flex-direction: row;
       align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 4px 36px 4px 10px;
+      justify-content: flex-end;
+      padding: 4px 34px 4px 10px;
       clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%);
       box-shadow: 0 6px 16px rgba(0,0,0,.28);
       border: 1px solid rgba(255,255,255,.08);
@@ -382,34 +428,9 @@
       will-change: width;
       box-sizing: border-box;
     }
-    .cyl-ban.is-zero { opacity: 0.4; }
-    .cyl-ban .ban-left {
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    .cyl-ban .ban-title {
-      font-size: clamp(10px, 1.1vw, 12px);
-      font-weight: 800;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: #fff;
-      line-height: 1.1;
-      white-space: nowrap;
-    }
-    .cyl-ban .ban-meta {
-      font-size: 12px;
-      color: rgba(255,255,255,.9);
-      font-variant-numeric: tabular-nums;
-      margin-top: 2px;
-      white-space: nowrap;
-    }
-    .cyl-ban .ban-meta b { font-size: 15px; font-weight: 800; color: #fff; }
+    .cyl-ban.is-zero { opacity: 0.45; }
     .cyl-ban .ban-pct {
       flex-shrink: 0;
-      margin-left: auto;
-      margin-right: 2px;
       font-size: clamp(18px, 2.4vw, 32px);
       font-weight: 900;
       font-variant-numeric: tabular-nums;
@@ -428,9 +449,6 @@
     .cyl-ban.b-par {
       background: linear-gradient(90deg, var(--cad-dark), var(--cad));
     }
-    .cyl-ban.b-par .ban-title,
-    .cyl-ban.b-par .ban-meta,
-    .cyl-ban.b-par .ban-meta b,
     .cyl-ban.b-par .ban-pct { color: #1a1200; text-shadow: none; }
     #pendenciaStack { min-height: 0; height: 100%; }
     #prazoStack .pop { margin-bottom: 0; }
@@ -748,7 +766,7 @@
       gap: clamp(8px, 1.2vmin, 14px);
       height: 100%;
     }
-    body.tv-mode .cyl-ban {
+    body.tv-mode .cyl-ban-row {
       max-height: clamp(48px, 7vmin, 78px);
     }
     body.tv-mode .resumo-total strong {
@@ -934,26 +952,38 @@
                     <div class="cyl-seg c-par" id="cylSegPar" style="flex-grow:1"></div>
                   </div>
                   <div class="cyl-banners">
-                    <div class="cyl-ban b-real" id="cylBanReal" style="width:100%">
+                    <div class="cyl-ban-row r-real">
                       <div class="ban-left">
                         <div class="ban-title">Realizada</div>
                         <div class="ban-meta"><b id="entNReal">0</b></div>
                       </div>
-                      <div class="ban-pct" id="entPReal">0%</div>
+                      <div class="cyl-ban-track">
+                        <div class="cyl-ban b-real" id="cylBanReal" style="width:100%">
+                          <div class="ban-pct" id="entPReal">0%</div>
+                        </div>
+                      </div>
                     </div>
-                    <div class="cyl-ban b-rota" id="cylBanRota" style="width:100%">
+                    <div class="cyl-ban-row r-rota">
                       <div class="ban-left">
                         <div class="ban-title">Em rota</div>
                         <div class="ban-meta"><b id="entNRota">0</b></div>
                       </div>
-                      <div class="ban-pct" id="entPRota">0%</div>
+                      <div class="cyl-ban-track">
+                        <div class="cyl-ban b-rota" id="cylBanRota" style="width:100%">
+                          <div class="ban-pct" id="entPRota">0%</div>
+                        </div>
+                      </div>
                     </div>
-                    <div class="cyl-ban b-par" id="cylBanPar" style="width:100%">
+                    <div class="cyl-ban-row r-par">
                       <div class="ban-left">
                         <div class="ban-title">Pendência</div>
                         <div class="ban-meta"><b id="entNPar">0</b></div>
                       </div>
-                      <div class="ban-pct" id="entPPar">0%</div>
+                      <div class="cyl-ban-track">
+                        <div class="cyl-ban b-par" id="cylBanPar" style="width:100%">
+                          <div class="ban-pct" id="entPPar">0%</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1183,7 +1213,8 @@
           segEl.classList.toggle('is-zero', isZero);
         }
         if (banEl) {
-          const w = total <= 0 ? 100 : (isZero ? 14 : Math.max(pct, 16));
+          // Largura mínima garante que o % caiba na ponta sem esmagar o texto
+          const w = total <= 0 ? 100 : (isZero ? 18 : Math.max(pct, 22));
           banEl.style.width = w + '%';
           banEl.classList.toggle('is-zero', isZero);
         }
