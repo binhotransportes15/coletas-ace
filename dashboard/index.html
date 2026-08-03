@@ -1119,81 +1119,125 @@
     }
     .agenda-side { display: none !important; }
     .agenda-leg { display: none; }
-    .agenda-alert-chip {
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      padding: 8px 12px; border-radius: 10px; border: 1px solid #7f1d1d;
-      background: rgba(127,29,29,.35); color: #fecaca; font-weight: 800;
-      font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
-      flex-shrink: 0;
+    .agenda-alert-chip,
+    .agenda-alerts { display: none !important; }
+
+    /* ===== LOCK TELA CHEIA · SEM SAÍDA HOJE ===== */
+    #alertaLock {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      align-items: stretch;
+      justify-content: stretch;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.72);
     }
-    .agenda-alert-chip b { font-size: 18px; color: #fff; font-variant-numeric: tabular-nums; }
-    body.live-mode .agenda-alert-chip:not([hidden]) {
-      display: flex;
-      max-width: 280px;
-      margin-left: auto;
-    }
-    .agenda-alerts {
+    body.alerta-lock #alertaLock { display: flex; }
+    body.alerta-lock .swap-nav { display: none !important; }
+    body.alerta-lock { overflow: hidden; }
+    .alerta-lock-box {
+      flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      flex-shrink: 0;
-      max-height: 28%;
-      overflow: hidden;
-    }
-    .agenda-alert {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 12px;
       align-items: center;
-      padding: 10px 14px;
-      border-radius: 14px;
-      border: 1px solid #7f1d1d;
-      background: linear-gradient(90deg, rgba(127,29,29,.55), rgba(2,6,23,.85));
-      box-shadow: 0 0 0 1px rgba(248,113,113,.25), 0 10px 28px rgba(127,29,29,.35);
-      animation: alertPulse 1.2s ease-in-out infinite;
+      justify-content: center;
+      gap: 18px;
+      padding: clamp(20px, 4vw, 48px);
+      border-radius: 18px;
+      border: 4px solid #fecaca;
+      background: linear-gradient(160deg, #7f1d1d 0%, #450a0a 55%, #1a0505 100%);
+      box-shadow: 0 0 0 1px rgba(248,113,113,.4), 0 30px 80px rgba(127,29,29,.55);
+      animation: alertaLockBlink 0.9s steps(2) infinite;
+      text-align: center;
+      color: #fff;
     }
-    @keyframes alertPulse {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 0 1px rgba(248,113,113,.25), 0 10px 28px rgba(127,29,29,.3); }
-      50% { transform: scale(1.01); box-shadow: 0 0 0 3px rgba(248,113,113,.45), 0 14px 36px rgba(239,68,68,.45); }
+    @keyframes alertaLockBlink {
+      0%, 100% {
+        border-color: #fecaca;
+        box-shadow: 0 0 0 4px rgba(248,113,113,.55), 0 30px 80px rgba(239,68,68,.5);
+        filter: brightness(1.05);
+      }
+      50% {
+        border-color: #991b1b;
+        box-shadow: 0 0 0 1px rgba(127,29,29,.3), 0 20px 40px rgba(0,0,0,.4);
+        filter: brightness(0.78);
+      }
     }
-    .agenda-alert .siren {
-      width: 42px; height: 42px;
+    .alerta-lock-box .siren-big {
+      width: clamp(72px, 10vw, 110px);
+      height: clamp(72px, 10vw, 110px);
       border-radius: 50%;
-      display: grid; place-items: center;
-      background: #991b1b;
-      color: #fecaca;
-      font-size: 20px;
+      display: grid;
+      place-items: center;
+      font-size: clamp(40px, 6vw, 64px);
       font-weight: 900;
-      animation: sirenBlink 0.8s steps(2) infinite;
+      background: #ef4444;
+      color: #fff;
+      animation: sirenBlink 0.7s steps(2) infinite;
+      box-shadow: 0 0 40px rgba(239,68,68,.65);
     }
-    @keyframes sirenBlink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.35; }
-    }
-    .agenda-alert .tag {
-      font-size: 11px;
+    .alerta-lock-box .tag {
+      font-size: clamp(18px, 3vw, 28px);
       font-weight: 900;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
       color: #fecaca;
     }
-    .agenda-alert .ctrc {
+    .alerta-lock-box h1 {
+      margin: 0;
+      font-size: clamp(28px, 5.5vw, 64px);
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1.05;
+      color: #fff;
+      text-shadow: 0 2px 0 rgba(0,0,0,.35);
+    }
+    .alerta-lock-box .count {
+      font-size: clamp(48px, 8vw, 96px);
+      font-weight: 900;
+      line-height: 1;
+      color: #fef2f2;
+      font-variant-numeric: tabular-nums;
+    }
+    .alerta-lock-box .hint {
+      max-width: 720px;
+      font-size: clamp(14px, 1.8vw, 18px);
+      color: #fca5a5;
+      font-weight: 600;
+    }
+    .alerta-lock-list {
+      width: min(920px, 100%);
+      max-height: min(38vh, 360px);
+      overflow: auto;
+      text-align: left;
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .alerta-lock-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px 16px;
+      align-items: center;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(254,202,202,.25);
+    }
+    .alerta-lock-item .ctrc {
       font-size: clamp(16px, 2vw, 22px);
       font-weight: 800;
-      color: #fff;
       letter-spacing: 0.02em;
     }
-    .agenda-alert .dest {
-      font-size: 13px;
-      color: #fca5a5;
-      margin-top: 2px;
-    }
-    .agenda-alert .when {
-      font-size: 13px;
-      font-weight: 700;
-      color: #fecaca;
-      text-align: right;
+    .alerta-lock-item .dest { color: #fecaca; font-size: 14px; }
+    .alerta-lock-item .when {
+      font-weight: 800;
+      color: #fee2e2;
       white-space: nowrap;
+      font-size: 14px;
     }
     .agenda-table-wrap {
       flex: 0 0 auto;
@@ -1206,8 +1250,11 @@
     }
     /* No vivo a pizza é o hero — tabela só na Gestão */
     body.live-mode .agenda-table-wrap { display: none; }
-    body.live-mode .agenda-alerts { max-height: 12%; }
     body.live-mode .agenda-head h2 { display: none; }
+    @keyframes sirenBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
     .agenda-table-wrap table {
       width: 100%;
       border-collapse: collapse;
@@ -1313,6 +1360,16 @@
 </head>
 <body class="live-mode">
   <div class="tv-hint" id="tvHint">Modo TV · F ou ESC para sair · ideal para televisão</div>
+  <div id="alertaLock" role="alertdialog" aria-modal="true" aria-labelledby="alertaLockTitle" hidden>
+    <div class="alerta-lock-box">
+      <div class="siren-big" aria-hidden="true">!</div>
+      <div class="tag">Alerta operacional</div>
+      <h1 id="alertaLockTitle">Agendamento sem saída hoje</h1>
+      <div class="count" id="alertaLockCount">0</div>
+      <div class="hint">Tela travada até haver saída / realização desses CTRCs. Atualiza automaticamente.</div>
+      <div class="alerta-lock-list" id="alertaLockList"></div>
+    </div>
+  </div>
   <button type="button" class="swap-nav prev" id="btnSwapPrev" title="Distribuição (←)" aria-label="Ir para Distribuição">‹</button>
   <button type="button" class="swap-nav next" id="btnSwapNext" title="Agendamento (→)" aria-label="Ir para Agendamento">›</button>
   <div class="board">
@@ -1620,6 +1677,7 @@
     let swapTimer = null;
     let swapCountdown = null;
     let SWAP_ON_AGENDA = false;
+    let ALERTA_LOCK_ON = false;
     const SWAP_MS = 15000;
     let placaCursor = 0;
     let prazoCursor = 0;
@@ -2695,6 +2753,7 @@
           } else {
             RESUMO_225 = resumoFromAgendaRows(AGENDAMENTOS_225);
           }
+          updateAlertaSemSaidaLock();
           return;
         }
       } catch (_) { /* fallback local */ }
@@ -2714,6 +2773,7 @@
       } catch (err) {
         AGENDAMENTOS_225 = AGENDAMENTOS_225 || [];
       }
+      updateAlertaSemSaidaLock();
     }
 
     function parseNumBr(v) {
@@ -2955,31 +3015,8 @@
         ? `${RESUMO_225.peso_amanha || '0,00'} kg · R$ ${RESUMO_225.frete_amanha || '0,00'}`
         : 'nenhum agendado');
 
-      const chip = document.getElementById('agendaAlertChip');
-      if (chip) chip.hidden = !alerta;
-
       renderAgendaPizza(rota, parado, ok);
-
-      const alerts = (AGENDAMENTOS_225 || []).filter(r => String(r.alerta_sem_saida || '') === '1');
-      const box = document.getElementById('agendaAlerts');
-      if (box) {
-        if (!alerts.length) {
-          box.innerHTML = '';
-          box.style.display = 'none';
-        } else {
-          box.style.display = 'flex';
-          box.innerHTML = alerts.slice(0, 4).map(r => `
-            <div class="agenda-alert" role="alert">
-              <div class="siren">!</div>
-              <div>
-                <div class="tag">Agendamento sem saída</div>
-                <div class="ctrc">${esc(r.ctrc || '')}</div>
-                <div class="dest">${esc(r.destinatario || r.destino || '')}</div>
-              </div>
-              <div class="when">${esc(r.agendado_para || r.agendado_para_data || '')}</div>
-            </div>`).join('');
-        }
-      }
+      updateAlertaSemSaidaLock();
 
       const body = document.getElementById('agendaBody');
       if (!body) return;
@@ -3003,7 +3040,59 @@
       }).join('');
     }
 
+    function listAlertaSemSaida() {
+      return (AGENDAMENTOS_225 || []).filter(r => String(r.alerta_sem_saida || '') === '1');
+    }
+
+    function updateAlertaSemSaidaLock() {
+      const alerts = listAlertaSemSaida();
+      const lock = document.getElementById('alertaLock');
+      const countEl = document.getElementById('alertaLockCount');
+      const listEl = document.getElementById('alertaLockList');
+      const agAlert = document.getElementById('agAlert');
+      if (agAlert) agAlert.textContent = String(alerts.length);
+
+      const ativo = alerts.length > 0;
+      ALERTA_LOCK_ON = ativo;
+      document.body.classList.toggle('alerta-lock', ativo);
+      if (lock) {
+        lock.hidden = !ativo;
+        lock.style.display = ativo ? 'flex' : 'none';
+      }
+      if (countEl) countEl.textContent = String(alerts.length);
+      if (listEl) {
+        listEl.innerHTML = alerts.map(r => `
+          <div class="alerta-lock-item">
+            <div class="ctrc">${esc(r.ctrc || '')}</div>
+            <div class="dest">${esc(r.destinatario || r.destino || '')}</div>
+            <div class="when">${esc(r.agendado_para || r.agendado_para_data || '')}</div>
+          </div>`).join('');
+      }
+
+      if (ativo) {
+        if (swapTimer) { clearInterval(swapTimer); swapTimer = null; }
+        if (swapCountdown) { clearInterval(swapCountdown); swapCountdown = null; }
+        if (VIEW === 'live' && !SWAP_ON_AGENDA) {
+          SWAP_ON_AGENDA = true;
+          document.body.classList.add('swap-agenda');
+          const live = document.getElementById('viewLive');
+          const ag = document.getElementById('viewAgendamento');
+          if (live) live.classList.remove('active');
+          if (ag) ag.classList.add('active');
+          const brandTitle = document.querySelector('.brand .title');
+          if (brandTitle) {
+            brandTitle.innerHTML = 'AGENDAMENTO <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span>';
+          }
+        }
+        const tick = document.getElementById('agendaTick');
+        if (tick) tick.textContent = 'TELA TRAVADA · SEM SAÍDA';
+      } else if (VIEW === 'live' && !swapTimer) {
+        restartSwapTimer();
+      }
+    }
+
     function setSwapScreen(showAgenda) {
+      if (ALERTA_LOCK_ON && !showAgenda) return;
       SWAP_ON_AGENDA = !!showAgenda;
       document.body.classList.toggle('swap-agenda', SWAP_ON_AGENDA);
       const brandTitle = document.querySelector('.brand .title');
@@ -3018,14 +3107,14 @@
         if (ag) ag.classList.toggle('active', SWAP_ON_AGENDA);
       }
       if (SWAP_ON_AGENDA) renderAgendamento();
-      resetSwapCountdown();
+      if (!ALERTA_LOCK_ON) resetSwapCountdown();
     }
 
     function restartSwapTimer() {
-      if (VIEW !== 'live') return;
+      if (VIEW !== 'live' || ALERTA_LOCK_ON) return;
       if (swapTimer) clearInterval(swapTimer);
       swapTimer = setInterval(() => {
-        if (VIEW !== 'live') return;
+        if (VIEW !== 'live' || ALERTA_LOCK_ON) return;
         setSwapScreen(!SWAP_ON_AGENDA);
       }, SWAP_MS);
       resetSwapCountdown();
@@ -3039,6 +3128,7 @@
     }
 
     function stepSwap(dir) {
+      if (ALERTA_LOCK_ON) return;
       // dir < 0 = Distribuição · dir > 0 = Agendamento
       if (dir < 0) goSwapScreen(false);
       else if (dir > 0) goSwapScreen(true);
@@ -3046,6 +3136,13 @@
     }
 
     function resetSwapCountdown() {
+      if (ALERTA_LOCK_ON) {
+        if (swapCountdown) clearInterval(swapCountdown);
+        swapCountdown = null;
+        const tick = document.getElementById('agendaTick');
+        if (tick) tick.textContent = 'TELA TRAVADA · SEM SAÍDA';
+        return;
+      }
       let left = Math.round(SWAP_MS / 1000);
       const tick = document.getElementById('agendaTick');
       const paint = () => {
@@ -3082,6 +3179,7 @@
     }
 
     function setView(view) {
+      if (ALERTA_LOCK_ON && view === 'gestao') return;
       VIEW = view === 'gestao' ? 'gestao' : 'live';
       if (VIEW === 'gestao' && TV_MODE) setTvMode(false, { syncHash: true });
       document.body.classList.toggle('live-mode', VIEW === 'live');
