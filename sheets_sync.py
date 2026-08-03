@@ -170,7 +170,9 @@ def sync_google_sheets(
 
 
 def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, Any]:
-    """Valida config + ping. Retorna {ok, url, token} ou erro/skipped."""
+    """Valida config + ping (com retry). Retorna {ok, url, token} ou erro/skipped."""
+    import time
+
     result: dict[str, Any] = {"ok": False, "skipped": False}
     if not cfg.enable_sheets:
         result["skipped"] = True
@@ -191,34 +193,64 @@ def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, A
         status("Sheets: configure apps_script_token (igual ao SECRET do Apps Script).")
         return result
 
-    try:
-        auth = _post_json(
-            url,
-            {
-                "token": token,
-                "action": "clear",
-                "sheet": "_ace_ping",
-                "headers": ["ok"],
-                "rows": [],
-            },
-            timeout=60,
-        )
-        if not auth.get("ok"):
-            result["error"] = auth.get("error") or str(auth)
-            hint = auth.get("hint") or (
-                "No Apps Script, SECRET deve ser exatamente 'coletas-ace' "
-                "(ou o mesmo do config). Depois: Implantar → Gerenciar → Nova versao."
-            )
-            status(f"Sheets nao autorizado: {result['error']}")
-            status(hint)
-            result["hint"] = hint
-            return result
-    except Exception as error:  # noqa: BLE001
-        result["error"] = str(error)
-        status(f"Sheets falhou no ping: {error}")
-        return result
+    # 1) action=ping (leve, sem criar aba) — exige Code.gs atualizado
+    # 2) fallback action=clear em _ace_ping — compativel com versao antiga
+    payloads = (
+        {
+            "token": token,
+            "action": "ping",
+            "sheet": "_ping",
+            "headers": ["ok"],
+            "rows": [],
+        },
+        {
+            "token": token,
+            "action": "clear",
+            "sheet": "_ace_ping",
+            "headers": ["ok"],
+            "rows": [],
+        },
+    )
 
-    result.update({"ok": True, "url": url, "token": token})
+    last_error = ""
+    for attempt in range(1, 4):
+        for payload in payloads:
+            try:
+                auth = _post_json(url, payload, timeout=45)
+                if auth.get("ok"):
+                    result.update({"ok": True, "url": url, "token": token})
+                    if attempt > 1:
+                        status(f"Sheets ping OK na tentativa {attempt}.")
+                    return result
+                err = str(auth.get("error") or auth)
+                # action ping inexistente na implantacao antiga → tenta fallback clear
+                if "invalida" in err.lower() and payload.get("action") == "ping":
+                    last_error = err
+                    continue
+                last_error = err
+                hint = auth.get("hint") or (
+                    "No Apps Script, SECRET deve ser exatamente 'coletas-ace' "
+                    "(ou o mesmo do config). Depois: Implantar → Gerenciar → Nova versao."
+                )
+                if "nao autorizado" in err.lower() or "autorizado" in err.lower():
+                    status(f"Sheets nao autorizado: {err}")
+                    status(hint)
+                    result["error"] = err
+                    result["hint"] = hint
+                    return result
+                last_error = err
+            except Exception as error:  # noqa: BLE001
+                last_error = str(error)
+        if attempt < 3:
+            status(f"Sheets ping falhou ({last_error}); nova tentativa {attempt + 1}/3...")
+            time.sleep(2.5 * attempt)
+
+    result["error"] = last_error or "ping falhou"
+    status(f"Sheets falhou no ping: {result['error']}")
+    status(
+        "Dica: se for HTTP 404, abra o Apps Script → Implantar → Gerenciar → "
+        "confirme a URL /exec no config (Nova versao apos editar o Code.gs)."
+    )
     return result
 
 

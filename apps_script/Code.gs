@@ -191,6 +191,16 @@ function doPost(e) {
     var headers = data.headers || [];
     var rows = data.rows || [];
 
+    if (action === 'ping' || action === 'auth') {
+      // Saude do bridge (nao mexe em abas). Usado pelo ACE antes de gravar.
+      return json_({
+        ok: true,
+        service: 'ACE Sheets Bridge',
+        spreadsheet: SPREADSHEET_ID,
+        action: 'ping',
+      });
+    }
+
     if (!sheetName) {
       return json_({ ok: false, error: 'sheet obrigatorio' });
     }
