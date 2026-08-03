@@ -948,7 +948,7 @@
     }
     .agenda-kpis {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(8, minmax(0, 1fr));
       gap: 8px;
       flex-shrink: 0;
     }
@@ -974,6 +974,8 @@
     .agenda-kpi.k-ok::before { background: var(--col); }
     .agenda-kpi.k-arm::before { background: var(--cad-dark); }
     .agenda-kpi.k-amanha::before { background: var(--com); }
+    .agenda-kpi.k-rota::before { background: var(--com); }
+    .agenda-kpi.k-alerta::before { background: #ef4444; }
     .agenda-kpi span {
       display: block;
       font-size: 10px;
@@ -1001,6 +1003,8 @@
     .agenda-kpi.k-ok b { color: var(--col); }
     .agenda-kpi.k-arm b { color: var(--cad); }
     .agenda-kpi.k-amanha b { color: var(--com); }
+    .agenda-kpi.k-rota b { color: var(--com); }
+    .agenda-kpi.k-alerta b { color: #f87171; }
     .agenda-kpi.k-frete b { color: #fbb03b; }
     .agenda-kpi small {
       display: block;
@@ -1012,18 +1016,103 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    @media (max-width: 900px) {
-      .agenda-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    @media (max-width: 1100px) {
+      .agenda-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     }
-    @media (max-width: 520px) {
+    @media (max-width: 700px) {
       .agenda-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     .agenda-hero {
       flex: 1;
       min-height: 0;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: 1.35fr 0.65fr;
+      gap: 12px;
       overflow: hidden;
+      position: relative;
+    }
+    .agenda-hero > .agenda-alert-chip,
+    .agenda-hero > span[hidden],
+    .agenda-hero > span[id^="ag"] {
+      display: none !important;
+    }
+    body.live-mode .agenda-alert-chip.is-on {
+      display: flex !important;
+      position: absolute;
+      top: 8px;
+      right: calc(0.65 * 100% + 20px);
+      z-index: 5;
+    }
+    .agenda-tower-side {
+      min-height: 0;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid #1e293b;
+      background: rgba(2,6,23,.55);
+      overflow: auto;
+    }
+    body.live-mode .agenda-tower-side { display: flex; }
+    .tower-side-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #67e8f9;
+    }
+    .tower-bars { display: grid; gap: 10px; }
+    .tower-bar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 4px 10px;
+      align-items: center;
+    }
+    .tower-bar .lbl { font-size: 12px; font-weight: 700; color: #cbd5e1; }
+    .tower-bar .val {
+      font-size: clamp(18px, 2.2vw, 28px);
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: #fff;
+    }
+    .tower-bar .track {
+      grid-column: 1 / -1;
+      height: 10px;
+      border-radius: 999px;
+      background: #0f172a;
+      overflow: hidden;
+    }
+    .tower-bar .fill { height: 100%; border-radius: 999px; }
+    .tower-bar.s-rota .fill { background: var(--com); }
+    .tower-bar.s-par .fill { background: var(--cad-dark); }
+    .tower-bar.s-ok .fill { background: var(--col); }
+    .tower-bar.s-alert .fill { background: #ef4444; }
+    .tower-bar.s-rota .val { color: var(--com); }
+    .tower-bar.s-par .val { color: var(--cad); }
+    .tower-bar.s-ok .val { color: var(--col); }
+    .tower-bar.s-alert .val { color: #f87171; }
+    .tower-alerts { display: grid; gap: 8px; }
+    .tower-alert {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      background: #0b1220;
+    }
+    .tower-alert.danger {
+      border-color: rgba(239,68,68,.45);
+      background: rgba(127,29,29,.28);
+    }
+    .tower-alert .ico { font-size: 18px; font-weight: 900; }
+    .tower-alert .txt { font-size: 13px; font-weight: 700; color: #e2e8f0; }
+    .tower-alert .num {
+      font-size: clamp(20px, 2.4vw, 32px);
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
     }
     .agenda-chart-stage {
       position: relative;
@@ -1241,16 +1330,83 @@
     }
     .agenda-table-wrap {
       flex: 0 0 auto;
-      max-height: 22%;
+      max-height: 28%;
       min-height: 0;
       overflow: auto;
       border: 1px solid #1e293b;
       border-radius: 14px;
       background: rgba(2,6,23,.55);
+      display: flex;
+      flex-direction: column;
     }
-    /* No vivo a pizza é o hero — tabela só na Gestão */
-    body.live-mode .agenda-table-wrap { display: none; }
+    .agenda-table-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid #1e293b;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #67e8f9;
+      flex-shrink: 0;
+    }
+    /* TV/vivo: torre de controle — KPIs + pizza + fila com números maiores */
+    body.live-mode .agenda-table-wrap {
+      display: flex;
+      max-height: none;
+      flex: 0 0 32%;
+    }
     body.live-mode .agenda-head h2 { display: none; }
+    body.live-mode .agenda-ribbon {
+      font-size: clamp(18px, 2.4vw, 28px);
+      padding: 14px 52px;
+    }
+    body.live-mode .agenda-kpi b {
+      font-size: clamp(28px, 3.6vw, 48px);
+    }
+    body.live-mode .agenda-kpi span {
+      font-size: 11px;
+    }
+    body.live-mode .agenda-kpi small {
+      font-size: 11px;
+    }
+    body.live-mode .agenda-pizza {
+      width: min(100%, 1100px);
+    }
+    body.live-mode .agenda-pizza .callout-pct { font-size: 42px; }
+    body.live-mode .agenda-pizza .callout-lab { font-size: 16px; }
+    body.live-mode .agenda-pizza .callout-count { font-size: 14px; }
+    body.live-mode .agenda-table-wrap table { font-size: 16px; }
+    body.live-mode .agenda-table-wrap th {
+      font-size: 12px;
+      padding: 12px 12px;
+    }
+    body.live-mode .agenda-table-wrap td {
+      padding: 12px 12px;
+      font-size: 16px;
+    }
+    body.tv-mode.live-mode .agenda-kpi b {
+      font-size: clamp(36px, 4.8vmin, 64px);
+    }
+    body.tv-mode.live-mode .agenda-kpi span {
+      font-size: clamp(11px, 1.3vmin, 15px);
+    }
+    body.tv-mode.live-mode .tower-bar .val,
+    body.tv-mode.live-mode .tower-alert .num {
+      font-size: clamp(26px, 3.4vmin, 44px);
+    }
+    body.tv-mode.live-mode .agenda-table-wrap table,
+    body.tv-mode.live-mode .agenda-table-wrap td {
+      font-size: clamp(16px, 2vmin, 24px);
+    }
+    body.tv-mode.live-mode .agenda-pizza .callout-pct { font-size: 52px; }
+    @media (max-width: 980px) {
+      body.live-mode .agenda-hero {
+        grid-template-columns: 1fr;
+      }
+      body.live-mode .agenda-tower-side { max-height: 160px; }
+    }
     @keyframes sirenBlink {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.35; }
@@ -1284,6 +1440,12 @@
     .agenda-table-wrap .sit-em_rota { color: var(--com); font-weight: 800; }
     .agenda-table-wrap .sit-parado { color: var(--cad); font-weight: 800; }
     .agenda-table-wrap .sit-concluido { color: var(--col); font-weight: 800; }
+    .agenda-table-wrap .hora {
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      font-size: 1.1em;
+      color: #fff;
+    }
     .swap-dot {
       display: inline-flex;
       gap: 6px;
@@ -1534,7 +1696,32 @@
           <div class="agenda-kpi">
             <span>Agendamentos</span>
             <b id="kpiTotal">0</b>
-            <small>CTRC no mês</small>
+            <small id="kpiTotalSub">CTRC no mês</small>
+          </div>
+          <div class="agenda-kpi k-rota">
+            <span>Em rota</span>
+            <b id="kpiRota">0</b>
+            <small id="kpiRotaSub">saída p/ entrega</small>
+          </div>
+          <div class="agenda-kpi k-arm">
+            <span>No armazém</span>
+            <b id="kpiArm">0</b>
+            <small id="kpiArmSub">parado · 0 kg</small>
+          </div>
+          <div class="agenda-kpi k-ok">
+            <span>Realizado</span>
+            <b id="kpiReal">0</b>
+            <small id="kpiRealSub">0 kg · R$ 0</small>
+          </div>
+          <div class="agenda-kpi k-alerta">
+            <span>Sem saída</span>
+            <b id="kpiAlerta">0</b>
+            <small>agendado hoje / alerta</small>
+          </div>
+          <div class="agenda-kpi k-amanha">
+            <span>Amanhã</span>
+            <b id="kpiAmanha">0</b>
+            <small id="kpiAmanhaSub">agendados</small>
           </div>
           <div class="agenda-kpi k-peso">
             <span>Peso</span>
@@ -1546,21 +1733,6 @@
             <b id="kpiFrete">0</b>
             <small>R$ no mês</small>
           </div>
-          <div class="agenda-kpi k-ok">
-            <span>Realizado</span>
-            <b id="kpiReal">0</b>
-            <small id="kpiRealSub">0 kg · R$ 0</small>
-          </div>
-          <div class="agenda-kpi k-arm">
-            <span>No armazém</span>
-            <b id="kpiArm">0</b>
-            <small id="kpiArmSub">parado · 0 kg</small>
-          </div>
-          <div class="agenda-kpi k-amanha">
-            <span>Amanhã</span>
-            <b id="kpiAmanha">0</b>
-            <small id="kpiAmanhaSub">agendados</small>
-          </div>
         </div>
 
         <div class="agenda-hero">
@@ -1570,6 +1742,12 @@
               <svg id="agendaPizza" class="agenda-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de agendamentos"></svg>
             </div>
           </div>
+          <aside class="agenda-tower-side" aria-label="Status e alertas">
+            <div class="tower-side-title">Status dos agendamentos</div>
+            <div class="tower-bars" id="agendaStatusBars"></div>
+            <div class="tower-side-title">Alertas</div>
+            <div class="tower-alerts" id="agendaTowerAlerts"></div>
+          </aside>
           <div class="agenda-alert-chip" id="agendaAlertChip" hidden>
             <span>⚠ Sem saída hoje</span>
             <b id="agAlert">0</b>
@@ -1585,11 +1763,15 @@
 
         <div class="agenda-alerts" id="agendaAlerts"></div>
         <div class="agenda-table-wrap">
+          <div class="agenda-table-head">
+            <strong>Fila de agendamentos</strong>
+            <span class="muted" id="agendaFilaMeta">prioridade TV</span>
+          </div>
           <table>
             <thead>
               <tr>
-                <th>CTRC</th><th>Remetente</th><th>Destinatário</th>
-                <th>Peso</th><th>Frete</th><th>Agendado</th><th>Para</th><th>Status</th>
+                <th>Hora</th><th>CTRC</th><th>Destinatário</th>
+                <th>Destino</th><th>Peso</th><th>Frete</th><th>Status</th>
               </tr>
             </thead>
             <tbody id="agendaBody"></tbody>
@@ -2969,6 +3151,48 @@
       svg.innerHTML = depths.join('') + slices.join('') + callouts.join('');
     }
 
+    function extractHora225(raw) {
+      const t = String(raw || '').trim();
+      const m = t.match(/(\d{1,2}:\d{2})/);
+      return m ? m[1] : (t || '—');
+    }
+
+    function renderAgendaTowerSide(rota, parado, ok, alerta, total) {
+      const bars = document.getElementById('agendaStatusBars');
+      const alerts = document.getElementById('agendaTowerAlerts');
+      if (!bars || !alerts) return;
+      const tot = Math.max(1, Number(total) || 0);
+      const items = [
+        { cls: 's-rota', lbl: 'Em rota', val: rota },
+        { cls: 's-par', lbl: 'No armazém', val: parado },
+        { cls: 's-ok', lbl: 'Realizado', val: ok },
+        { cls: 's-alert', lbl: 'Sem saída', val: alerta },
+      ];
+      bars.innerHTML = items.map((it) => {
+        const pct = Math.min(100, Math.round((Number(it.val) / tot) * 100));
+        return `<div class="tower-bar ${it.cls}">
+          <div class="lbl">${it.lbl}</div>
+          <div class="val">${it.val}</div>
+          <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+
+      const chips = [];
+      if (alerta > 0) {
+        chips.push(`<div class="tower-alert danger"><span class="ico">⚠</span><span class="txt">Agendamento sem saída (hoje)</span><span class="num">${alerta}</span></div>`);
+      }
+      if (parado > 0) {
+        chips.push(`<div class="tower-alert"><span class="ico">■</span><span class="txt">No armazém / parado</span><span class="num">${parado}</span></div>`);
+      }
+      if (rota > 0) {
+        chips.push(`<div class="tower-alert"><span class="ico">➔</span><span class="txt">Em rota</span><span class="num">${rota}</span></div>`);
+      }
+      if (!chips.length) {
+        chips.push(`<div class="tower-alert"><span class="ico">✓</span><span class="txt">Sem alertas no momento</span><span class="num">0</span></div>`);
+      }
+      alerts.innerHTML = chips.join('');
+    }
+
     function renderAgendamento() {
       const periodoEl = document.getElementById('agendaPeriodo');
       const tituloEl = document.getElementById('agendaTitulo');
@@ -2988,7 +3212,7 @@
       const rota = Number(RESUMO_225.em_rota) || 0;
       const parado = Number(RESUMO_225.parado) || 0;
       const ok = Number(RESUMO_225.concluido) || 0;
-      const alerta = Number(RESUMO_225.alerta) || 0;
+      const alerta = Number(RESUMO_225.alerta) || listAlertaSemSaida().length || 0;
       const realizado = Number(RESUMO_225.realizado ?? ok) || 0;
       const armazem = Number(RESUMO_225.armazem ?? parado) || 0;
       const amanhaN = Number(RESUMO_225.amanha) || 0;
@@ -3004,38 +3228,67 @@
       set('agParPct', pct(parado));
       set('agOkPct', pct(ok));
       set('kpiTotal', total);
+      set('kpiTotalSub', total ? `${pct(total)} do mês` : 'CTRC no mês');
+      set('kpiRota', rota);
+      set('kpiRotaSub', total ? `${pct(rota)} do mês` : 'saída p/ entrega');
       set('kpiPeso', RESUMO_225.peso_total || '0,00');
       set('kpiFrete', RESUMO_225.frete_total || '0,00');
       set('kpiReal', realizado);
       set('kpiRealSub', `${RESUMO_225.peso_realizado || '0,00'} kg · R$ ${RESUMO_225.frete_realizado || '0,00'}`);
       set('kpiArm', armazem);
       set('kpiArmSub', `${RESUMO_225.peso_armazem || '0,00'} kg · R$ ${RESUMO_225.frete_armazem || '0,00'}`);
+      set('kpiAlerta', alerta);
       set('kpiAmanha', amanhaN);
       set('kpiAmanhaSub', amanhaN
         ? `${RESUMO_225.peso_amanha || '0,00'} kg · R$ ${RESUMO_225.frete_amanha || '0,00'}`
         : 'nenhum agendado');
 
+      const chip = document.getElementById('agendaAlertChip');
+      if (chip) {
+        chip.hidden = !(alerta > 0);
+        chip.classList.toggle('is-on', alerta > 0);
+      }
+
       renderAgendaPizza(rota, parado, ok);
+      renderAgendaTowerSide(rota, armazem, realizado, alerta, total);
       updateAlertaSemSaidaLock();
 
       const body = document.getElementById('agendaBody');
+      const filaMeta = document.getElementById('agendaFilaMeta');
       if (!body) return;
       if (!AGENDAMENTOS_225.length) {
-        body.innerHTML = '<tr><td colspan="8" class="muted">Sem agendamentos no mês.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="muted">Sem agendamentos no mês.</td></tr>';
+        if (filaMeta) filaMeta.textContent = 'sem dados';
         return;
       }
-      body.innerHTML = AGENDAMENTOS_225.map(r => {
+
+      const rank = { alerta: 0, em_rota: 1, parado: 2, concluido: 3 };
+      const rows = [...AGENDAMENTOS_225].sort((a, b) => {
+        const aa = String(a.alerta_sem_saida || '') === '1' ? 0 : (rank[String(a.status_ace || 'parado').toLowerCase()] ?? 9);
+        const bb = String(b.alerta_sem_saida || '') === '1' ? 0 : (rank[String(b.status_ace || 'parado').toLowerCase()] ?? 9);
+        if (aa !== bb) return aa - bb;
+        return String(a.agendado_para || '').localeCompare(String(b.agendado_para || ''));
+      });
+      const liveMode = document.body.classList.contains('live-mode');
+      const shown = liveMode ? rows.slice(0, 14) : rows;
+      if (filaMeta) {
+        filaMeta.textContent = liveMode
+          ? `${shown.length} de ${rows.length} · alerta → rota → armazém`
+          : `${rows.length} linhas`;
+      }
+
+      body.innerHTML = shown.map(r => {
         const st = String(r.status_ace || 'parado').toLowerCase();
         const isAlert = String(r.alerta_sem_saida || '') === '1';
+        const hora = extractHora225(r.agendado_para || r.agendado_para_data || '');
         return `<tr class="${isAlert ? 'is-alert' : ''}">
+          <td class="hora">${esc(hora)}</td>
           <td><strong>${esc(r.ctrc || '')}</strong></td>
-          <td>${esc(r.remetente || '')}</td>
-          <td>${esc(r.destinatario || '')}<div class="muted" style="font-size:11px">${esc(r.destino || '')}</div></td>
+          <td>${esc(r.destinatario || r.remetente || '')}</td>
+          <td>${esc(r.destino || '')}</td>
           <td>${esc(r.peso || '')}</td>
           <td>${esc(r.frete || '')}</td>
-          <td>${esc(r.agendado_em || '')}</td>
-          <td>${esc(r.agendado_para || r.agendado_para_data || '')}</td>
-          <td class="sit-${esc(st)}">${esc(labelStatus225(st))}</td>
+          <td class="sit-${esc(st)}">${esc(isAlert ? 'SEM SAÍDA' : labelStatus225(st))}</td>
         </tr>`;
       }).join('');
     }
