@@ -2211,7 +2211,7 @@
             <thead>
               <tr>
                 <th>Status</th>
-                <th>Sigla</th>
+                <th>Origem</th>
                 <th>Cavalo</th>
                 <th>Carreta</th>
                 <th class="right">Peso veic.</th>
@@ -2757,6 +2757,24 @@
 
     const ARM_STATUS_RANK = { atrasado: 0, descarregando: 1, chegou: 2, aguardando: 3, finalizado: 4 };
 
+    /** Sigla filial → cidade (mesma base do ACE / siglas_filiais.py) */
+    const SIGLAS_FILIAIS = {
+      DCX: 'RIO DE JANEIRO', PPY: 'POUSO ALEGRE', GNN: 'GOIANIA', ATM: 'ALTAMIRA',
+      GIR: 'GOIANIA', ATR: 'ALTAMIRA', GYN: 'GOIANIA', BSB: 'BRASILIA',
+      GYL: 'GOIANIA', APL: 'ANAPOLIS', SPO: 'GUARULHOS', APS: 'ANAPOLIS',
+      VIX: 'SERRA', SNN: 'GUARULHOS', STM: 'SANTAREM', STR: 'SANTAREM',
+      BNU: 'ITAJAI', SPL: 'GUARULHOS', VIT: 'SERRA',
+    };
+
+    function labelOrigemArm(raw) {
+      const s = String(raw || '').trim().toUpperCase();
+      if (!s) return '—';
+      if (SIGLAS_FILIAIS[s]) return SIGLAS_FILIAIS[s];
+      // já veio cidade da planilha/parser
+      if (s.length > 3) return s;
+      return s;
+    }
+
     async function chamarPlanilhaArmazem(action) {
       // Mesma URL/planilha da distribuição — actions dedicadas 078
       return chamarPlanilha(action);
@@ -2804,7 +2822,8 @@
         let slot = map.get(key);
         if (!slot) {
           slot = {
-            origem: r.origem,
+            origem: labelOrigemArm(r.origem_sigla || r.origem),
+            origem_sigla: r.origem_sigla || r.origem,
             cavalo: r.cavalo,
             carreta: r.carreta,
             peso_veiculo: r.peso_veiculo || r.peso,

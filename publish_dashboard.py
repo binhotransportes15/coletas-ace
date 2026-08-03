@@ -110,7 +110,7 @@ def _copy_armazem_to_dashboard() -> dict[str, str]:
                 )
             else:
                 dest.write_text(
-                    "origem,cavalo,carreta,manifesto,peso,peso_num,saida,prev_chegada,"
+                    "origem,origem_sigla,cavalo,carreta,manifesto,peso,peso_num,saida,prev_chegada,"
                     "chegada,inicio_descarga,final_descarga,status,atrasado,"
                     "tempo_descarga_min,tempo_descarga,peso_veiculo\n",
                     encoding="utf-8-sig",

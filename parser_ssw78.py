@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from config import CACHE_DIR, ensure_dirs
+from siglas_filiais import label_origem, normalizar_sigla
 
 VEICULOS_CSV = CACHE_DIR / "veiculos_78.csv"
 RESUMO_CSV = CACHE_DIR / "resumo_78.csv"
@@ -16,6 +17,7 @@ RAW_TXT = CACHE_DIR / "raw_78.txt"
 
 VEICULO_FIELDS = [
     "origem",
+    "origem_sigla",
     "cavalo",
     "carreta",
     "manifesto",
@@ -143,6 +145,7 @@ def mapear_status(
 @dataclass
 class Linha78:
     origem: str = ""
+    origem_sigla: str = ""
     cavalo: str = ""
     carreta: str = ""
     manifesto: str = ""
@@ -196,9 +199,11 @@ def parse_table_rows(rows: list[list[str]], *, agora: datetime | None = None) ->
         tempo_txt = _fmt_duracao(mins)
         if em_andamento and tempo_txt:
             tempo_txt = f"{tempo_txt} (andamento)"
+        sigla = normalizar_sigla(origem)
         out.append(
             Linha78(
-                origem=origem.upper(),
+                origem=label_origem(sigla),
+                origem_sigla=sigla,
                 cavalo=cavalo.upper(),
                 carreta=carreta.upper(),
                 manifesto=manifesto,
@@ -311,6 +316,7 @@ def analyze_78(
                 "cavalo": i.cavalo,
                 "carreta": i.carreta,
                 "origem": i.origem,
+                "origem_sigla": i.origem_sigla,
                 "peso": 0.0,
                 "manifestos": 0,
                 "status": i.status,
@@ -325,6 +331,7 @@ def analyze_78(
         if rank.get(i.status, 9) < rank.get(slot["status"], 9):
             slot["status"] = i.status
             slot["origem"] = i.origem
+            slot["origem_sigla"] = i.origem_sigla
             slot["chegada"] = i.chegada
             slot["prev_chegada"] = i.prev_chegada
             slot["tempo_descarga"] = i.tempo_descarga
@@ -341,6 +348,7 @@ def analyze_78(
     for i in items:
         linha_rows.append({
             "origem": i.origem,
+            "origem_sigla": i.origem_sigla,
             "cavalo": i.cavalo,
             "carreta": i.carreta,
             "manifesto": i.manifesto,
