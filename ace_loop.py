@@ -70,6 +70,11 @@ def _banner(interval_sec: int, headless: bool) -> None:
         f"({format_duration_long(interval_sec)}) | headless={headless}",
         flush=True,
     )
+    print(
+        f"  Armazém 078: {'ON no ciclo' if load_settings().armazem_in_loop else 'OFF'} "
+        f"| sheets={'ON' if load_settings().armazem_enable_sheets else 'OFF'}",
+        flush=True,
+    )
     print(f"  Config:      {CONFIG_PATH}", flush=True)
     print("  Parar:       Ctrl+C", flush=True)
     print("=" * 72, flush=True)

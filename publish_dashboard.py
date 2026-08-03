@@ -14,6 +14,7 @@ from parser_ssw0157 import COLETAS_CSV, RESUMO_CSV
 from parser_ssw103 import COLETAS_103_CSV, RESUMO_103_CSV
 from parser_ssw0146 import ENTREGAS_36_CSV, ROMANEIOS_36_CSV, RESUMO_36_CSV
 from parser_ssw225 import AGENDAMENTOS_225_CSV, RESUMO_225_CSV, ALERTAS_225_CSV
+from parser_ssw78 import RESUMO_CSV as RESUMO_78_CSV, VEICULOS_CSV as VEICULOS_78_CSV
 
 StatusCallback = Callable[[str], None]
 
@@ -83,7 +84,46 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
     (data_dir / "meta.json").write_text(
         json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"
     )
+    paths.update(_copy_armazem_to_dashboard())
     return paths
+
+
+def _copy_armazem_to_dashboard() -> dict[str, str]:
+    """Copia CSVs 078 para dashboard/data/armazem/ (fallback local do hub)."""
+    data_dir = DASHBOARD_DIR / "data" / "armazem"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    out: dict[str, str] = {}
+    for src, name in (
+        (VEICULOS_78_CSV, "veiculos_78.csv"),
+        (RESUMO_78_CSV, "resumo_78.csv"),
+    ):
+        dest = data_dir / name
+        if src.exists():
+            shutil.copy2(src, dest)
+            out[f"armazem/{name}"] = str(dest)
+        elif not dest.exists():
+            if name == "resumo_78.csv":
+                dest.write_text(
+                    "atualizado,total_linhas,total_veiculos,peso_total,"
+                    "finalizado,descarregando,atrasado,aguardando,chegou\n",
+                    encoding="utf-8-sig",
+                )
+            else:
+                dest.write_text(
+                    "origem,cavalo,carreta,manifesto,peso,peso_num,saida,prev_chegada,"
+                    "chegada,inicio_descarga,final_descarga,status,atrasado,"
+                    "tempo_descarga_min,tempo_descarga,peso_veiculo\n",
+                    encoding="utf-8-sig",
+                )
+            out[f"armazem/{name}"] = str(dest)
+    return out
+
+
+def publish_armazem_local(*, on_status: StatusCallback | None = None) -> dict[str, Any]:
+    status = on_status or _noop
+    paths = _copy_armazem_to_dashboard()
+    status(f"Dashboard Armazém local: {len(paths)} arquivo(s).")
+    return {"ok": True, "local": paths}
 
 
 def ensure_dashboard_files() -> None:

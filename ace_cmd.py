@@ -64,6 +64,12 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "github_repo": ("cloud", "str", False),
     "github_branch": ("cloud", "str", False),
     "github_token_env": ("cloud", "str", False),
+    # Armazém 078 (planilha separada)
+    "armazem_enable_sheets": ("armazem", "bool", False),
+    "armazem_apps_script_url": ("armazem", "str", False),
+    "armazem_apps_script_token": ("armazem", "str", True),
+    "armazem_in_loop": ("armazem", "bool", False),
+    "headless": ("auto", "bool", False),
 }
 
 BOOL_TRUE = {"1", "true", "t", "yes", "y", "sim", "s", "on", "ligado"}
@@ -123,6 +129,13 @@ def _save_payload(payload: dict[str, Any]) -> None:
         github_repo=str(payload.get("github_repo") or ""),
         github_branch=str(payload.get("github_branch") or "main"),
         github_token_env=str(payload.get("github_token_env") or "GH_TOKEN"),
+        armazem_enable_sheets=bool(payload.get("armazem_enable_sheets", False)),
+        armazem_apps_script_url=str(payload.get("armazem_apps_script_url") or ""),
+        armazem_apps_script_token=str(
+            payload.get("armazem_apps_script_token") or "armazem-ace"
+        ),
+        armazem_in_loop=bool(payload.get("armazem_in_loop", True)),
+        headless=bool(payload.get("headless", True)),
     )
     save_all(creds, settings)
 
@@ -173,7 +186,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
         print(f"    {'(intervalo)':<22} {format_duration_long(sec)}")
     except Exception:
         pass
-    print("  [SHEETS / DASHBOARD]")
+    print("  [SHEETS / DASHBOARD · DISTRIBUIÇÃO]")
     for key in (
         "enable_sheets",
         "apps_script_url",
@@ -193,17 +206,36 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
             if key == "apps_script_url" and len(shown) > 48:
                 shown = shown[:45] + "..."
         print(f"    {key:<22} {shown}")
+    print("  [ARMAZÉM · 078]")
+    for key in (
+        "armazem_enable_sheets",
+        "armazem_apps_script_url",
+        "armazem_apps_script_token",
+        "armazem_in_loop",
+        "headless",
+    ):
+        _, typ, secret = EDITABLE[key]
+        val = payload.get(key, "")
+        if typ == "bool":
+            shown = str(bool(val)).lower()
+        else:
+            shown = _mask(str(val), secret)
+            if "url" in key and len(shown) > 48:
+                shown = shown[:45] + "..."
+        print(f"    {key:<28} {shown}")
     print("-" * 72)
     print("  ACOES RAPIDAS")
     print("    1 / 50      Baixar+analisar relatorio 50 (situacoes)")
     print("    2 / 103     Baixar+analisar relatorio 103 (tempo real)")
-    print("    3 / sync    Sobe 50+103 para Sheets")
+    print("    3 / sync    Sobe 50+103+36+225 para Sheets Distribuição")
     print("    4 / dash    Atualiza arquivos do dashboard local")
     print("    5 / gui     Abre o ACE grafico (app.py)")
     print("    6 / show    Mostra config completa (senha mascarada)")
-    print("    7 /automatica  Loop auto (intervalo = loop_intervalo) ate fechar")
+    print("    7 /automatica  Loop auto (50+103+36+225 + 078 se armazem_in_loop)")
     print("    8 /status      Mostra alteracoes locais (git)")
     print("    9 /push        Commit + sobe TUDO pro GitHub (Pages)")
+    print("    78 /armazem    Captura tela 078 (Armazém) agora")
+    print("    sync78         Sobe cache 078 → Sheets Armazém")
     print("    /pull          Baixa alteracoes do GitHub")
     print("    /e             Lista campos editaveis")
     print("    /e intervalo 5m   Define tempo do /automatica (30s|5m|1h|2d)")
@@ -217,13 +249,14 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
 def cmd_help() -> str:
     keys = ", ".join(sorted(EDITABLE.keys()))
     return (
-        "Comandos: /e | 50 | 103 | sync | dash | gui | /automatica | "
-        "/status | /push | /pull | show | help | sair\n"
+        "Comandos: /e | 50 | 103 | 36 | 225 | 78 | sync | sync78 | dash | gui | "
+        "/automatica | /status | /push | /pull | show | help | sair\n"
         f"  Campos: {keys}\n"
         "  Bool: true/false | sim/nao | 1/0\n"
         "  periodo_modo: diario | sexta\n"
         "  loop_intervalo: 30s | 5m | 1h | 2d  (min 5s, max 30d)\n"
         "    /e intervalo 30s\n"
+        "  Armazém: /e armazem_in_loop true | /e armazem_enable_sheets true\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
 
@@ -256,6 +289,10 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "interval": "loop_intervalo",
         "tempo": "loop_intervalo",
         "loop": "loop_intervalo",
+        "script_armazem": "armazem_apps_script_url",
+        "token_armazem": "armazem_apps_script_token",
+        "sheets_armazem": "armazem_enable_sheets",
+        "armazem_loop": "armazem_in_loop",
     }
     key = aliases.get(key, key)
     if key not in EDITABLE:
@@ -377,6 +414,34 @@ def run_pipeline_225() -> str:
     )
 
 
+def run_pipeline_78_cmd() -> str:
+    from pipeline import run_pipeline_78
+
+    def on_status(msg: str) -> None:
+        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
+
+    print("\n=== Pipeline 078 (Armazém) ===")
+    result = run_pipeline_78(on_status=on_status, headless=False)
+    return (
+        f"078 OK · linhas={result.get('total_linhas')} "
+        f"veículos={result.get('total_veiculos')} "
+        f"sheets={(result.get('sheets') or {}).get('ok')}"
+    )
+
+
+def run_sync_78() -> str:
+    from sheets_sync_78 import sync_sheets_78
+
+    def on_status(msg: str) -> None:
+        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
+
+    print("\n=== Sync Sheets Armazém 078 ===")
+    r = sync_sheets_78(on_status=on_status)
+    if r.get("ok"):
+        return f"sync78 OK · veiculos={r.get('veiculos')} resumo={r.get('resumo')}"
+    return f"sync78: {r.get('error') or r.get('reason') or r}"
+
+
 def run_sync() -> str:
     from sheets_sync import (
         sync_google_sheets,
@@ -438,10 +503,12 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
     print("  103 = data LIMITE HOJE (L)")
     print("  36  = entregas (se habilitado)")
     print("  225 = agendamentos do MES (1→ultimo dia) · arquivo R")
+    print("  078 = Armazém (se armazem_in_loop=true)")
     print(f"  Ciclo a cada {format_duration_long(sec)}: baixar + analisar + Sheets/dashboard")
-    print("  50+103 em paralelo; 36 e 225 em sequencia.")
+    print("  50+103 em paralelo; 36, 225 e 078 em sequencia.")
     print("  Virada de dia/mes recalcula sozinho (225 segue o mes corrente).")
     print("  Altere com: /e intervalo 30s | 5m | 1h | 2d")
+    print("  Ligar/desligar 078 no loop: /e armazem_in_loop true|false")
     if return_to_menu:
         print("  Ctrl+C volta ao menu. Fechar a janela encerra.")
     else:
@@ -543,9 +610,15 @@ def main(argv: list[str] | None = None) -> int:
     if args and _is_pull_token(args[0]):
         print(run_git_pull())
         return 0
+    if args and args[0].lstrip("/").lower() in {"78", "armazem", "once78"}:
+        print(run_pipeline_78_cmd())
+        return 0
+    if args and args[0].lstrip("/").lower() in {"sync78", "sheets78"}:
+        print(run_sync_78())
+        return 0
 
     payload = _load_payload()
-    message = "Pronto. /push sobe alteracoes | /automatica roda sozinho | /e edita."
+    message = "Pronto. /push sobe Pages | /automatica | 78=Armazém | /e edita."
     draw_menu(payload, message=message)
 
     while True:
@@ -585,6 +658,11 @@ def main(argv: list[str] | None = None) -> int:
             elif cmd in {"225", "/225", "agenda", "/agenda", "agendamento"}:
                 message = run_pipeline_225()
                 payload = _load_payload()
+            elif cmd in {"78", "/78", "armazem", "/armazem"}:
+                message = run_pipeline_78_cmd()
+                payload = _load_payload()
+            elif cmd in {"sync78", "/sync78", "sheets78"}:
+                message = run_sync_78()
             elif cmd in {"3", "sync", "/sync"}:
                 message = run_sync()
             elif cmd in {"4", "dash", "/dash", "dashboard"}:

@@ -697,11 +697,26 @@ def run_dual_cycle(
             sheets225 = sync_google_sheets_225(cfg, on_status=emit)
         dash = publish_dashboard(cfg, on_status=emit)
 
-    if errors and not result_50 and not result_103 and not result_36 and not result_225:
+    result_78: dict[str, Any] = {}
+    if getattr(cfg, "armazem_in_loop", False):
+        emit("078 / Armazém sequencial após distribuição...")
+        try:
+            result_78 = run_pipeline_78(
+                credentials=creds,
+                settings=cfg,
+                headless=headless,
+                on_status=lambda m: emit(f"[78] {m}"),
+            )
+            emit("078 concluido.")
+        except Exception as err:  # noqa: BLE001
+            errors["78"] = str(err)
+            emit(f"078 FALHOU: {err}")
+
+    if errors and not result_50 and not result_103 and not result_36 and not result_225 and not result_78:
         raise RuntimeError("; ".join(f"{k}: {v}" for k, v in errors.items()))
 
     return {
-        "ok": not errors or bool(result_50 or result_103 or result_36 or result_225),
+        "ok": not errors or bool(result_50 or result_103 or result_36 or result_225 or result_78),
         "errors": errors,
         "period_50": format_period(ini50, fim50),
         "period_103": format_period(ini103, fim103),
@@ -711,9 +726,49 @@ def run_dual_cycle(
         "103": result_103,
         "36": result_36,
         "225": result_225,
+        "78": result_78,
         "sheets_50": sheets50,
         "sheets_103": sheets103,
         "sheets_36": sheets36,
         "sheets_225": sheets225,
         "dashboard": dash,
     }
+
+
+def run_pipeline_78(
+    *,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    headless: bool | None = None,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    """Captura SSW 078 + CSV local + Sheets Armazém (planilha isolada). Sem push GitHub."""
+    status = on_status or _noop
+    ensure_dirs()
+    creds = credentials or load_credentials()
+    cfg = settings or load_settings()
+    from parser_ssw78 import analyze_78
+    from publish_dashboard import publish_armazem_local
+    from sheets_sync_78 import sync_sheets_78
+    from ssw_78 import capture_ssw78
+
+    status(f"ACE ARMAZÉM · 78 | {datetime.now():%d/%m %H:%M:%S}")
+    use_headless = cfg.headless if headless is None else headless
+    capture = capture_ssw78(
+        credentials=creds,
+        headless=use_headless,
+        on_status=status,
+    )
+    analysis = analyze_78(
+        capture.get("table_rows") or None,
+        body_text=str(capture.get("body_text") or ""),
+        html=str(capture.get("html") or ""),
+    )
+    pub = publish_armazem_local(on_status=status)
+    sheets = sync_sheets_78(cfg, on_status=status)
+    status(
+        f"OK · linhas={analysis.get('total_linhas')} "
+        f"veículos={analysis.get('total_veiculos')} "
+        f"peso={analysis.get('peso_total'):,.0f}".replace(",", ".")
+    )
+    return {"capture": capture, "publish": pub, "sheets": sheets, **analysis}
