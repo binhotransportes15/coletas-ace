@@ -1,11 +1,9 @@
 """
 Layout das 6 TVs (grade 2×3).
 
-Modelo:
-  - Cada retângulo = TV física (slot 1..6), link #tv/slot/N
-  - Setor da TV = o que ela mostra (Distribuição, Armazém, …) — o “hub” É o setor
-  - Espelhar parede = só nas TVs que JÁ estão no mesmo setor; liga mosaico 2×3
-    (cada TV = um pedaço) sem mudar setor das outras TVs
+Normal: cada TV da grade tem seu setor (Armazém, Contratação, …) — como na parede física.
+Modo parede: TODAS viram pedaços de UM setor escolhido (uma tela só).
+Voltar ao normal: cada TV volta ao setor da grade (sem perder a seleção).
 """
 from __future__ import annotations
 
@@ -37,28 +35,28 @@ SECTOR_LABELS = {
 }
 
 
-def _slot(sid: int, row: int, col: int) -> dict[str, Any]:
+def _slot(sid: int, row: int, col: int, sector: str = "distribuicao") -> dict[str, Any]:
     return {
         "id": sid,
         "row": row,
         "col": col,
-        "sector": "distribuicao",
-        "mode": "rotate",
+        "sector": sector,
+        "mode": "rotate" if sector == "distribuicao" else "fixed",
         "view": "coleta",
-        "mosaic": False,
         "showLogo": None,
         "margins": None,
     }
 
 
 def default_layout() -> dict[str, Any]:
+    # Grade padrão espelhando a parede física (exemplo do usuário)
     slots = [
-        _slot(1, 0, 0),
-        _slot(2, 0, 1),
-        _slot(3, 0, 2),
-        _slot(4, 1, 0),
-        _slot(5, 1, 1),
-        _slot(6, 1, 2),
+        _slot(1, 0, 0, "armazem"),
+        _slot(2, 0, 1, "contratacao"),
+        _slot(3, 0, 2, "pendencia"),
+        _slot(4, 1, 0, "emissao"),
+        _slot(5, 1, 1, "distribuicao"),
+        _slot(6, 1, 2, "rastreamento"),
     ]
     return {
         "version": 1,
@@ -67,10 +65,11 @@ def default_layout() -> dict[str, Any]:
         "cols": 3,
         "syncSwap": True,
         "swapMs": 15000,
-        "painelUnico": False,
+        "wallMode": False,
+        "wallSector": "distribuicao",
         "sectorDefaults": {
             sid: {
-                "showLogo": sid == "distribuicao",
+                "showLogo": True,
                 "margins": "none" if sid == "distribuicao" else "normal",
             }
             for sid in SECTOR_IDS
@@ -84,20 +83,15 @@ def _migrate_legacy_slot(s: dict[str, Any], template: dict[str, Any]) -> dict[st
     mode = str(s.get("mode") or "rotate").lower()
     view = str(s.get("view") or "coleta").lower()
 
-    # legado: hub A/B/C ignorado — setor manda
     if sector in OPS_VIEWS:
         view = sector
         sector = "distribuicao"
         if mode not in ("rotate", "fixed"):
             mode = "fixed"
     if sector in ("dist", "ops", "operacao", "a", "b", "c"):
-        # hub letters were never sectors
-        if sector in ("a", "b", "c"):
-            sector = "distribuicao"
-        else:
-            sector = "distribuicao"
-    if sector not in SECTOR_IDS:
         sector = "distribuicao"
+    if sector not in SECTOR_IDS:
+        sector = str(template.get("sector") or "distribuicao")
     if mode not in ("rotate", "fixed"):
         mode = "rotate"
     if view not in OPS_VIEWS:
@@ -111,9 +105,6 @@ def _migrate_legacy_slot(s: dict[str, Any], template: dict[str, Any]) -> dict[st
     margins = s.get("margins", None)
     if margins is not None:
         margins = "none" if str(margins) == "none" else "normal"
-    mosaic = bool(s.get("mosaic", False))
-    if sector != "distribuicao":
-        mosaic = False
 
     return {
         "id": int(template["id"]),
@@ -122,7 +113,6 @@ def _migrate_legacy_slot(s: dict[str, Any], template: dict[str, Any]) -> dict[st
         "sector": sector,
         "mode": mode,
         "view": view,
-        "mosaic": mosaic,
         "showLogo": show,
         "margins": margins,
     }
@@ -141,10 +131,15 @@ def normalize_layout(raw: dict[str, Any] | None) -> dict[str, Any]:
         out["swapMs"] = max(5000, int(raw.get("swapMs") or 15000))
     except (TypeError, ValueError):
         out["swapMs"] = 15000
-    out["painelUnico"] = bool(raw.get("painelUnico", False))
+    out["wallMode"] = bool(raw.get("wallMode", raw.get("painelUnico", False)))
+    ws = str(raw.get("wallSector") or "distribuicao").lower()
+    if ws in OPS_VIEWS:
+        ws = "distribuicao"
+    if ws not in SECTOR_IDS:
+        ws = "distribuicao"
+    out["wallSector"] = ws
 
     defaults_in = raw.get("sectorDefaults") if isinstance(raw.get("sectorDefaults"), dict) else {}
-    # legado hubs → defaults do setor distribuicao (logo/margens)
     hubs_legacy = raw.get("hubs") if isinstance(raw.get("hubs"), dict) else {}
     if hubs_legacy and "distribuicao" not in defaults_in:
         ha = hubs_legacy.get("A") if isinstance(hubs_legacy.get("A"), dict) else {}
@@ -200,105 +195,97 @@ def save_layout(layout: dict[str, Any]) -> dict[str, Any]:
 
 
 def resolve_slot(layout: dict[str, Any], slot_id: int) -> dict[str, Any]:
+    """Resolve o que a TV deve mostrar agora (respeita modo parede)."""
     lay = normalize_layout(layout)
     slot = next((s for s in lay["slots"] if int(s["id"]) == int(slot_id)), lay["slots"][0])
-    defaults = (lay.get("sectorDefaults") or {}).get(slot["sector"]) or {
+    wall = bool(lay.get("wallMode"))
+    home_sector = slot["sector"]
+    sector = lay["wallSector"] if wall else home_sector
+    defaults = (lay.get("sectorDefaults") or {}).get(sector) or {
         "showLogo": True,
         "margins": "normal",
     }
-    show_logo = defaults["showLogo"] if slot["showLogo"] is None else bool(slot["showLogo"])
-    margins = defaults["margins"] if slot["margins"] is None else slot["margins"]
+    if wall:
+        show_logo = int(slot["row"]) == 0 and int(slot["col"]) == 0
+        margins = "none"
+        mosaic = True
+        mode = "rotate" if sector == "distribuicao" else "fixed"
+        view = "coleta"
+    else:
+        show_logo = defaults["showLogo"] if slot["showLogo"] is None else bool(slot["showLogo"])
+        margins = defaults["margins"] if slot["margins"] is None else slot["margins"]
+        mosaic = False
+        mode = slot["mode"] if sector == "distribuicao" else "fixed"
+        view = slot["view"] if sector == "distribuicao" else "coleta"
+
     return {
         "slotId": int(slot["id"]),
-        "sector": slot["sector"],
-        "mode": slot["mode"],
-        "view": slot["view"],
-        "mosaic": bool(slot.get("mosaic")),
+        "homeSector": home_sector,
+        "sector": sector,
+        "mode": mode,
+        "view": view,
+        "mosaic": mosaic,
+        "wallMode": wall,
         "row": int(slot.get("row") or 0),
         "col": int(slot.get("col") or 0),
         "showLogo": show_logo,
         "margins": margins,
-        "syncSwap": bool(lay["syncSwap"]),
+        "syncSwap": bool(lay["syncSwap"]) and wall and sector == "distribuicao",
         "swapMs": int(lay["swapMs"]),
-        "painelUnico": bool(lay["painelUnico"]),
         "layoutVersion": int(lay.get("version") or 1),
         "updatedAt": str(lay.get("updatedAt") or ""),
     }
 
 
+def wall_on(layout: dict[str, Any], sector: str) -> dict[str, Any]:
+    """Liga modo parede: grade (setores por TV) permanece; todas mostram pedaços do setor."""
+    out = normalize_layout(layout)
+    chosen = str(sector or "distribuicao").lower()
+    if chosen in OPS_VIEWS:
+        chosen = "distribuicao"
+    if chosen not in SECTOR_IDS:
+        chosen = "distribuicao"
+    out["wallMode"] = True
+    out["wallSector"] = chosen
+    out["syncSwap"] = chosen == "distribuicao"
+    sd = out.setdefault("sectorDefaults", {})
+    sd[chosen] = {"showLogo": True, "margins": "none"}
+    return out
+
+
+def wall_off(layout: dict[str, Any]) -> dict[str, Any]:
+    """Volta ao normal: cada TV com o setor da grade."""
+    out = normalize_layout(layout)
+    out["wallMode"] = False
+    return out
+
+
 def mirror_hub(
     layout: dict[str, Any],
-    source_hub: str | None = None,  # legado, ignorado
+    source_hub: str | None = None,
     source_slot_id: int | None = None,
+    sector: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Espelhar parede NESTE SETOR.
-
-    - Usa a TV selecionada como referência (setor + tela).
-    - Só altera TVs que JÁ têm o mesmo setor (não mexe em Armazém se a ref é Dist).
-    - Distribuição: liga mosaico 2×3; logo só no canto superior esquerdo do grupo;
-      copia mode/view para o grupo ficar igual; sync ligado.
-    """
-    out = normalize_layout(layout)
-    ref = None
-    if source_slot_id is not None:
-        ref = next(
-            (s for s in out["slots"] if int(s["id"]) == int(source_slot_id)),
-            None,
-        )
-    if ref is None:
-        ref = out["slots"][0]
-
-    sector = ref["sector"]
-    peers = [s for s in out["slots"] if s["sector"] == sector]
-    if not peers:
-        peers = [ref]
-
-    is_dist = sector == "distribuicao"
-    # canto “origem” do mosaico = menor row,col entre as TVs deste setor
-    origin = min(peers, key=lambda s: (int(s["row"]), int(s["col"])))
-
-    for s in out["slots"]:
-        if s["sector"] != sector:
-            continue  # outras TVs / outros setores intactos
-        s["mode"] = ref["mode"]
-        s["view"] = ref["view"]
-        if is_dist:
-            s["mosaic"] = True
-            s["margins"] = "none"
-            s["showLogo"] = (
-                int(s["row"]) == int(origin["row"]) and int(s["col"]) == int(origin["col"])
-            )
-        else:
-            s["mosaic"] = False
-            s["showLogo"] = None
-            s["margins"] = None
-
-    if is_dist:
-        out["syncSwap"] = True
-        out["painelUnico"] = True
-        sd = out.setdefault("sectorDefaults", {})
-        sd["distribuicao"] = {"showLogo": True, "margins": "none"}
-    return out
+    """Compat: Ativar parede = wall_on (não apaga setores da grade)."""
+    chosen = sector
+    if not chosen and source_slot_id is not None:
+        lay = normalize_layout(layout)
+        ref = next((s for s in lay["slots"] if int(s["id"]) == int(source_slot_id)), None)
+        if ref:
+            chosen = ref.get("sector")
+    return wall_on(layout, chosen or "distribuicao")
 
 
 def apply_painel_unico(
     layout: dict[str, Any],
-    logo_hub: str = "A",  # legado
+    logo_hub: str = "A",
+    sector: str = "distribuicao",
 ) -> dict[str, Any]:
-    """Atalho: parede Distribuição nas TVs que já estão em Distribuição."""
-    out = normalize_layout(layout)
-    ref = next((s for s in out["slots"] if s["sector"] == "distribuicao"), None)
-    if ref is None:
-        # nenhuma TV em Dist ainda → usa TV 1 e marca Dist
-        ref = out["slots"][0]
-        ref["sector"] = "distribuicao"
-        ref["mode"] = "rotate"
-        ref["view"] = "coleta"
-    return mirror_hub(out, source_slot_id=int(ref["id"]))
+    return wall_on(layout, sector)
 
 
-def push_layout_to_sheets(layout: dict[str, Any]) -> tuple[bool, str]:
+def push_layout_to_sheets(layout: dict[str, Any], *, retries: int = 3) -> tuple[bool, str]:
+    """Envia layout às TVs via Apps Script (Properties). Retry — Google costuma demorar."""
     try:
         from config import load_settings
 
@@ -307,23 +294,39 @@ def push_layout_to_sheets(layout: dict[str, Any]) -> tuple[bool, str]:
         token = (getattr(cfg, "apps_script_token", None) or "").strip()
         if not url or not getattr(cfg, "enable_sheets", False):
             return False, "planilha desligada"
+        import urllib.error
         import urllib.request
 
         body = json.dumps(
             {"action": "tv_layout_set", "token": token, "layout": normalize_layout(layout)},
             ensure_ascii=False,
         ).encode("utf-8")
-        req = urllib.request.Request(
-            url,
-            data=body,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=25) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
-        data = json.loads(raw) if raw else {}
-        if data.get("ok"):
-            return True, "ok"
-        return False, str(data.get("error") or "resposta sem ok")
+        last_err = "falha"
+        for attempt in range(max(1, retries)):
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=body,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=90) as resp:
+                    raw = resp.read().decode("utf-8", errors="replace")
+                data = json.loads(raw) if raw else {}
+                if data.get("ok"):
+                    return True, "ok"
+                last_err = str(data.get("error") or "resposta sem ok")
+                # Token/deploy errado: não adianta retry
+                if "autoriz" in last_err.lower() or "token" in last_err.lower():
+                    return False, last_err
+            except (TimeoutError, urllib.error.URLError, OSError) as err:
+                last_err = str(err)
+                if attempt + 1 < retries:
+                    time.sleep(1.5 * (attempt + 1))
+                    continue
+                return False, last_err
+            except Exception as err:  # noqa: BLE001
+                return False, str(err)
+        return False, last_err
     except Exception as err:  # noqa: BLE001
         return False, str(err)

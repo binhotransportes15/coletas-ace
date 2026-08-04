@@ -2117,7 +2117,8 @@
       <p class="kicker">PAREDE 2×3</p>
       <h2 id="tvSlotTitle">Qual TV é esta?</h2>
       <p style="color:#94a3b8;font-size:13px;margin:0 0 14px;line-height:1.45">
-        Escolha o retângulo desta tela. A configuração (hub, logo, margens) vem do CRT · aba TV.
+        Escolha a posição nesta parede (só uma vez). O link pode ser
+        <code>#tv/distribuicao</code> ou outro setor — a posição fica salva neste aparelho.
       </p>
       <div class="tv-slot-grid" id="tvSlotGrid">
         <button type="button" data-slot="1">TV 1</button>
@@ -3108,12 +3109,15 @@
         await ensureTvSlot();
         await loadTvLayout();
         applyTvChrome();
+        await applyTvSlotAfterRoute();
         if (isOpsSector(CURRENT_SECTOR)) setView('live');
         await enterFullscreen();
         await requestWakeLock();
         showTvHint();
         bumpTvIdle();
-        if (isOpsSector(CURRENT_SECTOR)) startSwapLoop();
+        if (isOpsSector(CURRENT_SECTOR) && !(TV_EFFECTIVE && TV_EFFECTIVE.mosaic && TV_EFFECTIVE.syncSwap)) {
+          startSwapLoop();
+        }
         if (syncHash) writeRouteHash({ tv: true });
       } else {
         await exitFullscreen();
@@ -3217,44 +3221,54 @@
       const slot = (lay.slots || []).find((s) => Number(s.id) === Number(slotId))
         || (lay.slots || [])[0]
         || { id: 1, sector: 'distribuicao', mode: 'rotate', view: 'coleta', row: 0, col: 0 };
-      const defaults = (lay.sectorDefaults && lay.sectorDefaults[slot.sector])
-        || (lay.hubs && lay.hubs.A)
+      const wall = !!lay.wallMode;
+      let homeSector = String(slot.sector || 'distribuicao').toLowerCase();
+      if (OPS_VIEWS.includes(homeSector)) homeSector = 'distribuicao';
+      let sector = wall
+        ? String(lay.wallSector || 'distribuicao').toLowerCase()
+        : homeSector;
+      if (OPS_VIEWS.includes(sector)) sector = 'distribuicao';
+      const defaults = (lay.sectorDefaults && lay.sectorDefaults[sector])
         || { showLogo: true, margins: 'normal' };
-      let sector = String(slot.sector || 'distribuicao').toLowerCase();
-      let mode = slot.mode === 'fixed' ? 'fixed' : 'rotate';
-      let view = String(slot.view || 'coleta').toLowerCase();
-      if (OPS_VIEWS.includes(sector)) {
-        view = sector;
-        sector = 'distribuicao';
-        if (mode !== 'rotate') mode = 'fixed';
+      let mode = 'fixed';
+      let view = 'coleta';
+      if (sector === 'distribuicao') {
+        if (wall) {
+          mode = 'rotate';
+          view = 'coleta';
+        } else {
+          mode = slot.mode === 'fixed' ? 'fixed' : 'rotate';
+          view = String(slot.view || 'coleta').toLowerCase();
+          if (!OPS_VIEWS.includes(view)) view = 'coleta';
+        }
       }
-      if (sector !== 'distribuicao') mode = 'fixed';
-      if (!OPS_VIEWS.includes(view)) view = 'coleta';
-      const mosaic = sector === 'distribuicao' && !!slot.mosaic;
+      const mosaic = wall;
       const row = Number(slot.row);
       const col = Number(slot.col);
       const idx = Number(slot.id) - 1;
       const cols = Number(lay.cols) || 3;
       const rows = Number(lay.rows) || 2;
+      const rowN = Number.isFinite(row) ? row : Math.floor(Math.max(0, idx) / cols);
+      const colN = Number.isFinite(col) ? col : (Math.max(0, idx) % cols);
       return {
         slotId: Number(slot.id),
+        homeSector,
         sector,
         mode,
         view,
         mosaic,
-        row: Number.isFinite(row) ? row : Math.floor(Math.max(0, idx) / cols),
-        col: Number.isFinite(col) ? col : (Math.max(0, idx) % cols),
+        wallMode: wall,
+        row: rowN,
+        col: colN,
         gridCols: cols,
         gridRows: rows,
         showLogo: mosaic
-          ? (slot.showLogo == null
-            ? (Number.isFinite(row) ? row === 0 && col === 0 : idx === 0)
-            : !!slot.showLogo)
+          ? (rowN === 0 && colN === 0)
           : (slot.showLogo == null ? !!defaults.showLogo : !!slot.showLogo),
         margins: mosaic
           ? 'none'
           : ((slot.margins == null ? defaults.margins : slot.margins) === 'none' ? 'none' : 'normal'),
-        syncSwap: lay.syncSwap !== false,
+        syncSwap: wall && sector === 'distribuicao' && lay.syncSwap !== false,
         swapMs: Math.max(5000, Number(lay.swapMs) || SWAP_MS),
         layoutVersion: Number(lay.version) || 0,
       };
@@ -3386,11 +3400,7 @@
       if (gestaoHash) {
         next = gestaoHash;
       } else if (tv) {
-        if (TV_SLOT >= 1 && TV_SLOT <= 6) {
-          next = `tv/slot/${TV_SLOT}`;
-        } else {
-          next = `tv/${sec}`;
-        }
+        next = `tv/${sec}`;
       } else if (sec === 'distribuicao') {
         next = '';
       } else {
@@ -3899,16 +3909,41 @@
       if (!eff) return;
       applyTvChrome();
 
-      if (eff.sector !== 'distribuicao') {
-        if (eff.sector !== CURRENT_SECTOR) setSector(eff.sector, { syncHash: false, forceTv: true });
-        else if (!TV_MODE) await setTvMode(true, { syncHash: false });
-        stopSwapLoop();
-        stopTvSyncClock();
-        applyTvChrome();
+      // Sempre segue o setor do layout deste slot (modo parede = todos o mesmo)
+      const sec = normalizeSectorId(eff.sector);
+      if (sec !== CURRENT_SECTOR || (eff.mode === 'fixed' && isOpsView(eff.view) && CURRENT_VIEW !== eff.view)) {
+        setSector(sec, {
+          syncHash: false,
+          forceTv: true,
+          view: eff.mode === 'fixed' ? eff.view : null,
+        });
+      } else if (!TV_MODE) {
+        await setTvMode(true, { syncHash: false });
+      }
+      applyTvChrome();
+
+      if (eff.mosaic) {
+        // Parede: pedaço fixo na grade; Dist pode girar sync entre as TVs
+        if (sec === 'distribuicao' && eff.mode !== 'fixed' && eff.syncSwap) {
+          const want = OPS_VIEWS[syncedOpsViewIndex(eff.swapMs)];
+          if (want && want !== CURRENT_VIEW) {
+            setSector('distribuicao', { syncHash: false, forceTv: true, view: want });
+            applyOpsLiveViews();
+          }
+          startTvSyncClock();
+        } else {
+          stopSwapLoop();
+          stopTvSyncClock();
+        }
         return;
       }
 
-      // Distribuição
+      if (sec !== 'distribuicao') {
+        stopSwapLoop();
+        stopTvSyncClock();
+        return;
+      }
+
       if (eff.mode === 'fixed') {
         setSector('distribuicao', { syncHash: false, forceTv: true, view: eff.view });
         stopSwapLoop();
@@ -3917,9 +3952,6 @@
         return;
       }
 
-      if (CURRENT_SECTOR !== 'distribuicao') {
-        setSector('distribuicao', { syncHash: false, forceTv: true });
-      }
       if (eff.syncSwap) {
         const want = OPS_VIEWS[syncedOpsViewIndex(eff.swapMs)];
         if (want && want !== CURRENT_VIEW) {

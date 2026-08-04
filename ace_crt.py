@@ -568,10 +568,10 @@ class AceCrtConsole(QWidget):
         lay.setSpacing(8)
 
         hint = QLabel(
-            "Grade 2×3 = posição física da TV.\n"
-            "Em cada TV abra #tv/slot/N. Aqui você diz o SETOR daquela TV "
-            "(Distribuição, Armazém…). Setor = o que antes chamávamos de hub.\n"
-            "Espelhar parede = mosaico só nas TVs que já estão nesse setor."
+            "Grade = parede normal: cada TV com o setor que você marcou.\n"
+            "Modo parede = todas viram pedaços de UM setor (uma tela só).\n"
+            "Voltar ao normal recupera os setores da grade.\n"
+            "Nas TVs: #tv/distribuicao (ou outro) — posição na grade 1× neste aparelho."
         )
         hint.setObjectName("hint")
         hint.setWordWrap(True)
@@ -628,26 +628,21 @@ class AceCrtConsole(QWidget):
         self.tv_margins.addItem("Sem margens", "none")
         self.tv_margins.currentIndexChanged.connect(self._tv_form_changed)
 
-        self.tv_mosaic = QCheckBox("Parede: pedaço da grade 2×3")
-        self.tv_mosaic.stateChanged.connect(self._tv_form_changed)
-
-        form.addRow("Setor (= hub)", self.tv_sector)
+        form.addRow("Setor desta TV (normal)", self.tv_sector)
         form.addRow("Tela (Distribuição)", self.tv_view)
         form.addRow("Logo", self.tv_logo)
         form.addRow("Margens", self.tv_margins)
-        form.addRow(self.tv_mosaic)
         lay.addLayout(form)
 
         tip_sec = QLabel(
-            "Ex.: TVs 1–5 = Distribuição, TV 6 = Armazém.\n"
-            "Espelhar parede: só as de Distribuição viram pedaços de uma tela; "
-            "a de Armazém não muda."
+            "A grade acima é o modo normal da parede. "
+            "Embaixo liga/desliga o modo pedaço (sem apagar esses setores)."
         )
         tip_sec.setObjectName("hint")
         tip_sec.setWordWrap(True)
         lay.addWidget(tip_sec)
 
-        self.tv_sync = QCheckBox("Sincronizar Coleta/Entrega/Agenda nas TVs de Distribuição")
+        self.tv_sync = QCheckBox("Sincronizar Coleta/Entrega/Agenda na parede Distribuição")
         self.tv_sync.setChecked(True)
         self.tv_sync.stateChanged.connect(self._tv_global_changed)
         lay.addWidget(self.tv_sync)
@@ -657,15 +652,33 @@ class AceCrtConsole(QWidget):
         self.tv_url.setWordWrap(True)
         lay.addWidget(self.tv_url)
 
-        row = QHBoxLayout()
-        b_mirror = QPushButton("Espelhar parede neste setor")
-        b_mirror.setToolTip(
-            "Só nas TVs que já têm o mesmo setor da TV selecionada. "
-            "Não altera TVs de outros setores."
-        )
+        self.tv_wall_status = QLabel("Modo: NORMAL (cada TV = seu setor)")
+        self.tv_wall_status.setObjectName("hint")
+        lay.addWidget(self.tv_wall_status)
+
+        lay.addWidget(self._section("Modo parede"))
+        wall_row = QHBoxLayout()
+        self.tv_wall_sector = QComboBox()
+        for sid, lab in (
+            ("distribuicao", "Distribuição"),
+            ("armazem", "Armazém"),
+            ("contratacao", "Contratação"),
+            ("pendencia", "Pendência"),
+            ("rastreamento", "Rastreamento"),
+            ("emissao", "Emissão"),
+        ):
+            self.tv_wall_sector.addItem(lab, sid)
+        wall_row.addWidget(self.tv_wall_sector, 1)
+        b_mirror = QPushButton("Ativar parede")
+        b_mirror.setObjectName("primary")
+        b_mirror.setToolTip("As 6 TVs viram pedaço do setor escolhido (grade normal permanece).")
         b_mirror.clicked.connect(self._tv_mirror)
-        row.addWidget(b_mirror)
-        lay.addLayout(row)
+        b_normal = QPushButton("Voltar ao normal")
+        b_normal.setToolTip("Cada TV volta ao setor marcado na grade.")
+        b_normal.clicked.connect(self._tv_wall_off)
+        wall_row.addWidget(b_mirror)
+        wall_row.addWidget(b_normal)
+        lay.addLayout(wall_row)
 
         row2 = QHBoxLayout()
         b_reload = QPushButton("Recarregar")
@@ -687,31 +700,46 @@ class AceCrtConsole(QWidget):
         self._tv_loading = True
         self._tv_layout = load_layout()
         self.tv_sync.setChecked(bool(self._tv_layout.get("syncSwap", True)))
+        ws = str(self._tv_layout.get("wallSector") or "distribuicao")
+        idx = self.tv_wall_sector.findData(ws)
+        if idx >= 0:
+            self.tv_wall_sector.setCurrentIndex(idx)
         self._tv_refresh_slot_labels()
         self._tv_select_slot(self._tv_selected)
         self._tv_loading = False
         self._append_log("config", "Layout TV recarregado.")
 
+    def _tv_refresh_wall_status(self) -> None:
+        from tv_layout import SECTOR_LABELS
+
+        wall = bool((self._tv_layout or {}).get("wallMode"))
+        if wall:
+            sec = str((self._tv_layout or {}).get("wallSector") or "distribuicao")
+            self.tv_wall_status.setText(
+                f"Modo: PAREDE · pedaços de {SECTOR_LABELS.get(sec, sec)} "
+                f"(grade normal guardada)"
+            )
+        else:
+            self.tv_wall_status.setText("Modo: NORMAL · cada TV = setor da grade")
+
     def _tv_refresh_slot_labels(self) -> None:
         from tv_layout import SECTOR_LABELS
 
+        wall = bool((self._tv_layout or {}).get("wallMode"))
+        wall_sec = str((self._tv_layout or {}).get("wallSector") or "")
         for s in (self._tv_layout or {}).get("slots") or []:
             sid = int(s["id"])
             btn = self._tv_slot_btns.get(sid)
             if not btn:
                 continue
             sec = str(s.get("sector") or "distribuicao")
-            name = SECTOR_LABELS.get(sec, sec)[:10]
-            mode = ""
-            if sec == "distribuicao":
-                if s.get("mode") == "rotate":
-                    mode = "↻"
-                else:
-                    mode = str(s.get("view") or "col")[:3].upper()
-            if s.get("mosaic"):
-                mode = f"▦{mode}" if mode else "▦"
-            btn.setText(f"TV {sid}\n{name}" + (f" · {mode}" if mode else ""))
+            name = SECTOR_LABELS.get(sec, sec)
+            if wall:
+                btn.setText(f"TV {sid}\n▦ {SECTOR_LABELS.get(wall_sec, wall_sec)[:8]}\n({name[:6]})")
+            else:
+                btn.setText(f"TV {sid}\n{name}")
             btn.setChecked(sid == self._tv_selected)
+        self._tv_refresh_wall_status()
 
     def _tv_select_slot(self, slot_id: int) -> None:
         self._tv_selected = int(slot_id)
@@ -745,8 +773,6 @@ class AceCrtConsole(QWidget):
             self.tv_margins.setCurrentIndex(0)
         else:
             self.tv_margins.setCurrentIndex(2 if marg == "none" else 1)
-        self.tv_mosaic.setChecked(bool(slot.get("mosaic")) and sector == "distribuicao")
-        self.tv_mosaic.setEnabled(sector == "distribuicao")
         for sid, btn in self._tv_slot_btns.items():
             btn.setChecked(sid == self._tv_selected)
         row = int(slot.get("row") or 0)
@@ -754,10 +780,9 @@ class AceCrtConsole(QWidget):
         from tv_layout import SECTOR_LABELS
 
         self.tv_url.setText(
-            f"Link desta TV:\n…/dashboard/index.html#tv/slot/{self._tv_selected}\n"
-            f"Setor: {SECTOR_LABELS.get(sector, sector)} · "
-            f"posição grade L{row + 1} C{col + 1}"
-            + (" · mosaico" if slot.get("mosaic") else "")
+            f"TV {self._tv_selected} · grade L{row + 1} C{col + 1}\n"
+            f"Setor normal: {SECTOR_LABELS.get(sector, sector)}\n"
+            f"Na TV: #tv/{sector} (posição escolhida 1× neste aparelho)."
         )
         self._tv_loading = False
         self._tv_refresh_slot_labels()
@@ -774,7 +799,6 @@ class AceCrtConsole(QWidget):
         sector = str(self.tv_sector.currentData() or "distribuicao")
         slot["sector"] = sector
         self.tv_view.setEnabled(sector == "distribuicao")
-        self.tv_mosaic.setEnabled(sector == "distribuicao")
         if sector == "distribuicao":
             vkey = str(self.tv_view.currentData() or "rotate")
             if vkey == "rotate":
@@ -783,12 +807,9 @@ class AceCrtConsole(QWidget):
             else:
                 slot["mode"] = "fixed"
                 slot["view"] = vkey
-            slot["mosaic"] = self.tv_mosaic.isChecked()
         else:
             slot["mode"] = "fixed"
             slot["view"] = "coleta"
-            slot["mosaic"] = False
-            self.tv_mosaic.setChecked(False)
         logo_mode = str(self.tv_logo.currentData() or "inherit")
         if logo_mode == "inherit":
             slot["showLogo"] = None
@@ -806,28 +827,8 @@ class AceCrtConsole(QWidget):
             return
         self._tv_layout["syncSwap"] = self.tv_sync.isChecked()
 
-    def _tv_mirror(self) -> None:
-        from tv_layout import SECTOR_LABELS, mirror_hub
-
-        self._tv_form_changed()
-        slot = next(
-            (s for s in (self._tv_layout or {}).get("slots") or [] if int(s["id"]) == self._tv_selected),
-            None,
-        )
-        sector = str((slot or {}).get("sector") or "distribuicao")
-        self._tv_layout = mirror_hub(self._tv_layout, source_slot_id=self._tv_selected)
-        n = sum(1 for s in self._tv_layout.get("slots") or [] if s.get("sector") == sector)
-        self._tv_loading = True
-        self._tv_refresh_slot_labels()
-        self._tv_select_slot(self._tv_selected)
-        self._tv_loading = False
-        self._append_log(
-            "config",
-            f"Parede em {SECTOR_LABELS.get(sector, sector)}: "
-            f"{n} TV(s) desse setor · outras intactas.",
-        )
-
-    def _tv_save(self) -> None:
+    def _tv_persist(self, *, title: str, body: str) -> bool:
+        """Salva no PC e envia à planilha (é o que as TVs leem)."""
         from tv_layout import push_layout_to_sheets, save_layout
 
         self._tv_form_changed()
@@ -835,22 +836,79 @@ class AceCrtConsole(QWidget):
         try:
             self._tv_layout = save_layout(self._tv_layout)
             ok, msg = push_layout_to_sheets(self._tv_layout)
-            detail = " + planilha" if ok else f" (planilha: {msg})"
-            self._append_log("config", f"Layout TV salvo v{self._tv_layout.get('version')}{detail}.")
-            publish(online=True, label="TV", pct=0, detail="layout TV salvo", mode="OK")
-            QMessageBox.information(
+            ver = self._tv_layout.get("version")
+            wall = "PAREDE" if self._tv_layout.get("wallMode") else "NORMAL"
+            if ok:
+                self._append_log("config", f"{title} · v{ver} · planilha OK ({wall}).")
+                publish(online=True, label="TV", pct=0, detail=f"{title} OK", mode="OK")
+                QMessageBox.information(
+                    self,
+                    "ACE TV",
+                    f"{body}\n\nLayout na planilha: OK (v{ver}).\n"
+                    "Se as TVs ainda ficarem separadas, publique o dashboard "
+                    "(site precisa do HTML novo com modo parede).",
+                )
+                self._tv_refresh_slot_labels()
+                return True
+            self._append_log("erro", f"{title} · local v{ver} mas planilha falhou: {msg}")
+            publish(online=False, label="TV", pct=0, detail="planilha falhou", mode="ERR")
+            QMessageBox.warning(
                 self,
-                "ACE TV",
-                "Layout salvo.\n"
-                "Cada TV: #tv/slot/1 … #tv/slot/6\n"
-                "O setor no CRT deve bater com o link aberto na TV.\n"
-                "Espelhar parede = mosaico só nesse setor.",
+                "ACE TV · TVs não atualizaram",
+                f"{body}\n\n"
+                f"Salvo neste PC (v{ver}), mas NÃO chegou na planilha:\n{msg}\n\n"
+                "As TVs leem Apps Script. Clique Salvar de novo ou confira "
+                "Deploy → Nova versão do Code.gs.",
             )
             self._tv_refresh_slot_labels()
+            return False
         except Exception as err:  # noqa: BLE001
             self._append_log("erro", str(err))
             QMessageBox.warning(self, "ACE TV", f"Falha ao salvar:\n{err}")
+            return False
 
+    def _tv_mirror(self) -> None:
+        from tv_layout import SECTOR_LABELS, wall_on
+
+        self._tv_form_changed()
+        sector = str(self.tv_wall_sector.currentData() or "distribuicao")
+        self._tv_layout = wall_on(self._tv_layout, sector)
+        if sector == "distribuicao":
+            self.tv_sync.setChecked(True)
+            self._tv_layout["syncSwap"] = True
+        self._tv_loading = True
+        self._tv_refresh_slot_labels()
+        self._tv_select_slot(self._tv_selected)
+        self._tv_loading = False
+        label = SECTOR_LABELS.get(sector, sector)
+        self._tv_persist(
+            title="Parede ON",
+            body=(
+                f"Modo parede: as 6 TVs mostram pedaços de {label}.\n"
+                "A grade normal ficou salva — use Voltar ao normal depois."
+            ),
+        )
+
+    def _tv_wall_off(self) -> None:
+        from tv_layout import wall_off
+
+        self._tv_form_changed()
+        self._tv_layout = wall_off(self._tv_layout)
+        self._tv_loading = True
+        self._tv_refresh_slot_labels()
+        self._tv_select_slot(self._tv_selected)
+        self._tv_loading = False
+        self._tv_persist(
+            title="Parede OFF",
+            body="Modo normal: cada TV volta ao setor da grade.",
+        )
+
+    def _tv_save(self) -> None:
+        wall = "PAREDE" if (self._tv_layout or {}).get("wallMode") else "NORMAL"
+        self._tv_persist(
+            title="Layout TV",
+            body=f"Layout salvo ({wall}).",
+        )
     def _build_gestao_tab(self) -> QWidget:
         wrap = QWidget()
         lay = QVBoxLayout(wrap)

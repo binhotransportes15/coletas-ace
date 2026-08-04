@@ -1,11 +1,12 @@
 {
-  "version": 5,
-  "updatedAt": "2026-08-04T17:09:21",
+  "version": 7,
+  "updatedAt": "2026-08-04T17:45:24",
   "rows": 2,
   "cols": 3,
   "syncSwap": true,
   "swapMs": 15000,
-  "painelUnico": false,
+  "wallMode": true,
+  "wallSector": "armazem",
   "sectorDefaults": {
     "distribuicao": {
       "showLogo": true,
@@ -13,7 +14,7 @@
     },
     "armazem": {
       "showLogo": true,
-      "margins": "normal"
+      "margins": "none"
     },
     "contratacao": {
       "showLogo": true,
@@ -40,9 +41,8 @@
       "sector": "armazem",
       "mode": "fixed",
       "view": "coleta",
-      "mosaic": false,
-      "showLogo": true,
-      "margins": "none"
+      "showLogo": null,
+      "margins": null
     },
     {
       "id": 2,
@@ -51,9 +51,8 @@
       "sector": "contratacao",
       "mode": "fixed",
       "view": "coleta",
-      "mosaic": false,
-      "showLogo": false,
-      "margins": "none"
+      "showLogo": null,
+      "margins": null
     },
     {
       "id": 3,
@@ -62,9 +61,8 @@
       "sector": "pendencia",
       "mode": "fixed",
       "view": "coleta",
-      "mosaic": false,
-      "showLogo": false,
-      "margins": "none"
+      "showLogo": null,
+      "margins": null
     },
     {
       "id": 4,
@@ -73,9 +71,8 @@
       "sector": "emissao",
       "mode": "fixed",
       "view": "coleta",
-      "mosaic": false,
-      "showLogo": false,
-      "margins": "none"
+      "showLogo": null,
+      "margins": null
     },
     {
       "id": 5,
@@ -84,7 +81,6 @@
       "sector": "distribuicao",
       "mode": "rotate",
       "view": "coleta",
-      "mosaic": false,
       "showLogo": null,
       "margins": null
     },
@@ -95,9 +91,8 @@
       "sector": "rastreamento",
       "mode": "fixed",
       "view": "coleta",
-      "mosaic": false,
-      "showLogo": false,
-      "margins": "none"
+      "showLogo": null,
+      "margins": null
     }
   ]
 }
