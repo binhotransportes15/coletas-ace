@@ -1303,13 +1303,10 @@ class AceSswClient:
         run_36: bool = False,
     ) -> dict[str, Any]:
         """
-        1) Login SSW uma vez → captura sessão (cookies).
-        2) Abre 50 / 103 / 36 / 225 em paralelo (cada um no próprio Chromium
-           com a mesma sessão) — bem mais rápido que baixar um após o outro.
+        1) Login 1x e MANTÉM o browser aberto (SSW exige a sessão viva).
+        2) Abre 50 / 103 / 36 / 225 juntos (vários popups na mesma sessão).
+        3) Preenche e baixa cada um (sem fechar o login).
         """
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        import threading
-
         try:
             from playwright.sync_api import sync_playwright
         except ImportError as error:
@@ -1322,150 +1319,259 @@ class AceSswClient:
         self._cleanup_before_download()
         self.paths = {}
         errors: dict[str, str] = {}
-        status_lock = threading.Lock()
-
-        def emit(msg: str) -> None:
-            with status_lock:
-                self.on_status(msg)
 
         mode = "oculto (headless)" if self.headless else "visível (janela)"
-        emit(f"SSW | viz={mode} | login 1x + downloads em paralelo")
+        self.on_status(f"SSW | viz={mode} | login 1x · abre telas juntas · baixa na mesma sessão")
 
-        storage_state: dict[str, Any] | None = None
+        browser = None
+        context = None
         with sync_playwright() as playwright:
-            launch_kwargs: dict[str, Any] = {
-                "headless": self.headless,
-                "slow_mo": 0 if self.headless else 20,
-            }
-            if self.headless:
-                launch_kwargs["args"] = ["--disable-dev-shm-usage"]
-            browser = playwright.chromium.launch(**launch_kwargs)
-            context = browser.new_context(accept_downloads=True)
-            page = context.new_page()
-            page.set_default_timeout(30000)
             try:
+                launch_kwargs: dict[str, Any] = {
+                    "headless": self.headless,
+                    "slow_mo": 0 if self.headless else 20,
+                }
+                if self.headless:
+                    launch_kwargs["args"] = ["--disable-dev-shm-usage"]
+                browser = playwright.chromium.launch(**launch_kwargs)
+                context = browser.new_context(accept_downloads=True)
+                page = context.new_page()
+                page.set_default_timeout(45000)
+
                 self._login(page)
                 self._ensure_unit(page)
                 self._patch_blank_popup_fix(page)
-                storage_state = context.storage_state()
-                emit("Sessão autenticada capturada — liberando relatórios em paralelo...")
-            finally:
-                try:
-                    context.close()
-                except Exception:
-                    pass
-                try:
-                    browser.close()
-                except Exception:
-                    pass
 
-        if not storage_state:
-            raise RuntimeError("Falha ao capturar sessão SSW após login.")
+                # --- Fase 1: abrir TODOS os relatórios (login permanece aberto) ---
+                opened: list[tuple[str, str, Any, tuple[str, str]]] = []
+                open_plan: list[tuple[str, str, tuple[str, str], tuple[str, ...]]] = [
+                    (
+                        "50",
+                        "coleta",
+                        period_50,
+                        ("coleta", "050", "periodo", "ssw0157", "relacao", "cadastr"),
+                    ),
+                    (
+                        "103",
+                        "coleta_103",
+                        period_103,
+                        (
+                            "coleta", "normal", "pesquisa", "limite", "inclus",
+                            "excel", "periodo", "unidade", "103",
+                        ),
+                    ),
+                ]
+                if run_36 and period_36:
+                    open_plan.append(
+                        (
+                            "36",
+                            "entrega_36",
+                            period_36,
+                            ("romaneio", "entrega", "periodo", "unidade", "excel", "0146", "36"),
+                        )
+                    )
+                open_plan.append(
+                    (
+                        "225",
+                        "agendamento_225",
+                        period_225,
+                        (
+                            "agend", "225", "previs", "entrega", "obrigat",
+                            "situac", "arquivo", "2862",
+                        ),
+                    )
+                )
 
-        jobs: list[tuple[str, tuple[str, str], str]] = [
-            ("50", period_50, "coleta"),
-            ("103", period_103, "coleta_103"),
-            ("225", period_225, "agendamento_225"),
-        ]
-        if run_36 and period_36:
-            jobs.append(("36", period_36, "entrega_36"))
+                self.on_status(f"Abrindo {len(open_plan)} tela(s) na mesma sessão...")
+                for label, path_key, period, markers in open_plan:
+                    try:
+                        self.set_period(period[0], period[1])
+                        self.on_status(
+                            f"[{label}] abrindo · "
+                            f"{format_period(self.start_date_ui, self.end_date_ui)}"
+                        )
+                        # Foca o menu principal antes de cada opção
+                        page.bring_to_front()
+                        page.wait_for_timeout(200)
+                        popup = self._open_menu_option(page, label, markers=markers)
+                        try:
+                            popup.on("dialog", lambda d: d.accept())
+                        except Exception:
+                            pass
+                        opened.append((label, path_key, popup, period))
+                        self.on_status(f"[{label}] tela aberta")
+                    except Exception as err:  # noqa: BLE001
+                        errors[label] = str(err)
+                        self.on_status(f"[{label}] falha ao abrir: {err}")
 
-        def _worker(label: str, period: tuple[str, str], path_key: str) -> tuple[str, str, str]:
-            """Retorna (label, path_key, path_str). Roda Playwright próprio (thread-safe)."""
-            worker = AceSswClient(
-                period[0],
-                period[1],
-                keep_open=False,
-                headless=self.headless,
-                on_status=lambda m: emit(f"[{label}] {m}"),
-                credentials=self.credentials,
-                settings=self.settings,
-                download_dir=self.download_dir,
-                clean_downloads=False,
-            )
-            with sync_playwright() as pw:
-                lk: dict[str, Any] = {
+                # --- Fase 2: baixar de cada tela já aberta (restaura o periodo de cada uma) ---
+                multi_50 = len(self._coleta_units() or []) > 1
+                multi_103 = len(self._coleta_units() or []) > 1
+
+                for label, path_key, popup, period in opened:
+                    try:
+                        self.set_period(period[0], period[1])
+                        self.on_status(
+                            f"[{label}] gerando · "
+                            f"{format_period(self.start_date_ui, self.end_date_ui)}"
+                        )
+                        if label == "50":
+                            if multi_50:
+                                # várias unidades: fecha esta e usa fluxo completo no menu
+                                try:
+                                    popup.close()
+                                except Exception:
+                                    pass
+                                path = self._download_report_50(page)
+                            else:
+                                un = (self._coleta_units() or [""])[0]
+                                path = self._gerar_download_50_popup(popup, un)
+                        elif label == "103":
+                            if multi_103:
+                                try:
+                                    popup.close()
+                                except Exception:
+                                    pass
+                                path = self._download_report_103(page)
+                            else:
+                                un = (self._coleta_units() or [""])[0]
+                                path = self._gerar_download_103_popup(popup, un)
+                        elif label == "36":
+                            path = self._gerar_download_36_popup(popup, "SPO")
+                        elif label == "225":
+                            path = self._gerar_download_225_popup(popup, "SPO")
+                        else:
+                            raise RuntimeError(f"relatorio desconhecido: {label}")
+                        self.paths[path_key] = str(path)
+                        self.on_status(f"[{label}] OK {path.name}")
+                    except Exception as err:  # noqa: BLE001
+                        errors[label] = str(err)
+                        self.on_status(f"[{label}] FALHOU: {err}")
+                        try:
+                            popup.close()
+                        except Exception:
+                            pass
+
+                if not self.paths:
+                    details = "; ".join(f"{k}: {v}" for k, v in errors.items())
+                    raise RuntimeError(f"Nenhum arquivo baixado. {details}")
+
+                return {
+                    "paths": dict(self.paths),
+                    "errors": errors,
+                    "download_dir": str(self.download_dir),
+                    "shared_session": True,
+                    "parallel_open": True,
                     "headless": self.headless,
-                    "slow_mo": 0 if self.headless else 15,
                 }
-                if self.headless:
-                    lk["args"] = ["--disable-dev-shm-usage"]
-                br = pw.chromium.launch(**lk)
-                try:
-                    ctx = br.new_context(
-                        storage_state=storage_state,
-                        accept_downloads=True,
-                    )
-                    pg = ctx.new_page()
-                    pg.set_default_timeout(45000)
-                    # Reabre menu already autenticado (sem novo login)
-                    pg.goto(self.credentials.url, wait_until="domcontentloaded")
-                    pg.wait_for_timeout(800)
-                    body = ""
-                    try:
-                        body = pg.locator("body").inner_text(timeout=4000)
-                    except Exception:
-                        pass
-                    if "Menu Principal" not in body and "menu01" not in (pg.url or ""):
-                        # tenta origem padrão do menu
-                        pg.goto(f"{SSW_ORIGIN}/bin/ssw0001", wait_until="domcontentloaded")
-                        pg.wait_for_timeout(800)
-                    worker._ensure_unit(pg)
-                    worker._patch_blank_popup_fix(pg)
-                    emit(
-                        f"[{label}] aberto | periodo "
-                        f"{format_period(worker.start_date_ui, worker.end_date_ui)}"
-                    )
-                    if label == "50":
-                        path = worker._download_report_50(pg)
-                    elif label == "103":
-                        path = worker._download_report_103(pg)
-                    elif label == "36":
-                        path = worker._download_report_36(pg)
-                    elif label == "225":
-                        path = worker._download_report_225(pg)
-                    else:
-                        raise RuntimeError(f"relatorio desconhecido: {label}")
-                    emit(f"[{label}] OK {path.name}")
-                    try:
-                        ctx.close()
-                    except Exception:
-                        pass
-                    return label, path_key, str(path)
-                finally:
-                    try:
-                        br.close()
-                    except Exception:
-                        pass
+            finally:
+                if not self.keep_open:
+                    if context is not None:
+                        try:
+                            context.close()
+                        except Exception:
+                            pass
+                    if browser is not None:
+                        try:
+                            browser.close()
+                        except Exception:
+                            pass
 
-        workers = max(2, min(4, len(jobs)))
-        emit(f"Paralelo: {len(jobs)} relatório(s) · {workers} worker(s)")
-        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="ssw") as pool:
-            futs = {
-                pool.submit(_worker, label, period, path_key): label
-                for label, period, path_key in jobs
-            }
-            for fut in as_completed(futs):
-                label = futs[fut]
-                try:
-                    _lab, path_key, path_str = fut.result()
-                    self.paths[path_key] = path_str
-                except Exception as err:  # noqa: BLE001
-                    errors[label] = str(err)
-                    emit(f"[{label}] FALHOU: {err}")
+    def _gerar_download_50_popup(self, popup, unidade: str) -> Path:
+        popup.locator('[id="4"]').wait_for()
+        self._preencher_periodo_coleta_50(popup, unidade=unidade)
+        with popup.expect_download(timeout=120000) as download_info:
+            popup.locator('[id="21"]').click()
+        suffix = (unidade or "todas").lower()
+        try:
+            path = self._save_download(
+                download_info.value,
+                f"coleta_50_col_{self.start_date_yy}_{self.end_date_yy}_{suffix}_{self.timestamp}.sswweb",
+            )
+        finally:
+            try:
+                popup.close()
+            except Exception:
+                pass
+        return path
 
-        if not self.paths:
-            details = "; ".join(f"{k}: {v}" for k, v in errors.items())
-            raise RuntimeError(f"Nenhum arquivo baixado no paralelo. {details}")
+    def _gerar_download_103_popup(self, popup, unidade: str) -> Path:
+        self._preencher_tela_103(popup, unidade=unidade)
+        with popup.expect_download(timeout=180000) as download_info:
+            self._clicar_gerar_103(popup)
+        suffix = (unidade or "todas").lower()
+        dest_name = (
+            f"coleta_103_lim_{self.start_date_yy}_{self.end_date_yy}_{suffix}_{self.timestamp}.sswweb"
+        )
+        download = download_info.value
+        suggested = (download.suggested_filename or "").lower()
+        if suggested.endswith(".xlsx"):
+            dest_name = dest_name.replace(".sswweb", ".xlsx")
+        elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
+            dest_name = dest_name.replace(".sswweb", ".xls")
+        elif suggested.endswith(".csv"):
+            dest_name = dest_name.replace(".sswweb", ".csv")
+        try:
+            path = self._save_download(download, dest_name)
+        finally:
+            try:
+                popup.close()
+            except Exception:
+                pass
+        return path
 
-        return {
-            "paths": dict(self.paths),
-            "errors": errors,
-            "download_dir": str(self.download_dir),
-            "shared_session": True,
-            "parallel": True,
-            "headless": self.headless,
-        }
+    def _gerar_download_36_popup(self, popup, unidade: str) -> Path:
+        self._preencher_tela_36(popup, unidade=unidade)
+        self._fechar_lookup_36(popup)
+        popup.wait_for_timeout(400)
+        with popup.expect_download(timeout=180000) as download_info:
+            self._clicar_gerar_36(popup)
+        suffix = (unidade or "spo").lower()
+        dest_name = (
+            f"entrega_36_{self.start_date_yy}_{self.end_date_yy}_{suffix}_{self.timestamp}.sswweb"
+        )
+        download = download_info.value
+        suggested = (download.suggested_filename or "").lower()
+        if suggested.endswith(".xlsx"):
+            dest_name = dest_name.replace(".sswweb", ".xlsx")
+        elif suggested.endswith(".csv"):
+            dest_name = dest_name.replace(".sswweb", ".csv")
+        elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
+            dest_name = dest_name.replace(".sswweb", ".xls")
+        try:
+            path = self._save_download(download, dest_name)
+        finally:
+            try:
+                popup.close()
+            except Exception:
+                pass
+        return path
+
+    def _gerar_download_225_popup(self, popup, unidade: str) -> Path:
+        self._preencher_tela_225(popup, unidade=unidade)
+        popup.wait_for_timeout(400)
+        with popup.expect_download(timeout=180000) as download_info:
+            self._clicar_gerar_225(popup)
+        dest_name = (
+            f"agendamento_225_{self.start_date_yy}_{self.end_date_yy}_"
+            f"{unidade.lower()}_{self.timestamp}.sswweb"
+        )
+        download = download_info.value
+        suggested = (download.suggested_filename or "").lower()
+        if suggested.endswith(".xlsx"):
+            dest_name = dest_name.replace(".sswweb", ".xlsx")
+        elif suggested.endswith(".csv"):
+            dest_name = dest_name.replace(".sswweb", ".csv")
+        elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
+            dest_name = dest_name.replace(".sswweb", ".xls")
+        try:
+            path = self._save_download(download, dest_name)
+        finally:
+            try:
+                popup.close()
+            except Exception:
+                pass
+        return path
 
 
 def download_ace_shared_cycle(
@@ -1481,7 +1587,7 @@ def download_ace_shared_cycle(
     settings: AceSettings | None = None,
     clean_downloads: bool = True,
 ) -> dict[str, Any]:
-    """Login SSW 1x; baixa 50+103+(36)+225 em paralelo com a mesma sessão."""
+    """Login 1x; abre 50+103+(36)+225 na mesma sessão e baixa."""
     client = AceSswClient(
         period_50[0],
         period_50[1],
