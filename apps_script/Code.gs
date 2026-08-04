@@ -19,8 +19,12 @@
  *       | ?action=entregas36 | ?action=romaneios36 | ?action=resumo36
  *       | ?action=agendamentos225 | ?action=resumo225 | ?action=alertas225
  *       | ?action=veiculos78 | ?action=resumo78 | ?action=ping
- * Escrita do ACE (com token): POST JSON action clear/append/replace
- * replace = grava por cima e só depois remove linhas sobrando (sem zerar a aba no meio)
+ * Escrita do ACE (com token): POST JSON action clear/append/replace|replace_many|ping|bump
+ * replace_many: várias abas num POST só (ciclo automático rápido)
+ * replace: clear+setValues (rápido em volume) + content_hash (pula se igual)
+ * GET action=version → {version} para o site não reler a planilha se nada mudou
+ * CacheService nos resumos leves (TTL curto, invalidado no bump)
+ * LockService evita POST em paralelo travar
  * Abas 50: Coletas, Historico, ResumoDiario
  * Abas 103: Coletas103, Resumo103
  * Abas 36: Entregas36, Romaneios36, Resumo36
@@ -31,6 +35,9 @@
 
 var SPREADSHEET_ID = '1VOkCF1Hn-VUZC7aKu_pa0Hgo1VjjuEJOqFqNSAErCzU';
 var SECRET = 'coletas-ace';
+var CACHE_TTL_SEC = 45; // só resumos / payloads leves
+var PROP_VERSION = 'ace_data_version';
+var PROP_HASHES = 'ace_sheet_hashes';
 
 function doGet(e) {
   try {
@@ -42,16 +49,31 @@ function doGet(e) {
         ok: true,
         service: 'ACE Sheets Bridge',
         spreadsheet: SPREADSHEET_ID,
-        hint: 'GET action=resumo|coletas|historico|coletas103|resumo103|entregas36|romaneios36|resumo36|agendamentos225|resumo225|alertas225|veiculos78|resumo78 | POST com token para gravar',
+        version: getDataVersion_(),
+        hint: 'GET action=version|resumo|coletas|… | POST token replace/bump',
       });
     }
 
-    if (action === 'resumo') {
+    if (action === 'version' || action === 'ver') {
       return json_({
         ok: true,
+        version: getDataVersion_(),
         updated_at: new Date().toISOString(),
-        rows: sheetToObjects_('ResumoDiario'),
       });
+    }
+
+    // Resumos leves: cache por versão (site atualiza rápido sem reler aba)
+    var cachedActions = {
+      resumo: 'ResumoDiario',
+      resumo103: 'Resumo103',
+      resumo36: 'Resumo36',
+      resumo225: 'Resumo225',
+      alertas225: 'Alertas225',
+      resumo78: 'Resumo78',
+      resumo177: 'Resumo177',
+    };
+    if (cachedActions[action]) {
+      return cachedSheetJson_(action, cachedActions[action]);
     }
 
     if (action === 'coletas') {
@@ -74,6 +96,7 @@ function doGet(e) {
       }
       return json_({
         ok: true,
+        version: getDataVersion_(),
         updated_at: new Date().toISOString(),
         rows: unique,
         total_coletas: unique.length,
@@ -120,18 +143,10 @@ function doGet(e) {
       }
       return json_({
         ok: true,
+        version: getDataVersion_(),
         updated_at: new Date().toISOString(),
         rows: unique103,
         total_coletas: unique103.length,
-        report: '103',
-      });
-    }
-
-    if (action === 'resumo103') {
-      return json_({
-        ok: true,
-        updated_at: new Date().toISOString(),
-        rows: sheetToObjects_('Resumo103'),
         report: '103',
       });
     }
@@ -145,6 +160,7 @@ function doGet(e) {
       });
       return json_({
         ok: true,
+        version: getDataVersion_(),
         updated_at: new Date().toISOString(),
         rows: rows36,
         total: rows36.length,
@@ -155,17 +171,9 @@ function doGet(e) {
     if (action === 'romaneios36' || action === 'romaneios') {
       return json_({
         ok: true,
+        version: getDataVersion_(),
         updated_at: new Date().toISOString(),
         rows: sheetToObjects_('Romaneios36'),
-        report: '36',
-      });
-    }
-
-    if (action === 'resumo36') {
-      return json_({
-        ok: true,
-        updated_at: new Date().toISOString(),
-        rows: sheetToObjects_('Resumo36'),
         report: '36',
       });
     }
@@ -174,6 +182,7 @@ function doGet(e) {
       var rows225 = sheetToObjects_('Agendamentos225');
       return json_({
         ok: true,
+        version: getDataVersion_(),
         updated_at: new Date().toISOString(),
         rows: rows225,
         total: rows225.length,
@@ -181,38 +190,11 @@ function doGet(e) {
       });
     }
 
-    if (action === 'resumo225') {
-      return json_({
-        ok: true,
-        updated_at: new Date().toISOString(),
-        rows: sheetToObjects_('Resumo225'),
-        report: '225',
-      });
-    }
-
-    if (action === 'alertas225') {
-      return json_({
-        ok: true,
-        updated_at: new Date().toISOString(),
-        rows: sheetToObjects_('Alertas225'),
-        report: '225',
-      });
-    }
-
-    // Armazém 078 — mesmas planilha/SECRET da distribuição
-    if (action === 'resumo78') {
-      return json_({
-        ok: true,
-        updated_at: new Date().toISOString(),
-        rows: sheetToObjects_('Resumo78'),
-        report: '078',
-      });
-    }
-
     if (action === 'veiculos78' || action === 'veiculos' || action === '78') {
       var rows78 = sheetToObjects_('Veiculos78');
       return json_({
         ok: true,
+        version: getDataVersion_(),
         updated_at: new Date().toISOString(),
         rows: rows78,
         total: rows78.length,
@@ -224,18 +206,10 @@ function doGet(e) {
       var rows177 = sheetToObjects_('Conferentes177');
       return json_({
         ok: true,
+        version: getDataVersion_(),
         updated_at: new Date().toISOString(),
         rows: rows177,
         total: rows177.length,
-        report: '177',
-      });
-    }
-
-    if (action === 'resumo177') {
-      return json_({
-        ok: true,
-        updated_at: new Date().toISOString(),
-        rows: sheetToObjects_('Resumo177'),
         report: '177',
       });
     }
@@ -274,7 +248,66 @@ function doPost(e) {
         service: 'ACE Sheets Bridge',
         spreadsheet: SPREADSHEET_ID,
         action: 'ping',
+        version: getDataVersion_(),
       });
+    }
+
+    if (action === 'bump' || action === 'invalidate') {
+      var verBump = bumpDataVersion_();
+      clearReadCache_();
+      return json_({ ok: true, action: 'bump', version: verBump });
+    }
+
+    // Vários abas num POST só — bem mais rápido que 1 POST por aba
+    if (action === 'replace_many' || action === 'batch' || action === 'replace_batch') {
+      var items = data.sheets || data.items || [];
+      if (!items || !items.length) {
+        return json_({ ok: false, error: 'sheets[] obrigatorio' });
+      }
+      var lock = LockService.getScriptLock();
+      lock.waitLock(30000);
+      try {
+        var results = [];
+        var anyWrote = false;
+        for (var i = 0; i < items.length; i++) {
+          var it = items[i] || {};
+          var nm = String(it.sheet || it.name || '').trim();
+          var hd = it.headers || [];
+          var rw = it.rows || [];
+          if (typeof rw === 'string') {
+            try { rw = JSON.parse(rw); } catch (e1) { rw = []; }
+          }
+          if (typeof hd === 'string') {
+            try { hd = JSON.parse(hd); } catch (e2) { hd = []; }
+          }
+          if (!nm || !hd.length) {
+            results.push({ sheet: nm, ok: false, error: 'sheet/headers' });
+            continue;
+          }
+          var rep = replaceSheetUnlocked_(nm, hd, rw, String(it.content_hash || '').trim());
+          results.push({
+            sheet: nm,
+            ok: true,
+            rows: rep.rows,
+            skipped: !!rep.skipped,
+          });
+          if (!rep.skipped) anyWrote = true;
+        }
+        var ver = getDataVersion_();
+        if (anyWrote && data.bump_version !== false && data.bump_version !== 'false') {
+          ver = bumpDataVersion_();
+          clearReadCache_();
+        }
+        return json_({
+          ok: true,
+          action: 'replace_many',
+          results: results,
+          wrote: anyWrote,
+          version: ver,
+        });
+      } finally {
+        lock.releaseLock();
+      }
     }
 
     if (!sheetName) {
@@ -285,14 +318,28 @@ function doPost(e) {
     }
 
     if (action === 'replace') {
-      return json_({ ok: true, sheet: sheetName, rows: replaceSheet_(sheetName, headers, rows) });
+      var hash = String(data.content_hash || '').trim();
+      var doBump = data.bump_version !== false && data.bump_version !== 'false';
+      var rep = replaceSheet_(sheetName, headers, rows, hash, doBump);
+      return json_({
+        ok: true,
+        sheet: sheetName,
+        rows: rep.rows,
+        skipped: !!rep.skipped,
+        version: getDataVersion_(),
+      });
     }
     if (action === 'clear') {
       clearSheet_(sheetName, headers);
-      return json_({ ok: true, sheet: sheetName, cleared: true });
+      bumpDataVersion_();
+      clearReadCache_();
+      return json_({ ok: true, sheet: sheetName, cleared: true, version: getDataVersion_() });
     }
     if (action === 'append') {
-      return json_({ ok: true, sheet: sheetName, rows: appendRows_(sheetName, headers, rows) });
+      var n = appendRows_(sheetName, headers, rows);
+      bumpDataVersion_();
+      clearReadCache_();
+      return json_({ ok: true, sheet: sheetName, rows: n, version: getDataVersion_() });
     }
 
     return json_({ ok: false, error: 'action invalida: ' + action });
@@ -439,35 +486,50 @@ function appendRows_(name, headers, rows) {
   return matrix.length;
 }
 
-function replaceSheet_(name, headers, rows) {
-  // Grava POR CIMA da aba atual e só depois remove linhas sobrando.
-  // Assim o GET nunca vê a aba apagada/zerada no meio do sync (evita dashboard em 0).
+function replaceSheet_(name, headers, rows, contentHash, doBump) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var rep = replaceSheetUnlocked_(name, headers, rows, contentHash);
+    if (doBump !== false && !rep.skipped) {
+      bumpDataVersion_();
+      clearReadCache_();
+    }
+    return rep;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Sem lock — usar dentro de replace_many (já com lock). */
+function replaceSheetUnlocked_(name, headers, rows, contentHash) {
+  var hash = String(contentHash || '').trim();
+  if (hash) {
+    var prev = getSheetHash_(name);
+    if (prev && prev === hash) {
+      return { rows: (rows || []).length, skipped: true };
+    }
+  }
+
   var sh = getOrCreateSheet_(name);
   var matrix = [headers].concat(rowsToMatrix_(headers, rows));
   var width = Math.max(headers.length, 1);
-  var chunk = 400;
-  var i;
-  for (i = 0; i < matrix.length; i += chunk) {
-    var part = matrix.slice(i, i + chunk);
-    var range = sh.getRange(i + 1, 1, part.length, width);
-    range.setNumberFormat('@');
-    range.setValues(part);
+
+  sh.clear();
+  var rangeAll = sh.getRange(1, 1, matrix.length, width);
+  rangeAll.setNumberFormat('@');
+  rangeAll.setValues(matrix);
+
+  if (hash) {
+    setSheetHash_(name, hash);
   }
-  var lastRow = sh.getLastRow();
-  if (lastRow > matrix.length) {
-    sh.deleteRows(matrix.length + 1, lastRow - matrix.length);
-  }
-  var lastCol = sh.getLastColumn();
-  if (lastCol > width) {
-    sh.deleteColumns(width + 1, lastCol - width);
-  }
-  // limpa restos de tentativas antigas com aba __next
+
   var ss = getSpreadsheet_();
   var oldTemp = ss.getSheetByName(String(name) + '__next');
   if (oldTemp) {
     ss.deleteSheet(oldTemp);
   }
-  return Math.max(matrix.length - 1, 0);
+  return { rows: Math.max(matrix.length - 1, 0), skipped: false };
 }
 
 function rowsToMatrix_(headers, rows) {
@@ -478,6 +540,88 @@ function rowsToMatrix_(headers, rows) {
       return String(v);
     });
   });
+}
+
+function getDataVersion_() {
+  var props = PropertiesService.getScriptProperties();
+  var v = parseInt(props.getProperty(PROP_VERSION) || '0', 10);
+  return isNaN(v) ? 0 : v;
+}
+
+function bumpDataVersion_() {
+  var props = PropertiesService.getScriptProperties();
+  var next = getDataVersion_() + 1;
+  props.setProperty(PROP_VERSION, String(next));
+  return next;
+}
+
+function getSheetHash_(name) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var raw = props.getProperty(PROP_HASHES) || '{}';
+    var map = JSON.parse(raw);
+    return String(map[name] || '');
+  } catch (e) {
+    return '';
+  }
+}
+
+function setSheetHash_(name, hash) {
+  var props = PropertiesService.getScriptProperties();
+  var map = {};
+  try {
+    map = JSON.parse(props.getProperty(PROP_HASHES) || '{}');
+  } catch (e) {
+    map = {};
+  }
+  map[name] = String(hash || '');
+  props.setProperty(PROP_HASHES, JSON.stringify(map));
+}
+
+function clearReadCache_() {
+  try {
+    CacheService.getScriptCache().removeAll([
+      'ace:resumo:' + (getDataVersion_() - 1),
+      'ace:resumo103:' + (getDataVersion_() - 1),
+      'ace:resumo36:' + (getDataVersion_() - 1),
+      'ace:resumo225:' + (getDataVersion_() - 1),
+      'ace:alertas225:' + (getDataVersion_() - 1),
+      'ace:resumo78:' + (getDataVersion_() - 1),
+      'ace:resumo177:' + (getDataVersion_() - 1),
+    ]);
+  } catch (e) {}
+}
+
+function cachedSheetJson_(action, sheetName) {
+  var ver = getDataVersion_();
+  var key = 'ace:' + action + ':' + ver;
+  var cache = CacheService.getScriptCache();
+  try {
+    var hit = cache.get(key);
+    if (hit) {
+      return ContentService
+        .createTextOutput(hit)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (e) {}
+
+  var payload = {
+    ok: true,
+    version: ver,
+    updated_at: new Date().toISOString(),
+    rows: sheetToObjects_(sheetName),
+    cached: false,
+  };
+  var text = JSON.stringify(payload);
+  // CacheService ~100KB — só guarda se couber
+  if (text.length < 90000) {
+    try {
+      cache.put(key, text, CACHE_TTL_SEC);
+    } catch (e2) {}
+  }
+  return ContentService
+    .createTextOutput(text)
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function json_(obj) {

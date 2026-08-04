@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
+import time
 import urllib.error
 from pathlib import Path
 from typing import Any, Callable
 
 from apps_script_client import post_apps_script
-from config import AceSettings, load_settings
+from config import CACHE_DIR, AceSettings, load_settings
 from parser_ssw0157 import (
     COLETAS_CSV,
     HISTORICO_CSV,
@@ -43,10 +45,42 @@ StatusCallback = Callable[[str], None]
 
 # Apps Script tem limite pratico de tempo/tamanho; envia em fatias.
 _CHUNK_ROWS = 350
+_HASH_CACHE_PATH = CACHE_DIR / "sheets_hashes.json"
+_ping_cache: dict[str, Any] = {"ok_at": 0.0, "url": "", "token": ""}
 
 
 def _noop(_: str) -> None:
     return None
+
+
+def _load_local_hashes() -> dict[str, str]:
+    try:
+        if _HASH_CACHE_PATH.is_file():
+            data = json.loads(_HASH_CACHE_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return {str(k): str(v) for k, v in data.items()}
+    except Exception:  # noqa: BLE001
+        pass
+    return {}
+
+
+def _save_local_hash(sheet: str, digest: str) -> None:
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        data = _load_local_hashes()
+        data[sheet] = digest
+        _HASH_CACHE_PATH.write_text(
+            json.dumps(data, ensure_ascii=False, indent=0),
+            encoding="utf-8",
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _local_hash_match(sheet: str, digest: str) -> bool:
+    if not digest:
+        return False
+    return _load_local_hashes().get(sheet) == digest
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -62,8 +96,165 @@ def _chunks(rows: list[dict[str, str]], size: int) -> list[list[dict[str, str]]]
     return [rows[i : i + size] for i in range(0, len(rows), size)]
 
 
+def _content_hash(headers: list[str], rows: list[dict[str, str]]) -> str:
+    """Hash estável do conteúdo — Apps Script pula rewrite se igual."""
+    h = hashlib.sha256()
+    h.update(("|" + "|".join(headers) + "|\n").encode("utf-8"))
+    for row in rows:
+        line = "\t".join(str(row.get(k, "") or "") for k in headers)
+        h.update(line.encode("utf-8", errors="replace"))
+        h.update(b"\n")
+    return h.hexdigest()
+
+
 def _post_json(url: str, payload: dict[str, Any], *, timeout: int = 180) -> dict[str, Any]:
-    return post_apps_script(url, payload, timeout=timeout, retries=3)
+    # 2 tentativas: Apps Script já é lento; 3 só arrasta ciclo automático
+    return post_apps_script(url, payload, timeout=timeout, retries=2)
+
+
+def _bump_version(url: str, token: str, *, on_status: StatusCallback) -> None:
+    try:
+        resp = _post_json(
+            url,
+            {"token": token, "action": "bump", "sheet": "_", "headers": ["ok"], "rows": []},
+            timeout=45,
+        )
+        if resp.get("ok"):
+            on_status(f"Sheets: versão dados = {resp.get('version', '?')}")
+    except Exception as err:  # noqa: BLE001
+        on_status(f"Sheets bump versão (opcional) falhou: {err}")
+
+
+def _any_sheet_written(stats: dict[str, Any]) -> bool:
+    """True se alguma aba foi gravada de fato (não só hash skip)."""
+    for item in stats.values():
+        if isinstance(item, dict) and not item.get("skipped"):
+            return True
+    return False
+
+
+def _bump_if_changed(
+    url: str,
+    token: str,
+    stats: dict[str, Any],
+    *,
+    on_status: StatusCallback,
+) -> None:
+    if _any_sheet_written(stats):
+        _bump_version(url, token, on_status=on_status)
+    else:
+        on_status("Sheets: nenhuma aba mudou — versão mantida (TV não precisa reler).")
+
+
+def _sheet_item(
+    sheet: str,
+    headers: list[str],
+    rows: list[dict[str, str]],
+) -> dict[str, Any]:
+    digest = _content_hash(headers, rows)
+    return {
+        "sheet": sheet,
+        "headers": headers,
+        "rows": rows,
+        "content_hash": digest,
+    }
+
+
+def _send_sheets_batch(
+    url: str,
+    token: str,
+    items: list[dict[str, Any]],
+    *,
+    on_status: StatusCallback,
+) -> dict[str, Any]:
+    """
+    Envia várias abas num POST só (action=replace_many).
+    Pula abas iguais ao cache local (sem rede).
+    """
+    stats: dict[str, Any] = {}
+    to_send: list[dict[str, Any]] = []
+    for item in items:
+        sheet = str(item["sheet"])
+        digest = str(item.get("content_hash") or "")
+        rows = item.get("rows") or []
+        if _local_hash_match(sheet, digest):
+            on_status(f"Sheets: {sheet} igual (local) — pulou rede.")
+            stats[sheet] = {
+                "ok": True,
+                "sheet": sheet,
+                "rows": len(rows),
+                "skipped": True,
+                "content_hash": digest,
+                "local": True,
+            }
+            continue
+        to_send.append(item)
+
+    if not to_send:
+        return {"ok": True, "stats": stats, "skipped_all": True}
+
+    names = ", ".join(i["sheet"] for i in to_send)
+    on_status(f"Sheets: enviando lote ({len(to_send)} aba(s): {names})...")
+    resp = _post_json(
+        url,
+        {
+            "token": token,
+            "action": "replace_many",
+            "sheet": "_batch",
+            "headers": ["ok"],
+            "rows": [],
+            "sheets": to_send,
+            "bump_version": True,
+        },
+        timeout=240,
+    )
+
+    # Script antigo sem replace_many → fallback 1 a 1
+    if not resp.get("ok"):
+        err = str(resp.get("error") or "")
+        if "invalida" in err.lower() or "obrigatorio" in err.lower() or "action" in err.lower():
+            on_status("Sheets: batch indisponível no Script — fallback aba a aba. Publique Nova versão.")
+            for item in to_send:
+                one = _send_sheet(
+                    url,
+                    token,
+                    str(item["sheet"]),
+                    list(item["headers"]),
+                    list(item["rows"]),
+                    on_status=on_status,
+                )
+                stats[str(item["sheet"])] = one
+                if not one.get("ok"):
+                    return {"ok": False, "error": one.get("error"), "stats": stats}
+            _bump_if_changed(url, token, stats, on_status=on_status)
+            return {"ok": True, "stats": stats, "fallback": True}
+        return {"ok": False, "error": err or str(resp), "stats": stats}
+
+    for r in resp.get("results") or []:
+        sheet = str(r.get("sheet") or "")
+        skipped = bool(r.get("skipped"))
+        digest = next(
+            (str(i.get("content_hash") or "") for i in to_send if i["sheet"] == sheet),
+            "",
+        )
+        if sheet and (skipped or r.get("ok", True)):
+            if digest:
+                _save_local_hash(sheet, digest)
+        if skipped:
+            on_status(f"Sheets: {sheet} sem mudança (hash) — pulou gravação.")
+        else:
+            on_status(f"Sheets: {sheet} OK ({r.get('rows', '?')} linhas)")
+        stats[sheet] = {
+            "ok": bool(r.get("ok", True)),
+            "sheet": sheet,
+            "rows": r.get("rows"),
+            "skipped": skipped,
+            "content_hash": digest,
+        }
+
+    if resp.get("version") is not None:
+        on_status(f"Sheets: versão dados = {resp.get('version')}")
+    return {"ok": True, "stats": stats, "version": resp.get("version")}
 
 
 def _send_sheet(
@@ -75,9 +266,18 @@ def _send_sheet(
     *,
     on_status: StatusCallback,
 ) -> dict[str, Any]:
-    """Substitui a aba em uma unica gravacao (evita painel ver aba vazia no meio do sync)."""
-    import time
-
+    """Substitui a aba (clear+write). Pula se hash local/remoto igual."""
+    digest = _content_hash(headers, rows)
+    if _local_hash_match(sheet, digest):
+        on_status(f"Sheets: {sheet} igual (local) — pulou rede.")
+        return {
+            "ok": True,
+            "sheet": sheet,
+            "rows": len(rows),
+            "skipped": True,
+            "content_hash": digest,
+            "local": True,
+        }
     on_status(f"Sheets/Apps Script: atualizando {sheet} ({len(rows)} linhas)...")
     resp = _post_json(
         url,
@@ -87,14 +287,25 @@ def _send_sheet(
             "sheet": sheet,
             "headers": headers,
             "rows": rows,
+            "content_hash": digest,
+            "bump_version": False,
         },
         timeout=180,
     )
-    # Espaça POSTs — o echo do Google oscila sob rajadas seguidas
-    time.sleep(0.5)
+    time.sleep(0.05)
     if not resp.get("ok"):
         return resp
-    return {"ok": True, "sheet": sheet, "rows": resp.get("rows", len(rows))}
+    skipped = bool(resp.get("skipped"))
+    if skipped:
+        on_status(f"Sheets: {sheet} sem mudança (hash) — pulou gravação.")
+    _save_local_hash(sheet, digest)
+    return {
+        "ok": True,
+        "sheet": sheet,
+        "rows": resp.get("rows", len(rows)),
+        "skipped": skipped,
+        "content_hash": digest,
+    }
 
 
 def sync_google_sheets(
@@ -121,29 +332,39 @@ def sync_google_sheets(
     historico = _read_csv(HISTORICO_CSV)
     resumo = _read_csv(RESUMO_CSV)
 
+    # Protege planilha: cache vazio (ex.: analisou arquivo errado) nao zera Coletas boas
+    if not coletas:
+        status(
+            "Sheets 50: cache Coletas vazio — nao sobrescreve abas "
+            "(mantem dados anteriores)."
+        )
+        result.update({"ok": True, "skipped": True, "reason": "empty_50_cache"})
+        return result
+
     try:
         status(
-            f"Sheets: atualizando abas (sem zerar antes) "
+            f"Sheets: atualizando abas "
             f"({len(coletas)} coletas | {len(historico)} eventos historico)..."
         )
-        stats: dict[str, Any] = {}
-        # Ordem importa: Coletas = 1 SPO; Historico = log da SPO (nao conta como coleta)
-        for sheet, headers, rows in (
-            ("Coletas", COLETA_FIELDS, coletas),
-            ("Historico", HIST_FIELDS, historico),
-            ("ResumoDiario", RESUMO_FIELDS, resumo),
-        ):
-            resp = _send_sheet(url, token, sheet, headers, rows, on_status=status)
-            if not resp.get("ok"):
-                result["error"] = resp.get("error") or str(resp)
-                status(f"Sheets falhou em {sheet}: {result['error']}")
-                return result
-            stats[sheet] = resp
-
+        batch = _send_sheets_batch(
+            url,
+            token,
+            [
+                _sheet_item("Coletas", COLETA_FIELDS, coletas),
+                _sheet_item("Historico", HIST_FIELDS, historico),
+                _sheet_item("ResumoDiario", RESUMO_FIELDS, resumo),
+            ],
+            on_status=status,
+        )
+        if not batch.get("ok"):
+            result["error"] = batch.get("error")
+            status(f"Sheets falhou: {result['error']}")
+            return result
+        stats = batch.get("stats") or {}
         result.update({
             "ok": True,
             "via": "apps_script",
-            "mode": "replace",
+            "mode": "batch",
             "coletas": len(coletas),
             "historico_eventos": len(historico),
             "stats": stats,
@@ -166,8 +387,6 @@ def sync_google_sheets(
 
 def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, Any]:
     """Valida config + ping (com retry). Retorna {ok, url, token} ou erro/skipped."""
-    import time
-
     result: dict[str, Any] = {"ok": False, "skipped": False}
     if not cfg.enable_sheets:
         result["skipped"] = True
@@ -188,8 +407,15 @@ def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, A
         status("Sheets: configure apps_script_token (igual ao SECRET do Apps Script).")
         return result
 
-    # 1) action=ping (leve, sem criar aba) — exige Code.gs atualizado
-    # 2) fallback action=clear em _ace_ping — compativel com versao antiga
+    # Reusa ping recente (evita 4 pings no ciclo automático)
+    if (
+        _ping_cache.get("url") == url
+        and _ping_cache.get("token") == token
+        and (time.time() - float(_ping_cache.get("ok_at") or 0)) < 180
+    ):
+        result.update({"ok": True, "url": url, "token": token, "ping_cached": True})
+        return result
+
     payloads = (
         {
             "token": token,
@@ -208,17 +434,17 @@ def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, A
     )
 
     last_error = ""
-    for attempt in range(1, 4):
+    for attempt in range(1, 3):
         for payload in payloads:
             try:
                 auth = _post_json(url, payload, timeout=45)
                 if auth.get("ok"):
+                    _ping_cache.update({"ok_at": time.time(), "url": url, "token": token})
                     result.update({"ok": True, "url": url, "token": token})
                     if attempt > 1:
                         status(f"Sheets ping OK na tentativa {attempt}.")
                     return result
                 err = str(auth.get("error") or auth)
-                # action ping inexistente na implantacao antiga → tenta fallback clear
                 if "invalida" in err.lower() and payload.get("action") == "ping":
                     last_error = err
                     continue
@@ -236,9 +462,9 @@ def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, A
                 last_error = err
             except Exception as error:  # noqa: BLE001
                 last_error = str(error)
-        if attempt < 3:
-            status(f"Sheets ping falhou ({last_error}); nova tentativa {attempt + 1}/3...")
-            time.sleep(2.5 * attempt)
+        if attempt < 2:
+            status(f"Sheets ping falhou ({last_error}); nova tentativa {attempt + 1}/2...")
+            time.sleep(1.5 * attempt)
 
     result["error"] = last_error or "ping falhou"
     status(f"Sheets falhou no ping: {result['error']}")
@@ -247,6 +473,70 @@ def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, A
         "confirme a URL /exec no config (Nova versao apos editar o Code.gs)."
     )
     return result
+
+
+def sync_cycle_sheets(
+    settings: AceSettings | None = None,
+    *,
+    do_50: bool = False,
+    do_103: bool = False,
+    do_36: bool = False,
+    do_225: bool = False,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    """Um lote só após o ciclo dual — bem mais rápido que 4 syncs separados."""
+    status = on_status or _noop
+    cfg = settings or load_settings()
+    gate = _ensure_apps_script(cfg, status)
+    if not gate.get("ok"):
+        return gate
+
+    url = str(gate["url"])
+    token = str(gate["token"])
+    items: list[dict[str, Any]] = []
+
+    if do_50:
+        coletas = _read_csv(COLETAS_CSV)
+        if not coletas:
+            status("Sheets 50: Coletas vazio — não inclui no lote.")
+        else:
+            items.append(_sheet_item("Coletas", COLETA_FIELDS, coletas))
+            items.append(_sheet_item("Historico", HIST_FIELDS, _read_csv(HISTORICO_CSV)))
+            items.append(_sheet_item("ResumoDiario", RESUMO_FIELDS, _read_csv(RESUMO_CSV)))
+
+    if do_103:
+        c103 = _read_csv(COLETAS_103_CSV)
+        if c103:
+            items.append(_sheet_item("Coletas103", COLETA_103_FIELDS, c103))
+            items.append(_sheet_item("Resumo103", RESUMO_103_FIELDS, _read_csv(RESUMO_103_CSV)))
+
+    if do_36:
+        e36 = _read_csv(ENTREGAS_36_CSV)
+        if e36:
+            items.append(_sheet_item("Entregas36", ENTREGA_36_FIELDS, e36))
+            items.append(_sheet_item("Romaneios36", ROMANEIO_36_FIELDS, _read_csv(ROMANEIOS_36_CSV)))
+            items.append(_sheet_item("Resumo36", RESUMO_36_FIELDS, _read_csv(RESUMO_36_CSV)))
+
+    if do_225:
+        a225 = _read_csv(AGENDAMENTOS_225_CSV)
+        if a225:
+            items.append(_sheet_item("Resumo225", RESUMO_225_FIELDS, _read_csv(RESUMO_225_CSV)))
+            items.append(_sheet_item("Alertas225", ALERTA_225_FIELDS, _read_csv(ALERTAS_225_CSV)))
+            items.append(_sheet_item("Agendamentos225", AGENDAMENTO_225_FIELDS, a225))
+        else:
+            status("Sheets 225: cache vazio — não inclui no lote.")
+
+    if not items:
+        status("Sheets: nada para enviar neste ciclo.")
+        return {"ok": True, "skipped": True, "reason": "empty_batch"}
+
+    status(f"Sheets ciclo: {len(items)} aba(s) no mesmo envio...")
+    batch = _send_sheets_batch(url, token, items, on_status=status)
+    if not batch.get("ok"):
+        status(f"Sheets ciclo falhou: {batch.get('error')}")
+        return batch
+    status("Sheets ciclo OK.")
+    return {"ok": True, "via": "apps_script", "mode": "cycle_batch", **batch}
 
 
 def sync_google_sheets_103(
@@ -272,24 +562,25 @@ def sync_google_sheets_103(
             f"Sheets 103: gravando {len(coletas)} coleta(s) tempo real "
             f"(Parado / Em rota / Realizada)..."
         )
-        stats: dict[str, Any] = {}
-        for sheet, headers, rows in (
-            ("Coletas103", COLETA_103_FIELDS, coletas),
-            ("Resumo103", RESUMO_103_FIELDS, resumo),
-        ):
-            resp = _send_sheet(url, token, sheet, headers, rows, on_status=status)
-            if not resp.get("ok"):
-                result["error"] = resp.get("error") or str(resp)
-                status(f"Sheets falhou em {sheet}: {result['error']}")
-                return result
-            stats[sheet] = resp
-
+        batch = _send_sheets_batch(
+            url,
+            token,
+            [
+                _sheet_item("Coletas103", COLETA_103_FIELDS, coletas),
+                _sheet_item("Resumo103", RESUMO_103_FIELDS, resumo),
+            ],
+            on_status=status,
+        )
+        if not batch.get("ok"):
+            result["error"] = batch.get("error")
+            status(f"Sheets 103 falhou: {result['error']}")
+            return result
         result.update({
             "ok": True,
             "via": "apps_script",
-            "mode": "replace",
+            "mode": "batch",
             "coletas": len(coletas),
-            "stats": stats,
+            "stats": batch.get("stats"),
         })
         status(f"Sheets 103 atualizada: {len(coletas)} coleta(s).")
         return result
@@ -327,26 +618,27 @@ def sync_google_sheets_36(
         status(
             f"Sheets 36: gravando {len(entregas)} CTRC(s) / {len(romaneios)} romaneio(s)..."
         )
-        stats: dict[str, Any] = {}
-        for sheet, headers, rows in (
-            ("Entregas36", ENTREGA_36_FIELDS, entregas),
-            ("Romaneios36", ROMANEIO_36_FIELDS, romaneios),
-            ("Resumo36", RESUMO_36_FIELDS, resumo),
-        ):
-            resp = _send_sheet(url, token, sheet, headers, rows, on_status=status)
-            if not resp.get("ok"):
-                result["error"] = resp.get("error") or str(resp)
-                status(f"Sheets falhou em {sheet}: {result['error']}")
-                return result
-            stats[sheet] = resp
-
+        batch = _send_sheets_batch(
+            url,
+            token,
+            [
+                _sheet_item("Entregas36", ENTREGA_36_FIELDS, entregas),
+                _sheet_item("Romaneios36", ROMANEIO_36_FIELDS, romaneios),
+                _sheet_item("Resumo36", RESUMO_36_FIELDS, resumo),
+            ],
+            on_status=status,
+        )
+        if not batch.get("ok"):
+            result["error"] = batch.get("error")
+            status(f"Sheets 36 falhou: {result['error']}")
+            return result
         result.update({
             "ok": True,
             "via": "apps_script",
-            "mode": "replace",
+            "mode": "batch",
             "entregas": len(entregas),
             "romaneios": len(romaneios),
-            "stats": stats,
+            "stats": batch.get("stats"),
         })
         status(f"Sheets 36 atualizada: {len(entregas)} CTRC(s).")
         return result
@@ -366,7 +658,7 @@ def sync_google_sheets_225(
     *,
     on_status: StatusCallback | None = None,
 ) -> dict[str, Any]:
-    """Envia cache 225 (Agendamentos225 + Resumo225 + Alertas225)."""
+    """Envia cache 225 (Resumo225 + Alertas225 + Agendamentos225)."""
     status = on_status or _noop
     cfg = settings or load_settings()
     gate = _ensure_apps_script(cfg, status)
@@ -380,28 +672,37 @@ def sync_google_sheets_225(
     alertas = _read_csv(ALERTAS_225_CSV)
     result: dict[str, Any] = {"ok": False, "skipped": False}
 
+    if not rows:
+        status(
+            "Sheets 225: cache Agendamentos225 vazio — nao sobrescreve abas 225 "
+            "(mantem dados anteriores)."
+        )
+        result.update({"ok": True, "skipped": True, "reason": "empty_225_cache"})
+        return result
+
     try:
         status(f"Sheets 225: gravando {len(rows)} agendamento(s) / {len(alertas)} alerta(s)...")
-        stats: dict[str, Any] = {}
-        for sheet, headers, data in (
-            ("Agendamentos225", AGENDAMENTO_225_FIELDS, rows),
-            ("Resumo225", RESUMO_225_FIELDS, resumo),
-            ("Alertas225", ALERTA_225_FIELDS, alertas),
-        ):
-            resp = _send_sheet(url, token, sheet, headers, data, on_status=status)
-            if not resp.get("ok"):
-                result["error"] = resp.get("error") or str(resp)
-                status(f"Sheets falhou em {sheet}: {result['error']}")
-                return result
-            stats[sheet] = resp
-
+        batch = _send_sheets_batch(
+            url,
+            token,
+            [
+                _sheet_item("Resumo225", RESUMO_225_FIELDS, resumo),
+                _sheet_item("Alertas225", ALERTA_225_FIELDS, alertas),
+                _sheet_item("Agendamentos225", AGENDAMENTO_225_FIELDS, rows),
+            ],
+            on_status=status,
+        )
+        if not batch.get("ok"):
+            result["error"] = batch.get("error")
+            status(f"Sheets 225 falhou: {result['error']}")
+            return result
         result.update({
             "ok": True,
             "via": "apps_script",
-            "mode": "replace",
+            "mode": "batch",
             "agendamentos": len(rows),
             "alertas": len(alertas),
-            "stats": stats,
+            "stats": batch.get("stats"),
         })
         status(f"Sheets 225 atualizada: {len(rows)} agendamento(s).")
         return result

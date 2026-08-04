@@ -23,9 +23,11 @@ from __future__ import annotations
 
 import getpass
 import os
+import subprocess
 import sys
 from dataclasses import asdict
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from config import (
@@ -145,21 +147,75 @@ def _periodo_hint(modo: str) -> str:
         return "—"
 
 
+def _on_status(msg: str) -> None:
+    from term_brand import format_status, _enable_windows_ansi, classify_status_msg
+
+    _enable_windows_ansi()
+    stamp = datetime.now().strftime("%H:%M:%S")
+    print(f"  {format_status(msg, hhmmss=stamp)}")
+    try:
+        from crt_bridge import append_log, publish
+
+        kind = classify_status_msg(msg)
+        online = kind != "err"
+        label = "ONLINE" if online else "ERR"
+        mode = {"ok": "OK", "err": "ERR", "work": "RUN"}.get(kind, "RUN")
+        append_log(kind, msg, source="cmd")
+        publish(online=online, label=label, pct=0, detail=msg[:100], mode=mode)
+    except Exception:
+        pass
+
+
+def _crt_boot(*, detail: str = "console pronta") -> None:
+    try:
+        from crt_bridge import spawn_crt, publish
+
+        spawn_crt()
+        publish(online=True, label="ONLINE", pct=0, detail=detail, mode="MENU")
+    except Exception:
+        pass
+
+
 def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
+    from term_brand import (
+        _enable_windows_ansi,
+        color_swatches,
+        cubes_row,
+        g,
+        muted,
+        print_header_banner,
+        progress_bar,
+        rule,
+        status_idle,
+        status_offline,
+        status_online,
+        status_work,
+        w,
+    )
+
     _clear()
+    _enable_windows_ansi()
     modo = str(payload.get("periodo_modo") or "diario")
-    print("=" * 72)
-    print("  ACE · Console CMD   |   digite /e campo valor   |   help   |   sair")
-    print("=" * 72)
-    print(f"  Arquivo: {CONFIG_PATH}")
-    print(f"  Agora:   {datetime.now():%d/%m/%Y %H:%M:%S}")
-    print(f"  Periodos auto: {_periodo_hint(modo)}")
-    print("-" * 72)
-    print("  [SSW LOGIN]")
+    sheets_on = bool(payload.get("enable_sheets"))
+    viz_on = not bool(payload.get("headless", True))
+    arm_on = bool(payload.get("armazem_in_loop", True))
+
+    print_header_banner(subtitle="OPERACIONAL · Console CMD", payload=payload)
+    print(
+        f"  {status_online('SHEETS') if sheets_on else status_offline('SHEETS')}  "
+        f"{status_work('SSW·VIZ') if viz_on else status_idle('SSW·HIDE')}  "
+        f"{status_online('078') if arm_on else status_idle('078·OFF')}"
+    )
+    print(f"  {rule()}")
+    print(f"  {muted('config')}  {CONFIG_PATH}")
+    print(f"  {muted('agora ')}  {datetime.now():%d/%m/%Y %H:%M:%S}")
+    print(f"  {muted('ciclo ')}  {_periodo_hint(modo)}")
+    print(f"  {rule()}")
+    print(f"  {g('[SSW LOGIN]', bold=True)}")
     for key in ("url", "domain", "document", "user", "password", "unit"):
         _, _, secret = EDITABLE[key]
-        print(f"    {key:<22} {_mask(str(payload.get(key, '')), secret)}")
-    print("  [AUTOMACAO]")
+        print(f"    {muted(f'{key:<18}')} {_mask(str(payload.get(key, '')), secret)}")
+    print(f"  {g('[AUTOMACAO]', bold=True)}")
     for key in (
         "coleta_option",
         "entrega_option",
@@ -170,15 +226,18 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
         _, typ, secret = EDITABLE[key]
         val = payload.get(key, "")
         shown = _mask(str(val), secret) if typ == "str" else str(bool(val)).lower()
-        print(f"    {key:<22} {shown}")
+        print(f"    {muted(f'{key:<18}')} {shown}")
     try:
         from interval_parse import format_duration_long, parse_duration
 
         sec = parse_duration(str(payload.get("loop_intervalo") or "5m"))
-        print(f"    {'(intervalo)':<22} {format_duration_long(sec)}")
+        print(f"    {muted('intervalo'.ljust(18))} {format_duration_long(sec)}")
+        mins = max(0.08, sec / 60.0)
+        pct = min(100.0, (mins / 60.0) * 100.0)
+        print(f"    {progress_bar(pct, width=22, label=format_duration_long(sec))}")
     except Exception:
         pass
-    print("  [SHEETS / DASHBOARD · DISTRIBUIÇÃO]")
+    print(f"  {g('[SHEETS / DASH]', bold=True)}")
     for key in (
         "enable_sheets",
         "apps_script_url",
@@ -197,52 +256,49 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
             shown = _mask(str(val), secret)
             if key == "apps_script_url" and len(shown) > 48:
                 shown = shown[:45] + "..."
-        print(f"    {key:<22} {shown}")
-    print("  [AUTOMAÇÃO SSW]")
-    viz_on = not bool(payload.get("headless", True))
-    print(
-        f"    janela SSW              {'LIGADA  (vê o navegador)' if viz_on else 'DESLIGADA (oculto)'}"
-    )
-    print(f"    comando                 /viz     → liga/desliga   |  /viz on  |  /viz off")
-    print(f"    headless                {str(bool(payload.get('headless', True))).lower()}")
-    print("  [ARMAZÉM · 078]")
-    for key in ("armazem_in_loop",):
-        _, typ, secret = EDITABLE[key]
-        val = payload.get(key, "")
-        shown = str(bool(val)).lower() if typ == "bool" else _mask(str(val), secret)
-        print(f"    {key:<28} {shown}")
-    print("    (078 grava Veiculos78/Resumo78 na mesma planilha/Apps Script)")
-    print("-" * 72)
-    print("  ACOES RAPIDAS")
-    print("    1 / 50      Baixar+analisar relatorio 50 (situacoes)")
-    print("    2 / 103     Baixar+analisar relatorio 103 (tempo real)")
-    print("    3 / sync    Sobe 50+103+36+225 para Sheets Distribuição")
-    print("    4 / dash    Atualiza arquivos do dashboard local")
-    print("    5 / gui     Abre o ACE grafico (app.py)")
-    print("    6 / show    Mostra config completa (senha mascarada)")
-    print("    7 /automatica  Loop auto (login 1x por ciclo · 50+103+36+225)")
-    print("    8 /status      Mostra alteracoes locais (git)")
-    print("    9 /push        Commit + sobe TUDO pro GitHub (Pages)")
-    print("    /viz on|off    Mostra/oculta janela da automacao SSW")
-    print("    78 /armazem    Captura tela 078 (Armazém) agora")
-    print("    177            Captura 177 conferentes (mensal) agora")
-    print("    607            Atualiza mapa login→nome (relatório 0607)")
-    print("    sync78         Sobe cache 078+177 → Sheets")
-    print("    /pull          Baixa alteracoes do GitHub")
-    print("    /e             Lista campos editaveis")
-    print("    /e intervalo 5m   Define tempo do /automatica (30s|5m|1h|2d)")
-    print("    /e chave v     Edita direto: /e unit SPO,LEO,RIS")
-    print("=" * 72)
+        print(f"    {muted(key.ljust(18))} {shown}")
+    print(f"  {g('[ARMAZEM 078]', bold=True)}")
+    print(f"    {muted('armazem_in_loop'.ljust(18))} {str(arm_on).lower()}")
+    print(f"  {rule()}")
+    print(f"  {w('COMMANDS', bold=True)}  {cubes_row()}")
+    print(f"    {g('1/50')}  baixar 50     {g('2/103')} baixar 103    {g('3/sync')} sheets")
+    print(f"    {g('4/dash')} dashboard    {g('5/gui')}  ACE gráfico   {g('6/show')} config")
+    print(f"    {g('7/auto')} /automatica  {g('8/git')}  status        {g('9/push')} pages")
+    print(f"    {g('78')} {g('177')} {g('607')} armazém/ranking/nomes  {g('sync78')} sheets arm")
+    print(f"    {g('/viz')} on|off   {g('brand')} ANSI   {g('crt')} CRT   {g('help')}   {g('sair')}")
+    print(f"  {rule('═')}")
     if message:
-        print(f"  >> {message}")
-        print("-" * 72)
+        low = message.lower()
+        if "erro" in low or "falhou" in low:
+            print(f"  {status_offline('MSG')}  {message}")
+        elif any(x in low for x in ("ok", "pronto", "atualiz", "encerr", "ligado")):
+            print(f"  {status_online('MSG')}  {message}")
+        else:
+            print(f"  {status_idle('MSG')}  {message}")
+        print(f"  {rule()}")
+    print(color_swatches())
+    try:
+        from crt_bridge import publish
+
+        low = (message or "").lower()
+        online = not ("erro" in low or "falhou" in low)
+        publish(
+            online=online,
+            label="ONLINE" if online else "ERR",
+            pct=0,
+            detail=(message or "menu operacional")[:100],
+            mode="MENU",
+            title="BINHO · ACE",
+        )
+    except Exception:
+        pass
 
 
 def cmd_help() -> str:
     keys = ", ".join(sorted(EDITABLE.keys()))
     return (
         "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | sync | sync78 | dash | gui | "
-        "/automatica | /status | /push | /pull | show | help | sair\n"
+        "brand | crt | /automatica | /status | /push | /pull | show | help | sair\n"
         f"  Campos: {keys}\n"
         "  Bool: true/false | sim/nao | 1/0\n"
         "  periodo_modo: diario | sexta\n"
@@ -250,6 +306,7 @@ def cmd_help() -> str:
         "    /e intervalo 30s\n"
         "  Visualização SSW: /viz on|off  ou  /e visualizar sim|nao\n"
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
+        "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
 
@@ -420,14 +477,8 @@ def cmd_viz(parts: list[str], payload: dict[str, Any]) -> str:
 def run_pipeline_50() -> str:
     from pipeline import run_full_pipeline
 
-    logs: list[str] = []
-
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-        logs.append(msg)
-
     print("\n=== Pipeline 50 ===")
-    result = run_full_pipeline(on_status=on_status, headless=_cfg_headless())
+    result = run_full_pipeline(on_status=_on_status, headless=_cfg_headless())
     tot = ((result.get("analysis") or {}).get("totais") or {})
     return f"50 OK · totais={tot}" if result else "50 concluido"
 
@@ -435,11 +486,8 @@ def run_pipeline_50() -> str:
 def run_pipeline_103() -> str:
     from pipeline import run_full_pipeline_103
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
     print("\n=== Pipeline 103 ===")
-    result = run_full_pipeline_103(on_status=on_status, headless=_cfg_headless())
+    result = run_full_pipeline_103(on_status=_on_status, headless=_cfg_headless())
     tot = ((result.get("analysis") or {}).get("totais") or {})
     return f"103 OK · totais={tot}"
 
@@ -447,11 +495,8 @@ def run_pipeline_103() -> str:
 def run_pipeline_36() -> str:
     from pipeline import run_full_pipeline_36
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
     print("\n=== Pipeline 36 (entregas) ===")
-    result = run_full_pipeline_36(on_status=on_status, headless=_cfg_headless())
+    result = run_full_pipeline_36(on_status=_on_status, headless=_cfg_headless())
     tot = ((result.get("analysis") or {}).get("totais") or {})
     return f"36 OK · totais={tot}"
 
@@ -459,11 +504,8 @@ def run_pipeline_36() -> str:
 def run_pipeline_225() -> str:
     from pipeline import run_full_pipeline_225
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
     print("\n=== Pipeline 225 (agendamentos mes corrente · arquivo R) ===")
-    result = run_full_pipeline_225(on_status=on_status, headless=_cfg_headless())
+    result = run_full_pipeline_225(on_status=_on_status, headless=_cfg_headless())
     tot = result.get("analysis") or {}
     return (
         f"225 OK · total={tot.get('total')} rota={tot.get('em_rota')} "
@@ -474,11 +516,8 @@ def run_pipeline_225() -> str:
 def run_pipeline_78_cmd() -> str:
     from pipeline import run_pipeline_78
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
     print("\n=== Pipeline 078 (Armazém) ===")
-    result = run_pipeline_78(on_status=on_status, headless=_cfg_headless())
+    result = run_pipeline_78(on_status=_on_status, headless=_cfg_headless())
     conf = result.get("177") or {}
     extra = ""
     if conf.get("ok"):
@@ -497,14 +536,11 @@ def run_pipeline_177_cmd() -> str:
     from sheets_sync_78 import sync_sheets_78
     from ssw_177 import download_report_177
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
     print("\n=== Pipeline 177 (Conferentes · mensal) ===")
-    dl = download_report_177(headless=_cfg_headless(), on_status=on_status)
-    result = analyze_report_177(dl["path"], on_status=on_status)
-    publish_dashboard(on_status=on_status)
-    sheets = sync_sheets_78(on_status=on_status)
+    dl = download_report_177(headless=_cfg_headless(), on_status=_on_status)
+    result = analyze_report_177(dl["path"], on_status=_on_status)
+    publish_dashboard(on_status=_on_status)
+    sheets = sync_sheets_78(on_status=_on_status)
     return (
         f"177 OK · conferentes={result.get('total_conferentes')} "
         f"topo={result.get('topo')} · nomes={result.get('nomes_resolvidos')} · "
@@ -518,30 +554,24 @@ def run_pipeline_0607_cmd() -> str:
     from publish_dashboard import publish_armazem_local
     from ssw_177 import _find_local_177
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
     print("\n=== Relação 0607 (login → nome) ===")
-    r = analyze_report_0607(on_status=on_status)
+    r = analyze_report_0607(on_status=_on_status)
     extra = ""
     local177 = _find_local_177()
     if local177:
-        a = analyze_report_177(local177, on_status=on_status)
-        publish_armazem_local(on_status=on_status)
+        a = analyze_report_177(local177, on_status=_on_status)
+        publish_armazem_local(on_status=_on_status)
         extra = f" · 177 reaplicado topo={a.get('topo')} nomes={a.get('nomes_resolvidos')}"
     else:
-        publish_armazem_local(on_status=on_status)
+        publish_armazem_local(on_status=_on_status)
     return f"0607 OK · {r.get('total')} cadastro(s){extra}"
 
 
 def run_sync_78() -> str:
     from sheets_sync_78 import sync_sheets_78
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
     print("\n=== Sync Sheets Armazém 078 ===")
-    r = sync_sheets_78(on_status=on_status)
+    r = sync_sheets_78(on_status=_on_status)
     if r.get("ok"):
         conf = r.get("conferentes")
         extra = f" · conferentes={conf}" if conf is not None else ""
@@ -557,17 +587,14 @@ def run_sync() -> str:
         sync_google_sheets_225,
     )
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
     print("\n=== Sync Sheets 50 ===")
-    r50 = sync_google_sheets(on_status=on_status)
+    r50 = sync_google_sheets(on_status=_on_status)
     print("\n=== Sync Sheets 103 ===")
-    r103 = sync_google_sheets_103(on_status=on_status)
+    r103 = sync_google_sheets_103(on_status=_on_status)
     print("\n=== Sync Sheets 36 ===")
-    r36 = sync_google_sheets_36(on_status=on_status)
+    r36 = sync_google_sheets_36(on_status=_on_status)
     print("\n=== Sync Sheets 225 ===")
-    r225 = sync_google_sheets_225(on_status=on_status)
+    r225 = sync_google_sheets_225(on_status=_on_status)
     return (
         f"sync 50={r50.get('ok')} 103={r103.get('ok')} "
         f"36={r36.get('ok')} 225={r225.get('ok')}"
@@ -577,10 +604,7 @@ def run_sync() -> str:
 def run_dash() -> str:
     from publish_dashboard import publish_dashboard
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
-    r = publish_dashboard(on_status=on_status)
+    r = publish_dashboard(on_status=_on_status)
     return f"dashboard ok={r.get('ok')} pushed={r.get('pushed')}"
 
 
@@ -597,6 +621,17 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
     from ace_loop import resolve_interval_sec, run_loop
     from interval_parse import format_duration_long
     from config import load_settings
+    from term_brand import (
+        _enable_windows_ansi,
+        g,
+        loading_screen,
+        muted,
+        print_header_banner,
+        rule,
+        status_idle,
+        status_online,
+        status_work,
+    )
 
     cfg = load_settings()
     try:
@@ -604,64 +639,165 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
     except ValueError as err:
         return f"ERRO: {err}"
 
-    print("\n" + "=" * 72)
-    print("  MODO /AUTOMATICA")
-    print("  50  = periodo de COLETA HOJE")
-    print("  103 = data LIMITE HOJE (L)")
-    print("  36  = entregas (se habilitado)")
-    print("  225 = agendamentos do MES (1→ultimo dia) · arquivo R")
-    print("  078 = Armazém (se armazem_in_loop=true)")
-    print(f"  Ciclo a cada {format_duration_long(sec)}: baixar + analisar + Sheets/dashboard")
-    print("  Login SSW 1x; abre 50/103/36/225 na mesma sessão; 078 depois se ligado.")
-    print("  Virada de dia/mes recalcula sozinho (225 segue o mes corrente).")
-    print("  Altere com: /e intervalo 30s | 5m | 1h | 2d")
-    print("  Ligar/desligar 078 no loop: /e armazem_in_loop true|false")
-    print("  Janela SSW: /viz on|off  (ou /e visualizar sim|nao)")
-    if return_to_menu:
-        print("  Ctrl+C volta ao menu. Fechar a janela encerra.")
+    _enable_windows_ansi()
+    loading_screen(
+        "ACE · boot /automatica",
+        steps=["kernel", "periodos", "sheets bridge", "loop"],
+        seconds=1.4,
+    )
+    print_header_banner(
+        subtitle="/AUTOMATICA · ciclo contínuo",
+        payload={
+            "enable_sheets": cfg.enable_sheets,
+            "headless": cfg.headless,
+            "armazem_in_loop": cfg.armazem_in_loop,
+            "loop_intervalo": cfg.loop_intervalo,
+            "unit": getattr(load_credentials(), "unit", ""),
+            "user": getattr(load_credentials(), "user", ""),
+        },
+    )
+    print(f"  {status_work('LOOP')}  a cada {g(format_duration_long(sec), bold=True)}")
+    print(f"  {status_idle('50')} coleta  ·  {status_idle('103')} limite  ·  {status_idle('36')} entrega")
+    print(f"  {status_idle('225')} agendamentos do mês · arquivo R")
+    if getattr(cfg, "armazem_in_loop", False):
+        print(f"  {status_online('078')} Armazém no loop")
     else:
-        print("  Ctrl+C ou fechar a janela encerra.")
-    print("=" * 72 + "\n")
+        print(f"  {status_idle('078')} fora do loop")
+    print(f"  {rule()}")
+    print(f"  {muted('Ctrl+C → menu · /viz on|off · /e intervalo 30s|5m')}")
+    print(f"  {rule()}\n")
     try:
         run_loop(interval_sec=sec, headless=_cfg_headless(), once=False)
     except KeyboardInterrupt:
-        print("\nModo automatica interrompido.")
+        print(f"\n  {status_idle('STOP')}  Modo automatica interrompido.")
     return "Modo /automatica encerrado."
 
 
-def _parse_interval_arg(parts: list[str]) -> str | None:
-    """Pega override apos o comando: /automatica 90s | /automatica 5m."""
-    if len(parts) >= 2:
-        return " ".join(parts[1:]).strip() or None
-    return None
+def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+    """
+    Executa um comando ACE (mesmo motor do menu CMD).
+    Retorna (mensagem, payload atualizado). Usado pelo painel CRT.
+    """
+    payload = dict(payload or _load_payload())
+    text = (raw or "").strip()
+    if not text:
+        return ("", payload)
+
+    parts = text.split()
+    cmd = parts[0].lower()
+
+    if cmd in {"sair", "exit", "quit", "q"}:
+        return ("Feche a janela CRT para sair do painel.", payload)
+    if cmd in {"help", "/help", "?", "h"}:
+        return (cmd_help(), payload)
+    if cmd in {"/viz", "viz", "/visualizar", "visualizar"}:
+        msg = cmd_viz(parts, payload)
+        return (msg, _load_payload())
+    if cmd in {"/e", "/edit", "e"}:
+        if cmd == "e":
+            parts = ["/e"] + parts[1:]
+        msg = cmd_edit(payload, parts)
+        return (msg, _load_payload())
+    if cmd in {"1", "50", "/50"}:
+        return (run_pipeline_50(), _load_payload())
+    if cmd in {"2", "103", "/103"}:
+        return (run_pipeline_103(), _load_payload())
+    if cmd in {"36", "/36", "entrega", "/entrega"}:
+        return (run_pipeline_36(), _load_payload())
+    if cmd in {"225", "/225", "agenda", "/agenda", "agendamento"}:
+        return (run_pipeline_225(), _load_payload())
+    if cmd in {"78", "/78", "armazem", "/armazem"}:
+        return (run_pipeline_78_cmd(), _load_payload())
+    if cmd in {"177", "/177", "conferentes", "/conferentes"}:
+        return (run_pipeline_177_cmd(), _load_payload())
+    if cmd in {"607", "/607", "0607", "/0607", "mapa", "nomes"}:
+        return (run_pipeline_0607_cmd(), _load_payload())
+    if cmd in {"sync78", "/sync78", "sheets78"}:
+        return (run_sync_78(), payload)
+    if cmd in {"3", "sync", "/sync"}:
+        return (run_sync(), payload)
+    if cmd in {"4", "dash", "/dash", "dashboard"}:
+        return (run_dash(), payload)
+    if cmd in {"5", "gui", "/gui", "app"}:
+        return (run_gui(), payload)
+    if cmd in {
+        "7",
+        "loop",
+        "/loop",
+        "watch",
+        "automatica",
+        "/automatica",
+        "automática",
+        "/automática",
+        "auto",
+        "/auto",
+    }:
+        # Sem janela extra: loop em processo oculto; status vai para o histórico do CRT
+        iv = _parse_interval_arg(parts)
+        args = [sys.executable, "-u", str(Path(__file__).resolve().parent / "ace_cmd.py"), "automatica"]
+        if iv:
+            args.append(iv)
+        flags = 0
+        if os.name == "nt":
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        subprocess.Popen(
+            args,
+            cwd=str(Path(__file__).resolve().parent),
+            creationflags=flags,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return (
+            f"Atualização contínua iniciada em segundo plano ({iv or 'intervalo config'}). "
+            "Acompanhe no histórico do painel · digite parar no CRT se iniciou por lá.",
+            payload,
+        )
+    if cmd in {"8", "status", "/status", "git", "/git"}:
+        return (run_git_status(), payload)
+    if cmd in {
+        "9",
+        "push",
+        "/push",
+        "atualizar",
+        "/atualizar",
+        "update",
+        "/update",
+        "github",
+        "/github",
+        "subir",
+        "/subir",
+    }:
+        return (run_git_push(parts), payload)
+    if cmd in {"pull", "/pull", "baixar", "/baixar"}:
+        return (run_git_pull(), payload)
+    if cmd in {"brand", "/brand", "logo", "/logo", "cubos", "/cubos"}:
+        return ("Use o CMD (`brand`) para demo ANSI — CRT já mostra a logo.", payload)
+    if cmd in {"crt", "/crt", "crtpanel", "painel"}:
+        return ("Painel CRT já está aberto.", payload)
+    if cmd in {"6", "show", "/show", "config"}:
+        return (show_config(payload), payload)
+    if cmd in {"cls", "clear"}:
+        return ("__CLEAR__", payload)
+    return (f"Comando desconhecido: {text}. Digite help", payload)
 
 
 def run_git_status() -> str:
     from git_sync import git_status
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
-    return git_status(on_status=on_status)
+    return git_status(on_status=_on_status)
 
 
 def run_git_push(parts: list[str] | None = None) -> str:
     from git_sync import git_push
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
     msg = " ".join((parts or [])[1:]).strip()
-    return git_push(msg, on_status=on_status)
+    return git_push(msg, on_status=_on_status)
 
 
 def run_git_pull() -> str:
     from git_sync import git_pull
 
-    def on_status(msg: str) -> None:
-        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
-
-    return git_pull(on_status=on_status)
+    return git_pull(on_status=_on_status)
 
 
 def show_config(payload: dict[str, Any]) -> str:
@@ -673,6 +809,19 @@ def show_config(payload: dict[str, Any]) -> str:
         else:
             lines.append(f"  {key}={_mask(str(val), secret)}")
     return "\n".join(lines)
+
+
+def _parse_interval_arg(parts: list[str] | None) -> str | None:
+    """Intervalo opcional após o comando. Ex.: ['/automatica','5m'] → '5m'; ['auto','5'] → '5m'."""
+    if not parts or len(parts) < 2:
+        return None
+    raw = " ".join(str(p) for p in parts[1:]).strip()
+    if not raw:
+        return None
+    # Compat CLI antigo: só número = minutos (ace.bat /automatica 5)
+    if raw.isdigit():
+        return f"{raw}m"
+    return raw
 
 
 def _is_automatica_token(token: str) -> bool:
@@ -734,9 +883,19 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0].lstrip("/").lower() in {"sync78", "sheets78"}:
         print(run_sync_78())
         return 0
+    if args and args[0].lstrip("/").lower() in {"brand", "logo", "cubos", "neofetch"}:
+        from term_brand import main as brand_main
+
+        sub = args[1:] if len(args) > 1 else ["demo"]
+        return int(brand_main(sub) or 0)
+    if args and args[0].lstrip("/").lower() in {"crt", "crtpanel", "painel"}:
+        from ace_crt import main as crt_main
+
+        return int(crt_main() or 0)
 
     payload = _load_payload()
-    message = "Pronto. /push sobe Pages | /automatica | 78=Armazém | /e edita."
+    message = "Pronto. /push sobe Pages | /automatica | 78=Armazém | crt=painel"
+    _crt_boot(detail=message)
     draw_menu(payload, message=message)
 
     while True:
@@ -828,6 +987,14 @@ def main(argv: list[str] | None = None) -> int:
                 message = run_git_push(parts)
             elif cmd in {"pull", "/pull", "baixar", "/baixar"}:
                 message = run_git_pull()
+            elif cmd in {"brand", "/brand", "logo", "/logo", "cubos", "/cubos"}:
+                from term_brand import demo as brand_demo
+
+                brand_demo()
+                message = "Visual ANSI (PNG→terminal)."
+            elif cmd in {"crt", "/crt", "crtpanel", "painel"}:
+                _crt_boot(detail="painel CRT reaberto")
+                message = "Painel CRT de gestão aberto."
             elif cmd in {"6", "show", "/show", "config"}:
                 message = show_config(payload)
             elif cmd == "cls" or cmd == "clear":

@@ -1342,8 +1342,7 @@ class AceSswClient:
                 self._ensure_unit(page)
                 self._patch_blank_popup_fix(page)
 
-                # --- Fase 1: abrir TODOS os relatórios (login permanece aberto) ---
-                opened: list[tuple[str, str, Any, tuple[str, str]]] = []
+                # --- Sequencial: abre → baixa → fecha (login permanece) ---
                 open_plan: list[tuple[str, str, tuple[str, str], tuple[str, ...]]] = [
                     (
                         "50",
@@ -1382,15 +1381,22 @@ class AceSswClient:
                     )
                 )
 
-                self.on_status(f"Abrindo {len(open_plan)} tela(s) na mesma sessão...")
+                self.on_status(
+                    f"Baixando {len(open_plan)} relatório(s) em sequência "
+                    "(abre → baixa → fecha · login permanece)"
+                )
+                multi_50 = len(self._coleta_units() or []) > 1
+                multi_103 = len(self._coleta_units() or []) > 1
+
+                # Sequencial: abrir todos juntos mata popups ao baixar o primeiro.
                 for label, path_key, period, markers in open_plan:
+                    popup = None
                     try:
                         self.set_period(period[0], period[1])
                         self.on_status(
                             f"[{label}] abrindo · "
                             f"{format_period(self.start_date_ui, self.end_date_ui)}"
                         )
-                        # Foca o menu principal antes de cada opção
                         page.bring_to_front()
                         page.wait_for_timeout(200)
                         popup = self._open_menu_option(page, label, markers=markers)
@@ -1398,59 +1404,75 @@ class AceSswClient:
                             popup.on("dialog", lambda d: d.accept())
                         except Exception:
                             pass
-                        opened.append((label, path_key, popup, period))
-                        self.on_status(f"[{label}] tela aberta")
-                    except Exception as err:  # noqa: BLE001
-                        errors[label] = str(err)
-                        self.on_status(f"[{label}] falha ao abrir: {err}")
+                        self.on_status(f"[{label}] gerando…")
 
-                # --- Fase 2: baixar de cada tela já aberta (restaura o periodo de cada uma) ---
-                multi_50 = len(self._coleta_units() or []) > 1
-                multi_103 = len(self._coleta_units() or []) > 1
-
-                for label, path_key, popup, period in opened:
-                    try:
-                        self.set_period(period[0], period[1])
-                        self.on_status(
-                            f"[{label}] gerando · "
-                            f"{format_period(self.start_date_ui, self.end_date_ui)}"
-                        )
                         if label == "50":
                             if multi_50:
-                                # várias unidades: fecha esta e usa fluxo completo no menu
                                 try:
                                     popup.close()
                                 except Exception:
                                     pass
+                                popup = None
                                 path = self._download_report_50(page)
                             else:
                                 un = (self._coleta_units() or [""])[0]
                                 path = self._gerar_download_50_popup(popup, un)
+                                popup = None  # já fechado no helper
                         elif label == "103":
                             if multi_103:
                                 try:
                                     popup.close()
                                 except Exception:
                                     pass
+                                popup = None
                                 path = self._download_report_103(page)
                             else:
                                 un = (self._coleta_units() or [""])[0]
                                 path = self._gerar_download_103_popup(popup, un)
+                                popup = None
                         elif label == "36":
                             path = self._gerar_download_36_popup(popup, "SPO")
+                            popup = None
                         elif label == "225":
                             path = self._gerar_download_225_popup(popup, "SPO")
+                            popup = None
                         else:
                             raise RuntimeError(f"relatorio desconhecido: {label}")
                         self.paths[path_key] = str(path)
+                        errors.pop(label, None)
                         self.on_status(f"[{label}] OK {path.name}")
                     except Exception as err:  # noqa: BLE001
                         errors[label] = str(err)
                         self.on_status(f"[{label}] FALHOU: {err}")
-                        try:
-                            popup.close()
-                        except Exception:
-                            pass
+                        if popup is not None:
+                            try:
+                                popup.close()
+                            except Exception:
+                                pass
+
+                # Retry individuais na sessão viva (só o que faltou)
+                retries: list[tuple[str, str, tuple[str, str], Any]] = []
+                if "coleta" not in self.paths:
+                    retries.append(("50", "coleta", period_50, self._download_report_50))
+                if "coleta_103" not in self.paths:
+                    retries.append(("103", "coleta_103", period_103, self._download_report_103))
+                if run_36 and period_36 and "entrega_36" not in self.paths:
+                    retries.append(("36", "entrega_36", period_36, lambda p: self._download_report_36(p)))
+                if "agendamento_225" not in self.paths:
+                    retries.append(("225", "agendamento_225", period_225, self._download_report_225))
+
+                for label, path_key, period, downloader in retries:
+                    try:
+                        self.on_status(f"[{label}] nova tentativa na mesma sessão…")
+                        self.set_period(period[0], period[1])
+                        page.bring_to_front()
+                        path = downloader(page)
+                        self.paths[path_key] = str(path)
+                        errors.pop(label, None)
+                        self.on_status(f"[{label}] OK (retry) {path.name}")
+                    except Exception as err:  # noqa: BLE001
+                        errors[label] = str(err)
+                        self.on_status(f"[{label}] retry falhou: {err}")
 
                 if not self.paths:
                     details = "; ".join(f"{k}: {v}" for k, v in errors.items())
@@ -1461,7 +1483,8 @@ class AceSswClient:
                     "errors": errors,
                     "download_dir": str(self.download_dir),
                     "shared_session": True,
-                    "parallel_open": True,
+                    "parallel_open": False,
+                    "sequential": True,
                     "headless": self.headless,
                 }
             finally:

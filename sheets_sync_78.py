@@ -14,6 +14,7 @@ from parser_ssw177 import (
     RESUMO_177_CSV,
     RESUMO_177_FIELDS,
 )
+from sheets_sync import _bump_if_changed, _send_sheet
 
 StatusCallback = Callable[[str], None]
 VEICULO_FIELDS_OUT = VEICULO_FIELDS + ["peso_veiculo"]
@@ -28,33 +29,6 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
         return []
     with path.open("r", encoding="utf-8-sig", newline="") as fh:
         return list(csv.DictReader(fh))
-
-
-def _replace_sheet(
-    url: str,
-    token: str,
-    sheet: str,
-    headers: list[str],
-    rows: list[dict[str, str]],
-    *,
-    status: StatusCallback,
-) -> int:
-    status(f"Sheets/078: atualizando {sheet} ({len(rows)} linhas)...")
-    resp = post_apps_script(
-        url,
-        {
-            "token": token,
-            "action": "replace",
-            "sheet": sheet,
-            "headers": headers,
-            "rows": rows,
-        },
-        timeout=180,
-        retries=3,
-    )
-    if not resp.get("ok"):
-        raise RuntimeError(str(resp.get("error") or resp))
-    return int(resp.get("rows") or len(rows))
 
 
 def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, Any]:
@@ -113,23 +87,37 @@ def sync_sheets_78(
             f"Sheets 078: Veiculos78/Resumo78 ({len(veiculos)} linha(s)) "
             "na planilha única da distribuição."
         )
-        n_v = _replace_sheet(url, token, "Veiculos78", VEICULO_FIELDS_OUT, veiculos, status=status)
-        n_r = _replace_sheet(url, token, "Resumo78", RESUMO_FIELDS, resumo, status=status)
+        stats: dict[str, Any] = {}
+        r_v = _send_sheet(url, token, "Veiculos78", VEICULO_FIELDS_OUT, veiculos, on_status=status)
+        r_r = _send_sheet(url, token, "Resumo78", RESUMO_FIELDS, resumo, on_status=status)
+        if not r_v.get("ok") or not r_r.get("ok"):
+            raise RuntimeError(str((r_v.get("error") or r_r.get("error") or "078 replace falhou")))
+        stats["Veiculos78"] = r_v
+        stats["Resumo78"] = r_r
+        n_v = int(r_v.get("rows") or len(veiculos))
+        n_r = int(r_r.get("rows") or len(resumo))
         result.update({"ok": True, "veiculos": n_v, "resumo": n_r})
 
         conf = _read_csv(CONFERENTES_CSV)
         resumo177 = _read_csv(RESUMO_177_CSV)
         if conf:
             status(f"Sheets 177: Conferentes177 ({len(conf)} linha(s))...")
-            n_c = _replace_sheet(
-                url, token, "Conferentes177", CONFERENTE_FIELDS, conf, status=status
+            r_c = _send_sheet(
+                url, token, "Conferentes177", CONFERENTE_FIELDS, conf, on_status=status
             )
-            n_cr = _replace_sheet(
-                url, token, "Resumo177", RESUMO_177_FIELDS, resumo177, status=status
+            r_cr = _send_sheet(
+                url, token, "Resumo177", RESUMO_177_FIELDS, resumo177, on_status=status
             )
+            if not r_c.get("ok") or not r_cr.get("ok"):
+                raise RuntimeError(str(r_c.get("error") or r_cr.get("error") or "177 falhou"))
+            stats["Conferentes177"] = r_c
+            stats["Resumo177"] = r_cr
+            n_c = int(r_c.get("rows") or len(conf))
+            n_cr = int(r_cr.get("rows") or len(resumo177))
             result.update({"conferentes": n_c, "resumo177": n_cr})
             status(f"Sheets 177 OK: {n_c} conferente(s).")
 
+        _bump_if_changed(url, token, stats, on_status=status)
         status(f"Sheets Armazém OK: {n_v} veículo(s)/linha(s), {n_r} resumo.")
         return result
     except Exception as error:  # noqa: BLE001

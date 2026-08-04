@@ -8,7 +8,7 @@ from config import DOWNLOAD_DIR, LOG_DIR, AceSettings, SswCredentials, ensure_di
 from dates import format_period, normalize_date, periodo_103_hoje, periodo_36_ontem_hoje, periodo_50_coleta_hoje, periodo_mes_corrente, sugestao_periodo, titulo_agendamento_mes
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
-from sheets_sync import sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36, sync_google_sheets_225
+from sheets_sync import sync_cycle_sheets, sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36, sync_google_sheets_225
 from ssw_client import (
     cleanup_downloads,
     download_ace_103,
@@ -36,15 +36,28 @@ def _log_file(message: str) -> None:
 
 
 def find_latest_report(download_dir: Path | None = None) -> Path | None:
+    """Somente arquivos do 50 (0157) — nunca aceita 36/103/225 por engano."""
     folder = Path(download_dir or DOWNLOAD_DIR)
     if not folder.exists():
         return None
+    candidates: list[Path] = []
+    for pattern in ("coleta_50*", "*ssw0157*", "*0157*.sswweb"):
+        candidates.extend(folder.glob(pattern))
     files = sorted(
-        list(folder.glob("*.sswweb")) + list(folder.glob("ssw0157*")),
+        {p.resolve() for p in candidates if p.is_file()},
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )
-    return files[0] if files else None
+    for p in files:
+        name = p.name.lower()
+        if any(
+            bad in name
+            for bad in ("0146", "0166", "2862", "coleta_103", "entrega_36", "agendamento_225")
+        ):
+            continue
+        if name.startswith("coleta_50") or "ssw0157" in name or "0157" in name:
+            return p
+    return None
 
 
 def run_analysis_only(
@@ -140,6 +153,7 @@ def run_full_pipeline(
 
 
 def find_latest_103(download_dir: Path | None = None) -> Path | None:
+    """Somente arquivos do 103 (0166) — nunca *.xlsx genérico da pasta Downloads."""
     folder = Path(download_dir or DOWNLOAD_DIR)
     candidates: list[Path] = []
     search_dirs = [folder]
@@ -151,9 +165,9 @@ def find_latest_103(download_dir: Path | None = None) -> Path | None:
         "coleta_103*",
         "CSV*ssw0166*",
         "*ssw0166*",
-        "*.xlsx",
-        "*.xls",
-        "*.csv",
+        "*0166*.sswweb",
+        "*0166*.xlsx",
+        "*0166*.xls",
     )
     for directory in search_dirs:
         if not directory.exists():
@@ -161,14 +175,27 @@ def find_latest_103(download_dir: Path | None = None) -> Path | None:
         for pattern in patterns:
             candidates.extend(directory.glob(pattern))
 
-    # Prefer arquivos da 103
     def score(path: Path) -> tuple:
         name = path.name.lower()
-        is_103 = ("ssw0166" in name) or name.startswith("coleta_103") or name.startswith("csvssw0166")
+        is_103 = (
+            "ssw0166" in name
+            or "0166" in name
+            or name.startswith("coleta_103")
+            or name.startswith("csvssw0166")
+        )
         return (1 if is_103 else 0, path.stat().st_mtime)
 
     files = sorted({p.resolve() for p in candidates if p.is_file()}, key=score, reverse=True)
-    return files[0] if files else None
+    for p in files:
+        name = p.name.lower()
+        if any(
+            bad in name
+            for bad in ("0146", "0157", "2862", "coleta_50", "entrega_36", "agendamento")
+        ):
+            continue
+        if "0166" in name or name.startswith("coleta_103"):
+            return p
+    return None
 
 
 def run_analysis_103(
@@ -263,20 +290,16 @@ def run_full_pipeline_103(
 
 
 def find_latest_225(download_dir: Path | None = None) -> Path | None:
+    """Somente arquivos do 225 — nunca aceita 36/0146 por engano."""
     folder = Path(download_dir or DOWNLOAD_DIR)
     if not folder.exists():
         return None
     candidates: list[Path] = []
     for pattern in (
         "agendamento_225*",
-        "*225*",
-        "*agend*",
-        "*BIN*.sswweb",
+        "*ssw2862*",
         "*2862*.sswweb",
-        "*.sswweb",
-        "CSV*100432*",
-        "*BIN*.csv",
-        "*.csv",
+        "*agendamento*",
     ):
         candidates.extend(folder.glob(pattern))
     files = sorted(
@@ -285,15 +308,23 @@ def find_latest_225(download_dir: Path | None = None) -> Path | None:
         reverse=True,
     )
     for p in files:
+        name = p.name.lower()
+        # exclui claramente 36 / 50 / 103
+        if any(bad in name for bad in ("0146", "0157", "0166", "coleta_50", "coleta_103", "entrega_36")):
+            continue
         try:
-            head = p.read_text(encoding="latin-1", errors="replace")[:400].upper()
+            head = p.read_text(encoding="latin-1", errors="replace")[:800].upper()
         except OSError:
             continue
-        if "AGEND PARA" in head or ("AGENDADO" in head and "CTRC" in head):
+        if "ROMANEIO" in head and "AGEND" not in head:
+            continue
+        if "AGEND PARA" in head or "AGENDADO PARA" in head:
             return p
-        if p.suffix.lower() == ".sswweb" and "CTRC" in head:
+        if "AGEND" in head and "CTRC" in head and "OCORRENCIA" in head:
             return p
-    return files[0] if files else None
+        if name.startswith("agendamento_225"):
+            return p
+    return None
 
 
 def run_analysis_225(
@@ -559,30 +590,40 @@ def run_dual_cycle(
 
     if sessao_ok or paths.get("coleta"):
         try:
-            report = _resolve_report("coleta", find_latest_report)
+            fresh = Path(paths.get("coleta") or "")
+            report = fresh if fresh.is_file() else find_latest_report()
             if report is None:
                 raise RuntimeError("50 sem arquivo")
-            if str(report) != str(paths.get("coleta") or ""):
+            if not fresh.is_file():
                 emit(f"[50] Usando ultimo: {report.name}")
             analysis = run_analysis_only(
                 report, settings=cfg, on_status=lambda m: emit(f"[50] {m}"), sync=False
             )
+            lote = int((analysis.get("analysis") or analysis).get("lote_atual") or 0)
+            # Download falhou + análise vazia (arquivo errado/antigo) → não zera Sheets
+            if not fresh.is_file() and lote <= 0:
+                raise RuntimeError(
+                    f"50 cache invalido ({report.name}) com 0 coleta(s) — planilha nao sera sobrescrita"
+                )
             result_50 = {
                 "download": {"paths": {"coleta": str(report)}},
                 **analysis,
                 "period": format_period(ini50, fim50),
+                "fresh": fresh.is_file(),
             }
             emit("50 concluido.")
         except Exception as err:  # noqa: BLE001
             errors["50"] = str(err)
             emit(f"50 FALHOU: {err}")
+            result_50 = {}
 
     if sessao_ok or paths.get("coleta_103"):
         try:
-            report = _resolve_report("coleta_103", find_latest_103)
+            fresh = Path(paths.get("coleta_103") or "")
+            report = fresh if fresh.is_file() else find_latest_103()
             if report is None:
                 raise RuntimeError("103 sem arquivo")
-            if str(report) != str(paths.get("coleta_103") or ""):
+            if not fresh.is_file():
                 emit(f"[103] Usando ultimo: {report.name}")
             analysis = run_analysis_103(
                 report,
@@ -591,15 +632,22 @@ def run_dual_cycle(
                 on_status=lambda m: emit(f"[103] {m}"),
                 sync=False,
             )
+            lote = int((analysis.get("analysis") or {}).get("lote") or analysis.get("lote") or 0)
+            if not fresh.is_file() and lote <= 0:
+                raise RuntimeError(
+                    f"103 cache invalido ({report.name}) com 0 coleta(s) — planilha nao sera sobrescrita"
+                )
             result_103 = {
                 "download": {"paths": {"coleta_103": str(report)}},
                 **analysis,
                 "period": format_period(ini103, fim103),
+                "fresh": fresh.is_file(),
             }
             emit("103 concluido.")
         except Exception as err:  # noqa: BLE001
             errors["103"] = str(err)
             emit(f"103 FALHOU: {err}")
+            result_103 = {}
 
     if run_36 and (sessao_ok or paths.get("entrega_36")):
         try:
@@ -625,11 +673,35 @@ def run_dual_cycle(
             errors["36"] = str(err)
             emit(f"36 FALHOU: {err}")
 
-    if sessao_ok or paths.get("agendamento_225"):
+    if paths.get("agendamento_225") or sessao_ok or errors.get("225"):
         try:
-            report = _resolve_report("agendamento_225", find_latest_225)
+            downloaded = Path(paths.get("agendamento_225") or "")
+            report: Path | None = downloaded if downloaded.is_file() else None
+            # Ciclo compartilhado perdeu o 225 → tenta sessão dedicada antes do cache
+            if report is None and (errors.get("225") or not paths.get("agendamento_225")):
+                emit("[225] Baixando de novo em sessão dedicada…")
+                try:
+                    ded = download_ace_225(
+                        ini225,
+                        fim225,
+                        headless=use_headless,
+                        on_status=lambda m: emit(f"[225] {m}"),
+                        credentials=creds,
+                        settings=cfg,
+                        clean_downloads=False,
+                    )
+                    candid = Path((ded.get("paths") or {}).get("agendamento_225") or "")
+                    if candid.is_file():
+                        downloaded = candid
+                        report = candid
+                        paths["agendamento_225"] = str(candid)
+                        errors.pop("225", None)
+                except Exception as retry_err:  # noqa: BLE001
+                    emit(f"[225] sessão dedicada falhou: {retry_err}")
             if report is None:
-                raise RuntimeError("225 sem arquivo")
+                report = find_latest_225()
+            if report is None:
+                raise RuntimeError("225 sem arquivo (download falhou e nao ha cache 225 valido)")
             if str(report) != str(paths.get("agendamento_225") or ""):
                 emit(f"[225] Usando ultimo: {report.name}")
             analysis = run_analysis_225(
@@ -639,6 +711,11 @@ def run_dual_cycle(
                 on_status=lambda m: emit(f"[225] {m}"),
                 sync=False,
             )
+            total_225 = int((analysis.get("total") or analysis.get("totais", {}).get("total") or 0))
+            if not downloaded.is_file() and total_225 <= 0:
+                raise RuntimeError(
+                    f"225 cache invalido ({report.name}) com 0 CTRC — Sheets 225 nao sera sobrescrito"
+                )
             result_225 = {
                 "download": {"paths": {"agendamento_225": str(report)}},
                 **analysis,
@@ -649,6 +726,7 @@ def run_dual_cycle(
         except Exception as err:  # noqa: BLE001
             errors["225"] = str(err)
             emit(f"225 FALHOU: {err}")
+            result_225 = {}
 
     keep: list[Path] = []
     for block in (result_50, result_103, result_36, result_225):
@@ -664,14 +742,15 @@ def run_dual_cycle(
 
     sheets50 = sheets103 = sheets36 = sheets225 = dash = {"ok": False, "skipped": True}
     if sync and (result_50 or result_103 or result_36 or result_225):
-        if result_50:
-            sheets50 = sync_google_sheets(cfg, on_status=emit)
-        if result_103:
-            sheets103 = sync_google_sheets_103(cfg, on_status=emit)
-        if result_36:
-            sheets36 = sync_google_sheets_36(cfg, on_status=emit)
-        if result_225:
-            sheets225 = sync_google_sheets_225(cfg, on_status=emit)
+        cycle = sync_cycle_sheets(
+            cfg,
+            do_50=bool(result_50),
+            do_103=bool(result_103),
+            do_36=bool(result_36),
+            do_225=bool(result_225),
+            on_status=emit,
+        )
+        sheets50 = sheets103 = sheets36 = sheets225 = cycle
         dash = publish_dashboard(cfg, on_status=emit)
 
     result_78: dict[str, Any] = {}

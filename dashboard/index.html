@@ -2568,6 +2568,26 @@
       return dados;
     }
 
+    /** Versão dos dados no Apps Script — evita reler planilha grande se nada mudou. */
+    let lastDataVersion = null;
+    let forceNextRefresh = true;
+
+    async function dadosVersionChanged() {
+      try {
+        const v = await chamarPlanilha('version');
+        const ver = v && v.version != null ? String(v.version) : null;
+        if (ver == null) return true;
+        if (forceNextRefresh || lastDataVersion == null || lastDataVersion !== ver) {
+          lastDataVersion = ver;
+          forceNextRefresh = false;
+          return true;
+        }
+        return false;
+      } catch (_) {
+        return true; // se version falhar (script antigo), mantém refresh completo
+      }
+    }
+
     function coletaKey(r) {
       return String(r.coleta_id || r.coleta || `${r.unidade || ''}${r.numero || ''}`)
         .toUpperCase().replace(/\s+/g, '').trim();
@@ -3218,6 +3238,10 @@
       if (CURRENT_SECTOR !== 'armazem') return;
       const err = document.getElementById('armErr');
       try {
+        const changed = await dadosVersionChanged();
+        if (!changed && (lastGoodArmVeic.length || lastGoodArmConf.length)) {
+          return;
+        }
         let resumoRows = [];
         let veicRows = [];
         let confRows = [];
@@ -4684,6 +4708,11 @@
       const status = document.getElementById('statusLine');
       const seq = ++refreshSeq;
       try {
+        const changed = await dadosVersionChanged();
+        if (!changed && (COLETAS_103.length || COLETAS_50.length || ENTREGAS_ALL.length)) {
+          if (status) status.textContent = `Atualizado · v${lastDataVersion} (sem mudança)`;
+          return;
+        }
         const [r103, r50, r36, rRom] = await Promise.all([
           chamarPlanilha('coletas103').catch(() => null),
           chamarPlanilha('coletas').catch(() => ({ rows: [] })),

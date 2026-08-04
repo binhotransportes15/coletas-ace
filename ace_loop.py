@@ -18,6 +18,7 @@ import argparse
 import os
 import sys
 import time
+from collections.abc import Callable
 from datetime import date, datetime
 
 from config import CONFIG_PATH, ensure_dirs, load_credentials, load_settings
@@ -27,7 +28,28 @@ from pipeline import run_dual_cycle
 
 
 def _log(msg: str) -> None:
-    print(f"[{datetime.now():%H:%M:%S}] {msg}", flush=True)
+    try:
+        from term_brand import format_status, _enable_windows_ansi, classify_status_msg
+
+        _enable_windows_ansi()
+        stamp = datetime.now().strftime("%H:%M:%S")
+        print(f"  {format_status(msg, hhmmss=stamp)}", flush=True)
+        try:
+            from crt_bridge import append_log, publish
+
+            kind = classify_status_msg(msg)
+            append_log(kind, msg, source="cmd")
+            publish(
+                online=kind != "err",
+                label="ONLINE" if kind != "err" else "ERR",
+                pct=0,
+                detail=str(msg)[:100],
+                mode={"ok": "OK", "err": "ERR", "work": "RUN"}.get(kind, "RUN"),
+            )
+        except Exception:
+            pass
+    except Exception:
+        print(f"[{datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
 def resolve_interval_sec(
@@ -52,32 +74,51 @@ def _banner(interval_sec: int, headless: bool) -> None:
     ini50, fim50 = periodo_50_coleta_hoje()
     ini103, fim103 = periodo_103_hoje()
     hoje = date.today()
-    print("=" * 72, flush=True)
-    print("  ACE · MODO /AUTOMATICA", flush=True)
-    print("=" * 72, flush=True)
-    print(f"  Hoje:        {hoje:%d/%m/%Y} ({hoje.strftime('%A')})", flush=True)
-    print(
-        f"  50 coleta:   {to_ssw_ddmmyy(ini50)} a {to_ssw_ddmmyy(fim50)} "
-        f"({format_period(ini50, fim50)})",
-        flush=True,
-    )
-    print(
-        f"  103 limite:  {to_ssw_ddmmyy(ini103)} ({format_period(ini103, fim103)})",
-        flush=True,
-    )
-    print(
-        f"  Intervalo:   {format_duration(interval_sec)} "
-        f"({format_duration_long(interval_sec)}) | headless={headless}",
-        flush=True,
-    )
-    print(
-        f"  Armazém 078: {'ON no ciclo' if load_settings().armazem_in_loop else 'OFF'} "
-        f"| sheets={'ON' if load_settings().enable_sheets else 'OFF'} (planilha unica)",
-        flush=True,
-    )
-    print(f"  Config:      {CONFIG_PATH}", flush=True)
-    print("  Parar:       Ctrl+C", flush=True)
-    print("=" * 72, flush=True)
+    try:
+        from term_brand import (
+            _enable_windows_ansi,
+            cubes_row,
+            print_header_banner,
+            progress_bar,
+            rule,
+            status_idle,
+            status_online,
+            status_work,
+            muted,
+        )
+
+        _enable_windows_ansi()
+        print_header_banner(subtitle="/AUTOMATICA · em execução")
+        print(f"  {status_work('HOJE')}  {hoje:%d/%m/%Y} ({hoje.strftime('%A')})")
+        print(
+            f"  {status_idle('50')}  {to_ssw_ddmmyy(ini50)}→{to_ssw_ddmmyy(fim50)} "
+            f"({format_period(ini50, fim50)})"
+        )
+        print(
+            f"  {status_idle('103')} {to_ssw_ddmmyy(ini103)} "
+            f"({format_period(ini103, fim103)})"
+        )
+        print(
+            f"  {status_work('TICK')} {format_duration_long(interval_sec)}  "
+            f"headless={headless}"
+        )
+        print(
+            f"  {status_online('078') if load_settings().armazem_in_loop else status_idle('078')}  "
+            f"{status_online('SHEETS') if load_settings().enable_sheets else status_idle('SHEETS')}"
+        )
+        print(f"  {cubes_row()}")
+        # barra só ornamental do ciclo (cheio = intervalo curto)
+        pct = max(8.0, min(100.0, 100.0 * (60.0 / max(60.0, float(interval_sec)))))
+        print(f"  {progress_bar(pct, width=24, label='ritmo loop')}")
+        print(f"  {muted(str(CONFIG_PATH))}")
+        print(f"  {rule()}")
+    except Exception:
+        print("=" * 72, flush=True)
+        print("  ACE · MODO /AUTOMATICA", flush=True)
+        print("=" * 72, flush=True)
+        print(f"  Hoje:        {hoje:%d/%m/%Y}", flush=True)
+        print(f"  Intervalo:   {format_duration_long(interval_sec)}", flush=True)
+        print("=" * 72, flush=True)
 
 
 def run_loop(
@@ -86,12 +127,14 @@ def run_loop(
     interval_min: int | None = None,  # legado
     headless: bool | None = None,
     once: bool = False,
+    should_stop: Callable[[], bool] | None = None,
+    quiet_banner: bool = False,
 ) -> int:
     ensure_dirs()
     creds = load_credentials()
     cfg = load_settings()
     if not (creds.user and creds.password):
-        _log("ERRO: configure login no ace.bat (/e user ... /e password ...)")
+        _log("ERRO: configure login no painel (aba Configuração)")
         return 1
 
     if interval_sec is None and interval_min is not None:
@@ -101,16 +144,23 @@ def run_loop(
 
     use_headless = cfg.headless if headless is None else bool(headless)
     day_marker = date.today()
-    _banner(interval_sec, use_headless)
+    if not quiet_banner:
+        _banner(interval_sec, use_headless)
+    else:
+        _log(f"Atualização contínua a cada {format_duration_long(interval_sec)}")
     ciclo = 0
 
     while True:
+        if should_stop and should_stop():
+            _log("Atualização contínua interrompida.")
+            return 0
         ciclo += 1
         today = date.today()
         if today != day_marker:
             _log(f"VIRADA DE DIA: {day_marker} → {today} | recalculando periodos")
             day_marker = today
-            _banner(interval_sec, use_headless)
+            if not quiet_banner:
+                _banner(interval_sec, use_headless)
 
         ini50, fim50 = periodo_50_coleta_hoje(today)
         ini103, fim103 = periodo_103_hoje(today)
@@ -142,7 +192,6 @@ def run_loop(
         if once:
             return 0
 
-        # recarrega intervalo/headless a cada ciclo (permite /e ou /viz em outro terminal)
         creds = load_credentials()
         cfg = load_settings()
         if headless is None:
@@ -157,10 +206,12 @@ def run_loop(
             f"Aguardando {format_duration_long(wait_s)} ate o proximo ciclo "
             f"(viz={'oculto' if use_headless else 'visivel'})..."
         )
-        # dorme em fatias curtas para reagir a Ctrl+C e virada de dia
         slice_s = 1.0 if wait_s <= 30 else 5.0 if wait_s <= 120 else 15.0
         end_wait = time.time() + wait_s
         while time.time() < end_wait:
+            if should_stop and should_stop():
+                _log("Atualização contínua interrompida.")
+                return 0
             time.sleep(min(slice_s, max(0.2, end_wait - time.time())))
             if date.today() != day_marker:
                 _log("Dia mudou durante a espera — iniciando ciclo agora.")
