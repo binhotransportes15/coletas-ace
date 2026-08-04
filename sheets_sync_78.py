@@ -8,6 +8,12 @@ from typing import Any, Callable
 from apps_script_client import post_apps_script
 from config import AceSettings, load_settings
 from parser_ssw78 import RESUMO_CSV, RESUMO_FIELDS, VEICULOS_CSV, VEICULO_FIELDS
+from parser_ssw177 import (
+    CONFERENTES_CSV,
+    CONFERENTE_FIELDS,
+    RESUMO_177_CSV,
+    RESUMO_177_FIELDS,
+)
 
 StatusCallback = Callable[[str], None]
 VEICULO_FIELDS_OUT = VEICULO_FIELDS + ["peso_veiculo"]
@@ -110,7 +116,21 @@ def sync_sheets_78(
         n_v = _replace_sheet(url, token, "Veiculos78", VEICULO_FIELDS_OUT, veiculos, status=status)
         n_r = _replace_sheet(url, token, "Resumo78", RESUMO_FIELDS, resumo, status=status)
         result.update({"ok": True, "veiculos": n_v, "resumo": n_r})
-        status(f"Sheets 078 OK: {n_v} veículo(s)/linha(s), {n_r} resumo.")
+
+        conf = _read_csv(CONFERENTES_CSV)
+        resumo177 = _read_csv(RESUMO_177_CSV)
+        if conf:
+            status(f"Sheets 177: Conferentes177 ({len(conf)} linha(s))...")
+            n_c = _replace_sheet(
+                url, token, "Conferentes177", CONFERENTE_FIELDS, conf, status=status
+            )
+            n_cr = _replace_sheet(
+                url, token, "Resumo177", RESUMO_177_FIELDS, resumo177, status=status
+            )
+            result.update({"conferentes": n_c, "resumo177": n_cr})
+            status(f"Sheets 177 OK: {n_c} conferente(s).")
+
+        status(f"Sheets Armazém OK: {n_v} veículo(s)/linha(s), {n_r} resumo.")
         return result
     except Exception as error:  # noqa: BLE001
         result["error"] = str(error)

@@ -15,6 +15,7 @@ from parser_ssw103 import COLETAS_103_CSV, RESUMO_103_CSV
 from parser_ssw0146 import ENTREGAS_36_CSV, ROMANEIOS_36_CSV, RESUMO_36_CSV
 from parser_ssw225 import AGENDAMENTOS_225_CSV, RESUMO_225_CSV, ALERTAS_225_CSV
 from parser_ssw78 import RESUMO_CSV as RESUMO_78_CSV, VEICULOS_CSV as VEICULOS_78_CSV
+from parser_ssw177 import CONFERENTES_CSV as CONF_177_CSV, RESUMO_177_CSV
 
 StatusCallback = Callable[[str], None]
 
@@ -96,6 +97,8 @@ def _copy_armazem_to_dashboard() -> dict[str, str]:
     for src, name in (
         (VEICULOS_78_CSV, "veiculos_78.csv"),
         (RESUMO_78_CSV, "resumo_78.csv"),
+        (CONF_177_CSV, "conferentes_177.csv"),
+        (RESUMO_177_CSV, "resumo_177.csv"),
     ):
         dest = data_dir / name
         if src.exists():
@@ -106,6 +109,16 @@ def _copy_armazem_to_dashboard() -> dict[str, str]:
                 dest.write_text(
                     "atualizado,total_linhas,total_veiculos,peso_total,"
                     "finalizado,descarregando,atrasado,aguardando,chegou\n",
+                    encoding="utf-8-sig",
+                )
+            elif name == "resumo_177.csv":
+                dest.write_text(
+                    "atualizado,mes,total_conferentes,peso_total,peso_total_fmt,topo,topo_peso\n",
+                    encoding="utf-8-sig",
+                )
+            elif name == "conferentes_177.csv":
+                dest.write_text(
+                    "rank,login,conferente,nome,unidade,peso_lidos,peso_lidos_fmt,vol_lidos,pct,mes\n",
                     encoding="utf-8-sig",
                 )
             else:

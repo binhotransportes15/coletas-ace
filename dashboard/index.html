@@ -1682,7 +1682,7 @@
       height: 100vh;
       padding: 12px 14px;
       display: grid;
-      grid-template-rows: auto auto 1fr;
+      grid-template-rows: auto auto auto 1fr;
       gap: 10px;
       max-width: 1680px;
       margin: 0 auto;
@@ -1742,6 +1742,117 @@
     .arm-kpi.aguardando .val { color: #94a3b8; }
     .arm-kpi.finalizado .val { color: #22c55e; }
     .arm-kpi.peso .val { color: #a78bfa; font-size: clamp(16px, 1.8vw, 22px); }
+    .arm-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      gap: 10px;
+      min-height: 0;
+    }
+    .arm-hero-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .arm-hero-card > header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+    }
+    .arm-hero-card > header h2 {
+      margin: 0; font-size: 12px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #7dd3fc;
+    }
+    .arm-hero-card > header .meta { color: var(--muted); font-size: 12px; }
+    .arm-pizza-wrap {
+      display: grid; place-items: center;
+      padding: 4px 8px 10px; min-height: 0;
+    }
+    .arm-pizza-wrap .agenda-pizza { width: 100%; height: auto; max-height: 280px; }
+    .agenda-pizza .slice.s-fin { fill: var(--col); }
+    .agenda-pizza .slice.s-des { fill: var(--cad-dark); }
+    .agenda-pizza .slice.s-pat { fill: #38bdf8; }
+    .agenda-pizza .slice-depth.s-fin { fill: #006b38; }
+    .agenda-pizza .slice-depth.s-des { fill: #9a6210; }
+    .agenda-pizza .slice-depth.s-pat { fill: #0369a1; }
+    .agenda-pizza .callout-dot.s-fin { fill: var(--col); }
+    .agenda-pizza .callout-dot.s-des { fill: var(--cad-dark); }
+    .agenda-pizza .callout-dot.s-pat { fill: #38bdf8; }
+    .arm-rank-body {
+      padding: 10px 12px 12px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      min-height: 0;
+    }
+    .arm-podium {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr 1fr;
+      gap: 8px;
+      align-items: end;
+      min-height: 148px;
+    }
+    .arm-podium-slot {
+      background: linear-gradient(180deg, #15223a, #0f1a2c);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 8px 12px;
+      text-align: center;
+      min-width: 0;
+    }
+    .arm-podium-slot.p1 {
+      border-color: rgba(251, 191, 36, 0.55);
+      box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.12);
+      min-height: 148px;
+    }
+    .arm-podium-slot.p2 { min-height: 128px; border-color: rgba(148, 163, 184, 0.35); }
+    .arm-podium-slot.p3 { min-height: 118px; border-color: rgba(180, 120, 70, 0.4); }
+    .arm-podium-slot .place {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .arm-podium-slot.p1 .place { color: #fbbf24; }
+    .arm-podium-slot.p2 .place { color: #cbd5e1; }
+    .arm-podium-slot.p3 .place { color: #d4a574; }
+    .arm-podium-slot .name {
+      margin-top: 6px;
+      font-size: clamp(12px, 1.2vw, 15px);
+      font-weight: 800;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+    .arm-podium-slot .kg {
+      margin-top: 6px;
+      font-size: clamp(14px, 1.5vw, 18px);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #a78bfa;
+    }
+    .arm-podium-slot .unit {
+      margin-top: 2px; font-size: 10px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .arm-rank-list {
+      overflow: auto; min-height: 0;
+      border-top: 1px solid #132033;
+      padding-top: 6px;
+    }
+    .arm-rank-row {
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 4px;
+      border-bottom: 1px solid #132033;
+      font-size: 13px;
+    }
+    .arm-rank-row .rk {
+      color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums;
+    }
+    .arm-rank-row .nm { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .arm-rank-row .kg { color: #c4b5fd; font-variant-numeric: tabular-nums; font-family: ui-monospace, Consolas, monospace; }
     .arm-panel {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -1816,6 +1927,7 @@
     .sector-soon-panel p { color: var(--muted); margin: 0; line-height: 1.5; }
     @media (max-width: 1100px) {
       .arm-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .arm-hero { grid-template-columns: 1fr; }
       .arm-wrap { height: auto; min-height: 100vh; }
     }
   </style>
@@ -2181,7 +2293,7 @@
             tabindex="0"
           />
           <div class="arm-titles">
-            <div class="kicker">BINHO · OPERACIONAL · tela 078</div>
+            <div class="kicker">BINHO · OPERACIONAL · 078 + 177</div>
             <h1>ARMAZÉM</h1>
           </div>
         </div>
@@ -2199,9 +2311,30 @@
         <div class="arm-kpi peso"><div class="lbl">Peso total</div><div class="val" id="kPeso">0</div></div>
         <div class="arm-kpi atrasado"><div class="lbl">Atrasado</div><div class="val" id="kAtr">0</div></div>
         <div class="arm-kpi descarregando"><div class="lbl">Descarregando</div><div class="val" id="kDes">0</div></div>
-        <div class="arm-kpi chegou"><div class="lbl">Chegou</div><div class="val" id="kChe">0</div></div>
+        <div class="arm-kpi chegou"><div class="lbl">No pátio</div><div class="val" id="kChe">0</div></div>
         <div class="arm-kpi aguardando"><div class="lbl">Aguardando</div><div class="val" id="kAgu">0</div></div>
         <div class="arm-kpi finalizado"><div class="lbl">Finalizado</div><div class="val" id="kFin">0</div></div>
+      </div>
+      <div class="arm-hero">
+        <section class="arm-hero-card">
+          <header>
+            <h2>Descarga</h2>
+            <div class="meta">finalizado · descarregando · no pátio</div>
+          </header>
+          <div class="arm-pizza-wrap">
+            <svg id="armPizza" class="agenda-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de descarga"></svg>
+          </div>
+        </section>
+        <section class="arm-hero-card">
+          <header>
+            <h2>Ranking conferentes</h2>
+            <div class="meta" id="armRankMeta">peso movimentado · 177</div>
+          </header>
+          <div class="arm-rank-body">
+            <div class="arm-podium" id="armPodium" aria-label="Pódio top 3"></div>
+            <div class="arm-rank-list" id="armRankRest"></div>
+          </div>
+        </section>
       </div>
       <section class="arm-panel">
         <header>
@@ -2329,6 +2462,9 @@
     let SWAP_ON_AGENDA = false;
     let ALERTA_LOCK_ON = false;
     const SWAP_MS = 15000;
+    /** Alerta “agendamento sem saída”: checagem na tela a cada 1 min */
+    const ALERTA_SEM_SAIDA_POLL_MS = 60000;
+    let alertaSemSaidaTimer = null;
     let placaCursor = 0;
     let prazoCursor = 0;
     let pendCursor = 0;
@@ -2814,7 +2950,8 @@
 
     function armBadge(status) {
       const s = (status || '').toLowerCase();
-      return `<span class="arm-badge st-${s}">${s || '—'}</span>`;
+      const label = s === 'chegou' ? 'no pátio' : (s || '—');
+      return `<span class="arm-badge st-${s}">${label}</span>`;
     }
 
     function aggVeiculosArm(rows) {
@@ -2863,12 +3000,122 @@
       if (el) el.textContent = v;
     }
 
+    function renderArmPizza(finalizado, descarregando, patio) {
+      const svg = document.getElementById('armPizza');
+      if (!svg) return;
+      const parts = [
+        { cls: 's-fin', label: 'FINALIZADO', desc: 'Descarga concluída', value: Number(finalizado) || 0 },
+        { cls: 's-des', label: 'DESCARREGANDO', desc: 'Em operação', value: Number(descarregando) || 0 },
+        { cls: 's-pat', label: 'NO PÁTIO', desc: 'Só chegou', value: Number(patio) || 0 },
+      ].filter((p) => p.value > 0);
+      const total = parts.reduce((s, p) => s + p.value, 0);
+      const W = 900, H = 520;
+      const cx = 450, cy = 268, r = 168, explode = 20, depthY = 14;
+      if (!total) {
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+        svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#1e293b"/><text x="${cx}" y="${cy}" text-anchor="middle" fill="#64748b" font-size="14" font-weight="700">Sem dados</text>`;
+        return;
+      }
+      let angle = -10;
+      const slices = [];
+      const depths = [];
+      const callouts = [];
+      parts.forEach((p) => {
+        const sweep = (p.value / total) * 360;
+        const start = angle;
+        const end = angle + Math.max(sweep, 2);
+        const mid = start + (end - start) / 2;
+        const pct = Math.round((p.value / total) * 100);
+        depths.push(`<path class="slice-depth ${p.cls}" d="${pieSlicePath(cx, cy + depthY, r, start, end - 0.7, explode)}" />`);
+        depths.push(`<path class="slice-depth ${p.cls}" d="${pieSlicePath(cx, cy + depthY * 0.55, r, start, end - 0.7, explode)}" opacity="0.35" />`);
+        slices.push(`<path class="slice ${p.cls}" d="${pieSlicePath(cx, cy, r, start, end - 0.7, explode)}" />`);
+        const anchor = polar(cx, cy, r * 0.58, mid);
+        const off = polar(0, 0, explode, mid);
+        const ax = anchor.x + off.x;
+        const ay = anchor.y + off.y;
+        const right = Math.cos((mid - 90) * Math.PI / 180) >= 0;
+        const elbow = polar(cx, cy, r + 36, mid);
+        const ex = elbow.x + off.x;
+        const ey = elbow.y + off.y;
+        const lx = right ? Math.min(W - 28, Math.max(ex + 70, cx + r + 90)) : Math.max(28, Math.min(ex - 70, cx - r - 90));
+        const ly = Math.max(42, Math.min(H - 56, ey));
+        const anchorText = right ? 'start' : 'end';
+        const ruleX1 = right ? lx : lx - 70;
+        const ruleX2 = right ? lx + 70 : lx;
+        callouts.push(`
+          <circle class="callout-dot ${p.cls}" cx="${ax}" cy="${ay}" r="5.5" />
+          <path class="callout-line" d="M ${ax} ${ay} L ${ex} ${ey} L ${lx} ${ly}" />
+          <text class="callout-pct" x="${lx}" y="${ly - 10}" text-anchor="${anchorText}">${pct}%</text>
+          <line class="callout-rule" x1="${ruleX1}" y1="${ly - 2}" x2="${ruleX2}" y2="${ly - 2}" />
+          <text class="callout-lab" x="${lx}" y="${ly + 16}" text-anchor="${anchorText}">${p.label}</text>
+          <text class="callout-count" x="${lx}" y="${ly + 34}" text-anchor="${anchorText}">${p.value} · ${p.desc}</text>
+        `);
+        angle = end;
+      });
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      svg.innerHTML = depths.join('') + slices.join('') + callouts.join('');
+    }
+
+    function renderArmRanking(rows, resumo) {
+      const podiumEl = document.getElementById('armPodium');
+      const rest = document.getElementById('armRankRest');
+      const meta = document.getElementById('armRankMeta');
+      const ranked = (rows || [])
+        .map((r) => ({
+          rank: Number(r.rank) || 0,
+          nome: String(r.conferente || r.nome || r.login || '').trim() || '—',
+          login: String(r.login || '').trim(),
+          unidade: String(r.unidade || '').trim(),
+          kg: String(r.peso_lidos_fmt || r.peso_lidos || '0'),
+          peso: Number(r.peso_lidos) || 0,
+        }))
+        .filter((r) => r.peso > 0)
+        .sort((a, b) => (b.peso - a.peso) || (a.rank - b.rank));
+      const mes = (resumo && (resumo.mes || resumo.Mes)) || '';
+      if (meta) {
+        const tot = (resumo && (resumo.peso_total_fmt || resumo.peso_total)) || '';
+        meta.textContent = [
+          mes ? `mês ${mes}` : 'peso movimentado',
+          '177',
+          tot ? `${tot} kg` : '',
+        ].filter(Boolean).join(' · ');
+      }
+      if (!podiumEl || !rest) return;
+      if (!ranked.length) {
+        podiumEl.innerHTML = `<div class="arm-podium-slot p1" style="grid-column:1/-1"><div class="place">—</div><div class="name muted">Sem conferentes</div></div>`;
+        rest.innerHTML = '';
+        return;
+      }
+      const top = ranked.slice(0, 3);
+      const slot = (place, item) => {
+        if (!item) {
+          return `<div class="arm-podium-slot p${place}"><div class="place">${place}º</div><div class="name muted">—</div></div>`;
+        }
+        return `<div class="arm-podium-slot p${place}">
+          <div class="place">${place}º</div>
+          <div class="name" title="${item.login || item.nome}">${item.nome}</div>
+          <div class="kg">${item.kg} kg</div>
+          <div class="unit">${item.unidade || ' '}</div>
+        </div>`;
+      };
+      podiumEl.innerHTML = slot(2, top[1]) + slot(1, top[0]) + slot(3, top[2]);
+      rest.innerHTML = ranked.slice(3).map((r, i) => `
+        <div class="arm-rank-row">
+          <span class="rk">${r.rank || (i + 4)}º</span>
+          <span class="nm" title="${r.login || r.nome}">${r.nome}</span>
+          <span class="kg">${r.kg} kg</span>
+        </div>
+      `).join('') || `<div class="muted" style="padding:8px 4px">Só o pódio Top 3 neste mês</div>`;
+    }
+
     async function refreshArmazem() {
       if (CURRENT_SECTOR !== 'armazem') return;
       const err = document.getElementById('armErr');
       try {
         let resumoRows = [];
         let veicRows = [];
+        let confRows = [];
+        let resumo177 = {};
         try {
           const [rSum, rVeic] = await Promise.all([
             chamarPlanilhaArmazem('resumo78'),
@@ -2880,6 +3127,23 @@
           resumoRows = await loadCsvLocal(ARMA_CSV.resumo || 'data/armazem/resumo_78.csv');
           veicRows = await loadCsvLocal(ARMA_CSV.veiculos || 'data/armazem/veiculos_78.csv');
         }
+        try {
+          const [rConf, rSum177] = await Promise.all([
+            chamarPlanilhaArmazem('conferentes177'),
+            chamarPlanilhaArmazem('resumo177'),
+          ]);
+          confRows = rConf.rows || [];
+          resumo177 = (rSum177.rows && rSum177.rows[0]) || {};
+        } catch (_) {
+          try {
+            confRows = await loadCsvLocal(ARMA_CSV.conferentes || 'data/armazem/conferentes_177.csv');
+            const r177 = await loadCsvLocal(ARMA_CSV.resumo177 || 'data/armazem/resumo_177.csv');
+            resumo177 = r177[0] || {};
+          } catch (__ ) {
+            confRows = [];
+            resumo177 = {};
+          }
+        }
         if (err) err.hidden = true;
         const r = resumoRows[0] || {};
         setArmText('kVeic', r.total_veiculos || '0');
@@ -2890,6 +3154,9 @@
         setArmText('kAgu', r.aguardando || '0');
         setArmText('kFin', r.finalizado || '0');
         setArmText('armAtualizado', 'atualizado ' + (r.atualizado || '—'));
+
+        renderArmPizza(r.finalizado, r.descarregando, r.chegou);
+        renderArmRanking(confRows, resumo177);
 
         const veics = aggVeiculosArm(veicRows);
         const tb = document.getElementById('armTbody');
@@ -4293,9 +4560,6 @@
         );
         ROMANEIOS_36 = (rRom && rRom.rows) || [];
 
-        await carregarAgendamentos225();
-        renderAgendamento();
-
         const counts = countByStatus(COLETAS);
         renderTorres(counts);
         renderCilindroEntrega(countByStatus36(ENTREGAS_36));
@@ -4332,6 +4596,18 @@
           sub.textContent = err.message;
         }
       }
+    }
+
+    async function pollAlertaSemSaida() {
+      if (CURRENT_SECTOR && CURRENT_SECTOR !== 'distribuicao') return;
+      await carregarAgendamentos225();
+      renderAgendamento();
+    }
+
+    function startAlertaSemSaidaPoll() {
+      if (alertaSemSaidaTimer) clearInterval(alertaSemSaidaTimer);
+      pollAlertaSemSaida();
+      alertaSemSaidaTimer = setInterval(pollAlertaSemSaida, ALERTA_SEM_SAIDA_POLL_MS);
     }
 
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
@@ -4464,6 +4740,7 @@
     setInterval(tickClock, 1000);
     refresh();
     setInterval(refresh, 20000);
+    startAlertaSemSaidaPoll();
 
     // Depois de um /push + deploy Pages, TVs recarregam sozinhas
     const VERSION_KEY = 'ace_operacional_build';

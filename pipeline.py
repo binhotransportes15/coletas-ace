@@ -742,14 +742,16 @@ def run_pipeline_78(
     headless: bool | None = None,
     on_status: StatusCallback | None = None,
 ) -> dict[str, Any]:
-    """Captura SSW 078 + CSV local + Sheets Armazém (planilha isolada). Sem push GitHub."""
+    """Captura SSW 078 (+ 177 conferentes) + CSV local + Sheets. Sem push GitHub."""
     status = on_status or _noop
     ensure_dirs()
     creds = credentials or load_credentials()
     cfg = settings or load_settings()
     from parser_ssw78 import analyze_78
+    from parser_ssw177 import analyze_report_177
     from publish_dashboard import publish_armazem_local
     from sheets_sync_78 import sync_sheets_78
+    from ssw_177 import download_report_177
     from ssw_78 import capture_ssw78
 
     status(f"ACE ARMAZÉM · 78 | {datetime.now():%d/%m %H:%M:%S}")
@@ -764,11 +766,33 @@ def run_pipeline_78(
         body_text=str(capture.get("body_text") or ""),
         html=str(capture.get("html") or ""),
     )
+
+    conf177: dict[str, Any] = {"ok": False}
+    try:
+        status("ACE ARMAZÉM · 177 conferentes (mensal)...")
+        dl177 = download_report_177(headless=use_headless, on_status=status)
+        conf177 = analyze_report_177(dl177["path"], on_status=status)
+        conf177["download"] = dl177
+    except Exception as err:  # noqa: BLE001
+        status(f"177 falhou (pátio 078 segue): {err}")
+        conf177 = {"ok": False, "error": str(err)}
+
     pub = publish_armazem_local(on_status=status)
     sheets = sync_sheets_78(cfg, on_status=status)
     status(
         f"OK · linhas={analysis.get('total_linhas')} "
         f"veículos={analysis.get('total_veiculos')} "
         f"peso={analysis.get('peso_total'):,.0f}".replace(",", ".")
+        + (
+            f" · 177 topo={conf177.get('topo')} ({conf177.get('total_conferentes')} conf.)"
+            if conf177.get("ok")
+            else ""
+        )
     )
-    return {"capture": capture, "publish": pub, "sheets": sheets, **analysis}
+    return {
+        "capture": capture,
+        "publish": pub,
+        "sheets": sheets,
+        "177": conf177,
+        **analysis,
+    }

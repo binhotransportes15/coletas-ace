@@ -25,6 +25,7 @@
  * Abas 36: Entregas36, Romaneios36, Resumo36
  * Abas 225: Agendamentos225, Resumo225, Alertas225
  * Abas 078: Veiculos78, Resumo78
+ * Abas 177: Conferentes177, Resumo177
  */
 
 var SPREADSHEET_ID = '1VOkCF1Hn-VUZC7aKu_pa0Hgo1VjjuEJOqFqNSAErCzU';
@@ -215,6 +216,26 @@ function doGet(e) {
         rows: rows78,
         total: rows78.length,
         report: '078',
+      });
+    }
+
+    if (action === 'conferentes177' || action === 'conferentes' || action === '177') {
+      var rows177 = sheetToObjects_('Conferentes177');
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: rows177,
+        total: rows177.length,
+        report: '177',
+      });
+    }
+
+    if (action === 'resumo177') {
+      return json_({
+        ok: true,
+        updated_at: new Date().toISOString(),
+        rows: sheetToObjects_('Resumo177'),
+        report: '177',
       });
     }
 

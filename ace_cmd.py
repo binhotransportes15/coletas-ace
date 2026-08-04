@@ -217,7 +217,9 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print("    8 /status      Mostra alteracoes locais (git)")
     print("    9 /push        Commit + sobe TUDO pro GitHub (Pages)")
     print("    78 /armazem    Captura tela 078 (Armazém) agora")
-    print("    sync78         Sobe cache 078 → Sheets Armazém")
+    print("    177            Captura 177 conferentes (mensal) agora")
+    print("    607            Atualiza mapa login→nome (relatório 0607)")
+    print("    sync78         Sobe cache 078+177 → Sheets")
     print("    /pull          Baixa alteracoes do GitHub")
     print("    /e             Lista campos editaveis")
     print("    /e intervalo 5m   Define tempo do /automatica (30s|5m|1h|2d)")
@@ -231,7 +233,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
 def cmd_help() -> str:
     keys = ", ".join(sorted(EDITABLE.keys()))
     return (
-        "Comandos: /e | 50 | 103 | 36 | 225 | 78 | sync | sync78 | dash | gui | "
+        "Comandos: /e | 50 | 103 | 36 | 225 | 78 | 177 | 607 | sync | sync78 | dash | gui | "
         "/automatica | /status | /push | /pull | show | help | sair\n"
         f"  Campos: {keys}\n"
         "  Bool: true/false | sim/nao | 1/0\n"
@@ -401,11 +403,59 @@ def run_pipeline_78_cmd() -> str:
 
     print("\n=== Pipeline 078 (Armazém) ===")
     result = run_pipeline_78(on_status=on_status, headless=False)
+    conf = result.get("177") or {}
+    extra = ""
+    if conf.get("ok"):
+        extra = f" · 177 topo={conf.get('topo')} ({conf.get('total_conferentes')} conf.)"
     return (
         f"078 OK · linhas={result.get('total_linhas')} "
         f"veículos={result.get('total_veiculos')} "
         f"sheets={(result.get('sheets') or {}).get('ok')}"
+        f"{extra}"
     )
+
+
+def run_pipeline_177_cmd() -> str:
+    from parser_ssw177 import analyze_report_177
+    from publish_dashboard import publish_dashboard
+    from sheets_sync_78 import sync_sheets_78
+    from ssw_177 import download_report_177
+
+    def on_status(msg: str) -> None:
+        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
+
+    print("\n=== Pipeline 177 (Conferentes · mensal) ===")
+    dl = download_report_177(headless=False, on_status=on_status)
+    result = analyze_report_177(dl["path"], on_status=on_status)
+    publish_dashboard(on_status=on_status)
+    sheets = sync_sheets_78(on_status=on_status)
+    return (
+        f"177 OK · conferentes={result.get('total_conferentes')} "
+        f"topo={result.get('topo')} · nomes={result.get('nomes_resolvidos')} · "
+        f"sheets={sheets.get('ok')}"
+    )
+
+
+def run_pipeline_0607_cmd() -> str:
+    from parser_ssw0607 import analyze_report_0607
+    from parser_ssw177 import analyze_report_177
+    from publish_dashboard import publish_armazem_local
+    from ssw_177 import _find_local_177
+
+    def on_status(msg: str) -> None:
+        print(f"  [{datetime.now():%H:%M:%S}] {msg}")
+
+    print("\n=== Relação 0607 (login → nome) ===")
+    r = analyze_report_0607(on_status=on_status)
+    extra = ""
+    local177 = _find_local_177()
+    if local177:
+        a = analyze_report_177(local177, on_status=on_status)
+        publish_armazem_local(on_status=on_status)
+        extra = f" · 177 reaplicado topo={a.get('topo')} nomes={a.get('nomes_resolvidos')}"
+    else:
+        publish_armazem_local(on_status=on_status)
+    return f"0607 OK · {r.get('total')} cadastro(s){extra}"
 
 
 def run_sync_78() -> str:
@@ -417,7 +467,9 @@ def run_sync_78() -> str:
     print("\n=== Sync Sheets Armazém 078 ===")
     r = sync_sheets_78(on_status=on_status)
     if r.get("ok"):
-        return f"sync78 OK · veiculos={r.get('veiculos')} resumo={r.get('resumo')}"
+        conf = r.get("conferentes")
+        extra = f" · conferentes={conf}" if conf is not None else ""
+        return f"sync78 OK · veiculos={r.get('veiculos')} resumo={r.get('resumo')}{extra}"
     return f"sync78: {r.get('error') or r.get('reason') or r}"
 
 
@@ -592,6 +644,12 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0].lstrip("/").lower() in {"78", "armazem", "once78"}:
         print(run_pipeline_78_cmd())
         return 0
+    if args and args[0].lstrip("/").lower() in {"177", "conferentes", "once177"}:
+        print(run_pipeline_177_cmd())
+        return 0
+    if args and args[0].lstrip("/").lower() in {"607", "0607", "mapa", "nomes"}:
+        print(run_pipeline_0607_cmd())
+        return 0
     if args and args[0].lstrip("/").lower() in {"sync78", "sheets78"}:
         print(run_sync_78())
         return 0
@@ -639,6 +697,12 @@ def main(argv: list[str] | None = None) -> int:
                 payload = _load_payload()
             elif cmd in {"78", "/78", "armazem", "/armazem"}:
                 message = run_pipeline_78_cmd()
+                payload = _load_payload()
+            elif cmd in {"177", "/177", "conferentes", "/conferentes"}:
+                message = run_pipeline_177_cmd()
+                payload = _load_payload()
+            elif cmd in {"607", "/607", "0607", "/0607", "mapa", "nomes"}:
+                message = run_pipeline_0607_cmd()
                 payload = _load_payload()
             elif cmd in {"sync78", "/sync78", "sheets78"}:
                 message = run_sync_78()
