@@ -84,7 +84,7 @@ def run_loop(
     *,
     interval_sec: int | None = None,
     interval_min: int | None = None,  # legado
-    headless: bool = True,
+    headless: bool | None = None,
     once: bool = False,
 ) -> int:
     ensure_dirs()
@@ -99,8 +99,9 @@ def run_loop(
     if interval_sec is None:
         interval_sec = resolve_interval_sec(settings_intervalo=cfg.loop_intervalo)
 
+    use_headless = cfg.headless if headless is None else bool(headless)
     day_marker = date.today()
-    _banner(interval_sec, headless)
+    _banner(interval_sec, use_headless)
     ciclo = 0
 
     while True:
@@ -109,7 +110,7 @@ def run_loop(
         if today != day_marker:
             _log(f"VIRADA DE DIA: {day_marker} → {today} | recalculando periodos")
             day_marker = today
-            _banner(interval_sec, headless)
+            _banner(interval_sec, use_headless)
 
         ini50, fim50 = periodo_50_coleta_hoje(today)
         ini103, fim103 = periodo_103_hoje(today)
@@ -122,7 +123,7 @@ def run_loop(
             result = run_dual_cycle(
                 credentials=creds,
                 settings=cfg,
-                headless=headless,
+                headless=use_headless,
                 on_status=_log,
                 sync=True,
             )
@@ -141,16 +142,21 @@ def run_loop(
         if once:
             return 0
 
-        # recarrega intervalo a cada ciclo (permite /e intervalo em outro terminal)
+        # recarrega intervalo/headless a cada ciclo (permite /e ou /viz em outro terminal)
         creds = load_credentials()
         cfg = load_settings()
+        if headless is None:
+            use_headless = bool(cfg.headless)
         try:
             interval_sec = resolve_interval_sec(settings_intervalo=cfg.loop_intervalo)
         except ValueError:
             pass
 
         wait_s = max(5, int(interval_sec))
-        _log(f"Aguardando {format_duration_long(wait_s)} ate o proximo ciclo...")
+        _log(
+            f"Aguardando {format_duration_long(wait_s)} ate o proximo ciclo "
+            f"(viz={'oculto' if use_headless else 'visivel'})..."
+        )
         # dorme em fatias curtas para reagir a Ctrl+C e virada de dia
         slice_s = 1.0 if wait_s <= 30 else 5.0 if wait_s <= 120 else 15.0
         end_wait = time.time() + wait_s
@@ -185,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:
         sec = resolve_interval_sec(args.interval, settings_intervalo=cfg.loop_intervalo)
         return run_loop(
             interval_sec=sec,
-            headless=not args.headed,
+            headless=False if args.headed else None,
             once=bool(args.once),
         )
     except KeyboardInterrupt:

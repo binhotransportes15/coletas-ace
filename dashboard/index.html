@@ -2446,6 +2446,13 @@
     let refreshSeq = 0;
     let lastGood103 = [];
     let lastGood36 = [];
+    let lastGood50 = [];
+    let lastGood225 = [];
+    let lastGoodRom36 = [];
+    let lastGoodArmResumo = null;
+    let lastGoodArmVeic = [];
+    let lastGoodArmConf = [];
+    let lastGoodArmResumo177 = null;
     let PLACAS = [];
     let URGENTES = [];
     let PENDENCIAS_36 = [];
@@ -2531,6 +2538,14 @@
         if (!map.has(key)) map.set(key, r);
       });
       return Array.from(map.values());
+    }
+
+    /** Evita zerar a TV quando o Sheets responde vazio no meio do sync. */
+    function keepUnlessEmpty(incoming, lastGood) {
+      const rows = Array.isArray(incoming) ? incoming : [];
+      if (rows.length > 0) return rows;
+      if (Array.isArray(lastGood) && lastGood.length > 0) return lastGood.slice();
+      return rows;
     }
 
     function statusAce(c) {
@@ -3123,9 +3138,15 @@
           ]);
           resumoRows = rSum.rows || [];
           veicRows = rVeic.rows || [];
+          if (!resumoRows.length && lastGoodArmResumo) resumoRows = [lastGoodArmResumo];
+          if (!veicRows.length && lastGoodArmVeic.length) veicRows = lastGoodArmVeic.slice();
+          if (resumoRows[0]) lastGoodArmResumo = { ...resumoRows[0] };
+          if (veicRows.length) lastGoodArmVeic = veicRows.slice();
         } catch (_) {
           resumoRows = await loadCsvLocal(ARMA_CSV.resumo || 'data/armazem/resumo_78.csv');
           veicRows = await loadCsvLocal(ARMA_CSV.veiculos || 'data/armazem/veiculos_78.csv');
+          if (!resumoRows.length && lastGoodArmResumo) resumoRows = [lastGoodArmResumo];
+          if (!veicRows.length && lastGoodArmVeic.length) veicRows = lastGoodArmVeic.slice();
         }
         try {
           const [rConf, rSum177] = await Promise.all([
@@ -3134,7 +3155,14 @@
           ]);
           confRows = rConf.rows || [];
           resumo177 = (rSum177.rows && rSum177.rows[0]) || {};
-        } catch (_) {
+          if (!confRows.length && lastGoodArmConf.length) confRows = lastGoodArmConf.slice();
+          if (!Object.keys(resumo177).length && lastGoodArmResumo177) {
+            resumo177 = { ...lastGoodArmResumo177 };
+          }
+          if (confRows.length) lastGoodArmConf = confRows.slice();
+          if (resumo177 && Object.keys(resumo177).length) {
+            lastGoodArmResumo177 = { ...resumo177 };
+          }
           try {
             confRows = await loadCsvLocal(ARMA_CSV.conferentes || 'data/armazem/conferentes_177.csv');
             const r177 = await loadCsvLocal(ARMA_CSV.resumo177 || 'data/armazem/resumo_177.csv');
@@ -3937,6 +3965,7 @@
         const resp = await chamarPlanilha('agendamentos225');
         if (resp && Array.isArray(resp.rows) && resp.rows.length) {
           AGENDAMENTOS_225 = resp.rows;
+          lastGood225 = resp.rows.slice();
           const rSum = await chamarPlanilha('resumo225').catch(() => null);
           const row = (rSum && rSum.rows && rSum.rows[0]) || null;
           if (row) {
@@ -3944,6 +3973,13 @@
           } else {
             RESUMO_225 = resumoFromAgendaRows(AGENDAMENTOS_225);
           }
+          updateAlertaSemSaidaLock();
+          return;
+        }
+        // Sheets vazio no meio do sync → mantém agenda anterior
+        if (lastGood225.length) {
+          AGENDAMENTOS_225 = lastGood225.slice();
+          RESUMO_225 = resumoFromAgendaRows(AGENDAMENTOS_225);
           updateAlertaSemSaidaLock();
           return;
         }
@@ -4518,7 +4554,14 @@
         ]);
         if (seq !== refreshSeq) return;
 
-        COLETAS_50 = uniqueRows((r50 && r50.rows) || []);
+        COLETAS_50 = (() => {
+          const incoming = uniqueRows((r50 && r50.rows) || []);
+          if (incoming.length > 0) {
+            lastGood50 = incoming.slice();
+            return incoming;
+          }
+          return keepUnlessEmpty(incoming, lastGood50);
+        })();
 
         const incoming103 = uniqueRows((r103 && r103.rows) || []);
         if (incoming103.length > 0) {
@@ -4558,7 +4601,13 @@
         ENTREGAS_36 = ENTREGAS_ALL.filter(c =>
           String(c.excluido || '') !== '1' && statusAce36(c) !== 'cancelada'
         );
-        ROMANEIOS_36 = (rRom && rRom.rows) || [];
+        const incomingRom = (rRom && rRom.rows) || [];
+        if (incomingRom.length > 0) {
+          lastGoodRom36 = incomingRom.slice();
+          ROMANEIOS_36 = incomingRom;
+        } else {
+          ROMANEIOS_36 = keepUnlessEmpty(incomingRom, lastGoodRom36);
+        }
 
         const counts = countByStatus(COLETAS);
         renderTorres(counts);

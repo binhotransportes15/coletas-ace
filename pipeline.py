@@ -9,7 +9,14 @@ from dates import format_period, normalize_date, periodo_103_hoje, periodo_36_on
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
 from sheets_sync import sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36, sync_google_sheets_225
-from ssw_client import cleanup_downloads, download_ace_103, download_ace_36, download_ace_225, download_ace_reports
+from ssw_client import (
+    cleanup_downloads,
+    download_ace_103,
+    download_ace_36,
+    download_ace_225,
+    download_ace_reports,
+    download_ace_shared_cycle,
+)
 from parser_ssw103 import analyze_report_103
 from parser_ssw0146 import analyze_report_36
 from parser_ssw225 import analyze_report_225
@@ -467,12 +474,14 @@ def run_dual_cycle(
     *,
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
-    headless: bool = True,
+    headless: bool | None = None,
     on_status: StatusCallback | None = None,
     sync: bool = True,
 ) -> dict[str, Any]:
     """
     Baixa 50 + 103 (+ 36 se entrega_option=36) + 225 EM CICLO automatico.
+
+    Um unico login SSW (sessao compartilhada) — mais rapido que logar por relatorio.
 
     Periodos automaticos (recalculados a cada ciclo / virada de dia):
       50  → periodo de COLETA = HOJE
@@ -480,8 +489,6 @@ def run_dual_cycle(
       36  → seg: SEXTA..HOJE | demais: D-1..HOJE
       225 → sempre mes corrente (dia 1 → ultimo dia), arquivo R
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
     status = on_status or _noop
 
     def emit(msg: str) -> None:
@@ -490,14 +497,17 @@ def run_dual_cycle(
 
     cfg = settings or load_settings()
     creds = credentials or load_credentials()
+    use_headless = cfg.headless if headless is None else bool(headless)
     ini50, fim50 = periodo_50_coleta_hoje()
     ini103, fim103 = periodo_103_hoje()
     ini36, fim36 = periodo_36_ontem_hoje()
     ini225, fim225 = periodo_mes_corrente()
     titulo225 = titulo_agendamento_mes()
     run_36 = str(getattr(cfg, "entrega_option", "") or "").strip() == "36"
+    viz = "oculto" if use_headless else "visivel"
     emit(
-        f"CICLO dual | 50 coleta={format_period(ini50, fim50)} "
+        f"CICLO dual | sessao unica SSW | viz={viz} | "
+        f"50 coleta={format_period(ini50, fim50)} "
         f"| 103 limite={format_period(ini103, fim103)}"
         + (
             f" | 36 periodo={format_period(ini36, fim36)}"
@@ -505,10 +515,8 @@ def run_dual_cycle(
             else ""
         )
         + f" | 225 {titulo225} mes={format_period(ini225, fim225)}"
-        + " | paralelo 50+103"
     )
 
-    # Limpa antigos UMA vez antes do paralelo (evita race)
     cleanup_downloads(DOWNLOAD_DIR, on_status=emit)
 
     result_50: dict[str, Any] = {}
@@ -517,167 +525,133 @@ def run_dual_cycle(
     result_225: dict[str, Any] = {}
     errors: dict[str, str] = {}
 
-    def job_50() -> dict[str, Any]:
-        def st(m: str) -> None:
-            emit(f"[50] {m}")
-
-        download = download_ace_reports(
-            ini50,
-            fim50,
-            keep_open=False,
-            headless=headless,
-            on_status=st,
+    download_bundle: dict[str, Any] = {"paths": {}, "errors": {}}
+    try:
+        download_bundle = download_ace_shared_cycle(
+            period_50=(ini50, fim50),
+            period_103=(ini103, fim103),
+            period_225=(ini225, fim225),
+            period_36=(ini36, fim36) if run_36 else None,
+            run_36=run_36,
+            headless=use_headless,
+            on_status=emit,
             credentials=creds,
             settings=cfg,
             clean_downloads=False,
         )
-        report = Path((download.get("paths") or {}).get("coleta") or "")
-        if not report.exists():
-            latest = find_latest_report()
-            if not latest:
-                raise RuntimeError("50 sem arquivo")
-            report = latest
-            st(f"Usando ultimo: {report.name}")
-        analysis = run_analysis_only(report, settings=cfg, on_status=st, sync=False)
-        return {"download": download, **analysis, "period": format_period(ini50, fim50)}
+        errors.update(download_bundle.get("errors") or {})
+    except Exception as err:  # noqa: BLE001
+        errors["ssw"] = str(err)
+        emit(f"Sessao SSW FALHOU: {err}")
 
-    def job_103() -> dict[str, Any]:
-        def st(m: str) -> None:
-            emit(f"[103] {m}")
+    paths = (download_bundle.get("paths") or {}) if download_bundle else {}
+    dl_errors = download_bundle.get("errors") or {}
 
-        download = download_ace_103(
-            ini103,
-            fim103,
-            keep_open=False,
-            headless=headless,
-            on_status=st,
-            credentials=creds,
-            settings=cfg,
-            clean_downloads=False,
-        )
-        report = Path((download.get("paths") or {}).get("coleta_103") or "")
-        if not report.exists():
-            latest = find_latest_103()
-            if not latest:
-                raise RuntimeError("103 sem arquivo")
-            report = latest
-            st(f"Usando ultimo: {report.name}")
-        analysis = run_analysis_103(
-            report,
-            periodo=format_period(ini103, fim103),
-            settings=cfg,
-            on_status=st,
-            sync=False,
-        )
-        return {"download": download, **analysis, "period": format_period(ini103, fim103)}
+    if paths.get("coleta") or "50" not in dl_errors:
+        try:
+            report = Path(paths.get("coleta") or "")
+            if not report.exists():
+                latest = find_latest_report()
+                if not latest:
+                    raise RuntimeError("50 sem arquivo")
+                report = latest
+                emit(f"[50] Usando ultimo: {report.name}")
+            analysis = run_analysis_only(
+                report, settings=cfg, on_status=lambda m: emit(f"[50] {m}"), sync=False
+            )
+            result_50 = {
+                "download": {"paths": {"coleta": str(report)}},
+                **analysis,
+                "period": format_period(ini50, fim50),
+            }
+            emit("50 concluido.")
+        except Exception as err:  # noqa: BLE001
+            errors["50"] = str(err)
+            emit(f"50 FALHOU: {err}")
 
-    def job_36() -> dict[str, Any]:
-        def st(m: str) -> None:
-            emit(f"[36] {m}")
-
-        download = download_ace_36(
-            ini36,
-            fim36,
-            keep_open=False,
-            headless=headless,
-            on_status=st,
-            credentials=creds,
-            settings=cfg,
-            clean_downloads=False,
-        )
-        report = Path((download.get("paths") or {}).get("entrega_36") or "")
-        if not report.exists():
-            latest = find_latest_36()
-            if not latest:
-                raise RuntimeError("36 sem arquivo")
-            report = latest
-            st(f"Usando ultimo: {report.name}")
-        analysis = run_analysis_36(
-            report,
-            periodo=format_period(ini36, fim36),
-            settings=cfg,
-            on_status=st,
-            sync=False,
-        )
-        return {"download": download, **analysis, "period": format_period(ini36, fim36)}
-
-    def job_225() -> dict[str, Any]:
-        def st(m: str) -> None:
-            emit(f"[225] {m}")
-
-        download = download_ace_225(
-            ini225,
-            fim225,
-            keep_open=False,
-            headless=headless,
-            on_status=st,
-            credentials=creds,
-            settings=cfg,
-            clean_downloads=False,
-        )
-        report = Path((download.get("paths") or {}).get("agendamento_225") or "")
-        if not report.exists():
-            latest = find_latest_225()
-            if not latest:
-                raise RuntimeError("225 sem arquivo")
-            report = latest
-            st(f"Usando ultimo: {report.name}")
-        analysis = run_analysis_225(
-            report,
-            periodo=titulo225,
-            settings=cfg,
-            on_status=st,
-            sync=False,
-        )
-        return {
-            "download": download,
-            **analysis,
-            "period": format_period(ini225, fim225),
-            "titulo": titulo225,
-        }
-
-    # 50 + 103 em paralelo; 36 e 225 depois (sozinhas) para nao disputar SSW/download
-    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="ace") as pool:
-        futures = {
-            pool.submit(job_50): "50",
-            pool.submit(job_103): "103",
-        }
-        for fut in as_completed(futures):
-            label = futures[fut]
-            try:
-                data = fut.result()
-                if label == "50":
-                    result_50 = data
-                else:
-                    result_103 = data
-                emit(f"{label} concluido.")
-            except Exception as err:  # noqa: BLE001
-                errors[label] = str(err)
-                emit(f"{label} FALHOU: {err}")
+    if paths.get("coleta_103") or "103" not in dl_errors:
+        try:
+            report = Path(paths.get("coleta_103") or "")
+            if not report.exists():
+                latest = find_latest_103()
+                if not latest:
+                    raise RuntimeError("103 sem arquivo")
+                report = latest
+                emit(f"[103] Usando ultimo: {report.name}")
+            analysis = run_analysis_103(
+                report,
+                periodo=format_period(ini103, fim103),
+                settings=cfg,
+                on_status=lambda m: emit(f"[103] {m}"),
+                sync=False,
+            )
+            result_103 = {
+                "download": {"paths": {"coleta_103": str(report)}},
+                **analysis,
+                "period": format_period(ini103, fim103),
+            }
+            emit("103 concluido.")
+        except Exception as err:  # noqa: BLE001
+            errors["103"] = str(err)
+            emit(f"103 FALHOU: {err}")
 
     if run_36:
-        emit(f"36 sequencial | periodo={format_period(ini36, fim36)}")
         try:
-            result_36 = job_36()
+            report = Path(paths.get("entrega_36") or "")
+            if not report.exists():
+                latest = find_latest_36()
+                if not latest:
+                    raise RuntimeError("36 sem arquivo")
+                report = latest
+                emit(f"[36] Usando ultimo: {report.name}")
+            analysis = run_analysis_36(
+                report,
+                periodo=format_period(ini36, fim36),
+                settings=cfg,
+                on_status=lambda m: emit(f"[36] {m}"),
+                sync=False,
+            )
+            result_36 = {
+                "download": {"paths": {"entrega_36": str(report)}},
+                **analysis,
+                "period": format_period(ini36, fim36),
+            }
             emit("36 concluido.")
         except Exception as err:  # noqa: BLE001
             errors["36"] = str(err)
             emit(f"36 FALHOU: {err}")
 
-    emit(f"225 sequencial | {titulo225} mes={format_period(ini225, fim225)}")
     try:
-        result_225 = job_225()
+        report = Path(paths.get("agendamento_225") or "")
+        if not report.exists():
+            latest = find_latest_225()
+            if not latest:
+                raise RuntimeError("225 sem arquivo")
+            report = latest
+            emit(f"[225] Usando ultimo: {report.name}")
+        analysis = run_analysis_225(
+            report,
+            periodo=titulo225,
+            settings=cfg,
+            on_status=lambda m: emit(f"[225] {m}"),
+            sync=False,
+        )
+        result_225 = {
+            "download": {"paths": {"agendamento_225": str(report)}},
+            **analysis,
+            "period": format_period(ini225, fim225),
+            "titulo": titulo225,
+        }
         emit("225 concluido.")
     except Exception as err:  # noqa: BLE001
         errors["225"] = str(err)
         emit(f"225 FALHOU: {err}")
 
-    # Mantem so os relatorios finais deste ciclo
     keep: list[Path] = []
     for block in (result_50, result_103, result_36, result_225):
-        paths = (block.get("download") or {}).get("paths") or {}
+        blk_paths = (block.get("download") or {}).get("paths") or {}
         for key in ("coleta", "coleta_103", "entrega_36", "agendamento_225"):
-            p = Path(paths.get(key) or "")
+            p = Path(blk_paths.get(key) or "")
             if p.exists():
                 keep.append(p)
         report = Path(block.get("report") or "")
@@ -699,12 +673,12 @@ def run_dual_cycle(
 
     result_78: dict[str, Any] = {}
     if getattr(cfg, "armazem_in_loop", False):
-        emit("078 / Armazém sequencial após distribuição...")
+        emit("078 / Armazem sequencial apos distribuicao...")
         try:
             result_78 = run_pipeline_78(
                 credentials=creds,
                 settings=cfg,
-                headless=headless,
+                headless=use_headless,
                 on_status=lambda m: emit(f"[78] {m}"),
             )
             emit("078 concluido.")
@@ -732,6 +706,8 @@ def run_dual_cycle(
         "sheets_36": sheets36,
         "sheets_225": sheets225,
         "dashboard": dash,
+        "shared_session": True,
+        "headless": use_headless,
     }
 
 

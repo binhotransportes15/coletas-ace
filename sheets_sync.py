@@ -123,7 +123,7 @@ def sync_google_sheets(
 
     try:
         status(
-            f"Sheets: apagando abas e gravando so o periodo atual "
+            f"Sheets: atualizando abas (sem zerar antes) "
             f"({len(coletas)} coletas | {len(historico)} eventos historico)..."
         )
         stats: dict[str, Any] = {}
@@ -149,7 +149,7 @@ def sync_google_sheets(
             "stats": stats,
         })
         status(
-            f"Sheets substituida: {len(coletas)} coleta(s), "
+            f"Sheets atualizada: {len(coletas)} coleta(s), "
             f"{len(historico)} evento(s) de historico."
         )
         return result

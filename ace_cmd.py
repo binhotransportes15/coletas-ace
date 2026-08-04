@@ -198,8 +198,12 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
             if key == "apps_script_url" and len(shown) > 48:
                 shown = shown[:45] + "..."
         print(f"    {key:<22} {shown}")
+    print("  [AUTOMAÇÃO SSW]")
+    viz_on = not bool(payload.get("headless", True))
+    print(f"    visualizar (janela)     {'ON' if viz_on else 'OFF'}   ← /viz on|off  ou  /e visualizar sim|nao")
+    print(f"    headless                {str(bool(payload.get('headless', True))).lower()}")
     print("  [ARMAZÉM · 078]")
-    for key in ("armazem_in_loop", "headless"):
+    for key in ("armazem_in_loop",):
         _, typ, secret = EDITABLE[key]
         val = payload.get(key, "")
         shown = str(bool(val)).lower() if typ == "bool" else _mask(str(val), secret)
@@ -213,9 +217,10 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print("    4 / dash    Atualiza arquivos do dashboard local")
     print("    5 / gui     Abre o ACE grafico (app.py)")
     print("    6 / show    Mostra config completa (senha mascarada)")
-    print("    7 /automatica  Loop auto (50+103+36+225 + 078 se armazem_in_loop)")
+    print("    7 /automatica  Loop auto (login 1x por ciclo · 50+103+36+225)")
     print("    8 /status      Mostra alteracoes locais (git)")
     print("    9 /push        Commit + sobe TUDO pro GitHub (Pages)")
+    print("    /viz on|off    Mostra/oculta janela da automacao SSW")
     print("    78 /armazem    Captura tela 078 (Armazém) agora")
     print("    177            Captura 177 conferentes (mensal) agora")
     print("    607            Atualiza mapa login→nome (relatório 0607)")
@@ -233,13 +238,14 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
 def cmd_help() -> str:
     keys = ", ".join(sorted(EDITABLE.keys()))
     return (
-        "Comandos: /e | 50 | 103 | 36 | 225 | 78 | 177 | 607 | sync | sync78 | dash | gui | "
+        "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | sync | sync78 | dash | gui | "
         "/automatica | /status | /push | /pull | show | help | sair\n"
         f"  Campos: {keys}\n"
         "  Bool: true/false | sim/nao | 1/0\n"
         "  periodo_modo: diario | sexta\n"
         "  loop_intervalo: 30s | 5m | 1h | 2d  (min 5s, max 30d)\n"
         "    /e intervalo 30s\n"
+        "  Visualização SSW: /viz on|off  ou  /e visualizar sim|nao\n"
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
@@ -274,8 +280,36 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "tempo": "loop_intervalo",
         "loop": "loop_intervalo",
         "armazem_loop": "armazem_in_loop",
+        "visualizar": "visualizar",
+        "viz": "visualizar",
+        "mostrar": "visualizar",
+        "mostrar_navegador": "visualizar",
+        "janela": "visualizar",
     }
     key = aliases.get(key, key)
+
+    # visualizar = inverso de headless (mais intuitivo)
+    if key == "visualizar":
+        if len(parts) >= 3:
+            raw = " ".join(parts[2:]).strip()
+        else:
+            atual = not bool(payload.get("headless", True))
+            print(f"Atual: visualizacao={'ON' if atual else 'OFF'} (headless={payload.get('headless')})")
+            raw = input("Novo valor (on/off | sim/nao): ").strip()
+            if raw == "":
+                return "visualizar mantido."
+        try:
+            want_viz = _parse_bool(raw)
+        except ValueError as err:
+            return str(err)
+        payload["headless"] = not want_viz
+        _save_payload(payload)
+        return (
+            f"visualizar={'ON' if want_viz else 'OFF'} · "
+            f"headless={str(payload['headless']).lower()} "
+            f"({'janela oculta' if payload['headless'] else 'janela visivel'})"
+        )
+
     if key not in EDITABLE:
         return f"Campo desconhecido: {key}. Digite /e para listar."
 
@@ -341,6 +375,30 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
     return f"OK: {key} = {shown}"
 
 
+def _cfg_headless() -> bool:
+    return bool(load_settings().headless)
+
+
+def cmd_viz(parts: list[str], payload: dict[str, Any]) -> str:
+    """Ativa/desativa janela do Chromium na automacao SSW."""
+    if len(parts) == 1:
+        on = not bool(payload.get("headless", True))
+        return (
+            f"Visualizacao SSW: {'ON (janela visivel)' if on else 'OFF (headless)'} · "
+            f"use /viz on | /viz off"
+        )
+    raw = parts[1].strip().lower()
+    if raw in {"on", "1", "sim", "s", "true", "ligar", "ativa", "ativar", "mostrar"}:
+        payload["headless"] = False
+    elif raw in {"off", "0", "nao", "não", "n", "false", "desligar", "desativa", "desativar", "ocultar"}:
+        payload["headless"] = True
+    else:
+        return "Use: /viz on | /viz off"
+    _save_payload(payload)
+    on = not payload["headless"]
+    return f"OK: visualizacao={'ON' if on else 'OFF'} · headless={str(payload['headless']).lower()}"
+
+
 def run_pipeline_50() -> str:
     from pipeline import run_full_pipeline
 
@@ -351,7 +409,7 @@ def run_pipeline_50() -> str:
         logs.append(msg)
 
     print("\n=== Pipeline 50 ===")
-    result = run_full_pipeline(on_status=on_status, headless=False)
+    result = run_full_pipeline(on_status=on_status, headless=_cfg_headless())
     tot = ((result.get("analysis") or {}).get("totais") or {})
     return f"50 OK · totais={tot}" if result else "50 concluido"
 
@@ -363,7 +421,7 @@ def run_pipeline_103() -> str:
         print(f"  [{datetime.now():%H:%M:%S}] {msg}")
 
     print("\n=== Pipeline 103 ===")
-    result = run_full_pipeline_103(on_status=on_status, headless=False)
+    result = run_full_pipeline_103(on_status=on_status, headless=_cfg_headless())
     tot = ((result.get("analysis") or {}).get("totais") or {})
     return f"103 OK · totais={tot}"
 
@@ -375,7 +433,7 @@ def run_pipeline_36() -> str:
         print(f"  [{datetime.now():%H:%M:%S}] {msg}")
 
     print("\n=== Pipeline 36 (entregas) ===")
-    result = run_full_pipeline_36(on_status=on_status, headless=False)
+    result = run_full_pipeline_36(on_status=on_status, headless=_cfg_headless())
     tot = ((result.get("analysis") or {}).get("totais") or {})
     return f"36 OK · totais={tot}"
 
@@ -387,7 +445,7 @@ def run_pipeline_225() -> str:
         print(f"  [{datetime.now():%H:%M:%S}] {msg}")
 
     print("\n=== Pipeline 225 (agendamentos mes corrente · arquivo R) ===")
-    result = run_full_pipeline_225(on_status=on_status, headless=False)
+    result = run_full_pipeline_225(on_status=on_status, headless=_cfg_headless())
     tot = result.get("analysis") or {}
     return (
         f"225 OK · total={tot.get('total')} rota={tot.get('em_rota')} "
@@ -402,7 +460,7 @@ def run_pipeline_78_cmd() -> str:
         print(f"  [{datetime.now():%H:%M:%S}] {msg}")
 
     print("\n=== Pipeline 078 (Armazém) ===")
-    result = run_pipeline_78(on_status=on_status, headless=False)
+    result = run_pipeline_78(on_status=on_status, headless=_cfg_headless())
     conf = result.get("177") or {}
     extra = ""
     if conf.get("ok"):
@@ -425,7 +483,7 @@ def run_pipeline_177_cmd() -> str:
         print(f"  [{datetime.now():%H:%M:%S}] {msg}")
 
     print("\n=== Pipeline 177 (Conferentes · mensal) ===")
-    dl = download_report_177(headless=False, on_status=on_status)
+    dl = download_report_177(headless=_cfg_headless(), on_status=on_status)
     result = analyze_report_177(dl["path"], on_status=on_status)
     publish_dashboard(on_status=on_status)
     sheets = sync_sheets_78(on_status=on_status)
@@ -536,17 +594,18 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
     print("  225 = agendamentos do MES (1→ultimo dia) · arquivo R")
     print("  078 = Armazém (se armazem_in_loop=true)")
     print(f"  Ciclo a cada {format_duration_long(sec)}: baixar + analisar + Sheets/dashboard")
-    print("  50+103 em paralelo; 36, 225 e 078 em sequencia.")
+    print("  Login SSW 1x por ciclo (50+103+36+225); 078 depois se ligado.")
     print("  Virada de dia/mes recalcula sozinho (225 segue o mes corrente).")
     print("  Altere com: /e intervalo 30s | 5m | 1h | 2d")
     print("  Ligar/desligar 078 no loop: /e armazem_in_loop true|false")
+    print("  Janela SSW: /viz on|off  (ou /e visualizar sim|nao)")
     if return_to_menu:
         print("  Ctrl+C volta ao menu. Fechar a janela encerra.")
     else:
         print("  Ctrl+C ou fechar a janela encerra.")
     print("=" * 72 + "\n")
     try:
-        run_loop(interval_sec=sec, headless=True, once=False)
+        run_loop(interval_sec=sec, headless=_cfg_headless(), once=False)
     except KeyboardInterrupt:
         print("\nModo automatica interrompido.")
     return "Modo /automatica encerrado."
@@ -650,6 +709,10 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0].lstrip("/").lower() in {"607", "0607", "mapa", "nomes"}:
         print(run_pipeline_0607_cmd())
         return 0
+    if args and args[0].lstrip("/").lower() in {"viz", "visualizar"}:
+        payload = _load_payload()
+        print(cmd_viz(args, payload))
+        return 0
     if args and args[0].lstrip("/").lower() in {"sync78", "sheets78"}:
         print(run_sync_78())
         return 0
@@ -677,6 +740,9 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             if cmd in {"help", "/help", "?", "h"}:
                 message = cmd_help()
+            elif cmd in {"/viz", "viz", "/visualizar", "visualizar"}:
+                message = cmd_viz(parts, payload)
+                payload = _load_payload()
             elif cmd == "/e" or cmd == "/edit" or cmd == "e":
                 # permite "e campo valor" tambem
                 if cmd == "e":

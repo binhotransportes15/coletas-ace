@@ -172,6 +172,16 @@ class AceSswClient:
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.paths: dict[str, str] = {}
 
+    def set_period(self, start_date: str, end_date: str) -> None:
+        """Atualiza o periodo dos downloads seguintes (mesma sessao/login)."""
+        self.start_date_ui = normalize_date(start_date)
+        self.end_date_ui = normalize_date(end_date)
+        self.start_date = normalize_date(start_date)
+        self.end_date = normalize_date(end_date)
+        self.start_date_yy = to_ssw_ddmmyy(start_date)
+        self.end_date_yy = to_ssw_ddmmyy(end_date)
+        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     def _cleanup_before_download(self) -> None:
         if not self.clean_downloads:
             return
@@ -1282,6 +1292,158 @@ class AceSswClient:
             self.on_status("103: clique gerar via ajaxEnvia('FIL_COL')")
             return
         raise RuntimeError("103: nao achei botao FIL_COL para gerar o Excel.")
+
+    def run_shared_cycle(
+        self,
+        *,
+        period_50: tuple[str, str],
+        period_103: tuple[str, str],
+        period_225: tuple[str, str],
+        period_36: tuple[str, str] | None = None,
+        run_36: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Um login SSW → baixa 50, 103, (36), 225 na mesma sessão.
+        Mais rápido que abrir o Chromium e logar por relatório.
+        """
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError as error:
+            raise RuntimeError(
+                "Playwright nao esta instalado. Rode: pip install playwright && playwright install chromium"
+            ) from error
+
+        ensure_dirs()
+        self.download_dir.mkdir(parents=True, exist_ok=True)
+        self._cleanup_before_download()
+        self.paths = {}
+        errors: dict[str, str] = {}
+
+        mode = "oculto (headless)" if self.headless else "visível (janela)"
+        self.on_status(f"SSW sessão única | visualização={mode} | login 1x")
+
+        browser = None
+        context = None
+        with sync_playwright() as playwright:
+            try:
+                launch_kwargs: dict[str, Any] = {
+                    "headless": self.headless,
+                    "slow_mo": 0 if self.headless else 25,
+                }
+                if self.headless:
+                    launch_kwargs["args"] = ["--disable-dev-shm-usage"]
+                browser = playwright.chromium.launch(**launch_kwargs)
+                context = browser.new_context(accept_downloads=True)
+                page = context.new_page()
+                page.set_default_timeout(30000)
+
+                self._login(page)
+                self._ensure_unit(page)
+                self._patch_blank_popup_form(page)
+
+                # 50
+                try:
+                    self.set_period(period_50[0], period_50[1])
+                    self.on_status(
+                        f"[50] periodo {format_period(self.start_date_ui, self.end_date_ui)}"
+                    )
+                    path50 = self._download_coleta(page, "50")
+                    self.paths["coleta"] = str(path50)
+                    self.on_status(f"[50] OK {path50.name}")
+                except Exception as err:  # noqa: BLE001
+                    errors["50"] = str(err)
+                    self.on_status(f"[50] FALHOU: {err}")
+
+                # 103
+                try:
+                    self.set_period(period_103[0], period_103[1])
+                    self.on_status(
+                        f"[103] limite {format_period(self.start_date_ui, self.end_date_ui)}"
+                    )
+                    path103 = self._download_report_103(page)
+                    self.paths["coleta_103"] = str(path103)
+                    self.on_status(f"[103] OK {path103.name}")
+                except Exception as err:  # noqa: BLE001
+                    errors["103"] = str(err)
+                    self.on_status(f"[103] FALHOU: {err}")
+
+                # 36
+                if run_36 and period_36:
+                    try:
+                        self.set_period(period_36[0], period_36[1])
+                        self.on_status(
+                            f"[36] periodo {format_period(self.start_date_ui, self.end_date_ui)}"
+                        )
+                        path36 = self._download_report_36(page)
+                        self.paths["entrega_36"] = str(path36)
+                        self.on_status(f"[36] OK {path36.name}")
+                    except Exception as err:  # noqa: BLE001
+                        errors["36"] = str(err)
+                        self.on_status(f"[36] FALHOU: {err}")
+
+                # 225
+                try:
+                    self.set_period(period_225[0], period_225[1])
+                    self.on_status(
+                        f"[225] mes {format_period(self.start_date_ui, self.end_date_ui)}"
+                    )
+                    path225 = self._download_report_225(page)
+                    self.paths["agendamento_225"] = str(path225)
+                    self.on_status(f"[225] OK {path225.name}")
+                except Exception as err:  # noqa: BLE001
+                    errors["225"] = str(err)
+                    self.on_status(f"[225] FALHOU: {err}")
+
+                if not self.paths:
+                    details = "; ".join(f"{k}: {v}" for k, v in errors.items())
+                    raise RuntimeError(f"Nenhum arquivo baixado na sessao unica. {details}")
+
+                return {
+                    "paths": dict(self.paths),
+                    "errors": errors,
+                    "download_dir": str(self.download_dir),
+                    "shared_session": True,
+                    "headless": self.headless,
+                }
+            finally:
+                if not self.keep_open:
+                    if context is not None:
+                        context.close()
+                    if browser is not None:
+                        browser.close()
+
+
+def download_ace_shared_cycle(
+    *,
+    period_50: tuple[str, str],
+    period_103: tuple[str, str],
+    period_225: tuple[str, str],
+    period_36: tuple[str, str] | None = None,
+    run_36: bool = False,
+    headless: bool = True,
+    on_status: StatusCallback | None = None,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    clean_downloads: bool = True,
+) -> dict[str, Any]:
+    """Login SSW uma vez; baixa 50+103+(36)+225 na mesma janela."""
+    client = AceSswClient(
+        period_50[0],
+        period_50[1],
+        keep_open=False,
+        headless=headless,
+        on_status=on_status,
+        credentials=credentials,
+        settings=settings,
+        clean_downloads=clean_downloads,
+    )
+    return client.run_shared_cycle(
+        period_50=period_50,
+        period_103=period_103,
+        period_225=period_225,
+        period_36=period_36,
+        run_36=run_36,
+    )
 
 
 def download_ace_reports(

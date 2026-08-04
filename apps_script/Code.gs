@@ -20,6 +20,7 @@
  *       | ?action=agendamentos225 | ?action=resumo225 | ?action=alertas225
  *       | ?action=veiculos78 | ?action=resumo78 | ?action=ping
  * Escrita do ACE (com token): POST JSON action clear/append/replace
+ * replace = grava por cima e só depois remove linhas sobrando (sem zerar a aba no meio)
  * Abas 50: Coletas, Historico, ResumoDiario
  * Abas 103: Coletas103, Resumo103
  * Abas 36: Entregas36, Romaneios36, Resumo36
@@ -439,27 +440,33 @@ function appendRows_(name, headers, rows) {
 }
 
 function replaceSheet_(name, headers, rows) {
-  // Grava em aba temporaria e troca o nome — evita GET ver aba vazia no meio do clear+write.
-  var ss = getSpreadsheet_();
-  var tempName = String(name) + '__next';
-  var oldTemp = ss.getSheetByName(tempName);
-  if (oldTemp) {
-    ss.deleteSheet(oldTemp);
-  }
-  var tmp = ss.insertSheet(tempName);
+  // Grava POR CIMA da aba atual e só depois remove linhas sobrando.
+  // Assim o GET nunca vê a aba apagada/zerada no meio do sync (evita dashboard em 0).
+  var sh = getOrCreateSheet_(name);
   var matrix = [headers].concat(rowsToMatrix_(headers, rows));
+  var width = Math.max(headers.length, 1);
   var chunk = 400;
-  for (var i = 0; i < matrix.length; i += chunk) {
+  var i;
+  for (i = 0; i < matrix.length; i += chunk) {
     var part = matrix.slice(i, i + chunk);
-    var range = tmp.getRange(i + 1, 1, part.length, headers.length);
+    var range = sh.getRange(i + 1, 1, part.length, width);
     range.setNumberFormat('@');
     range.setValues(part);
   }
-  var current = ss.getSheetByName(name);
-  if (current) {
-    ss.deleteSheet(current);
+  var lastRow = sh.getLastRow();
+  if (lastRow > matrix.length) {
+    sh.deleteRows(matrix.length + 1, lastRow - matrix.length);
   }
-  tmp.setName(name);
+  var lastCol = sh.getLastColumn();
+  if (lastCol > width) {
+    sh.deleteColumns(width + 1, lastCol - width);
+  }
+  // limpa restos de tentativas antigas com aba __next
+  var ss = getSpreadsheet_();
+  var oldTemp = ss.getSheetByName(String(name) + '__next');
+  if (oldTemp) {
+    ss.deleteSheet(oldTemp);
+  }
   return Math.max(matrix.length - 1, 0);
 }
 
