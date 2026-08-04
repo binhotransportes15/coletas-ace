@@ -179,7 +179,7 @@
     }
     .resumo-total span {
       display: block;
-      font-size: 10px;
+      font-size: clamp(11px, 1.2vw, 14px);
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -187,19 +187,20 @@
       margin-bottom: 4px;
     }
     .resumo-total strong {
-      font-size: clamp(40px, 5vw, 58px);
-      font-weight: 700;
+      font-size: clamp(56px, 7.2vw, 96px);
+      font-weight: 800;
       line-height: 0.9;
       font-variant-numeric: tabular-nums;
       color: #fff;
       letter-spacing: -0.04em;
+      text-rendering: geometricPrecision;
     }
     .rc-ent .resumo-total strong { color: #fbb03b; }
     .rc-col .resumo-total strong { color: #67e8f9; }
     .resumo-stats {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px 14px;
+      gap: 8px 16px;
       min-width: 0;
     }
     .resumo-stats.stats-3 {
@@ -208,16 +209,17 @@
     .resumo-stats div {
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      font-size: 11px;
+      gap: 4px;
+      font-size: clamp(12px, 1.25vw, 15px);
       color: #94a3b8;
       min-width: 0;
     }
     .resumo-stats b {
-      font-size: clamp(18px, 2vw, 24px);
+      font-size: clamp(28px, 3.4vw, 44px);
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       line-height: 1;
+      text-rendering: geometricPrecision;
     }
     .resumo-stats .s-real b { color: var(--col); }
     .resumo-stats .s-rota b { color: var(--com); }
@@ -382,11 +384,11 @@
     .cyl-ban-row {
       flex: 1 1 0;
       min-height: 0;
-      max-height: 72px;
+      max-height: 96px;
       display: grid;
-      grid-template-columns: minmax(92px, 118px) minmax(0, 1fr);
+      grid-template-columns: minmax(110px, 150px) minmax(0, 1fr);
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       min-width: 0;
     }
     .cyl-ban-row .ban-left {
@@ -397,7 +399,7 @@
       padding-left: 2px;
     }
     .cyl-ban-row .ban-title {
-      font-size: clamp(10px, 1.1vw, 12px);
+      font-size: clamp(12px, 1.4vw, 16px);
       font-weight: 800;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -406,16 +408,17 @@
       white-space: nowrap;
     }
     .cyl-ban-row .ban-meta {
-      font-size: 12px;
+      font-size: clamp(13px, 1.4vw, 16px);
       color: #94a3b8;
       font-variant-numeric: tabular-nums;
       margin-top: 2px;
       white-space: nowrap;
     }
     .cyl-ban-row .ban-meta b {
-      font-size: 15px;
+      font-size: clamp(20px, 2.4vw, 32px);
       font-weight: 800;
       color: #fff;
+      text-rendering: geometricPrecision;
     }
     .cyl-ban-row.r-real .ban-title { color: var(--col); }
     .cyl-ban-row.r-rota .ban-title { color: var(--com); }
@@ -450,7 +453,7 @@
     .cyl-ban.is-zero { opacity: 0.45; }
     .cyl-ban .ban-pct {
       flex-shrink: 0;
-      font-size: clamp(18px, 2.4vw, 32px);
+      font-size: clamp(30px, 4.2vw, 58px);
       font-weight: 900;
       font-variant-numeric: tabular-nums;
       letter-spacing: -0.03em;
@@ -458,6 +461,7 @@
       text-shadow: 0 2px 10px rgba(0,0,0,.45);
       line-height: 1;
       padding: 0;
+      text-rendering: geometricPrecision;
     }
     .cyl-ban.b-real {
       background: linear-gradient(90deg, var(--col-dark), var(--col));
@@ -523,10 +527,11 @@
     }
     .total-stats div {
       display: flex; align-items: baseline; justify-content: space-between;
-      gap: 6px; font-size: 11px; color: #94a3b8;
+      gap: 6px; font-size: clamp(12px, 1.3vw, 15px); color: #94a3b8;
     }
     .total-stats b {
-      font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
+      font-size: clamp(18px, 2.2vw, 28px); font-weight: 800; font-variant-numeric: tabular-nums;
+      text-rendering: geometricPrecision;
     }
     .total-stats .s-real b { color: var(--col); }
     .total-stats .s-rota b { color: var(--com); }
@@ -568,15 +573,16 @@
     }
     .pop-prazo { grid-template-columns: 54px 1fr auto; border-left: 4px solid var(--can); }
     .pop-prazo.warn { border-left-color: var(--cad); }
-    .donut { width: 42px; height: 42px; position: relative; }
-    .donut svg { width: 42px; height: 42px; transform: rotate(-90deg); }
+    .donut { width: 64px; height: 64px; position: relative; }
+    .donut svg { width: 64px; height: 64px; transform: rotate(-90deg); }
     .donut .pct {
       position: absolute; inset: 0; display: grid; place-items: center;
-      font-size: 10px; font-weight: 800; color: #fff;
+      font-size: clamp(13px, 1.5vw, 18px); font-weight: 800; color: #fff;
+      text-rendering: geometricPrecision;
     }
-    .pop .name { font-size: 14px; font-weight: 800; letter-spacing: 0.03em; }
-    .pop .meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
-    .pop .badge { font-size: 13px; font-weight: 800; color: var(--col); }
+    .pop .name { font-size: clamp(16px, 1.8vw, 22px); font-weight: 800; letter-spacing: 0.03em; }
+    .pop .meta { color: var(--muted); font-size: clamp(12px, 1.3vw, 15px); margin-top: 2px; }
+    .pop .badge { font-size: clamp(15px, 1.7vw, 22px); font-weight: 800; color: var(--col); }
     .pop-prazo .hora { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
     .pop-prazo .tag {
       font-size: 10px; font-weight: 800; text-transform: uppercase;
@@ -597,18 +603,19 @@
       border: none; background: transparent; padding: 0; color: inherit;
     }
     .torre .pin {
-      width: 42px; height: 42px; border-radius: 50% 50% 50% 0;
+      width: 52px; height: 52px; border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg); display: grid; place-items: center;
       margin-bottom: 12px; box-shadow: 0 6px 14px rgba(0,0,0,.4);
       border: 2px solid rgba(255,255,255,.25);
     }
     .torre .pin span {
-      transform: rotate(45deg); font-size: 15px; font-weight: 800; color: #fff;
+      transform: rotate(45deg); font-size: clamp(16px, 2vw, 22px); font-weight: 800; color: #fff;
       line-height: 1; letter-spacing: -0.02em;
+      text-rendering: geometricPrecision;
     }
-    .torre .pin span.pin-lg { font-size: 12px; }
+    .torre .pin span.pin-lg { font-size: clamp(13px, 1.5vw, 16px); }
     .torre .barra {
-      width: 100%; min-height: 56px; border-radius: 8px 8px 0 0;
+      width: 100%; min-height: 72px; border-radius: 8px 8px 0 0;
       display: flex; align-items: center; justify-content: center;
       box-shadow: 0 10px 22px rgba(0,0,0,.4);
       transition: height .75s cubic-bezier(0.22, 1, 0.36, 1);
@@ -621,9 +628,10 @@
       clip-path: polygon(0 0, 100% 0, 94% 100%, 0 100%);
     }
     .torre .barra strong {
-      font-size: clamp(20px, 2.8vw, 32px); font-weight: 700; color: #fff;
-      line-height: 1; text-shadow: 0 2px 6px rgba(0,0,0,.35);
+      font-size: clamp(32px, 4.2vw, 56px); font-weight: 800; color: #fff;
+      line-height: 1; text-shadow: 0 2px 8px rgba(0,0,0,.4);
       position: relative; z-index: 1;
+      text-rendering: geometricPrecision;
     }
     .torre .barra strong .pct-sign {
       font-size: .55em; font-weight: 600; margin-left: 1px; opacity: .95;
@@ -633,7 +641,7 @@
       border-radius: 0 0 10px 10px; padding: 10px 6px 12px; text-align: center;
     }
     .torre .base .lbl {
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      font-size: clamp(12px, 1.4vw, 16px); font-weight: 700; text-transform: uppercase;
       letter-spacing: .04em; color: var(--muted);
     }
     .t-col .pin, .t-col .barra {
@@ -860,16 +868,19 @@
       height: 100%;
     }
     body.tv-mode .cyl-ban-row {
-      max-height: clamp(48px, 7vmin, 78px);
+      max-height: clamp(64px, 9vmin, 110px);
     }
     body.tv-mode .resumo-total strong {
-      font-size: clamp(44px, 5.5vmin, 72px);
+      font-size: clamp(64px, 8.5vmin, 120px);
     }
     body.tv-mode .resumo-stats b {
-      font-size: clamp(18px, 2.2vmin, 28px);
+      font-size: clamp(28px, 3.6vmin, 48px);
     }
     body.tv-mode .ban-pct {
-      font-size: clamp(26px, 3.4vmin, 42px) !important;
+      font-size: clamp(36px, 5vmin, 72px) !important;
+    }
+    body.tv-mode .cyl-ban-row .ban-meta b {
+      font-size: clamp(22px, 2.8vmin, 40px);
     }
     body.tv-mode .zone-col-body {
       grid-template-columns: minmax(150px, 15vw) 1fr minmax(240px, 26vw);
@@ -883,15 +894,15 @@
       font-size: clamp(12px, 1.6vmin, 18px);
     }
     body.tv-mode .zone-total {
-      font-size: clamp(28px, 4vmin, 48px);
+      font-size: clamp(36px, 5vmin, 64px);
     }
     body.tv-mode .total-hero {
       padding: clamp(8px, 1.1vmin, 14px);
       margin-bottom: clamp(6px, 1vmin, 12px);
       border-radius: clamp(10px, 1.2vmin, 14px);
     }
-    body.tv-mode .total-stats div { font-size: clamp(11px, 1.3vmin, 15px); }
-    body.tv-mode .total-stats b { font-size: clamp(13px, 1.6vmin, 18px); }
+    body.tv-mode .total-stats div { font-size: clamp(13px, 1.6vmin, 18px); }
+    body.tv-mode .total-stats b { font-size: clamp(18px, 2.4vmin, 32px); }
     body.tv-mode .total-mix { height: clamp(5px, 0.7vmin, 8px); }
     body.tv-mode .torres {
       gap: clamp(10px, 1.6vmin, 24px);
@@ -900,29 +911,29 @@
       overflow: hidden;
     }
     body.tv-mode .torre {
-      width: clamp(88px, 11vmin, 180px);
+      width: clamp(100px, 13vmin, 200px);
     }
     body.tv-mode .torre .pin {
-      width: clamp(28px, 3.4vmin, 44px);
-      height: clamp(28px, 3.4vmin, 44px);
+      width: clamp(36px, 4.5vmin, 56px);
+      height: clamp(36px, 4.5vmin, 56px);
       margin-bottom: clamp(6px, 1vmin, 12px);
     }
-    body.tv-mode .torre .pin span { font-size: clamp(12px, 1.5vmin, 18px); }
-    body.tv-mode .torre .pin span.pin-lg { font-size: clamp(10px, 1.2vmin, 14px); }
+    body.tv-mode .torre .pin span { font-size: clamp(15px, 2vmin, 24px); }
+    body.tv-mode .torre .pin span.pin-lg { font-size: clamp(12px, 1.5vmin, 18px); }
     body.tv-mode .torre .barra {
-      min-height: clamp(36px, 4.5vmin, 64px);
-      max-height: 28vh;
+      min-height: clamp(48px, 6vmin, 84px);
+      max-height: 32vh;
       border-radius: clamp(8px, 1vmin, 14px) clamp(8px, 1vmin, 14px) 0 0;
     }
     body.tv-mode .torre .barra strong {
-      font-size: clamp(18px, 2.8vmin, 40px);
+      font-size: clamp(28px, 4.4vmin, 64px);
     }
     body.tv-mode .torre .base {
       padding: clamp(8px, 1vmin, 12px) 6px;
       border-radius: 0 0 clamp(8px, 1vmin, 14px) clamp(8px, 1vmin, 14px);
     }
     body.tv-mode .torre .base .lbl {
-      font-size: clamp(11px, 1.3vmin, 16px);
+      font-size: clamp(13px, 1.6vmin, 20px);
     }
     body.tv-mode .col-right {
       min-width: 0;
@@ -940,10 +951,10 @@
     body.tv-mode .pop-prazo .hora { font-size: clamp(16px, 2.2vmin, 28px); }
     body.tv-mode .donut,
     body.tv-mode .donut svg {
-      width: clamp(42px, 5vmin, 64px);
-      height: clamp(42px, 5vmin, 64px);
+      width: clamp(56px, 7vmin, 88px);
+      height: clamp(56px, 7vmin, 88px);
     }
-    body.tv-mode .donut .pct { font-size: clamp(10px, 1.2vmin, 14px); }
+    body.tv-mode .donut .pct { font-size: clamp(14px, 1.8vmin, 22px); }
 
     .nav-btn.tv-btn {
       border-color: #334155;
@@ -1058,7 +1069,7 @@
     .agenda-kpi.k-alerta::before { background: #ef4444; }
     .agenda-kpi span {
       display: block;
-      font-size: 10px;
+      font-size: clamp(11px, 1.2vw, 14px);
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -1070,7 +1081,7 @@
     }
     .agenda-kpi b {
       display: block;
-      font-size: clamp(22px, 2.6vw, 34px);
+      font-size: clamp(32px, 4vw, 56px);
       font-weight: 800;
       line-height: 0.95;
       color: #fff;
@@ -1079,13 +1090,14 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      text-rendering: geometricPrecision;
     }
     /* Peso/Frete: valor inteiro visível (fonte encolhe conforme o tamanho) */
     .agenda-kpi.k-peso b,
     .agenda-kpi.k-frete b {
       overflow: visible;
       text-overflow: clip;
-      font-size: clamp(14px, 1.7vw, 26px);
+      font-size: clamp(18px, 2.4vw, 36px);
       letter-spacing: -0.04em;
       max-width: 100%;
     }
@@ -1175,16 +1187,17 @@
       gap: 4px 10px;
       align-items: center;
     }
-    .tower-bar .lbl { font-size: 12px; font-weight: 700; color: #cbd5e1; }
+    .tower-bar .lbl { font-size: clamp(13px, 1.4vw, 16px); font-weight: 700; color: #cbd5e1; }
     .tower-bar .val {
-      font-size: clamp(18px, 2.2vw, 28px);
+      font-size: clamp(26px, 3.2vw, 44px);
       font-weight: 900;
       font-variant-numeric: tabular-nums;
       color: #fff;
+      text-rendering: geometricPrecision;
     }
     .tower-bar .track {
       grid-column: 1 / -1;
-      height: 10px;
+      height: 14px;
       border-radius: 999px;
       background: #0f172a;
       overflow: hidden;
@@ -1216,9 +1229,10 @@
     .tower-alert .ico { font-size: 18px; font-weight: 900; }
     .tower-alert .txt { font-size: 13px; font-weight: 700; color: #e2e8f0; }
     .tower-alert .num {
-      font-size: clamp(20px, 2.4vw, 32px);
+      font-size: clamp(28px, 3.4vw, 48px);
       font-weight: 900;
       font-variant-numeric: tabular-nums;
+      text-rendering: geometricPrecision;
     }
     .agenda-chart-stage {
       position: relative;
@@ -1336,7 +1350,7 @@
     .agenda-pizza .callout-pct {
       fill: #ffffff;
       font-weight: 900;
-      font-size: 32px;
+      font-size: 48px;
       font-family: "Segoe UI", system-ui, sans-serif;
       letter-spacing: -0.02em;
     }
@@ -1347,14 +1361,14 @@
     .agenda-pizza .callout-lab {
       fill: #e2e8f0;
       font-weight: 800;
-      font-size: 13px;
+      font-size: 18px;
       letter-spacing: 0.1em;
       font-family: "Segoe UI", system-ui, sans-serif;
     }
     .agenda-pizza .callout-count {
       fill: #94a3b8;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 16px;
       font-family: "Segoe UI", system-ui, sans-serif;
     }
     .agenda-side { display: none !important; }
@@ -1543,45 +1557,48 @@
     body.live-mode .agenda-gestao-only { display: none !important; }
     body.live-mode .agenda-head h2 { display: none; }
     body.live-mode .agenda-kpi b {
-      font-size: clamp(28px, 3.6vw, 48px);
+      font-size: clamp(40px, 5vw, 72px);
     }
     body.live-mode .agenda-kpi.k-peso b,
     body.live-mode .agenda-kpi.k-frete b {
-      font-size: clamp(16px, 2.1vw, 32px);
+      font-size: clamp(22px, 2.8vw, 44px);
     }
     body.live-mode .agenda-kpi span {
-      font-size: 11px;
+      font-size: clamp(12px, 1.3vw, 15px);
     }
     body.live-mode .agenda-kpi small {
-      font-size: 11px;
+      font-size: 12px;
     }
     body.live-mode .agenda-pizza {
-      width: min(100%, 1100px);
+      width: min(100%, 1200px);
     }
-    body.live-mode .agenda-pizza .callout-pct { font-size: 42px; }
-    body.live-mode .agenda-pizza .callout-lab { font-size: 16px; }
-    body.live-mode .agenda-pizza .callout-count { font-size: 14px; }
+    body.live-mode .agenda-pizza .callout-pct { font-size: 56px; }
+    body.live-mode .agenda-pizza .callout-lab { font-size: 20px; }
+    body.live-mode .agenda-pizza .callout-count { font-size: 18px; }
     body.tv-mode.live-mode .agenda-kpi b {
-      font-size: clamp(36px, 4.8vmin, 64px);
+      font-size: clamp(48px, 6.5vmin, 88px);
     }
     body.tv-mode.live-mode .agenda-kpi.k-peso b,
     body.tv-mode.live-mode .agenda-kpi.k-frete b {
-      font-size: clamp(18px, 2.6vmin, 38px);
+      font-size: clamp(24px, 3.2vmin, 48px);
     }
     body.tv-mode.live-mode .agenda-kpi span {
-      font-size: clamp(11px, 1.3vmin, 15px);
+      font-size: clamp(12px, 1.5vmin, 18px);
     }
     body.tv-mode.live-mode .tower-bar .val,
     body.tv-mode.live-mode .tower-alert .num {
-      font-size: clamp(26px, 3.4vmin, 44px);
+      font-size: clamp(32px, 4.2vmin, 56px);
     }
     body.tv-mode.live-mode .agenda-card .ctrc {
-      font-size: clamp(18px, 2.2vmin, 26px);
+      font-size: clamp(20px, 2.6vmin, 32px);
     }
     body.tv-mode.live-mode .agenda-card .when {
-      font-size: clamp(15px, 1.8vmin, 22px);
+      font-size: clamp(16px, 2vmin, 26px);
     }
-    body.tv-mode.live-mode .agenda-pizza .callout-pct { font-size: 52px; }
+    body.tv-mode.live-mode .agenda-pizza .callout-pct { font-size: 72px; }
+    body.tv-mode.live-mode .agenda-pizza .callout-lab { font-size: 24px; }
+    body.tv-mode.live-mode .agenda-pizza .callout-count { font-size: 22px; }
+    body.tv-mode.live-mode .tower-bar .track { height: 18px; }
     @media (max-width: 980px) {
       body.live-mode .agenda-hero {
         grid-template-columns: 1fr;
