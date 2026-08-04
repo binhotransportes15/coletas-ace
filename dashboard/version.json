@@ -1,5 +1,5 @@
 {
-  "build": "2026-08-04-site-try-fix",
-  "run": "fix-dashboard-syntax",
-  "at": "2026-08-04T13:25:00Z"
+  "build": "2026-08-04-alerta-dismiss",
+  "run": "alerta-lock-dismissible",
+  "at": "2026-08-04T13:40:00Z"
 }

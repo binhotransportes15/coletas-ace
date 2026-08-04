@@ -1314,6 +1314,43 @@
     body.alerta-lock #alertaLock { display: flex; }
     body.alerta-lock .swap-nav { display: none !important; }
     body.alerta-lock { overflow: hidden; }
+    /* No PC o overlay nao engole cliques do menu: so o card do alerta */
+    body.alerta-lock:not(.tv-mode) #alertaLock {
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 72px;
+      background: rgba(0, 0, 0, 0.55);
+      pointer-events: none;
+    }
+    body.alerta-lock:not(.tv-mode) .alerta-lock-box {
+      pointer-events: auto;
+      flex: 0 1 auto;
+      max-height: min(78vh, 720px);
+      width: min(720px, 94vw);
+    }
+    .alerta-lock-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 4px;
+    }
+    .alerta-lock-actions button {
+      border: 1px solid #fecaca;
+      background: #7f1d1d;
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .alerta-lock-actions button.secondary {
+      background: #0f172a;
+      border-color: #64748b;
+      color: #e2e8f0;
+    }
+    .alerta-lock-actions button:hover { filter: brightness(1.08); }
     .alerta-lock-box {
       flex: 1;
       min-height: 0;
@@ -1985,8 +2022,12 @@
       <div class="tag">Alerta operacional</div>
       <h1 id="alertaLockTitle">Agendamento sem saída hoje</h1>
       <div class="count" id="alertaLockCount">0</div>
-      <div class="hint">Tela travada até haver saída / realização desses CTRCs. Atualiza automaticamente.</div>
+      <div class="hint" id="alertaLockHint">Há CTRC agendado hoje sem saída. Atualiza automaticamente.</div>
       <div class="alerta-lock-list" id="alertaLockList"></div>
+      <div class="alerta-lock-actions">
+        <button type="button" id="btnAlertaContinuar">Continuar navegando</button>
+        <button type="button" class="secondary" id="btnAlertaIrGestao">Abrir Gestão</button>
+      </div>
     </div>
   </div>
   <button type="button" class="swap-nav prev" id="btnSwapPrev" title="Distribuição (←)" aria-label="Ir para Distribuição">‹</button>
@@ -2468,6 +2509,8 @@
     let swapCountdown = null;
     let SWAP_ON_AGENDA = false;
     let ALERTA_LOCK_ON = false;
+    /** Usuário fechou o overlay; não cobre a tela de novo até o alerta zerar. */
+    let ALERTA_LOCK_DISMISSED = false;
     const SWAP_MS = 15000;
     /** Alerta “agendamento sem saída”: checagem na tela a cada 1 min */
     const ALERTA_SEM_SAIDA_POLL_MS = 60000;
@@ -4378,15 +4421,38 @@
       return (AGENDAMENTOS_225 || []).filter(r => String(r.alerta_sem_saida || '') === '1');
     }
 
+    function dismissAlertaLock() {
+      ALERTA_LOCK_DISMISSED = true;
+      ALERTA_LOCK_ON = false;
+      document.body.classList.remove('alerta-lock');
+      const lock = document.getElementById('alertaLock');
+      if (lock) {
+        lock.hidden = true;
+        lock.style.display = 'none';
+      }
+      if (VIEW === 'live' && !swapTimer) restartSwapTimer();
+      const tick = document.getElementById('agendaTick');
+      const n = listAlertaSemSaida().length;
+      if (tick) {
+        tick.textContent = n > 0
+          ? `SEM SAÍDA: ${n} · navegação liberada`
+          : '';
+      }
+    }
+
     function updateAlertaSemSaidaLock() {
       const alerts = listAlertaSemSaida();
       const lock = document.getElementById('alertaLock');
       const countEl = document.getElementById('alertaLockCount');
       const listEl = document.getElementById('alertaLockList');
+      const hintEl = document.getElementById('alertaLockHint');
       const agAlert = document.getElementById('agAlert');
       if (agAlert) agAlert.textContent = String(alerts.length);
 
-      const ativo = alerts.length > 0;
+      if (!alerts.length) ALERTA_LOCK_DISMISSED = false;
+
+      // Overlay só se houver alerta e o usuário ainda não fechou
+      const ativo = alerts.length > 0 && !ALERTA_LOCK_DISMISSED;
       ALERTA_LOCK_ON = ativo;
       document.body.classList.toggle('alerta-lock', ativo);
       if (lock) {
@@ -4394,6 +4460,11 @@
         lock.style.display = ativo ? 'flex' : 'none';
       }
       if (countEl) countEl.textContent = String(alerts.length);
+      if (hintEl) {
+        hintEl.textContent = document.body.classList.contains('tv-mode')
+          ? 'Modo TV: destaque do alerta. Use Continuar ou ESC para navegar.'
+          : 'Clique em Continuar navegando (ou ESC) para usar o site normalmente.';
+      }
       if (listEl) {
         listEl.innerHTML = alerts.map(r => `
           <div class="alerta-lock-item">
@@ -4404,29 +4475,32 @@
       }
 
       if (ativo) {
-        if (swapTimer) { clearInterval(swapTimer); swapTimer = null; }
-        if (swapCountdown) { clearInterval(swapCountdown); swapCountdown = null; }
-        if (VIEW === 'live' && !SWAP_ON_AGENDA) {
-          SWAP_ON_AGENDA = true;
-          document.body.classList.add('swap-agenda');
-          const live = document.getElementById('viewLive');
-          const ag = document.getElementById('viewAgendamento');
-          if (live) live.classList.remove('active');
-          if (ag) ag.classList.add('active');
-          const brandTitle = document.querySelector('.brand .title');
-          if (brandTitle) {
-            brandTitle.innerHTML = 'AGENDAMENTO <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span>';
+        // No TV: pausa o swap automático e destaca agenda; no PC o menu continua clicável
+        if (document.body.classList.contains('tv-mode')) {
+          if (swapTimer) { clearInterval(swapTimer); swapTimer = null; }
+          if (swapCountdown) { clearInterval(swapCountdown); swapCountdown = null; }
+          if (VIEW === 'live' && !SWAP_ON_AGENDA) {
+            SWAP_ON_AGENDA = true;
+            document.body.classList.add('swap-agenda');
+            const live = document.getElementById('viewLive');
+            const ag = document.getElementById('viewAgendamento');
+            if (live) live.classList.remove('active');
+            if (ag) ag.classList.add('active');
+            const brandTitle = document.querySelector('.brand .title');
+            if (brandTitle) {
+              brandTitle.innerHTML = 'AGENDAMENTO <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span>';
+            }
           }
         }
         const tick = document.getElementById('agendaTick');
-        if (tick) tick.textContent = 'TELA TRAVADA · SEM SAÍDA';
+        if (tick) tick.textContent = `ALERTA · SEM SAÍDA (${alerts.length})`;
       } else if (VIEW === 'live' && !swapTimer) {
         restartSwapTimer();
       }
     }
 
     function setSwapScreen(showAgenda) {
-      if (ALERTA_LOCK_ON && !showAgenda) return;
+      // Lock nao bloqueia mais a troca de telas no PC
       SWAP_ON_AGENDA = !!showAgenda;
       document.body.classList.toggle('swap-agenda', SWAP_ON_AGENDA);
       const brandTitle = document.querySelector('.brand .title');
@@ -4514,7 +4588,7 @@
     }
 
     function setView(view) {
-      if (ALERTA_LOCK_ON && view === 'gestao') return;
+      if (ALERTA_LOCK_ON && view === 'gestao') dismissAlertaLock();
       VIEW = view === 'gestao' ? 'gestao' : 'live';
       if (VIEW === 'gestao' && TV_MODE) setTvMode(false, { syncHash: true });
       document.body.classList.toggle('live-mode', VIEW === 'live');
@@ -4730,11 +4804,22 @@
       stepSwap(0);
     });
 
+    document.getElementById('btnAlertaContinuar')?.addEventListener('click', () => dismissAlertaLock());
+    document.getElementById('btnAlertaIrGestao')?.addEventListener('click', () => {
+      dismissAlertaLock();
+      setView('gestao');
+    });
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'F11') return; // deixa o browser cuidar
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === 'Escape') {
+        if (ALERTA_LOCK_ON) {
+          e.preventDefault();
+          dismissAlertaLock();
+          return;
+        }
         const overlay = document.getElementById('sectorOverlay');
         if (overlay && !overlay.hidden) {
           e.preventDefault();
