@@ -1,6 +1,6 @@
 ﻿origem,origem_sigla,cavalo,carreta,manifesto,peso,peso_num,saida,prev_chegada,chegada,inicio_descarga,final_descarga,status,atrasado,tempo_descarga_min,tempo_descarga,peso_veiculo
-GOIANIA,GYN,FTU6B41,IWN6J47,016000-8,20.488,20488,01/08 11:50,03/08 23:50,03/08 06:24,03/08 23:33 d.lopes,,descarregando,0,660,11h (andamento),20.795
-GOIANIA,GYN,FTU6B41,IWN6J47,016001-6,307,307,01/08 11:50,03/08 23:50,03/08 06:24,03/08 23:33 d.lopes,,descarregando,0,660,11h (andamento),20.795
+GOIANIA,GYN,FTU6B41,IWN6J47,016000-8,20.488,20488,01/08 11:50,03/08 23:50,03/08 06:24,03/08 23:33 d.lopes,,descarregando,0,663,11h 03min (andamento),20.795
+GOIANIA,GYN,FTU6B41,IWN6J47,016001-6,307,307,01/08 11:50,03/08 23:50,03/08 06:24,03/08 23:33 d.lopes,,descarregando,0,663,11h 03min (andamento),20.795
 SERRA,VIX,FNZ1D73,GJA0172,002445-7,15.962,15962,HOJE 06:26,05/08 18:25,,,,aguardando,0,,,18.962
 SERRA,VIX,FNZ1D73,GJA0172,002446-5,3.000,3000,HOJE 06:26,05/08 18:25,,,,aguardando,0,,,18.962
 GOIANIA,GYN,CUB0G27,AEY2528,016030-0,9.084,9084,HOJE 09:09,05/08 21:09,,,,aguardando,0,,,9.084
