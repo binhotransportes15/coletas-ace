@@ -3163,13 +3163,18 @@
           if (resumo177 && Object.keys(resumo177).length) {
             lastGoodArmResumo177 = { ...resumo177 };
           }
+        } catch (_) {
           try {
             confRows = await loadCsvLocal(ARMA_CSV.conferentes || 'data/armazem/conferentes_177.csv');
             const r177 = await loadCsvLocal(ARMA_CSV.resumo177 || 'data/armazem/resumo_177.csv');
             resumo177 = r177[0] || {};
+            if (!confRows.length && lastGoodArmConf.length) confRows = lastGoodArmConf.slice();
+            if (!Object.keys(resumo177).length && lastGoodArmResumo177) {
+              resumo177 = { ...lastGoodArmResumo177 };
+            }
           } catch (__ ) {
-            confRows = [];
-            resumo177 = {};
+            confRows = lastGoodArmConf.length ? lastGoodArmConf.slice() : [];
+            resumo177 = lastGoodArmResumo177 ? { ...lastGoodArmResumo177 } : {};
           }
         }
         if (err) err.hidden = true;
