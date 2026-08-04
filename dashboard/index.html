@@ -2394,7 +2394,8 @@
                 <th>Chegada</th>
                 <th>Previsão</th>
                 <th>Tempo descarga</th>
-                <th class="right">Manif.</th>
+                <th>Início descarga</th>
+                <th>Fim descarga</th>
               </tr>
             </thead>
             <tbody id="armTbody"></tbody>
@@ -3065,12 +3066,18 @@
             prev_chegada: r.prev_chegada,
             status: r.status,
             tempo_descarga: r.tempo_descarga,
-            manifestos: 0,
+            inicio_descarga: r.inicio_descarga || '',
+            final_descarga: r.final_descarga || '',
           };
           map.set(key, slot);
         }
-        slot.manifestos += 1;
         if ((r.peso_veiculo || '').length) slot.peso_veiculo = r.peso_veiculo;
+        if ((r.inicio_descarga || '').trim() && !(slot.inicio_descarga || '').trim()) {
+          slot.inicio_descarga = r.inicio_descarga;
+        }
+        if ((r.final_descarga || '').trim() && !(slot.final_descarga || '').trim()) {
+          slot.final_descarga = r.final_descarga;
+        }
         const a = ARM_STATUS_RANK[slot.status] ?? 9;
         const b = ARM_STATUS_RANK[r.status] ?? 9;
         if (b < a) {
@@ -3078,9 +3085,13 @@
           slot.chegada = r.chegada || slot.chegada;
           slot.prev_chegada = r.prev_chegada || slot.prev_chegada;
           slot.tempo_descarga = r.tempo_descarga || slot.tempo_descarga;
-          slot.origem = r.origem || slot.origem;
+          slot.inicio_descarga = r.inicio_descarga || slot.inicio_descarga;
+          slot.final_descarga = r.final_descarga || slot.final_descarga;
+          slot.origem = labelOrigemArm(r.origem_sigla || r.origem) || slot.origem;
         } else if (b === a && (r.tempo_descarga || '').length > (slot.tempo_descarga || '').length) {
           slot.tempo_descarga = r.tempo_descarga;
+          slot.inicio_descarga = r.inicio_descarga || slot.inicio_descarga;
+          slot.final_descarga = r.final_descarga || slot.final_descarga;
         }
       }
       return [...map.values()].sort((x, y) => {
@@ -3283,6 +3294,8 @@
           const prevCell = !chegou && prev
             ? `<span class="mono">${prev}</span>`
             : (chegou ? `<span class="muted">—</span>` : `<span class="mono">${prev || '—'}</span>`);
+          const ini = (v.inicio_descarga || '').trim();
+          const fim = (v.final_descarga || '').trim();
           return `<tr>
             <td>${armBadge(v.status)}</td>
             <td>${v.origem || '—'}</td>
@@ -3292,9 +3305,10 @@
             <td>${chegCell}</td>
             <td>${prevCell}</td>
             <td class="mono">${v.tempo_descarga || '—'}</td>
-            <td class="right mono">${v.manifestos}</td>
+            <td class="mono">${ini || '—'}</td>
+            <td class="mono">${fim || '—'}</td>
           </tr>`;
-        }).join('') || `<tr><td colspan="9" class="muted">Sem veículos</td></tr>`;
+        }).join('') || `<tr><td colspan="10" class="muted">Sem veículos</td></tr>`;
       } catch (e) {
         if (err) {
           err.hidden = false;
