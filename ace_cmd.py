@@ -200,7 +200,10 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
         print(f"    {key:<22} {shown}")
     print("  [AUTOMAÇÃO SSW]")
     viz_on = not bool(payload.get("headless", True))
-    print(f"    visualizar (janela)     {'ON' if viz_on else 'OFF'}   ← /viz on|off  ou  /e visualizar sim|nao")
+    print(
+        f"    janela SSW              {'LIGADA  (vê o navegador)' if viz_on else 'DESLIGADA (oculto)'}"
+    )
+    print(f"    comando                 /viz     → liga/desliga   |  /viz on  |  /viz off")
     print(f"    headless                {str(bool(payload.get('headless', True))).lower()}")
     print("  [ARMAZÉM · 078]")
     for key in ("armazem_in_loop",):
@@ -381,22 +384,37 @@ def _cfg_headless() -> bool:
 
 def cmd_viz(parts: list[str], payload: dict[str, Any]) -> str:
     """Ativa/desativa janela do Chromium na automacao SSW."""
+    from config import CONFIG_PATH
+
+    # Sem argumento = alterna ON/OFF
     if len(parts) == 1:
-        on = not bool(payload.get("headless", True))
-        return (
-            f"Visualizacao SSW: {'ON (janela visivel)' if on else 'OFF (headless)'} · "
-            f"use /viz on | /viz off"
-        )
-    raw = parts[1].strip().lower()
-    if raw in {"on", "1", "sim", "s", "true", "ligar", "ativa", "ativar", "mostrar"}:
-        payload["headless"] = False
-    elif raw in {"off", "0", "nao", "não", "n", "false", "desligar", "desativa", "desativar", "ocultar"}:
-        payload["headless"] = True
+        want_viz = bool(payload.get("headless", True))  # se headless, liga viz
     else:
-        return "Use: /viz on | /viz off"
+        raw = " ".join(parts[1:]).strip().lower()
+        if raw in {"on", "1", "sim", "s", "true", "ligar", "ativa", "ativar", "mostrar", "ligado"}:
+            want_viz = True
+        elif raw in {
+            "off", "0", "nao", "não", "n", "false", "desligar", "desativa",
+            "desativar", "ocultar", "desligado",
+        }:
+            want_viz = False
+        elif raw in {"toggle", "alt", "alternar", "trocar"}:
+            want_viz = bool(payload.get("headless", True))
+        else:
+            return "Use: /viz   |  /viz on  |  /viz off"
+
+    payload["headless"] = not want_viz
     _save_payload(payload)
-    on = not payload["headless"]
-    return f"OK: visualizacao={'ON' if on else 'OFF'} · headless={str(payload['headless']).lower()}"
+
+    # Confere no disco (evita cache / outro config)
+    disk = _load_payload()
+    disk_headless = bool(disk.get("headless", True))
+    on = not disk_headless
+    return (
+        f"OK: janela SSW={'LIGADA' if on else 'DESLIGADA'} "
+        f"(headless={str(disk_headless).lower()}) · "
+        f"salvo em {CONFIG_PATH}"
+    )
 
 
 def run_pipeline_50() -> str:

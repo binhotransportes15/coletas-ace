@@ -546,15 +546,23 @@ def run_dual_cycle(
 
     paths = (download_bundle.get("paths") or {}) if download_bundle else {}
     dl_errors = download_bundle.get("errors") or {}
+    sessao_ok = "ssw" not in errors
 
-    if paths.get("coleta") or "50" not in dl_errors:
+    def _resolve_report(path_key: str, finder) -> Path | None:
+        report = Path(paths.get(path_key) or "")
+        if report.is_file():
+            return report
+        latest = finder()
+        if latest and Path(latest).is_file():
+            return Path(latest)
+        return None
+
+    if sessao_ok or paths.get("coleta"):
         try:
-            report = Path(paths.get("coleta") or "")
-            if not report.exists():
-                latest = find_latest_report()
-                if not latest:
-                    raise RuntimeError("50 sem arquivo")
-                report = latest
+            report = _resolve_report("coleta", find_latest_report)
+            if report is None:
+                raise RuntimeError("50 sem arquivo")
+            if str(report) != str(paths.get("coleta") or ""):
                 emit(f"[50] Usando ultimo: {report.name}")
             analysis = run_analysis_only(
                 report, settings=cfg, on_status=lambda m: emit(f"[50] {m}"), sync=False
@@ -569,14 +577,12 @@ def run_dual_cycle(
             errors["50"] = str(err)
             emit(f"50 FALHOU: {err}")
 
-    if paths.get("coleta_103") or "103" not in dl_errors:
+    if sessao_ok or paths.get("coleta_103"):
         try:
-            report = Path(paths.get("coleta_103") or "")
-            if not report.exists():
-                latest = find_latest_103()
-                if not latest:
-                    raise RuntimeError("103 sem arquivo")
-                report = latest
+            report = _resolve_report("coleta_103", find_latest_103)
+            if report is None:
+                raise RuntimeError("103 sem arquivo")
+            if str(report) != str(paths.get("coleta_103") or ""):
                 emit(f"[103] Usando ultimo: {report.name}")
             analysis = run_analysis_103(
                 report,
@@ -595,14 +601,12 @@ def run_dual_cycle(
             errors["103"] = str(err)
             emit(f"103 FALHOU: {err}")
 
-    if run_36:
+    if run_36 and (sessao_ok or paths.get("entrega_36")):
         try:
-            report = Path(paths.get("entrega_36") or "")
-            if not report.exists():
-                latest = find_latest_36()
-                if not latest:
-                    raise RuntimeError("36 sem arquivo")
-                report = latest
+            report = _resolve_report("entrega_36", find_latest_36)
+            if report is None:
+                raise RuntimeError("36 sem arquivo")
+            if str(report) != str(paths.get("entrega_36") or ""):
                 emit(f"[36] Usando ultimo: {report.name}")
             analysis = run_analysis_36(
                 report,
@@ -621,31 +625,30 @@ def run_dual_cycle(
             errors["36"] = str(err)
             emit(f"36 FALHOU: {err}")
 
-    try:
-        report = Path(paths.get("agendamento_225") or "")
-        if not report.exists():
-            latest = find_latest_225()
-            if not latest:
+    if sessao_ok or paths.get("agendamento_225"):
+        try:
+            report = _resolve_report("agendamento_225", find_latest_225)
+            if report is None:
                 raise RuntimeError("225 sem arquivo")
-            report = latest
-            emit(f"[225] Usando ultimo: {report.name}")
-        analysis = run_analysis_225(
-            report,
-            periodo=titulo225,
-            settings=cfg,
-            on_status=lambda m: emit(f"[225] {m}"),
-            sync=False,
-        )
-        result_225 = {
-            "download": {"paths": {"agendamento_225": str(report)}},
-            **analysis,
-            "period": format_period(ini225, fim225),
-            "titulo": titulo225,
-        }
-        emit("225 concluido.")
-    except Exception as err:  # noqa: BLE001
-        errors["225"] = str(err)
-        emit(f"225 FALHOU: {err}")
+            if str(report) != str(paths.get("agendamento_225") or ""):
+                emit(f"[225] Usando ultimo: {report.name}")
+            analysis = run_analysis_225(
+                report,
+                periodo=titulo225,
+                settings=cfg,
+                on_status=lambda m: emit(f"[225] {m}"),
+                sync=False,
+            )
+            result_225 = {
+                "download": {"paths": {"agendamento_225": str(report)}},
+                **analysis,
+                "period": format_period(ini225, fim225),
+                "titulo": titulo225,
+            }
+            emit("225 concluido.")
+        except Exception as err:  # noqa: BLE001
+            errors["225"] = str(err)
+            emit(f"225 FALHOU: {err}")
 
     keep: list[Path] = []
     for block in (result_50, result_103, result_36, result_225):

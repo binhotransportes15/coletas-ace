@@ -57,8 +57,8 @@ def capture_ssw78(
         status("Login SSW...")
         client._login(page)
         client._ensure_unit(page)
-        patch = getattr(client, "_patch_blank_popup_forms", None) or getattr(
-            client, "_patch_blank_popup_form", None
+        patch = getattr(client, "_patch_blank_popup_fix", None) or getattr(
+            client, "_patch_blank_popup_forms", None
         )
         if callable(patch):
             patch(page)

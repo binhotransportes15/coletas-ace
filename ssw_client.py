@@ -1339,7 +1339,7 @@ class AceSswClient:
 
                 self._login(page)
                 self._ensure_unit(page)
-                self._patch_blank_popup_form(page)
+                self._patch_blank_popup_fix(page)
 
                 # 50
                 try:
