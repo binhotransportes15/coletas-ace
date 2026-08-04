@@ -506,7 +506,7 @@ def run_dual_cycle(
     run_36 = str(getattr(cfg, "entrega_option", "") or "").strip() == "36"
     viz = "oculto" if use_headless else "visivel"
     emit(
-        f"CICLO dual | sessao unica SSW | viz={viz} | "
+        f"CICLO dual | login 1x + paralelo | viz={viz} | "
         f"50 coleta={format_period(ini50, fim50)} "
         f"| 103 limite={format_period(ini103, fim103)}"
         + (

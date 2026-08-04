@@ -1303,9 +1303,13 @@ class AceSswClient:
         run_36: bool = False,
     ) -> dict[str, Any]:
         """
-        Um login SSW → baixa 50, 103, (36), 225 na mesma sessão.
-        Mais rápido que abrir o Chromium e logar por relatório.
+        1) Login SSW uma vez → captura sessão (cookies).
+        2) Abre 50 / 103 / 36 / 225 em paralelo (cada um no próprio Chromium
+           com a mesma sessão) — bem mais rápido que baixar um após o outro.
         """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import threading
+
         try:
             from playwright.sync_api import sync_playwright
         except ImportError as error:
@@ -1318,99 +1322,150 @@ class AceSswClient:
         self._cleanup_before_download()
         self.paths = {}
         errors: dict[str, str] = {}
+        status_lock = threading.Lock()
+
+        def emit(msg: str) -> None:
+            with status_lock:
+                self.on_status(msg)
 
         mode = "oculto (headless)" if self.headless else "visível (janela)"
-        self.on_status(f"SSW sessão única | visualização={mode} | login 1x")
+        emit(f"SSW | viz={mode} | login 1x + downloads em paralelo")
 
-        browser = None
-        context = None
+        storage_state: dict[str, Any] | None = None
         with sync_playwright() as playwright:
+            launch_kwargs: dict[str, Any] = {
+                "headless": self.headless,
+                "slow_mo": 0 if self.headless else 20,
+            }
+            if self.headless:
+                launch_kwargs["args"] = ["--disable-dev-shm-usage"]
+            browser = playwright.chromium.launch(**launch_kwargs)
+            context = browser.new_context(accept_downloads=True)
+            page = context.new_page()
+            page.set_default_timeout(30000)
             try:
-                launch_kwargs: dict[str, Any] = {
-                    "headless": self.headless,
-                    "slow_mo": 0 if self.headless else 25,
-                }
-                if self.headless:
-                    launch_kwargs["args"] = ["--disable-dev-shm-usage"]
-                browser = playwright.chromium.launch(**launch_kwargs)
-                context = browser.new_context(accept_downloads=True)
-                page = context.new_page()
-                page.set_default_timeout(30000)
-
                 self._login(page)
                 self._ensure_unit(page)
                 self._patch_blank_popup_fix(page)
-
-                # 50
-                try:
-                    self.set_period(period_50[0], period_50[1])
-                    self.on_status(
-                        f"[50] periodo {format_period(self.start_date_ui, self.end_date_ui)}"
-                    )
-                    path50 = self._download_coleta(page, "50")
-                    self.paths["coleta"] = str(path50)
-                    self.on_status(f"[50] OK {path50.name}")
-                except Exception as err:  # noqa: BLE001
-                    errors["50"] = str(err)
-                    self.on_status(f"[50] FALHOU: {err}")
-
-                # 103
-                try:
-                    self.set_period(period_103[0], period_103[1])
-                    self.on_status(
-                        f"[103] limite {format_period(self.start_date_ui, self.end_date_ui)}"
-                    )
-                    path103 = self._download_report_103(page)
-                    self.paths["coleta_103"] = str(path103)
-                    self.on_status(f"[103] OK {path103.name}")
-                except Exception as err:  # noqa: BLE001
-                    errors["103"] = str(err)
-                    self.on_status(f"[103] FALHOU: {err}")
-
-                # 36
-                if run_36 and period_36:
-                    try:
-                        self.set_period(period_36[0], period_36[1])
-                        self.on_status(
-                            f"[36] periodo {format_period(self.start_date_ui, self.end_date_ui)}"
-                        )
-                        path36 = self._download_report_36(page)
-                        self.paths["entrega_36"] = str(path36)
-                        self.on_status(f"[36] OK {path36.name}")
-                    except Exception as err:  # noqa: BLE001
-                        errors["36"] = str(err)
-                        self.on_status(f"[36] FALHOU: {err}")
-
-                # 225
-                try:
-                    self.set_period(period_225[0], period_225[1])
-                    self.on_status(
-                        f"[225] mes {format_period(self.start_date_ui, self.end_date_ui)}"
-                    )
-                    path225 = self._download_report_225(page)
-                    self.paths["agendamento_225"] = str(path225)
-                    self.on_status(f"[225] OK {path225.name}")
-                except Exception as err:  # noqa: BLE001
-                    errors["225"] = str(err)
-                    self.on_status(f"[225] FALHOU: {err}")
-
-                if not self.paths:
-                    details = "; ".join(f"{k}: {v}" for k, v in errors.items())
-                    raise RuntimeError(f"Nenhum arquivo baixado na sessao unica. {details}")
-
-                return {
-                    "paths": dict(self.paths),
-                    "errors": errors,
-                    "download_dir": str(self.download_dir),
-                    "shared_session": True,
-                    "headless": self.headless,
-                }
+                storage_state = context.storage_state()
+                emit("Sessão autenticada capturada — liberando relatórios em paralelo...")
             finally:
-                if not self.keep_open:
-                    if context is not None:
-                        context.close()
-                    if browser is not None:
-                        browser.close()
+                try:
+                    context.close()
+                except Exception:
+                    pass
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+
+        if not storage_state:
+            raise RuntimeError("Falha ao capturar sessão SSW após login.")
+
+        jobs: list[tuple[str, tuple[str, str], str]] = [
+            ("50", period_50, "coleta"),
+            ("103", period_103, "coleta_103"),
+            ("225", period_225, "agendamento_225"),
+        ]
+        if run_36 and period_36:
+            jobs.append(("36", period_36, "entrega_36"))
+
+        def _worker(label: str, period: tuple[str, str], path_key: str) -> tuple[str, str, str]:
+            """Retorna (label, path_key, path_str). Roda Playwright próprio (thread-safe)."""
+            worker = AceSswClient(
+                period[0],
+                period[1],
+                keep_open=False,
+                headless=self.headless,
+                on_status=lambda m: emit(f"[{label}] {m}"),
+                credentials=self.credentials,
+                settings=self.settings,
+                download_dir=self.download_dir,
+                clean_downloads=False,
+            )
+            with sync_playwright() as pw:
+                lk: dict[str, Any] = {
+                    "headless": self.headless,
+                    "slow_mo": 0 if self.headless else 15,
+                }
+                if self.headless:
+                    lk["args"] = ["--disable-dev-shm-usage"]
+                br = pw.chromium.launch(**lk)
+                try:
+                    ctx = br.new_context(
+                        storage_state=storage_state,
+                        accept_downloads=True,
+                    )
+                    pg = ctx.new_page()
+                    pg.set_default_timeout(45000)
+                    # Reabre menu already autenticado (sem novo login)
+                    pg.goto(self.credentials.url, wait_until="domcontentloaded")
+                    pg.wait_for_timeout(800)
+                    body = ""
+                    try:
+                        body = pg.locator("body").inner_text(timeout=4000)
+                    except Exception:
+                        pass
+                    if "Menu Principal" not in body and "menu01" not in (pg.url or ""):
+                        # tenta origem padrão do menu
+                        pg.goto(f"{SSW_ORIGIN}/bin/ssw0001", wait_until="domcontentloaded")
+                        pg.wait_for_timeout(800)
+                    worker._ensure_unit(pg)
+                    worker._patch_blank_popup_fix(pg)
+                    emit(
+                        f"[{label}] aberto | periodo "
+                        f"{format_period(worker.start_date_ui, worker.end_date_ui)}"
+                    )
+                    if label == "50":
+                        path = worker._download_report_50(pg)
+                    elif label == "103":
+                        path = worker._download_report_103(pg)
+                    elif label == "36":
+                        path = worker._download_report_36(pg)
+                    elif label == "225":
+                        path = worker._download_report_225(pg)
+                    else:
+                        raise RuntimeError(f"relatorio desconhecido: {label}")
+                    emit(f"[{label}] OK {path.name}")
+                    try:
+                        ctx.close()
+                    except Exception:
+                        pass
+                    return label, path_key, str(path)
+                finally:
+                    try:
+                        br.close()
+                    except Exception:
+                        pass
+
+        workers = max(2, min(4, len(jobs)))
+        emit(f"Paralelo: {len(jobs)} relatório(s) · {workers} worker(s)")
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="ssw") as pool:
+            futs = {
+                pool.submit(_worker, label, period, path_key): label
+                for label, period, path_key in jobs
+            }
+            for fut in as_completed(futs):
+                label = futs[fut]
+                try:
+                    _lab, path_key, path_str = fut.result()
+                    self.paths[path_key] = path_str
+                except Exception as err:  # noqa: BLE001
+                    errors[label] = str(err)
+                    emit(f"[{label}] FALHOU: {err}")
+
+        if not self.paths:
+            details = "; ".join(f"{k}: {v}" for k, v in errors.items())
+            raise RuntimeError(f"Nenhum arquivo baixado no paralelo. {details}")
+
+        return {
+            "paths": dict(self.paths),
+            "errors": errors,
+            "download_dir": str(self.download_dir),
+            "shared_session": True,
+            "parallel": True,
+            "headless": self.headless,
+        }
 
 
 def download_ace_shared_cycle(
@@ -1426,7 +1481,7 @@ def download_ace_shared_cycle(
     settings: AceSettings | None = None,
     clean_downloads: bool = True,
 ) -> dict[str, Any]:
-    """Login SSW uma vez; baixa 50+103+(36)+225 na mesma janela."""
+    """Login SSW 1x; baixa 50+103+(36)+225 em paralelo com a mesma sessão."""
     client = AceSswClient(
         period_50[0],
         period_50[1],

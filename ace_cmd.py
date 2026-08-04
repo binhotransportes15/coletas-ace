@@ -612,7 +612,7 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
     print("  225 = agendamentos do MES (1→ultimo dia) · arquivo R")
     print("  078 = Armazém (se armazem_in_loop=true)")
     print(f"  Ciclo a cada {format_duration_long(sec)}: baixar + analisar + Sheets/dashboard")
-    print("  Login SSW 1x por ciclo (50+103+36+225); 078 depois se ligado.")
+    print("  Login SSW 1x + 50/103/36/225 em paralelo; 078 depois se ligado.")
     print("  Virada de dia/mes recalcula sozinho (225 segue o mes corrente).")
     print("  Altere com: /e intervalo 30s | 5m | 1h | 2d")
     print("  Ligar/desligar 078 no loop: /e armazem_in_loop true|false")
