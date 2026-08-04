@@ -2608,7 +2608,20 @@
         .toUpperCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
-      if (o.includes('ENTREGA REALIZADA') || o.includes('PRE-ENTREGUE') || o.includes('PRE ENTREGUE')) {
+      if (
+        o.includes('ENTREGA REALIZADA')
+        || o.includes('PRE-ENTREGUE')
+        || o.includes('PRE ENTREGUE')
+        || o.includes('DEVOLVIDA AO REMETENTE')
+        || o.includes('REPASSADA PARA O OP')
+        || o.includes('PROCESSO DE INDENIZACAO')
+        || o.includes('LJJR')
+        || o.includes('EMIT P/EFEITO FRETE')
+        || o.includes('EMIT P EFEITO FRETE')
+        || o.includes('CONHECIMENTO SUBSTITUIDO')
+        || o.includes('CTE BAIXADO')
+        || /^(18|53|58|61|93|94|99)\b/.test(o)
+      ) {
         return 'realizada';
       }
       const raw = String(c.status_ace || '').toLowerCase().trim();
@@ -2617,6 +2630,30 @@
       if (raw === 'pendencia') return 'parado';
       if (raw === 'excluido') return 'cancelada';
       return 'outro';
+    }
+
+    function statusAce225(r) {
+      const o = String(r.status_raw || r.ocorrencia || '')
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      if (
+        o.includes('ENTREGA REALIZ')
+        || o.includes('DEVOLVIDA AO REMETENTE')
+        || o.includes('REPASSADA PARA O OP')
+        || o.includes('PROCESSO DE INDENIZACAO')
+        || o.includes('LJJR')
+        || o.includes('EMIT P/EFEITO FRETE')
+        || o.includes('EMIT P EFEITO FRETE')
+        || o.includes('CONHECIMENTO SUBSTITUIDO')
+        || o.includes('CTE BAIXADO')
+        || /^(18|53|58|61|93|94|99)\b/.test(o)
+      ) {
+        return 'concluido';
+      }
+      const raw = String(r.status_ace || '').toLowerCase().trim();
+      if (['em_rota', 'parado', 'concluido'].includes(raw)) return raw;
+      return raw || 'parado';
     }
 
     function countByStatus36(rows) {
@@ -3734,17 +3771,20 @@
           <th>CTRC</th><th>Remetente</th><th>Destinatário</th>
           <th>Peso</th><th>Frete</th><th>Agendado</th><th>Para</th><th>Status</th></tr>`;
         let rows = (AGENDAMENTOS_225 || []).filter(matchBusca);
-        if (FILTRO === 'em_rota') rows = rows.filter(r => String(r.status_ace || '') === 'em_rota');
-        if (FILTRO === 'parado') rows = rows.filter(r => String(r.status_ace || '') === 'parado');
-        if (FILTRO === 'concluido') rows = rows.filter(r => String(r.status_ace || '') === 'concluido');
-        if (FILTRO === 'alerta') rows = rows.filter(r => String(r.alerta_sem_saida || '') === '1');
+        if (FILTRO === 'em_rota') rows = rows.filter(r => statusAce225(r) === 'em_rota');
+        if (FILTRO === 'parado') rows = rows.filter(r => statusAce225(r) === 'parado');
+        if (FILTRO === 'concluido') rows = rows.filter(r => statusAce225(r) === 'concluido');
+        if (FILTRO === 'alerta') rows = rows.filter(r => {
+          const st = statusAce225(r);
+          return st !== 'concluido' && st !== 'em_rota' && String(r.alerta_sem_saida || '') === '1';
+        });
         if (!rows.length) {
           tbody.innerHTML = '<tr><td colspan="8" class="muted">Nenhum agendamento 225.</td></tr>';
           return;
         }
         tbody.innerHTML = rows.map(r => {
-          const st = String(r.status_ace || 'parado').toLowerCase();
-          const isAlert = String(r.alerta_sem_saida || '') === '1';
+          const st = statusAce225(r);
+          const isAlert = st !== 'concluido' && st !== 'em_rota' && String(r.alerta_sem_saida || '') === '1';
           return `<tr class="${isAlert ? 'is-alert' : ''}">
             <td><strong>${esc(r.ctrc || '')}</strong>${isAlert ? ' <span class="sit sit-parado">!</span>' : ''}</td>
             <td>${esc(r.remetente || '')}</td>
@@ -4096,9 +4136,11 @@
 
       (rows || []).forEach(r => {
         out.total += 1;
-        const st = String(r.status_ace || '').toLowerCase();
+        const st = statusAce225(r);
         if (out[st] != null) out[st] += 1;
-        if (String(r.alerta_sem_saida || '') === '1') out.alerta += 1;
+        if (st !== 'concluido' && st !== 'em_rota' && String(r.alerta_sem_saida || '') === '1') {
+          out.alerta += 1;
+        }
         const p = parseNumBr(r.peso);
         const f = parseNumBr(r.frete);
         out.peso_total += p;
@@ -4402,8 +4444,8 @@
         return;
       }
       body.innerHTML = AGENDAMENTOS_225.map(r => {
-        const st = String(r.status_ace || 'parado').toLowerCase();
-        const isAlert = String(r.alerta_sem_saida || '') === '1';
+        const st = statusAce225(r);
+        const isAlert = st !== 'concluido' && st !== 'em_rota' && String(r.alerta_sem_saida || '') === '1';
         const hora = extractHora225(r.agendado_para || r.agendado_para_data || '');
         return `<tr class="${isAlert ? 'is-alert' : ''}">
           <td class="hora">${esc(hora)}</td>
@@ -4418,7 +4460,10 @@
     }
 
     function listAlertaSemSaida() {
-      return (AGENDAMENTOS_225 || []).filter(r => String(r.alerta_sem_saida || '') === '1');
+      return (AGENDAMENTOS_225 || []).filter(r => {
+        const st = statusAce225(r);
+        return st !== 'concluido' && st !== 'em_rota' && String(r.alerta_sem_saida || '') === '1';
+      });
     }
 
     function dismissAlertaLock() {

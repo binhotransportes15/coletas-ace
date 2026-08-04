@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from config import BASE_DIR, ensure_dirs
+from ocorrencias_realizadas import is_ocorrencia_realizada
 
 CACHE_DIR = BASE_DIR / "data" / "cache"
 ENTREGAS_36_CSV = CACHE_DIR / "entregas_36.csv"
@@ -179,10 +180,12 @@ def mapear_status_entrega(
     if data_ocorr is not None and data_ocorr == ontem:
         return "excluido", True, "ocorrencia_ontem"
 
-    # Realizado (inclui COM RESSALVAS e pré-entrega mobile)
+    # Realizado (inclui COM RESSALVAS, pré-entrega mobile e ocorrências de baixa/encerramento)
     if "ENTREGA REALIZADA" in ocorr_n:
         return "realizada", False, ""
     if "PRE-ENTREGUE" in ocorr_n or "PRE ENTREGUE" in ocorr_n:
+        return "realizada", False, ""
+    if is_ocorrencia_realizada(ocorrencia):
         return "realizada", False, ""
 
     if not ocorr:

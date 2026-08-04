@@ -10,6 +10,7 @@ from typing import Any
 
 from config import CACHE_DIR, ensure_dirs
 from dates import titulo_agendamento_mes
+from ocorrencias_realizadas import is_ocorrencia_realizada
 
 AGENDAMENTOS_225_CSV = CACHE_DIR / "agendamentos_225.csv"
 RESUMO_225_CSV = CACHE_DIR / "resumo_225.csv"
@@ -108,12 +109,14 @@ def mapear_status_225(ocorrencia: str) -> str:
     """
     SAIDA PARA ENTREGA → em_rota
     CHEGADA EM UNIDADE / ENTREGA AGENDADA → parado
-    ENTREGA REALIZADA → concluido
+    ENTREGA REALIZADA + códigos 18/53/58/61/93/94/99 → concluido
 
     No arquivo R (.sswweb) o texto vem truncado + prefixo (ex.: "21 01/08/26 SAIDA PARA ENT").
     """
     o = _norm_ocorr(ocorrencia)
     if "ENTREGA REALIZ" in o:
+        return "concluido"
+    if is_ocorrencia_realizada(ocorrencia):
         return "concluido"
     if "SAIDA PARA ENT" in o:
         return "em_rota"
