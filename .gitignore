@@ -4,6 +4,10 @@ __pycache__/
 .venv/
 venv/
 
+# Node (ferramentas locais de diagnóstico)
+node_modules/
+package-lock.json
+
 # Dados locais / segredos
 data/downloads/*
 !data/downloads/.gitkeep
