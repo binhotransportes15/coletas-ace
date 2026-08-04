@@ -728,6 +728,21 @@ def run_dual_cycle(
             emit(f"225 FALHOU: {err}")
             result_225 = {}
 
+    sheets50 = sheets103 = sheets36 = sheets225 = dash = {"ok": False, "skipped": True}
+    if sync and (result_50 or result_103 or result_36 or result_225):
+        emit("Sheets: iniciando atualização da planilha…")
+        cycle = sync_cycle_sheets(
+            cfg,
+            do_50=bool(result_50),
+            do_103=bool(result_103),
+            do_36=bool(result_36),
+            do_225=bool(result_225),
+            include_historico=False,
+            on_status=emit,
+        )
+        sheets50 = sheets103 = sheets36 = sheets225 = cycle
+        dash = publish_dashboard(cfg, on_status=emit)
+
     keep: list[Path] = []
     for block in (result_50, result_103, result_36, result_225):
         blk_paths = (block.get("download") or {}).get("paths") or {}
@@ -739,19 +754,6 @@ def run_dual_cycle(
         if report.exists():
             keep.append(report)
     cleanup_downloads(DOWNLOAD_DIR, keep=keep, on_status=emit)
-
-    sheets50 = sheets103 = sheets36 = sheets225 = dash = {"ok": False, "skipped": True}
-    if sync and (result_50 or result_103 or result_36 or result_225):
-        cycle = sync_cycle_sheets(
-            cfg,
-            do_50=bool(result_50),
-            do_103=bool(result_103),
-            do_36=bool(result_36),
-            do_225=bool(result_225),
-            on_status=emit,
-        )
-        sheets50 = sheets103 = sheets36 = sheets225 = cycle
-        dash = publish_dashboard(cfg, on_status=emit)
 
     result_78: dict[str, Any] = {}
     if getattr(cfg, "armazem_in_loop", False):

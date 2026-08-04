@@ -62,6 +62,24 @@ function doGet(e) {
       });
     }
 
+    if (action === 'tv_layout' || action === 'tvlayout') {
+      var rawLay = PropertiesService.getScriptProperties().getProperty('ace_tv_layout');
+      var layout = null;
+      if (rawLay) {
+        try {
+          layout = JSON.parse(rawLay);
+        } catch (errParse) {
+          layout = null;
+        }
+      }
+      return json_({
+        ok: true,
+        layout: layout,
+        version: getDataVersion_(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+
     // Resumos leves: cache por versão (site atualiza rápido sem reler aba)
     var cachedActions = {
       resumo: 'ResumoDiario',
@@ -256,6 +274,23 @@ function doPost(e) {
       var verBump = bumpDataVersion_();
       clearReadCache_();
       return json_({ ok: true, action: 'bump', version: verBump });
+    }
+
+    if (action === 'tv_layout_set' || action === 'tvlayout_set') {
+      if (!data.layout || typeof data.layout !== 'object') {
+        return json_({ ok: false, error: 'layout obrigatorio' });
+      }
+      PropertiesService.getScriptProperties().setProperty(
+        'ace_tv_layout',
+        JSON.stringify(data.layout)
+      );
+      var verLay = bumpDataVersion_();
+      clearReadCache_();
+      return json_({
+        ok: true,
+        action: 'tv_layout_set',
+        version: verLay,
+      });
     }
 
     // Vários abas num POST só — bem mais rápido que 1 POST por aba

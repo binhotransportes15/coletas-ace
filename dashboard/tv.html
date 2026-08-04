@@ -4,13 +4,26 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BINHO · OPERACIONAL · TV</title>
-  <meta http-equiv="refresh" content="0; url=./index.html#tv/distribuicao" />
-  <script>location.replace('./index.html#tv/distribuicao');</script>
+  <script>
+    (function () {
+      var slot = null;
+      try { slot = localStorage.getItem('ace_tv_slot'); } catch (e) {}
+      var n = parseInt(slot || '', 10);
+      var hash = (n >= 1 && n <= 6) ? ('#tv/slot/' + n) : '#tv';
+      location.replace('./index.html' + hash);
+    })();
+  </script>
 </head>
 <body style="background:#05080f;color:#e2e8f0;font-family:Segoe UI,sans-serif;display:grid;place-items:center;height:100vh;margin:0;">
-  <p>Abrindo TV · Distribuição… <a href="./index.html#tv/distribuicao" style="color:#67e8f9;">clique aqui</a></p>
-  <p style="color:#94a3b8;font-size:13px;margin-top:8px;">
-    Outros: <a href="./index.html#tv/armazem" style="color:#67e8f9;">Armazém</a>
+  <p>Abrindo TV…</p>
+  <p style="color:#94a3b8;font-size:13px;margin-top:8px;text-align:center;line-height:1.5">
+    Links diretos:<br>
+    <a href="./index.html#tv/slot/1" style="color:#67e8f9;">TV 1</a> ·
+    <a href="./index.html#tv/slot/2" style="color:#67e8f9;">TV 2</a> ·
+    <a href="./index.html#tv/slot/3" style="color:#67e8f9;">TV 3</a><br>
+    <a href="./index.html#tv/slot/4" style="color:#67e8f9;">TV 4</a> ·
+    <a href="./index.html#tv/slot/5" style="color:#67e8f9;">TV 5</a> ·
+    <a href="./index.html#tv/slot/6" style="color:#67e8f9;">TV 6</a>
   </p>
 </body>
 </html>

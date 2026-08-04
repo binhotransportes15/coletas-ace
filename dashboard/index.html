@@ -107,7 +107,8 @@
 
     .view { display: none; }
     .view.active { display: grid; gap: 10px; min-height: 0; }
-    body.live-mode #viewLive.active { height: 100%; grid-template-rows: 1fr; }
+    body.live-mode #viewColeta.active,
+    body.live-mode #viewEntrega.active { height: 100%; grid-template-rows: 1fr; }
 
     .arena {
       background: transparent;
@@ -745,6 +746,73 @@
       background: #05080f;
     }
     body.tv-mode.tv-idle { cursor: none; }
+    body.tv-mode.tv-no-logo .brand img,
+    body.tv-mode.tv-no-logo .arm-brand img,
+    body.tv-mode.tv-no-logo .sector-soon-panel img { display: none !important; }
+    body.tv-mode .sector-soon-panel {
+      height: 100dvh;
+      min-height: 100dvh;
+    }
+    body.tv-mode .sector-soon-panel .box {
+      width: min(920px, 92vw);
+      padding: clamp(28px, 4vmin, 56px);
+    }
+    body.tv-mode .sector-soon-panel h1 {
+      font-size: clamp(36px, 6vmin, 72px);
+    }
+    body.tv-mode.tv-no-margins .sector-soon-panel .box {
+      border-radius: 0;
+      border: none;
+      width: 100%;
+      min-height: 100dvh;
+      display: grid;
+      place-content: center;
+    }
+    body.tv-mode.tv-no-margins .board {
+      padding: 0 !important;
+      gap: 0 !important;
+    }
+    body.tv-mode.tv-no-margins .topbar,
+    body.tv-mode.tv-no-margins .arm-top {
+      border-radius: 0 !important;
+      margin: 0 !important;
+    }
+    body.tv-mode.tv-no-margins .arena,
+    body.tv-mode.tv-no-margins .agenda-arena,
+    body.tv-mode.tv-no-margins .arm-wrap {
+      border-radius: 0 !important;
+      border-left: none !important;
+      border-right: none !important;
+    }
+    body.tv-mode.tv-no-margins .arena {
+      padding: 2px clamp(4px, 0.6vmin, 10px) !important;
+    }
+
+    /* Parede 2×3: cada TV mostra um pedaço do mesmo dashboard */
+    body.tv-mode.tv-mosaic {
+      overflow: hidden !important;
+    }
+    body.tv-mode.tv-mosaic #panel-operacao .board,
+    body.tv-mode.tv-mosaic #panel-armazem .arm-wrap,
+    body.tv-mode.tv-mosaic .sector-soon-panel {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      gap: 0 !important;
+      border-radius: 0 !important;
+      transform-origin: 0 0;
+      transform: translate(
+          calc(-1 * var(--mosaic-col, 0) * 100vw),
+          calc(-1 * var(--mosaic-row, 0) * 100vh)
+        )
+        scale(var(--mosaic-cols, 3), var(--mosaic-rows, 2));
+    }
+    body.tv-mode.tv-mosaic .swap-nav,
+    body.tv-mode.tv-mosaic .tv-hint {
+      display: none !important;
+    }
     body.tv-mode .board {
       width: 100%;
       max-width: none;
@@ -775,7 +843,8 @@
       font-size: clamp(28px, 4vmin, 52px);
     }
     body.tv-mode .clock-box .date { font-size: clamp(12px, 1.4vmin, 18px); }
-    body.tv-mode #viewLive.active {
+    body.tv-mode #viewColeta.active,
+    body.tv-mode #viewEntrega.active {
       height: 100%;
       min-height: 0;
     }
@@ -914,14 +983,7 @@
       display: flex;
       flex-direction: column;
     }
-    body.live-mode.swap-agenda #viewLive { display: none !important; }
-    body.live-mode.swap-agenda #viewAgendamento {
-      display: flex !important;
-      flex-direction: column;
-      height: 100%;
-      min-height: 0;
-    }
-    body.live-mode.swap-agenda .brand .title { color: #fbb03b; }
+    body.live-mode[data-view="agendamento"] .brand .title { color: #fbb03b; }
     .agenda-arena {
       height: 100%;
       min-height: 0;
@@ -1579,8 +1641,6 @@
       background: #334155;
     }
     .swap-dot i.on { background: #fbb03b; box-shadow: 0 0 8px rgba(251,176,59,.7); }
-    body:not(.swap-agenda) .swap-dot i.d-live { background: #67e8f9; box-shadow: 0 0 8px rgba(103,232,249,.6); }
-    body.swap-agenda .swap-dot i.d-ag { background: #fbb03b; box-shadow: 0 0 8px rgba(251,176,59,.7); }
     .swap-dot { cursor: pointer; }
     .swap-nav {
       position: fixed;
@@ -1611,8 +1671,6 @@
     .swap-nav.prev { left: 10px; }
     .swap-nav.next { right: 10px; }
     body.live-mode .swap-nav { display: grid; }
-    body.live-mode:not(.swap-agenda) .swap-nav.prev { opacity: 0.35; pointer-events: none; }
-    body.live-mode.swap-agenda .swap-nav.next { opacity: 0.35; pointer-events: none; }
     .agenda-swap-btns {
       display: inline-flex;
       gap: 6px;
@@ -1713,6 +1771,48 @@
     .sector-root[hidden] { display: none !important; }
     body:not([data-sector="distribuicao"]) .swap-nav { display: none !important; }
     body:not([data-sector="distribuicao"]) > .tv-hint { display: none !important; }
+
+    /* Views operacionais — uma tela cheia por vez */
+    #viewColeta, #viewEntrega, #viewAgendamento { display: none; }
+    #viewColeta.active, #viewEntrega.active, #viewAgendamento.active {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+    body.live-mode #viewColeta.active,
+    body.live-mode #viewEntrega.active,
+    body.live-mode #viewAgendamento.active {
+      height: 100%;
+      grid-template-rows: 1fr;
+    }
+    .arena-single { height: 100%; }
+    .arena-single .arena-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: 100%;
+      min-height: 0;
+    }
+    .resumo-single {
+      grid-template-columns: 1fr !important;
+      max-width: 520px;
+    }
+    body[data-view="coleta"] .resumo-single .rc-col,
+    body[data-view="entrega"] .resumo-single .rc-ent {
+      width: 100%;
+    }
+    .zone-solo { flex: 1; min-height: 0; }
+    body[data-view="coleta"] .brand .title { color: #67e8f9; }
+    body[data-view="entrega"] .brand .title { color: #86efac; }
+    body[data-view="agendamento"] .brand .title { color: #fbb03b; }
+    .swap-dot i.d-col.on { background: #67e8f9; box-shadow: 0 0 8px rgba(103,232,249,.6); }
+    .swap-dot i.d-ent.on { background: #86efac; box-shadow: 0 0 8px rgba(134,239,172,.6); }
+    .swap-dot i.d-ag.on { background: #fbb03b; box-shadow: 0 0 8px rgba(251,176,59,.7); }
+    body[data-view="coleta"] .swap-dot i.d-col { background: #67e8f9; box-shadow: 0 0 8px rgba(103,232,249,.6); }
+    body[data-view="entrega"] .swap-dot i.d-ent { background: #86efac; box-shadow: 0 0 8px rgba(134,239,172,.6); }
+    body[data-view="agendamento"] .swap-dot i.d-ag { background: #fbb03b; box-shadow: 0 0 8px rgba(251,176,59,.7); }
+    /* setas sempre ativas no ciclo de 3 telas */
 
     /* Armazém embutido */
     .arm-wrap {
@@ -1967,9 +2067,69 @@
       .arm-hero { grid-template-columns: 1fr; }
       .arm-wrap { height: auto; min-height: 100vh; }
     }
+
+    /* Escolher qual TV física (slot 1–6) */
+    .tv-slot-overlay {
+      position: fixed; inset: 0; z-index: 120;
+      background: rgba(2, 6, 23, 0.92);
+      display: grid; place-items: center;
+      padding: 24px;
+    }
+    .tv-slot-overlay[hidden] { display: none !important; }
+    .tv-slot-sheet {
+      width: min(720px, 100%);
+      background: #0c1422;
+      border: 1px solid #243044;
+      border-radius: 18px;
+      padding: 22px 24px 26px;
+    }
+    .tv-slot-sheet h2 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      letter-spacing: 0.08em;
+      color: #e2e8f0;
+    }
+    .tv-slot-sheet .kicker { color: #67e8f9; font-size: 12px; margin: 0 0 14px; }
+    .tv-slot-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 88px);
+      gap: 10px;
+    }
+    .tv-slot-grid button {
+      border: 1px solid #334155;
+      border-radius: 12px;
+      background: #020617;
+      color: #e2e8f0;
+      font-weight: 800;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .tv-slot-grid button:hover {
+      border-color: #67e8f9;
+      color: #67e8f9;
+    }
   </style>
 </head>
-<body class="live-mode" data-sector="distribuicao">
+<body class="live-mode" data-sector="distribuicao" data-view="coleta">
+  <div class="tv-slot-overlay" id="tvSlotOverlay" hidden>
+    <div class="tv-slot-sheet" role="dialog" aria-modal="true" aria-labelledby="tvSlotTitle">
+      <p class="kicker">PAREDE 2×3</p>
+      <h2 id="tvSlotTitle">Qual TV é esta?</h2>
+      <p style="color:#94a3b8;font-size:13px;margin:0 0 14px;line-height:1.45">
+        Escolha o retângulo desta tela. A configuração (hub, logo, margens) vem do CRT · aba TV.
+      </p>
+      <div class="tv-slot-grid" id="tvSlotGrid">
+        <button type="button" data-slot="1">TV 1</button>
+        <button type="button" data-slot="2">TV 2</button>
+        <button type="button" data-slot="3">TV 3</button>
+        <button type="button" data-slot="4">TV 4</button>
+        <button type="button" data-slot="5">TV 5</button>
+        <button type="button" data-slot="6">TV 6</button>
+      </div>
+    </div>
+  </div>
+
   <div class="sector-overlay" id="sectorOverlay" hidden>
     <div class="sector-sheet" role="dialog" aria-modal="true" aria-labelledby="sectorSheetTitle">
       <header>
@@ -2014,7 +2174,7 @@
     </div>
   </div>
 
-  <div id="panel-distribuicao" class="sector-root">
+  <div id="panel-operacao" class="sector-root">
   <div class="tv-hint" id="tvHint">Modo TV · F ou ESC para sair · ideal para televisão</div>
   <div id="alertaLock" role="alertdialog" aria-modal="true" aria-labelledby="alertaLockTitle" hidden>
     <div class="alerta-lock-box">
@@ -2030,8 +2190,8 @@
       </div>
     </div>
   </div>
-  <button type="button" class="swap-nav prev" id="btnSwapPrev" title="Distribuição (←)" aria-label="Ir para Distribuição">‹</button>
-  <button type="button" class="swap-nav next" id="btnSwapNext" title="Agendamento (→)" aria-label="Ir para Agendamento">›</button>
+  <button type="button" class="swap-nav prev" id="btnSwapPrev" title="Tela anterior (←)" aria-label="Tela anterior">‹</button>
+  <button type="button" class="swap-nav next" id="btnSwapNext" title="Próxima tela (→)" aria-label="Próxima tela">›</button>
   <div class="board">
     <header class="topbar">
       <div class="brand">
@@ -2043,7 +2203,7 @@
           role="button"
           tabindex="0"
         />
-        <div class="title">DISTRIBUIÇÃO <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span></div>
+        <div class="title" id="opsBrandTitle">COLETA <span class="swap-dot" aria-hidden="true"><i class="d-col"></i><i class="d-ent"></i><i class="d-ag"></i></span></div>
       </div>
       <nav class="nav">
         <button type="button" class="nav-btn active" data-view="live">Ao vivo</button>
@@ -2057,20 +2217,11 @@
       </div>
     </header>
 
-    <!-- AO VIVO: ENTREGA em cima · COLETA embaixo -->
-    <div class="view active" id="viewLive">
-      <section class="arena">
+    <!-- COLETA (tela cheia) -->
+    <div class="view active" id="viewColeta">
+      <section class="arena arena-single">
         <div class="arena-body">
-          <div class="resumo-top" aria-label="Resumo coleta e entrega">
-            <div class="resumo-card rc-ent">
-              <p class="resumo-kicker">Entrega</p>
-              <div class="resumo-total"><span>Total</span><strong id="entTotal">0</strong></div>
-              <div class="resumo-stats stats-3">
-                <div class="s-real"><span>Realizada</span><b id="sumEntReal">0</b></div>
-                <div class="s-rota"><span>Em rota</span><b id="sumEntRota">0</b></div>
-                <div class="s-par"><span>Pendência</span><b id="sumEntPar">0</b></div>
-              </div>
-            </div>
+          <div class="resumo-top resumo-single" aria-label="Resumo coleta">
             <div class="resumo-card rc-col">
               <p class="resumo-kicker">Coleta</p>
               <div class="resumo-total"><span>Total</span><strong id="totalColetas">0</strong></div>
@@ -2083,7 +2234,68 @@
             </div>
           </div>
 
-          <section class="zone zone-ent">
+          <section class="zone zone-col zone-solo">
+            <header class="zone-head">
+              <h2 class="zone-title">Coleta</h2>
+              <span class="zone-hint">placas · situações · prazo</span>
+            </header>
+            <div class="zone-col-body">
+              <div class="col-left">
+                <div class="col-sub">Placas</div>
+                <div class="pop-stack" id="placaStack"></div>
+              </div>
+              <div class="col-center">
+                <div class="col-sub">Situações</div>
+                <div class="torres">
+                  <div class="torre t-col">
+                    <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
+                    <div class="barra" id="barReal"><strong id="nReal">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Realizada</div></div>
+                  </div>
+                  <div class="torre t-com">
+                    <div class="pin" title="Quantidade"><span id="rankRota">0</span></div>
+                    <div class="barra" id="barRota"><strong id="nRota">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Em rota</div></div>
+                  </div>
+                  <div class="torre t-cad">
+                    <div class="pin" title="Quantidade"><span id="rankPar">0</span></div>
+                    <div class="barra" id="barPar"><strong id="nPar">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Parado</div></div>
+                  </div>
+                  <div class="torre t-can">
+                    <div class="pin" title="Quantidade"><span id="rankCan">0</span></div>
+                    <div class="barra" id="barCan"><strong id="nCan">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Cancelada</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-right">
+                <div class="col-sub">Prazo / perdidas</div>
+                <div class="pop-stack" id="prazoStack"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <!-- ENTREGA (tela cheia) -->
+    <div class="view" id="viewEntrega">
+      <section class="arena arena-single">
+        <div class="arena-body">
+          <div class="resumo-top resumo-single" aria-label="Resumo entrega">
+            <div class="resumo-card rc-ent">
+              <p class="resumo-kicker">Entrega</p>
+              <div class="resumo-total"><span>Total</span><strong id="entTotal">0</strong></div>
+              <div class="resumo-stats stats-3">
+                <div class="s-real"><span>Realizada</span><b id="sumEntReal">0</b></div>
+                <div class="s-rota"><span>Em rota</span><b id="sumEntRota">0</b></div>
+                <div class="s-par"><span>Pendência</span><b id="sumEntPar">0</b></div>
+              </div>
+            </div>
+          </div>
+
+          <section class="zone zone-ent zone-solo">
             <header class="zone-head">
               <h2 class="zone-title">Entrega</h2>
               <span class="zone-hint">faixas · pendências</span>
@@ -2136,53 +2348,11 @@
               <div class="pop-stack" id="pendenciaStack"></div>
             </div>
           </section>
-
-          <section class="zone zone-col">
-            <header class="zone-head">
-              <h2 class="zone-title">Coleta</h2>
-              <span class="zone-hint">placas · situações · prazo</span>
-            </header>
-            <div class="zone-col-body">
-              <div class="col-left">
-                <div class="col-sub">Placas</div>
-                <div class="pop-stack" id="placaStack"></div>
-              </div>
-              <div class="col-center">
-                <div class="col-sub">Situações</div>
-                <div class="torres">
-                  <div class="torre t-col">
-                    <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
-                    <div class="barra" id="barReal"><strong id="nReal">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Realizada</div></div>
-                  </div>
-                  <div class="torre t-com">
-                    <div class="pin" title="Quantidade"><span id="rankRota">0</span></div>
-                    <div class="barra" id="barRota"><strong id="nRota">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Em rota</div></div>
-                  </div>
-                  <div class="torre t-cad">
-                    <div class="pin" title="Quantidade"><span id="rankPar">0</span></div>
-                    <div class="barra" id="barPar"><strong id="nPar">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Parado</div></div>
-                  </div>
-                  <div class="torre t-can">
-                    <div class="pin" title="Quantidade"><span id="rankCan">0</span></div>
-                    <div class="barra" id="barCan"><strong id="nCan">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Cancelada</div></div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-right">
-                <div class="col-sub">Prazo / perdidas</div>
-                <div class="pop-stack" id="prazoStack"></div>
-              </div>
-            </div>
-          </section>
         </div>
       </section>
     </div>
 
-    <!-- AGENDAMENTO 225 (intercala com Distribuição a cada 15s) -->
+    <!-- AGENDAMENTO 225 -->
     <div class="view" id="viewAgendamento">
       <section class="agenda-arena" aria-label="Agendamentos do mês">
         <header class="agenda-head">
@@ -2191,9 +2361,9 @@
             <div class="sub" id="agendaPeriodo">Mês corrente · relatório 225</div>
           </div>
           <div class="agenda-swap-btns">
-            <button type="button" id="btnAgendaPrev" title="Distribuição">‹ Dist.</button>
+            <button type="button" id="btnAgendaPrev" title="Tela anterior">‹ Ant.</button>
             <div class="sub" id="agendaTick">troca em 15s</div>
-            <button type="button" id="btnAgendaNext" title="Manter / avançar">›</button>
+            <button type="button" id="btnAgendaNext" title="Próxima tela">› Prox.</button>
           </div>
         </header>
 
@@ -2319,7 +2489,7 @@
 
     <p class="status-line" id="statusLine">BINHO · OPERACIONAL · DISTRIBUIÇÃO</p>
   </div>
-  </div><!-- /panel-distribuicao -->
+  </div><!-- /panel-operacao -->
 
   <div id="panel-armazem" class="sector-root" hidden>
     <div class="arm-wrap">
@@ -2411,7 +2581,7 @@
       <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
       <div class="tag">Em breve</div>
       <h1>CONTRATAÇÃO</h1>
-      <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/contratacao</code>.</p>
+      <p>Tela reservada para a parede TV. Já pode fixar neste slot pelo CRT · aba TV (#tv/slot/N).</p>
     </div></div>
   </div>
   <div id="panel-pendencia" class="sector-root" hidden>
@@ -2419,7 +2589,7 @@
       <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
       <div class="tag">Em breve</div>
       <h1>PENDÊNCIA</h1>
-      <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/pendencia</code>.</p>
+      <p>Tela reservada para a parede TV. Já pode fixar neste slot pelo CRT · aba TV (#tv/slot/N).</p>
     </div></div>
   </div>
   <div id="panel-rastreamento" class="sector-root" hidden>
@@ -2427,7 +2597,7 @@
       <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
       <div class="tag">Em breve</div>
       <h1>RASTREAMENTO</h1>
-      <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/rastreamento</code>.</p>
+      <p>Tela reservada para a parede TV. Já pode fixar neste slot pelo CRT · aba TV (#tv/slot/N).</p>
     </div></div>
   </div>
   <div id="panel-emissao" class="sector-root" hidden>
@@ -2435,7 +2605,7 @@
       <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
       <div class="tag">Em breve</div>
       <h1>EMISSÃO</h1>
-      <p>Setor reservado no hub operacional. Em breve no mesmo menu e em <code>#tv/emissao</code>.</p>
+      <p>Tela reservada para a parede TV. Já pode fixar neste slot pelo CRT · aba TV (#tv/slot/N).</p>
     </div></div>
   </div>
 
@@ -2460,19 +2630,27 @@
     // Destaque temporario quando a placa acaba de dar baixa (nao fica fixo)
     const PLACA_HOT_MS = 45000;
 
+    const OPS_VIEWS = ['coleta', 'entrega', 'agendamento'];
+    const VIEW_LABELS = { coleta: 'Coleta', entrega: 'Entrega', agendamento: 'Agendamento' };
     const SECTORS = {
-      distribuicao: { id: 'distribuicao', label: 'Distribuição', ready: true },
-      armazem: { id: 'armazem', label: 'Armazém', ready: true },
-      contratacao: { id: 'contratacao', label: 'Contratação', ready: false },
-      pendencia: { id: 'pendencia', label: 'Pendência', ready: false },
-      rastreamento: { id: 'rastreamento', label: 'Rastreamento', ready: false },
-      emissao: { id: 'emissao', label: 'Emissão', ready: false },
+      distribuicao: { id: 'distribuicao', label: 'Distribuição', ready: true, panel: 'operacao' },
+      armazem: { id: 'armazem', label: 'Armazém', ready: true, panel: 'armazem' },
+      contratacao: { id: 'contratacao', label: 'Contratação', ready: false, panel: 'contratacao' },
+      pendencia: { id: 'pendencia', label: 'Pendência', ready: false, panel: 'pendencia' },
+      rastreamento: { id: 'rastreamento', label: 'Rastreamento', ready: false, panel: 'rastreamento' },
+      emissao: { id: 'emissao', label: 'Emissão', ready: false, panel: 'emissao' },
     };
     let CURRENT_SECTOR = 'distribuicao';
+    let CURRENT_VIEW = 'coleta'; // tela interna da Distribuição
 
     let VIEW = 'live';
     let REL = 'coleta'; // coleta (103+hist 50) | 36
     let TV_MODE = false;
+    let TV_SLOT = null; // 1..6 desta tela física
+    let TV_LAYOUT = null;
+    let TV_EFFECTIVE = null;
+    let tvLayoutPollTimer = null;
+    let tvSyncTimer = null;
     let wakeLock = null;
     let tvIdleTimer = null;
     let lastCounts = null;
@@ -2508,7 +2686,6 @@
     };
     let swapTimer = null;
     let swapCountdown = null;
-    let SWAP_ON_AGENDA = false;
     let ALERTA_LOCK_ON = false;
     /** Usuário fechou o overlay; não cobre a tela de novo até o alerta zerar. */
     let ALERTA_LOCK_DISMISSED = false;
@@ -2928,18 +3105,28 @@
       });
 
       if (TV_MODE) {
-        if (CURRENT_SECTOR === 'distribuicao') setView('live');
+        await ensureTvSlot();
+        await loadTvLayout();
+        applyTvChrome();
+        if (isOpsSector(CURRENT_SECTOR)) setView('live');
         await enterFullscreen();
         await requestWakeLock();
         showTvHint();
         bumpTvIdle();
+        if (isOpsSector(CURRENT_SECTOR)) startSwapLoop();
         if (syncHash) writeRouteHash({ tv: true });
       } else {
         await exitFullscreen();
         await releaseWakeLock();
-        document.body.classList.remove('tv-idle');
+        document.body.classList.remove('tv-idle', 'tv-no-logo', 'tv-no-margins', 'tv-mosaic');
+        document.body.style.removeProperty('--mosaic-col');
+        document.body.style.removeProperty('--mosaic-row');
+        document.body.style.removeProperty('--mosaic-cols');
+        document.body.style.removeProperty('--mosaic-rows');
         clearTimeout(tvIdleTimer);
         document.getElementById('tvHint')?.classList.remove('show');
+        stopSwapLoop();
+        stopTvSyncClock();
         if (syncHash) writeRouteHash({ tv: false });
       }
       requestAnimationFrame(rerenderTorres);
@@ -2950,16 +3137,264 @@
       setTvMode(!TV_MODE);
     }
 
+    const TV_SLOT_KEY = 'ace_tv_slot';
+
+    function readStoredTvSlot() {
+      try {
+        const n = parseInt(localStorage.getItem(TV_SLOT_KEY) || '', 10);
+        return (n >= 1 && n <= 6) ? n : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function storeTvSlot(n) {
+      TV_SLOT = n;
+      try { localStorage.setItem(TV_SLOT_KEY, String(n)); } catch (_) { /* ignore */ }
+    }
+
+    function openTvSlotPicker(open = true) {
+      const el = document.getElementById('tvSlotOverlay');
+      if (el) el.hidden = !open;
+    }
+
+    function ensureTvSlot() {
+      if (TV_SLOT >= 1 && TV_SLOT <= 6) return Promise.resolve(TV_SLOT);
+      const stored = readStoredTvSlot();
+      if (stored) {
+        TV_SLOT = stored;
+        return Promise.resolve(TV_SLOT);
+      }
+      return new Promise((resolve) => {
+        openTvSlotPicker(true);
+        const grid = document.getElementById('tvSlotGrid');
+        const onPick = (e) => {
+          const btn = e.target.closest('[data-slot]');
+          if (!btn) return;
+          const n = parseInt(btn.getAttribute('data-slot'), 10);
+          if (!(n >= 1 && n <= 6)) return;
+          grid?.removeEventListener('click', onPick);
+          storeTvSlot(n);
+          openTvSlotPicker(false);
+          resolve(n);
+        };
+        grid?.addEventListener('click', onPick);
+      });
+    }
+
+    function defaultTvLayout() {
+      const rows = 2, cols = 3;
+      return {
+        version: 0,
+        rows,
+        cols,
+        syncSwap: true,
+        swapMs: SWAP_MS,
+        hubs: {
+          A: { name: 'Hub A', showLogo: true, margins: 'normal' },
+          B: { name: 'Hub B', showLogo: false, margins: 'none' },
+          C: { name: 'Hub C', showLogo: false, margins: 'none' },
+        },
+        slots: [1, 2, 3, 4, 5, 6].map((id) => {
+          const i = id - 1;
+          return {
+            id,
+            row: Math.floor(i / cols),
+            col: i % cols,
+            sector: 'distribuicao',
+            mode: 'rotate',
+            view: 'coleta',
+            mosaic: false,
+            showLogo: null,
+            margins: null,
+          };
+        }),
+      };
+    }
+
+    function resolveTvEffective(layout, slotId) {
+      const lay = layout || defaultTvLayout();
+      const slot = (lay.slots || []).find((s) => Number(s.id) === Number(slotId))
+        || (lay.slots || [])[0]
+        || { id: 1, sector: 'distribuicao', mode: 'rotate', view: 'coleta', row: 0, col: 0 };
+      const defaults = (lay.sectorDefaults && lay.sectorDefaults[slot.sector])
+        || (lay.hubs && lay.hubs.A)
+        || { showLogo: true, margins: 'normal' };
+      let sector = String(slot.sector || 'distribuicao').toLowerCase();
+      let mode = slot.mode === 'fixed' ? 'fixed' : 'rotate';
+      let view = String(slot.view || 'coleta').toLowerCase();
+      if (OPS_VIEWS.includes(sector)) {
+        view = sector;
+        sector = 'distribuicao';
+        if (mode !== 'rotate') mode = 'fixed';
+      }
+      if (sector !== 'distribuicao') mode = 'fixed';
+      if (!OPS_VIEWS.includes(view)) view = 'coleta';
+      const mosaic = sector === 'distribuicao' && !!slot.mosaic;
+      const row = Number(slot.row);
+      const col = Number(slot.col);
+      const idx = Number(slot.id) - 1;
+      const cols = Number(lay.cols) || 3;
+      const rows = Number(lay.rows) || 2;
+      return {
+        slotId: Number(slot.id),
+        sector,
+        mode,
+        view,
+        mosaic,
+        row: Number.isFinite(row) ? row : Math.floor(Math.max(0, idx) / cols),
+        col: Number.isFinite(col) ? col : (Math.max(0, idx) % cols),
+        gridCols: cols,
+        gridRows: rows,
+        showLogo: mosaic
+          ? (slot.showLogo == null
+            ? (Number.isFinite(row) ? row === 0 && col === 0 : idx === 0)
+            : !!slot.showLogo)
+          : (slot.showLogo == null ? !!defaults.showLogo : !!slot.showLogo),
+        margins: mosaic
+          ? 'none'
+          : ((slot.margins == null ? defaults.margins : slot.margins) === 'none' ? 'none' : 'normal'),
+        syncSwap: lay.syncSwap !== false,
+        swapMs: Math.max(5000, Number(lay.swapMs) || SWAP_MS),
+        layoutVersion: Number(lay.version) || 0,
+      };
+    }
+
+    async function fetchTvLayoutRemote() {
+      if (SCRIPT_URL) {
+        try {
+          const data = await chamarPlanilha('tv_layout');
+          if (data && data.layout && typeof data.layout === 'object') return data.layout;
+        } catch (_) { /* fallback arquivo */ }
+      }
+      try {
+        const res = await fetch(`tv_layout.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (res.ok) return await res.json();
+      } catch (_) { /* ignore */ }
+      return null;
+    }
+
+    async function loadTvLayout() {
+      const remote = await fetchTvLayoutRemote();
+      TV_LAYOUT = remote || TV_LAYOUT || defaultTvLayout();
+      if (TV_SLOT) TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT);
+      applyTvChrome();
+      return TV_LAYOUT;
+    }
+
+    function applyTvChrome() {
+      if (!TV_MODE) {
+        document.body.classList.remove('tv-no-logo', 'tv-no-margins', 'tv-mosaic');
+        document.body.style.removeProperty('--mosaic-col');
+        document.body.style.removeProperty('--mosaic-row');
+        document.body.style.removeProperty('--mosaic-cols');
+        document.body.style.removeProperty('--mosaic-rows');
+        return;
+      }
+      const eff = TV_EFFECTIVE || (TV_SLOT ? resolveTvEffective(TV_LAYOUT, TV_SLOT) : null);
+      if (!eff) return;
+      document.body.classList.toggle('tv-no-logo', !eff.showLogo);
+      document.body.classList.toggle('tv-no-margins', eff.margins === 'none' || !!eff.mosaic);
+      document.body.classList.toggle('tv-mosaic', !!eff.mosaic);
+      if (eff.mosaic) {
+        document.body.style.setProperty('--mosaic-col', String(eff.col || 0));
+        document.body.style.setProperty('--mosaic-row', String(eff.row || 0));
+        document.body.style.setProperty('--mosaic-cols', String(eff.gridCols || 3));
+        document.body.style.setProperty('--mosaic-rows', String(eff.gridRows || 2));
+      } else {
+        document.body.classList.remove('tv-mosaic');
+        document.body.style.removeProperty('--mosaic-col');
+        document.body.style.removeProperty('--mosaic-row');
+        document.body.style.removeProperty('--mosaic-cols');
+        document.body.style.removeProperty('--mosaic-rows');
+      }
+    }
+
+    function syncedOpsViewIndex(swapMs) {
+      const ms = Math.max(5000, Number(swapMs) || SWAP_MS);
+      return Math.floor(Date.now() / ms) % OPS_VIEWS.length;
+    }
+
+    function stopTvSyncClock() {
+      if (tvSyncTimer) clearInterval(tvSyncTimer);
+      tvSyncTimer = null;
+    }
+
+    function startTvSyncClock() {
+      stopTvSyncClock();
+      if (!TV_MODE || !TV_EFFECTIVE) return;
+      if (TV_EFFECTIVE.sector !== 'distribuicao') return;
+      if (TV_EFFECTIVE.mode === 'fixed') return;
+      if (!TV_EFFECTIVE.syncSwap) return;
+      const tick = () => {
+        if (!TV_MODE || ALERTA_LOCK_ON || VIEW !== 'live') return;
+        if (!TV_EFFECTIVE || TV_EFFECTIVE.mode === 'fixed') return;
+        if (CURRENT_SECTOR !== 'distribuicao') return;
+        const want = OPS_VIEWS[syncedOpsViewIndex(TV_EFFECTIVE.swapMs)];
+        if (want && want !== CURRENT_VIEW) {
+          goOpsView(want, { restart: false, fromSync: true });
+        } else {
+          paintSyncCountdown();
+        }
+      };
+      tick();
+      tvSyncTimer = setInterval(tick, 1000);
+    }
+
+    function paintSyncCountdown() {
+      const tick = document.getElementById('agendaTick');
+      if (!tick || !TV_EFFECTIVE || !TV_MODE) return;
+      const ms = TV_EFFECTIVE.swapMs || SWAP_MS;
+      const left = Math.max(1, Math.ceil((ms - (Date.now() % ms)) / 1000));
+      const i = syncedOpsViewIndex(ms);
+      const next = OPS_VIEWS[(i + 1) % OPS_VIEWS.length];
+      const label = VIEW_LABELS[next] || next;
+      tick.textContent = `${label} em ${left}s · sync · ← →`;
+    }
+
+    function isOpsSector(id) {
+      return String(id || '') === 'distribuicao';
+    }
+
+    function isOpsView(id) {
+      return OPS_VIEWS.includes(String(id || ''));
+    }
+
+    function panelIdForSector(id) {
+      const meta = SECTORS[id];
+      return (meta && meta.panel) || id;
+    }
+
+    function normalizeSectorId(raw) {
+      let id = String(raw || 'distribuicao').toLowerCase();
+      if (id === 'dist' || id === 'ops' || id === 'operacao') id = 'distribuicao';
+      if (id === 'agenda') id = 'agendamento';
+      // legado: coleta/entrega/agendamento eram “setores” → agora vistas da Distribuição
+      if (isOpsView(id)) id = 'distribuicao';
+      return SECTORS[id] ? id : 'distribuicao';
+    }
+
+    function normalizeOpsView(raw) {
+      let id = String(raw || 'coleta').toLowerCase();
+      if (id === 'agenda') id = 'agendamento';
+      return isOpsView(id) ? id : 'coleta';
+    }
+
     function writeRouteHash({ tv = TV_MODE, sector = CURRENT_SECTOR, gestaoHash = null } = {}) {
       let next;
+      const sec = normalizeSectorId(sector);
       if (gestaoHash) {
         next = gestaoHash;
       } else if (tv) {
-        next = `tv/${sector}`;
-      } else if (sector === 'distribuicao') {
+        if (TV_SLOT >= 1 && TV_SLOT <= 6) {
+          next = `tv/slot/${TV_SLOT}`;
+        } else {
+          next = `tv/${sec}`;
+        }
+      } else if (sec === 'distribuicao') {
         next = '';
       } else {
-        next = sector;
+        next = sec;
       }
       const cur = (location.hash || '').replace(/^#/, '');
       if (cur === next) return;
@@ -2972,15 +3407,44 @@
       el.hidden = !open;
     }
 
-    function setSector(sectorId, { syncHash = true, forceTv = null } = {}) {
-      const id = String(sectorId || 'distribuicao').toLowerCase();
+    function updateOpsBrandTitle() {
+      const brandTitle = document.getElementById('opsBrandTitle')
+        || document.querySelector('#panel-operacao .brand .title');
+      if (!brandTitle) return;
+      const label = (VIEW_LABELS[CURRENT_VIEW] || 'Coleta').toUpperCase();
+      brandTitle.innerHTML = `${label} <span class="swap-dot" role="button" tabindex="0" title="Trocar tela" aria-label="Alternar Coleta, Entrega e Agendamento"><i class="d-col"></i><i class="d-ent"></i><i class="d-ag"></i></span>`;
+    }
+
+    function applyOpsLiveViews() {
+      const vc = document.getElementById('viewColeta');
+      const ve = document.getElementById('viewEntrega');
+      const va = document.getElementById('viewAgendamento');
+      const live = VIEW === 'live' && CURRENT_SECTOR === 'distribuicao';
+      if (vc) vc.classList.toggle('active', live && CURRENT_VIEW === 'coleta');
+      if (ve) ve.classList.toggle('active', live && CURRENT_VIEW === 'entrega');
+      if (va) va.classList.toggle('active', live && CURRENT_VIEW === 'agendamento');
+      if (live && CURRENT_VIEW === 'agendamento') renderAgendamento();
+      document.body.setAttribute('data-view', CURRENT_VIEW);
+      updateOpsBrandTitle();
+    }
+
+    function setSector(sectorId, { syncHash = true, forceTv = null, view = null } = {}) {
+      const raw = String(sectorId || '').toLowerCase();
+      if (isOpsView(raw)) {
+        CURRENT_VIEW = normalizeOpsView(raw);
+        sectorId = 'distribuicao';
+      }
+      const id = normalizeSectorId(sectorId);
       const meta = SECTORS[id] || SECTORS.distribuicao;
       CURRENT_SECTOR = meta.id;
+      if (view != null) CURRENT_VIEW = normalizeOpsView(view);
       document.body.setAttribute('data-sector', CURRENT_SECTOR);
+      document.body.setAttribute('data-view', CURRENT_VIEW);
 
-      Object.keys(SECTORS).forEach((key) => {
-        const panel = document.getElementById(`panel-${key}`);
-        if (panel) panel.hidden = key !== CURRENT_SECTOR;
+      const shownPanel = panelIdForSector(CURRENT_SECTOR);
+      document.querySelectorAll('.sector-root').forEach((panel) => {
+        const pid = panel.id.replace(/^panel-/, '');
+        panel.hidden = pid !== shownPanel;
       });
 
       document.querySelectorAll('#sectorGrid .sector-card').forEach((card) => {
@@ -2991,6 +3455,7 @@
 
       if (CURRENT_SECTOR === 'armazem') {
         stopSwapLoop();
+        stopTvSyncClock();
         refreshArmazem();
         if (!armRefreshTimer) armRefreshTimer = setInterval(refreshArmazem, 15000);
       } else if (armRefreshTimer) {
@@ -2998,8 +3463,13 @@
         armRefreshTimer = null;
       }
 
-      if (CURRENT_SECTOR === 'distribuicao' && VIEW === 'live') {
-        startSwapLoop();
+      if (isOpsSector(CURRENT_SECTOR)) {
+        applyOpsLiveViews();
+        if (VIEW === 'live' && TV_MODE) startSwapLoop();
+        else stopSwapLoopKeepScreen();
+      } else {
+        stopSwapLoop();
+        stopTvSyncClock();
       }
 
       const wantTv = forceTv == null ? TV_MODE : !!forceTv;
@@ -3346,8 +3816,10 @@
       const parts = raw.split('/').filter(Boolean);
       let tv = false;
       let sector = 'distribuicao';
+      let viewHint = null;
       let gestao = false;
       let rel = null;
+      let slotFromHash = null;
 
       if (!parts.length) {
         setSector('distribuicao', { syncHash: false, forceTv: false });
@@ -3356,28 +3828,107 @@
 
       if (parts[0] === 'tv' || parts[0] === 'fullscreen' || parts[0] === 'tela') {
         tv = true;
-        sector = parts[1] && SECTORS[parts[1]] ? parts[1] : 'distribuicao';
-      } else if (SECTORS[parts[0]]) {
-        sector = parts[0];
+        if (parts[1] === 'slot' && parts[2]) {
+          const n = parseInt(parts[2], 10);
+          if (n >= 1 && n <= 6) {
+            slotFromHash = n;
+            storeTvSlot(n);
+          }
+          const rest = parts[3] || 'distribuicao';
+          if (isOpsView(rest) || rest === 'agenda') {
+            viewHint = normalizeOpsView(rest === 'agenda' ? 'agendamento' : rest);
+            sector = 'distribuicao';
+          } else {
+            sector = normalizeSectorId(rest);
+          }
+        } else {
+          const rest = parts[1] || 'distribuicao';
+          if (isOpsView(rest) || rest === 'agenda') {
+            viewHint = normalizeOpsView(rest === 'agenda' ? 'agendamento' : rest);
+            sector = 'distribuicao';
+          } else {
+            sector = normalizeSectorId(rest);
+          }
+        }
+      } else if (parts[0] === 'distribuicao' || parts[0] === 'dist') {
+        sector = 'distribuicao';
         tv = parts[1] === 'tv';
-      } else if (['gestao', '50', '103', 'coleta', '36', '225', 'agenda'].includes(parts[0])) {
+      } else if (isOpsView(parts[0]) || parts[0] === 'agenda') {
+        sector = 'distribuicao';
+        viewHint = normalizeOpsView(parts[0] === 'agenda' ? 'agendamento' : parts[0]);
+        tv = parts[1] === 'tv';
+      } else if (SECTORS[parts[0]]) {
+        sector = normalizeSectorId(parts[0]);
+        tv = parts[1] === 'tv';
+      } else if (['gestao', '50', '103', '36', '225'].includes(parts[0])) {
         sector = 'distribuicao';
         gestao = true;
-        if (parts[0] === '36') rel = '36';
-        else if (parts[0] === '225' || parts[0] === 'agenda') rel = '225';
-        else if (parts[0] === '50' || parts[0] === '103' || parts[0] === 'coleta') rel = 'coleta';
+        if (parts[0] === '36') {
+          rel = '36';
+          viewHint = 'entrega';
+        } else if (parts[0] === '225') {
+          rel = '225';
+          viewHint = 'agendamento';
+        } else {
+          rel = 'coleta';
+          viewHint = 'coleta';
+        }
       } else {
         sector = 'distribuicao';
       }
 
-      setSector(sector, { syncHash: false, forceTv: tv });
-      if (sector === 'distribuicao') {
+      if (tv && (slotFromHash || TV_SLOT || readStoredTvSlot())) {
+        TV_SLOT = slotFromHash || TV_SLOT || readStoredTvSlot();
+      }
+
+      setSector(sector, { syncHash: false, forceTv: tv, view: viewHint });
+      if (isOpsSector(sector) || sector === 'armazem') {
         if (gestao) {
           setView('gestao');
           if (rel) setRel(rel);
         } else if (tv) {
           setView('live');
         }
+      }
+      if (tv) applyTvSlotAfterRoute();
+    }
+
+    async function applyTvSlotAfterRoute() {
+      await loadTvLayout();
+      const eff = TV_EFFECTIVE || (TV_SLOT ? resolveTvEffective(TV_LAYOUT, TV_SLOT) : null);
+      if (!eff) return;
+      applyTvChrome();
+
+      if (eff.sector !== 'distribuicao') {
+        if (eff.sector !== CURRENT_SECTOR) setSector(eff.sector, { syncHash: false, forceTv: true });
+        else if (!TV_MODE) await setTvMode(true, { syncHash: false });
+        stopSwapLoop();
+        stopTvSyncClock();
+        applyTvChrome();
+        return;
+      }
+
+      // Distribuição
+      if (eff.mode === 'fixed') {
+        setSector('distribuicao', { syncHash: false, forceTv: true, view: eff.view });
+        stopSwapLoop();
+        stopTvSyncClock();
+        applyTvChrome();
+        return;
+      }
+
+      if (CURRENT_SECTOR !== 'distribuicao') {
+        setSector('distribuicao', { syncHash: false, forceTv: true });
+      }
+      if (eff.syncSwap) {
+        const want = OPS_VIEWS[syncedOpsViewIndex(eff.swapMs)];
+        if (want && want !== CURRENT_VIEW) {
+          setSector('distribuicao', { syncHash: false, forceTv: true, view: want });
+          applyOpsLiveViews();
+        }
+        startTvSyncClock();
+      } else if (TV_MODE) {
+        startSwapLoop();
       }
     }
 
@@ -4558,72 +5109,97 @@
       }
 
       if (ativo) {
-        // No TV: pausa o swap automático e destaca agenda; no PC o menu continua clicável
+        // No TV: pausa o swap e destaca Agendamento
         if (document.body.classList.contains('tv-mode')) {
           if (swapTimer) { clearInterval(swapTimer); swapTimer = null; }
           if (swapCountdown) { clearInterval(swapCountdown); swapCountdown = null; }
-          if (VIEW === 'live' && !SWAP_ON_AGENDA) {
-            SWAP_ON_AGENDA = true;
-            document.body.classList.add('swap-agenda');
-            const live = document.getElementById('viewLive');
-            const ag = document.getElementById('viewAgendamento');
-            if (live) live.classList.remove('active');
-            if (ag) ag.classList.add('active');
-            const brandTitle = document.querySelector('.brand .title');
-            if (brandTitle) {
-              brandTitle.innerHTML = 'AGENDAMENTO <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span>';
-            }
+          if (VIEW === 'live' && CURRENT_SECTOR !== 'agendamento') {
+            CURRENT_SECTOR = 'agendamento';
+            document.body.setAttribute('data-sector', 'agendamento');
+            applyOpsLiveViews();
           }
         }
         const tick = document.getElementById('agendaTick');
         if (tick) tick.textContent = `ALERTA · SEM SAÍDA (${alerts.length})`;
-      } else if (VIEW === 'live' && !swapTimer) {
+      } else if (VIEW === 'live' && TV_MODE && isOpsSector(CURRENT_SECTOR) && !swapTimer) {
         restartSwapTimer();
       }
     }
 
-    function setSwapScreen(showAgenda) {
-      // Lock nao bloqueia mais a troca de telas no PC
-      SWAP_ON_AGENDA = !!showAgenda;
-      document.body.classList.toggle('swap-agenda', SWAP_ON_AGENDA);
-      const brandTitle = document.querySelector('.brand .title');
-      if (brandTitle) {
-        brandTitle.innerHTML = (SWAP_ON_AGENDA ? 'AGENDAMENTO' : 'DISTRIBUIÇÃO')
-          + ' <span class="swap-dot" role="button" tabindex="0" title="Trocar tela" aria-label="Trocar entre Distribuição e Agendamento"><i class="d-live"></i><i class="d-ag"></i></span>';
-      }
-      const live = document.getElementById('viewLive');
-      const ag = document.getElementById('viewAgendamento');
-      if (VIEW === 'live') {
-        if (live) live.classList.toggle('active', !SWAP_ON_AGENDA);
-        if (ag) ag.classList.toggle('active', SWAP_ON_AGENDA);
-      }
-      if (SWAP_ON_AGENDA) renderAgendamento();
-      if (!ALERTA_LOCK_ON) resetSwapCountdown();
+    function opsViewIndex() {
+      const i = OPS_VIEWS.indexOf(CURRENT_VIEW);
+      return i >= 0 ? i : 0;
     }
 
-    function restartSwapTimer() {
-      if (VIEW !== 'live' || ALERTA_LOCK_ON) return;
-      if (swapTimer) clearInterval(swapTimer);
-      swapTimer = setInterval(() => {
-        if (VIEW !== 'live' || ALERTA_LOCK_ON) return;
-        setSwapScreen(!SWAP_ON_AGENDA);
-      }, SWAP_MS);
-      resetSwapCountdown();
-    }
-
-    /** Troca manual: força a tela e reinicia o ciclo de 15s. */
-    function goSwapScreen(showAgenda) {
+    function goOpsView(viewId, { restart = true, fromSync = false } = {}) {
       if (VIEW !== 'live') setView('live');
-      setSwapScreen(!!showAgenda);
-      restartSwapTimer();
+      setSector('distribuicao', {
+        syncHash: true,
+        forceTv: TV_MODE ? true : null,
+        view: normalizeOpsView(viewId),
+      });
+      applyOpsLiveViews();
+      if (fromSync) {
+        paintSyncCountdown();
+        return;
+      }
+      if (TV_MODE && TV_EFFECTIVE && TV_EFFECTIVE.syncSwap && TV_EFFECTIVE.mode !== 'fixed') {
+        startTvSyncClock();
+        return;
+      }
+      if (restart && TV_MODE && !ALERTA_LOCK_ON) restartSwapTimer();
+      else resetSwapCountdown();
+    }
+
+    function goOpsSector(sectorId, opts) {
+      // compat: nomes antigos apontavam para “setor” = vista
+      if (isOpsView(sectorId) || String(sectorId).toLowerCase() === 'agenda') {
+        goOpsView(sectorId, opts);
+        return;
+      }
+      setSector(normalizeSectorId(sectorId), {
+        syncHash: true,
+        forceTv: TV_MODE ? true : null,
+      });
     }
 
     function stepSwap(dir) {
       if (ALERTA_LOCK_ON) return;
-      // dir < 0 = Distribuição · dir > 0 = Agendamento
-      if (dir < 0) goSwapScreen(false);
-      else if (dir > 0) goSwapScreen(true);
-      else goSwapScreen(!SWAP_ON_AGENDA);
+      if (CURRENT_SECTOR !== 'distribuicao') return;
+      if (TV_EFFECTIVE && TV_EFFECTIVE.sector === 'distribuicao' && TV_EFFECTIVE.mode === 'fixed') return;
+      const n = OPS_VIEWS.length;
+      let i = opsViewIndex();
+      if (dir < 0) i = (i - 1 + n) % n;
+      else if (dir > 0) i = (i + 1) % n;
+      else i = (i + 1) % n;
+      if (TV_EFFECTIVE && TV_EFFECTIVE.syncSwap) {
+        goOpsView(OPS_VIEWS[i], { restart: false, fromSync: true });
+        return;
+      }
+      goOpsView(OPS_VIEWS[i]);
+    }
+
+    function restartSwapTimer() {
+      if (VIEW !== 'live' || ALERTA_LOCK_ON || !TV_MODE) return;
+      if (!isOpsSector(CURRENT_SECTOR)) return;
+      if (TV_EFFECTIVE && TV_EFFECTIVE.mode === 'fixed') {
+        stopSwapLoopKeepScreen();
+        stopTvSyncClock();
+        return;
+      }
+      if (TV_EFFECTIVE && TV_EFFECTIVE.syncSwap) {
+        if (swapTimer) clearInterval(swapTimer);
+        swapTimer = null;
+        startTvSyncClock();
+        return;
+      }
+      if (swapTimer) clearInterval(swapTimer);
+      const ms = (TV_EFFECTIVE && TV_EFFECTIVE.swapMs) || SWAP_MS;
+      swapTimer = setInterval(() => {
+        if (VIEW !== 'live' || ALERTA_LOCK_ON || !TV_MODE) return;
+        stepSwap(1);
+      }, ms);
+      resetSwapCountdown();
     }
 
     function resetSwapCountdown() {
@@ -4634,40 +5210,64 @@
         if (tick) tick.textContent = 'TELA TRAVADA · SEM SAÍDA';
         return;
       }
-      let left = Math.round(SWAP_MS / 1000);
+      if (TV_MODE && TV_EFFECTIVE && TV_EFFECTIVE.syncSwap && TV_EFFECTIVE.mode !== 'fixed') {
+        if (swapCountdown) clearInterval(swapCountdown);
+        swapCountdown = null;
+        paintSyncCountdown();
+        return;
+      }
+      let left = Math.round(((TV_EFFECTIVE && TV_EFFECTIVE.swapMs) || SWAP_MS) / 1000);
       const tick = document.getElementById('agendaTick');
+      const nextLabel = (() => {
+        const i = opsViewIndex();
+        const next = OPS_VIEWS[(i + 1) % OPS_VIEWS.length];
+        return VIEW_LABELS[next] || next;
+      })();
       const paint = () => {
-        if (tick) tick.textContent = SWAP_ON_AGENDA
-          ? `volta em ${left}s · ← →`
-          : `agenda em ${left}s · ← →`;
+        if (tick) {
+          tick.textContent = TV_MODE
+            ? `${nextLabel} em ${left}s · ← →`
+            : `${VIEW_LABELS[CURRENT_VIEW] || ''} · ← →`;
+        }
       };
       paint();
       if (swapCountdown) clearInterval(swapCountdown);
+      if (!TV_MODE) return;
       swapCountdown = setInterval(() => {
         left -= 1;
-        if (left <= 0) left = Math.round(SWAP_MS / 1000);
+        if (left <= 0) left = Math.round(((TV_EFFECTIVE && TV_EFFECTIVE.swapMs) || SWAP_MS) / 1000);
         paint();
       }, 1000);
     }
 
     function startSwapLoop() {
-      if (CURRENT_SECTOR !== 'distribuicao') return;
-      if (swapTimer) clearInterval(swapTimer);
-      setSwapScreen(false);
+      if (!isOpsSector(CURRENT_SECTOR)) return;
+      if (!TV_MODE) {
+        stopSwapLoopKeepScreen();
+        return;
+      }
+      applyOpsLiveViews();
+      applyTvChrome();
+      if (TV_EFFECTIVE && TV_EFFECTIVE.mode === 'fixed') {
+        stopSwapLoopKeepScreen();
+        stopTvSyncClock();
+        return;
+      }
       restartSwapTimer();
     }
 
-    function stopSwapLoop() {
+    function stopSwapLoopKeepScreen() {
       if (swapTimer) clearInterval(swapTimer);
       swapTimer = null;
       if (swapCountdown) clearInterval(swapCountdown);
       swapCountdown = null;
-      document.body.classList.remove('swap-agenda');
-      SWAP_ON_AGENDA = false;
-      const brandTitle = document.querySelector('.brand .title');
-      if (brandTitle) {
-        brandTitle.innerHTML = 'DISTRIBUIÇÃO <span class="swap-dot" aria-hidden="true"><i class="d-live"></i><i class="d-ag"></i></span>';
-      }
+      resetSwapCountdown();
+    }
+
+    function stopSwapLoop() {
+      stopSwapLoopKeepScreen();
+      stopTvSyncClock();
+      updateOpsBrandTitle();
     }
 
     function setView(view) {
@@ -4678,16 +5278,18 @@
       document.querySelectorAll('.nav-btn[data-view]').forEach(b => {
         b.classList.toggle('active', b.getAttribute('data-view') === VIEW);
       });
-      document.getElementById('viewLive').classList.toggle('active', VIEW === 'live' && !SWAP_ON_AGENDA);
-      document.getElementById('viewGestao').classList.toggle('active', VIEW === 'gestao');
-      const va = document.getElementById('viewAgendamento');
-      if (va) va.classList.toggle('active', VIEW === 'live' && SWAP_ON_AGENDA);
+      const vg = document.getElementById('viewGestao');
+      if (vg) vg.classList.toggle('active', VIEW === 'gestao');
       if (VIEW === 'gestao') {
         stopSwapLoop();
+        document.getElementById('viewColeta')?.classList.remove('active');
+        document.getElementById('viewEntrega')?.classList.remove('active');
+        document.getElementById('viewAgendamento')?.classList.remove('active');
         renderFiltrosGestao();
         renderTabelaGestao();
       } else {
-        startSwapLoop();
+        applyOpsLiveViews();
+        if (TV_MODE && isOpsSector(CURRENT_SECTOR)) startSwapLoop();
       }
     }
 
@@ -4792,7 +5394,7 @@
           renderPrazoPops();
           renderPendenciaPops();
         }
-        if (VIEW === 'live' && !swapTimer && CURRENT_SECTOR === 'distribuicao') startSwapLoop();
+        if (VIEW === 'live' && TV_MODE && !swapTimer && isOpsSector(CURRENT_SECTOR)) startSwapLoop();
         if (VIEW === 'gestao') {
           renderFiltrosGestao();
           renderTabelaGestao();
@@ -4815,7 +5417,7 @@
     }
 
     async function pollAlertaSemSaida() {
-      if (CURRENT_SECTOR && CURRENT_SECTOR !== 'distribuicao') return;
+      if (CURRENT_SECTOR && !isOpsSector(CURRENT_SECTOR)) return;
       await carregarAgendamentos225();
       renderAgendamento();
     }
@@ -4887,9 +5489,9 @@
     const btnAgendaNext = document.getElementById('btnAgendaNext');
     if (btnAgendaPrev) btnAgendaPrev.addEventListener('click', () => stepSwap(-1));
     if (btnAgendaNext) btnAgendaNext.addEventListener('click', () => stepSwap(1));
-    document.querySelector('#panel-distribuicao .brand')?.addEventListener('click', (e) => {
+    document.querySelector('#panel-operacao .brand')?.addEventListener('click', (e) => {
       if (!e.target.closest('.swap-dot')) return;
-      stepSwap(0);
+      stepSwap(1);
     });
 
     document.getElementById('btnAlertaContinuar')?.addEventListener('click', () => dismissAlertaLock());
@@ -4917,12 +5519,12 @@
         if (TV_MODE) setTvMode(false);
         return;
       }
-      if (CURRENT_SECTOR === 'distribuicao' && e.key === 'ArrowLeft') {
+      if (isOpsSector(CURRENT_SECTOR) && e.key === 'ArrowLeft') {
         e.preventDefault();
         stepSwap(-1);
         return;
       }
-      if (CURRENT_SECTOR === 'distribuicao' && e.key === 'ArrowRight') {
+      if (isOpsSector(CURRENT_SECTOR) && e.key === 'ArrowRight') {
         e.preventDefault();
         stepSwap(1);
         return;
@@ -4958,10 +5560,23 @@
     window.addEventListener('hashchange', () => applyRouteFromHash());
 
     applyRouteFromHash();
-    // normaliza legado #tv → #tv/distribuicao
+    // normaliza legado #tv → #tv/coleta (ou #tv/slot/N se já conhecido)
     if (/^#?(tv|fullscreen|tela)$/i.test((location.hash || '').replace(/^#/, ''))) {
       writeRouteHash({ tv: true, sector: 'distribuicao' });
     }
+
+    // Relê layout TV (CRT salvou → planilha ou tv_layout.json)
+    async function pollTvLayout() {
+      if (!TV_MODE && !readStoredTvSlot()) return;
+      const prev = TV_EFFECTIVE && TV_EFFECTIVE.layoutVersion;
+      await loadTvLayout();
+      if (TV_MODE && TV_EFFECTIVE && prev != null && TV_EFFECTIVE.layoutVersion !== prev) {
+        applyTvChrome();
+        await applyTvSlotAfterRoute();
+      }
+    }
+    if (!tvLayoutPollTimer) tvLayoutPollTimer = setInterval(pollTvLayout, 20000);
+    pollTvLayout();
 
     tickClock();
     setInterval(tickClock, 1000);

@@ -107,9 +107,9 @@ def _content_hash(headers: list[str], rows: list[dict[str, str]]) -> str:
     return h.hexdigest()
 
 
-def _post_json(url: str, payload: dict[str, Any], *, timeout: int = 180) -> dict[str, Any]:
-    # 2 tentativas: Apps Script já é lento; 3 só arrasta ciclo automático
-    return post_apps_script(url, payload, timeout=timeout, retries=2)
+def _post_json(url: str, payload: dict[str, Any], *, timeout: int = 120) -> dict[str, Any]:
+    # 1 retry: Apps Script lento; mais tentativas só esticam o ciclo
+    return post_apps_script(url, payload, timeout=timeout, retries=1)
 
 
 def _bump_version(url: str, token: str, *, on_status: StatusCallback) -> None:
@@ -194,7 +194,7 @@ def _send_sheets_batch(
         return {"ok": True, "stats": stats, "skipped_all": True}
 
     names = ", ".join(i["sheet"] for i in to_send)
-    on_status(f"Sheets: enviando lote ({len(to_send)} aba(s): {names})...")
+    on_status(f"Sheets: enviando lote agora ({len(to_send)}: {names})…")
     resp = _post_json(
         url,
         {
@@ -206,7 +206,7 @@ def _send_sheets_batch(
             "sheets": to_send,
             "bump_version": True,
         },
-        timeout=240,
+        timeout=90,
     )
 
     # Script antigo sem replace_many → fallback 1 a 1
@@ -385,8 +385,13 @@ def sync_google_sheets(
         return result
 
 
-def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, Any]:
-    """Valida config + ping (com retry). Retorna {ok, url, token} ou erro/skipped."""
+def _ensure_apps_script(
+    cfg: AceSettings,
+    status: StatusCallback,
+    *,
+    ping: bool = True,
+) -> dict[str, Any]:
+    """Valida config (+ ping opcional). Retorna {ok, url, token} ou erro/skipped."""
     result: dict[str, Any] = {"ok": False, "skipped": False}
     if not cfg.enable_sheets:
         result["skipped"] = True
@@ -407,15 +412,21 @@ def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, A
         status("Sheets: configure apps_script_token (igual ao SECRET do Apps Script).")
         return result
 
-    # Reusa ping recente (evita 4 pings no ciclo automático)
+    # Ping recente ou pulado → segue direto (o POST do lote já valida o Script)
     if (
-        _ping_cache.get("url") == url
-        and _ping_cache.get("token") == token
-        and (time.time() - float(_ping_cache.get("ok_at") or 0)) < 180
+        not ping
+        or (
+            _ping_cache.get("url") == url
+            and _ping_cache.get("token") == token
+            and (time.time() - float(_ping_cache.get("ok_at") or 0)) < 600
+        )
     ):
+        if not ping:
+            _ping_cache.update({"ok_at": time.time(), "url": url, "token": token})
         result.update({"ok": True, "url": url, "token": token, "ping_cached": True})
         return result
 
+    status("Sheets: testando conexão…")
     payloads = (
         {
             "token": token,
@@ -424,54 +435,30 @@ def _ensure_apps_script(cfg: AceSettings, status: StatusCallback) -> dict[str, A
             "headers": ["ok"],
             "rows": [],
         },
-        {
-            "token": token,
-            "action": "clear",
-            "sheet": "_ace_ping",
-            "headers": ["ok"],
-            "rows": [],
-        },
     )
 
     last_error = ""
-    for attempt in range(1, 3):
-        for payload in payloads:
-            try:
-                auth = _post_json(url, payload, timeout=45)
-                if auth.get("ok"):
-                    _ping_cache.update({"ok_at": time.time(), "url": url, "token": token})
-                    result.update({"ok": True, "url": url, "token": token})
-                    if attempt > 1:
-                        status(f"Sheets ping OK na tentativa {attempt}.")
-                    return result
-                err = str(auth.get("error") or auth)
-                if "invalida" in err.lower() and payload.get("action") == "ping":
-                    last_error = err
-                    continue
-                last_error = err
-                hint = auth.get("hint") or (
-                    "No Apps Script, SECRET deve ser exatamente 'coletas-ace' "
-                    "(ou o mesmo do config). Depois: Implantar → Gerenciar → Nova versao."
-                )
-                if "nao autorizado" in err.lower() or "autorizado" in err.lower():
-                    status(f"Sheets nao autorizado: {err}")
-                    status(hint)
-                    result["error"] = err
-                    result["hint"] = hint
-                    return result
-                last_error = err
-            except Exception as error:  # noqa: BLE001
-                last_error = str(error)
+    for attempt in range(1, 2 + 1):
+        try:
+            auth = _post_json(url, payloads[0], timeout=25)
+            if auth.get("ok"):
+                _ping_cache.update({"ok_at": time.time(), "url": url, "token": token})
+                result.update({"ok": True, "url": url, "token": token})
+                return result
+            last_error = str(auth.get("error") or auth)
+            if "nao autorizado" in last_error.lower() or "autorizado" in last_error.lower():
+                status(f"Sheets nao autorizado: {last_error}")
+                result["error"] = last_error
+                return result
+        except Exception as error:  # noqa: BLE001
+            last_error = str(error)
         if attempt < 2:
-            status(f"Sheets ping falhou ({last_error}); nova tentativa {attempt + 1}/2...")
-            time.sleep(1.5 * attempt)
+            status(f"Sheets ping falhou ({last_error}); nova tentativa…")
+            time.sleep(0.8)
 
-    result["error"] = last_error or "ping falhou"
-    status(f"Sheets falhou no ping: {result['error']}")
-    status(
-        "Dica: se for HTTP 404/405 HTML, abra o Apps Script > Implantar > Gerenciar > "
-        "confirme a URL /exec no config (Nova versao apos editar o Code.gs)."
-    )
+    # Mesmo com ping ruim, deixa o lote tentar (ping às vezes é só lento/HTML)
+    status(f"Sheets: ping instável ({last_error}) — seguindo mesmo assim…")
+    result.update({"ok": True, "url": url, "token": token, "ping_soft_fail": True})
     return result
 
 
@@ -482,12 +469,15 @@ def sync_cycle_sheets(
     do_103: bool = False,
     do_36: bool = False,
     do_225: bool = False,
+    include_historico: bool = False,
     on_status: StatusCallback | None = None,
 ) -> dict[str, Any]:
     """Um lote só após o ciclo dual — bem mais rápido que 4 syncs separados."""
     status = on_status or _noop
+    status("Sheets: preparando envio…")
     cfg = settings or load_settings()
-    gate = _ensure_apps_script(cfg, status)
+    # Sem ping: o atraso de 30–60s estava aqui, antes de qualquer gravação
+    gate = _ensure_apps_script(cfg, status, ping=False)
     if not gate.get("ok"):
         return gate
 
@@ -501,7 +491,9 @@ def sync_cycle_sheets(
             status("Sheets 50: Coletas vazio — não inclui no lote.")
         else:
             items.append(_sheet_item("Coletas", COLETA_FIELDS, coletas))
-            items.append(_sheet_item("Historico", HIST_FIELDS, _read_csv(HISTORICO_CSV)))
+            # Histórico é pesado e a TV não depende dele — só no sync manual
+            if include_historico:
+                items.append(_sheet_item("Historico", HIST_FIELDS, _read_csv(HISTORICO_CSV)))
             items.append(_sheet_item("ResumoDiario", RESUMO_FIELDS, _read_csv(RESUMO_CSV)))
 
     if do_103:
@@ -527,16 +519,25 @@ def sync_cycle_sheets(
             status("Sheets 225: cache vazio — não inclui no lote.")
 
     if not items:
-        status("Sheets: nada para enviar neste ciclo.")
+        status("Sheets: nada novo para enviar.")
         return {"ok": True, "skipped": True, "reason": "empty_batch"}
 
-    status(f"Sheets ciclo: {len(items)} aba(s) no mesmo envio...")
+    # Só o que mudou (cache local) — se nada mudou, nem chama a rede
+    pending = [i for i in items if not _local_hash_match(str(i["sheet"]), str(i.get("content_hash") or ""))]
+    if not pending:
+        status("Sheets: tudo igual ao último envio — pulou rede.")
+        return {"ok": True, "skipped": True, "reason": "local_hash_all", "stats": {
+            str(i["sheet"]): {"ok": True, "skipped": True, "local": True} for i in items
+        }}
+
+    status(f"Sheets: enviando {len(pending)} aba(s) agora (de {len(items)})…")
     batch = _send_sheets_batch(url, token, items, on_status=status)
-    if not batch.get("ok"):
+    if batch.get("ok"):
+        _ping_cache.update({"ok_at": time.time(), "url": url, "token": token})
+        status("Sheets ciclo OK.")
+    else:
         status(f"Sheets ciclo falhou: {batch.get('error')}")
-        return batch
-    status("Sheets ciclo OK.")
-    return {"ok": True, "via": "apps_script", "mode": "cycle_batch", **batch}
+    return {"ok": bool(batch.get("ok")), "via": "apps_script", "mode": "cycle_batch", **batch}
 
 
 def sync_google_sheets_103(

@@ -1,0 +1,103 @@
+{
+  "version": 5,
+  "updatedAt": "2026-08-04T17:09:21",
+  "rows": 2,
+  "cols": 3,
+  "syncSwap": true,
+  "swapMs": 15000,
+  "painelUnico": false,
+  "sectorDefaults": {
+    "distribuicao": {
+      "showLogo": true,
+      "margins": "none"
+    },
+    "armazem": {
+      "showLogo": true,
+      "margins": "normal"
+    },
+    "contratacao": {
+      "showLogo": true,
+      "margins": "normal"
+    },
+    "pendencia": {
+      "showLogo": true,
+      "margins": "normal"
+    },
+    "rastreamento": {
+      "showLogo": true,
+      "margins": "normal"
+    },
+    "emissao": {
+      "showLogo": true,
+      "margins": "normal"
+    }
+  },
+  "slots": [
+    {
+      "id": 1,
+      "row": 0,
+      "col": 0,
+      "sector": "armazem",
+      "mode": "fixed",
+      "view": "coleta",
+      "mosaic": false,
+      "showLogo": true,
+      "margins": "none"
+    },
+    {
+      "id": 2,
+      "row": 0,
+      "col": 1,
+      "sector": "contratacao",
+      "mode": "fixed",
+      "view": "coleta",
+      "mosaic": false,
+      "showLogo": false,
+      "margins": "none"
+    },
+    {
+      "id": 3,
+      "row": 0,
+      "col": 2,
+      "sector": "pendencia",
+      "mode": "fixed",
+      "view": "coleta",
+      "mosaic": false,
+      "showLogo": false,
+      "margins": "none"
+    },
+    {
+      "id": 4,
+      "row": 1,
+      "col": 0,
+      "sector": "emissao",
+      "mode": "fixed",
+      "view": "coleta",
+      "mosaic": false,
+      "showLogo": false,
+      "margins": "none"
+    },
+    {
+      "id": 5,
+      "row": 1,
+      "col": 1,
+      "sector": "distribuicao",
+      "mode": "rotate",
+      "view": "coleta",
+      "mosaic": false,
+      "showLogo": null,
+      "margins": null
+    },
+    {
+      "id": 6,
+      "row": 1,
+      "col": 2,
+      "sector": "rastreamento",
+      "mode": "fixed",
+      "view": "coleta",
+      "mosaic": false,
+      "showLogo": false,
+      "margins": "none"
+    }
+  ]
+}
