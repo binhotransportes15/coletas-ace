@@ -1496,6 +1496,9 @@
     body.dash-hide-amanha .agenda-amanha-wrap { display: none !important; }
     body.dash-hide-status .agenda-tower-side { display: none !important; }
     body.dash-hide-chart .agenda-chart-stage { display: none !important; }
+    body.dash-hide-kpis .arm-layout [data-block="kpis"] { display: none !important; }
+    body.dash-hide-chart .arm-layout [data-block="chart"] { display: none !important; }
+    body.dash-hide-tabela .arm-layout [data-block="tabela"] { display: none !important; }
     body.dash-chart-pizza .agenda-towers-wrap { display: none !important; }
     body.dash-chart-pizza .agenda-pizza-wrap { display: grid !important; }
     body.dash-chart-towers .agenda-pizza-wrap { display: none !important; }
@@ -2042,6 +2045,45 @@
 
     .arm-view { display: none; flex: 1; min-height: 0; flex-direction: column; gap: 10px; overflow: hidden; }
     .arm-view.active { display: flex; }
+    .arm-layout {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+    .arm-layout.has-blocks {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-template-rows: repeat(12, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .arm-layout .dash-block {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      container-type: size;
+    }
+    .arm-layout .dash-block[hidden] { display: none !important; }
+    .arm-layout:not(.has-blocks) [data-block="kpis"] { flex-shrink: 0; }
+    .arm-layout:not(.has-blocks) [data-block="chart"],
+    .arm-layout:not(.has-blocks) [data-block="tabela"] { flex: 1; min-height: 0; }
+    .arm-layout.has-blocks [data-block="kpis"].arm-kpis {
+      height: 100%;
+      align-content: stretch;
+    }
+    .arm-layout.has-blocks [data-block="chart"] .arm-hero-card,
+    .arm-layout.has-blocks [data-block="chart"].arm-conf-card {
+      height: 100%;
+      min-height: 0;
+    }
+    .arm-layout.has-blocks [data-block="tabela"].arm-panel {
+      height: 100%;
+      min-height: 0;
+    }
     .arm-hero-solo { grid-template-columns: 1fr !important; }
     .arm-conf-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .arm-rank-body-full { flex: 1; min-height: 0; }
@@ -2928,7 +2970,8 @@
         </div>
       </div>
       <div class="arm-view active" id="viewArmPatio">
-        <div class="arm-kpis">
+        <div class="arm-layout" id="armLayoutPatio">
+        <div class="arm-kpis dash-block" data-block="kpis">
           <div class="arm-kpi"><div class="lbl">Veículos</div><div class="val" id="kVeic">0</div></div>
           <div class="arm-kpi peso"><div class="lbl">Peso total</div><div class="val" id="kPeso">0</div></div>
           <div class="arm-kpi atrasado"><div class="lbl">Atrasado</div><div class="val" id="kAtr">0</div></div>
@@ -2937,7 +2980,7 @@
           <div class="arm-kpi aguardando"><div class="lbl">Aguardando</div><div class="val" id="kAgu">0</div></div>
           <div class="arm-kpi finalizado"><div class="lbl">Finalizado</div><div class="val" id="kFin">0</div></div>
         </div>
-        <div class="arm-hero arm-hero-solo">
+        <div class="arm-hero arm-hero-solo dash-block" data-block="chart">
           <section class="arm-hero-card">
             <header>
               <h2>Descarga</h2>
@@ -2948,7 +2991,7 @@
             </div>
           </section>
         </div>
-        <section class="arm-panel">
+        <section class="arm-panel dash-block" data-block="tabela">
           <header>
             <h2>Veículos no pátio / descarga</h2>
             <div class="meta" id="armAtualizado">atualizado —</div>
@@ -2974,16 +3017,18 @@
             <div class="arm-err" id="armErr" hidden></div>
           </div>
         </section>
+        </div>
       </div>
 
       <div class="arm-view" id="viewArmConferentes" hidden>
-        <div class="arm-kpis arm-kpis-conf">
+        <div class="arm-layout" id="armLayoutConferentes">
+        <div class="arm-kpis arm-kpis-conf dash-block" data-block="kpis">
           <div class="arm-kpi"><div class="lbl">Conferentes</div><div class="val" id="kConfN">0</div></div>
           <div class="arm-kpi peso"><div class="lbl">Peso total</div><div class="val" id="kConfPeso">0</div></div>
           <div class="arm-kpi lider"><div class="lbl">Líder</div><div class="val" id="kConfLeader">—</div></div>
           <div class="arm-kpi finalizado"><div class="lbl">Mês</div><div class="val" id="kConfMes">—</div></div>
         </div>
-        <section class="arm-hero-card arm-conf-card">
+        <section class="arm-hero-card arm-conf-card dash-block" data-block="chart">
           <header>
             <h2>Ranking conferentes · 177</h2>
             <div class="meta" id="armRankMeta">peso lido no mês</div>
@@ -2993,6 +3038,7 @@
             <div class="arm-rank-list" id="armRankRest"></div>
           </div>
         </section>
+        </div>
       </div>
     </div>
   </div>
@@ -3069,6 +3115,7 @@
     let VIEW = 'live';
     let REL = 'coleta'; // coleta (103+hist 50) | 36
     let TV_MODE = false;
+    let tvModeGen = 0; // invalida enter TV assíncrono se o usuário já saiu
     let TV_SLOT = null; // 1..6 desta tela física
     let TV_LAYOUT = null;
     let TV_EFFECTIVE = null;
@@ -3520,7 +3567,9 @@
     }
 
     async function setTvMode(on, { syncHash = true } = {}) {
-      TV_MODE = !!on;
+      const gen = ++tvModeGen;
+      const want = !!on;
+      TV_MODE = want;
       document.body.classList.toggle('tv-mode', TV_MODE);
       if (TV_MODE) document.body.classList.add('tv-no-margins');
       const btns = [document.getElementById('btnTv'), document.getElementById('btnTvArmazem')];
@@ -3528,7 +3577,7 @@
         if (btn) btn.textContent = TV_MODE ? 'Sair TV' : 'TV';
       });
 
-      if (TV_MODE) {
+      if (want) {
         // Visual + fullscreen no gesto do clique (sem await antes — senão a API atrasa/falha)
         if (isOpsSector(CURRENT_SECTOR)) setView('live');
         else if (CURRENT_SECTOR === 'armazem') applyArmViews();
@@ -3540,9 +3589,12 @@
 
         try {
           await ensureTvSlot();
+          if (gen !== tvModeGen || !TV_MODE) return;
           await loadTvLayout();
+          if (gen !== tvModeGen || !TV_MODE) return;
           applyTvChrome();
-          await applyTvSlotAfterRoute();
+          await applyTvSlotAfterRoute({ gen });
+          if (gen !== tvModeGen || !TV_MODE) return;
           if (
             (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem')
             && !(TV_EFFECTIVE && TV_EFFECTIVE.mosaic && !TV_EFFECTIVE.syncSwap && TV_EFFECTIVE.mode === 'fixed')
@@ -3553,8 +3605,12 @@
             }
           }
         } catch (_) { /* layout offline — CSS tv-mode já ativo */ }
-        await Promise.allSettled([fsP, wakeP]);
+        if (gen === tvModeGen && TV_MODE) await Promise.allSettled([fsP, wakeP]);
       } else {
+        // Hash primeiro: evita race que lê #tv/... e reentra no modo TV
+        if (syncHash) writeRouteHash({ tv: false });
+        stopSwapLoop();
+        stopTvSyncClock();
         await exitFullscreen();
         await releaseWakeLock();
         document.body.classList.remove('tv-idle', 'tv-no-logo', 'tv-no-margins', 'tv-mosaic');
@@ -3564,12 +3620,11 @@
         document.body.style.removeProperty('--mosaic-rows');
         clearTimeout(tvIdleTimer);
         document.getElementById('tvHint')?.classList.remove('show');
-        stopSwapLoop();
-        stopTvSyncClock();
-        if (syncHash) writeRouteHash({ tv: false });
       }
-      requestAnimationFrame(rerenderTorres);
-      setTimeout(rerenderTorres, 80);
+      if (gen === tvModeGen) {
+        requestAnimationFrame(rerenderTorres);
+        setTimeout(rerenderTorres, 80);
+      }
     }
 
     function toggleTvMode() {
@@ -3771,16 +3826,45 @@
       };
     }
 
+    function applyBlockLayout(layoutEl, blocks, { active = true } = {}) {
+      if (!layoutEl) return;
+      const list = Array.isArray(blocks) ? blocks : [];
+      const has = active && list.length > 0;
+      layoutEl.classList.toggle('has-blocks', has);
+      layoutEl.querySelectorAll('[data-block]').forEach((el) => {
+        el.style.gridColumn = '';
+        el.style.gridRow = '';
+        const id = el.getAttribute('data-block');
+        const b = list.find((x) => String(x.id) === id);
+        if (!has || !b) {
+          el.hidden = false;
+          return;
+        }
+        el.hidden = b.visible === false;
+        const mins = { kpis: 2, resumo: 3, chart: 4, torres: 5, banners: 5, status: 4, amanha: 2, tabela: 3 };
+        const minWs = { kpis: 4, resumo: 4, chart: 4, torres: 4, banners: 4, tabela: 4 };
+        let w = Math.max(minWs[id] || 1, Number(b.w) || 1);
+        let h = Math.max(mins[id] || 1, Number(b.h) || 1);
+        w = Math.min(12, w);
+        h = Math.min(12, h);
+        let x = Math.max(0, Number(b.x) || 0);
+        let y = Math.max(0, Number(b.y) || 0);
+        if (x + w > 12) x = Math.max(0, 12 - w);
+        if (y + h > 12) y = Math.max(0, 12 - h);
+        el.style.gridColumn = (x + 1) + ' / span ' + w;
+        el.style.gridRow = (y + 1) + ' / span ' + h;
+      });
+      return has;
+    }
+
     function applyDashboardChrome() {
       const wipe = [
         'dash-chart-towers', 'dash-chart-pizza', 'dash-chart-bars',
         'dash-scale-small', 'dash-scale-normal', 'dash-scale-large',
         'dash-hide-kpis', 'dash-hide-chart', 'dash-hide-amanha', 'dash-hide-status',
+        'dash-hide-tabela',
       ];
       wipe.forEach((c) => document.body.classList.remove(c));
-      if (!isOpsSector(CURRENT_SECTOR) && CURRENT_SECTOR !== 'distribuicao') {
-        // Aplica só UI agendamento/dist por enquanto; setores em breve usam logo/margens
-      }
       const ui = resolveDashboardUi(TV_LAYOUT, CURRENT_SECTOR, CURRENT_VIEW);
       document.body.classList.add(`dash-chart-${ui.chart}`);
       document.body.classList.add(`dash-scale-${ui.scale}`);
@@ -3793,41 +3877,37 @@
       if (pizzaWrap) pizzaWrap.hidden = ui.chart !== 'pizza';
       if (towersWrap) towersWrap.hidden = ui.chart !== 'towers';
 
-      const layoutEl = document.getElementById('agendaLayout');
-      if (layoutEl) {
-        const blocks = ui.blocks || [];
-        const has = blocks.length > 0 && CURRENT_VIEW === 'agendamento';
-        layoutEl.classList.toggle('has-blocks', has);
-        layoutEl.querySelectorAll('[data-block]').forEach((el) => {
-          el.style.gridColumn = '';
-          el.style.gridRow = '';
-          const id = el.getAttribute('data-block');
-          const b = blocks.find((x) => String(x.id) === id);
-          if (!has || !b) {
-            el.hidden = false;
-            return;
-          }
-          el.hidden = b.visible === false;
-          const mins = { kpis: 3, resumo: 3, chart: 5, torres: 5, banners: 5, status: 4, amanha: 2 };
-          const minWs = { kpis: 4, resumo: 4, chart: 4, torres: 4, banners: 4 };
-          let w = Math.max(minWs[id] || 1, Number(b.w) || 1);
-          let h = Math.max(mins[id] || 1, Number(b.h) || 1);
-          w = Math.min(12, w);
-          h = Math.min(12, h);
-          let x = Math.max(0, Number(b.x) || 0);
-          let y = Math.max(0, Number(b.y) || 0);
-          if (x + w > 12) x = Math.max(0, 12 - w);
-          if (y + h > 12) y = Math.max(0, 12 - h);
-          el.style.gridColumn = (x + 1) + ' / span ' + w;
-          el.style.gridRow = (y + 1) + ' / span ' + h;
-        });
-        if (has) {
-          const by = Object.fromEntries(blocks.map((b) => [b.id, b]));
-          if (by.kpis && by.kpis.visible === false) document.body.classList.add('dash-hide-kpis');
-          if (by.chart && by.chart.visible === false) document.body.classList.add('dash-hide-chart');
-          if (by.amanha && by.amanha.visible === false) document.body.classList.add('dash-hide-amanha');
-          if (by.status && by.status.visible === false) document.body.classList.add('dash-hide-status');
-        }
+      const blocks = ui.blocks || [];
+      const agendaLayout = document.getElementById('agendaLayout');
+      const hasAgenda = applyBlockLayout(
+        agendaLayout,
+        blocks,
+        { active: CURRENT_SECTOR === 'distribuicao' && CURRENT_VIEW === 'agendamento' },
+      );
+      if (hasAgenda) {
+        const by = Object.fromEntries(blocks.map((b) => [b.id, b]));
+        if (by.kpis && by.kpis.visible === false) document.body.classList.add('dash-hide-kpis');
+        if (by.chart && by.chart.visible === false) document.body.classList.add('dash-hide-chart');
+        if (by.amanha && by.amanha.visible === false) document.body.classList.add('dash-hide-amanha');
+        if (by.status && by.status.visible === false) document.body.classList.add('dash-hide-status');
+      }
+
+      const armPatio = document.getElementById('armLayoutPatio');
+      const armConf = document.getElementById('armLayoutConferentes');
+      const armActive = CURRENT_SECTOR === 'armazem';
+      const patioUi = armActive && CURRENT_VIEW !== 'conferentes'
+        ? ui
+        : resolveDashboardUi(TV_LAYOUT, 'armazem', 'patio');
+      const confUi = armActive && CURRENT_VIEW === 'conferentes'
+        ? ui
+        : resolveDashboardUi(TV_LAYOUT, 'armazem', 'conferentes');
+      applyBlockLayout(armPatio, patioUi.blocks || [], { active: true });
+      applyBlockLayout(armConf, confUi.blocks || [], { active: true });
+      if (armActive) {
+        const by = Object.fromEntries(blocks.map((b) => [b.id, b]));
+        if (by.kpis && by.kpis.visible === false) document.body.classList.add('dash-hide-kpis');
+        if (by.chart && by.chart.visible === false) document.body.classList.add('dash-hide-chart');
+        if (by.tabela && by.tabela.visible === false) document.body.classList.add('dash-hide-tabela');
       }
     }
 
@@ -4036,6 +4116,7 @@
     function goArmView(viewId, { restart = true, fromSync = false } = {}) {
       CURRENT_VIEW = normalizeArmView(viewId);
       applyArmViews();
+      applyDashboardChrome();
       updateOpsBrandTitle();
       writeRouteHash({ tv: TV_MODE, sector: 'armazem' });
       if (fromSync) {
@@ -4597,23 +4678,35 @@
       if (tv) applyTvSlotAfterRoute();
     }
 
-    async function applyTvSlotAfterRoute() {
+    async function applyTvSlotAfterRoute({ gen = null } = {}) {
+      // Saiu do TV enquanto o enter ainda carregava layout → não reaplica modo TV
+      if (gen != null && (gen !== tvModeGen || !TV_MODE)) return;
+
       await loadTvLayout();
+      if (gen != null && (gen !== tvModeGen || !TV_MODE)) return;
+
       const eff = TV_EFFECTIVE || (TV_SLOT ? resolveTvEffective(TV_LAYOUT, TV_SLOT) : null);
       if (!eff) return;
       applyTvChrome();
 
+      const hashTv = /^tv(\/|$)/i.test((location.hash || '').replace(/^#/, '').toLowerCase());
+      const keepTv = TV_MODE || hashTv;
+      if (!keepTv) return;
+
       // Sempre segue o setor do layout deste slot (modo parede = todos o mesmo)
       const sec = normalizeSectorId(eff.sector);
       if (sec !== CURRENT_SECTOR || (eff.mode === 'fixed' && CURRENT_VIEW !== eff.view)) {
+        if (gen != null && (gen !== tvModeGen || !TV_MODE)) return;
         setSector(sec, {
           syncHash: false,
           forceTv: true,
           view: eff.mode === 'fixed' ? eff.view : (sec === 'armazem' ? (isArmView(CURRENT_VIEW) ? CURRENT_VIEW : 'patio') : null),
         });
-      } else if (!TV_MODE) {
+      } else if (!TV_MODE && hashTv) {
         await setTvMode(true, { syncHash: false });
       }
+      if (gen != null && (gen !== tvModeGen || !TV_MODE)) return;
+      if (!TV_MODE) return;
       applyTvChrome();
 
       if (eff.mosaic) {
