@@ -564,223 +564,80 @@ class AceCrtConsole(QWidget):
     def _build_tv_tab(self) -> QWidget:
         wrap = QWidget()
         lay = QVBoxLayout(wrap)
-        lay.setContentsMargins(8, 8, 8, 8)
-        lay.setSpacing(8)
+        lay.setContentsMargins(10, 12, 10, 12)
+        lay.setSpacing(10)
 
-        hint = QLabel(
-            "Grade = parede normal: cada TV com o setor que você marcou.\n"
-            "Modo parede = todas viram pedaços de UM setor (uma tela só).\n"
-            "Voltar ao normal recupera os setores da grade.\n"
-            "Nas TVs: #tv/distribuicao (ou outro) — posição na grade 1× neste aparelho."
+        tip = QLabel(
+            "A configuração da parede e o layout do dashboard "
+            "ficam numa tela separada — arraste gráficos e blocos por setor."
         )
-        hint.setObjectName("hint")
-        hint.setWordWrap(True)
-        lay.addWidget(hint)
+        tip.setObjectName("hint")
+        tip.setWordWrap(True)
+        lay.addWidget(tip)
 
-        lay.addWidget(self._section("Parede (2×3)"))
-        grid = QGridLayout()
-        grid.setSpacing(6)
-        self._tv_slot_group = QButtonGroup(self)
-        self._tv_slot_group.setExclusive(True)
-        for sid in range(1, 7):
-            btn = QPushButton(f"TV {sid}")
-            btn.setCheckable(True)
-            btn.setMinimumHeight(54)
-            btn.clicked.connect(lambda _=False, s=sid: self._tv_select_slot(s))
-            self._tv_slot_btns[sid] = btn
-            self._tv_slot_group.addButton(btn, sid)
-            row, col = divmod(sid - 1, 3)
-            grid.addWidget(btn, row, col)
-        lay.addLayout(grid)
+        self.tv_wall_status = QLabel("Modo: —")
+        self.tv_wall_status.setObjectName("hint")
+        lay.addWidget(self.tv_wall_status)
 
-        lay.addWidget(self._section("TV selecionada"))
-        form = QFormLayout()
-        form.setSpacing(6)
-
-        self.tv_sector = QComboBox()
-        for sid, lab in (
-            ("distribuicao", "Distribuição"),
-            ("armazem", "Armazém"),
-            ("contratacao", "Contratação (em breve)"),
-            ("pendencia", "Pendência (em breve)"),
-            ("rastreamento", "Rastreamento (em breve)"),
-            ("emissao", "Emissão (em breve)"),
-        ):
-            self.tv_sector.addItem(lab, sid)
-        self.tv_sector.currentIndexChanged.connect(self._tv_form_changed)
-
-        self.tv_view = QComboBox()
-        self.tv_view.addItem("Girar Coleta → Entrega → Agenda", "rotate")
-        self.tv_view.addItem("Só Coleta", "coleta")
-        self.tv_view.addItem("Só Entrega", "entrega")
-        self.tv_view.addItem("Só Agendamento", "agendamento")
-        self.tv_view.currentIndexChanged.connect(self._tv_form_changed)
-
-        self.tv_logo = QComboBox()
-        self.tv_logo.addItem("Padrão do setor", "inherit")
-        self.tv_logo.addItem("Mostrar logo", "on")
-        self.tv_logo.addItem("Esconder logo", "off")
-        self.tv_logo.currentIndexChanged.connect(self._tv_form_changed)
-
-        self.tv_margins = QComboBox()
-        self.tv_margins.addItem("Padrão do setor", "inherit")
-        self.tv_margins.addItem("Com margens", "normal")
-        self.tv_margins.addItem("Sem margens", "none")
-        self.tv_margins.currentIndexChanged.connect(self._tv_form_changed)
-
-        form.addRow("Setor desta TV (normal)", self.tv_sector)
-        form.addRow("Tela (Distribuição)", self.tv_view)
-        form.addRow("Logo", self.tv_logo)
-        form.addRow("Margens", self.tv_margins)
-        lay.addLayout(form)
-
-        lay.addWidget(self._section("Personalizar dashboard (por setor)"))
-        dash_hint = QLabel(
-            "Tipo de gráfico · tamanho · campos visíveis. "
-            "Fixar trava o layout desse setor até desbloquear."
-        )
-        dash_hint.setObjectName("hint")
-        dash_hint.setWordWrap(True)
-        lay.addWidget(dash_hint)
-
-        dash_form = QFormLayout()
-        dash_form.setSpacing(6)
-        self.dash_sector = QComboBox()
-        for sid, lab in (
-            ("distribuicao", "Distribuição"),
-            ("armazem", "Armazém"),
-            ("contratacao", "Contratação"),
-            ("pendencia", "Pendência"),
-            ("rastreamento", "Rastreamento"),
-            ("emissao", "Emissão"),
-        ):
-            self.dash_sector.addItem(lab, sid)
-        self.dash_sector.currentIndexChanged.connect(self._dash_sector_changed)
-
-        self.dash_view = QComboBox()
-        self.dash_view.addItem("Coleta", "coleta")
-        self.dash_view.addItem("Entrega", "entrega")
-        self.dash_view.addItem("Agendamento", "agendamento")
-        self.dash_view.currentIndexChanged.connect(self._dash_form_changed)
-
-        self.dash_chart = QComboBox()
-        self.dash_chart.addItem("Torres", "towers")
-        self.dash_chart.addItem("Pizza", "pizza")
-        self.dash_chart.addItem("Barras laterais", "bars")
-        self.dash_chart.currentIndexChanged.connect(self._dash_form_changed)
-
-        self.dash_scale = QComboBox()
-        self.dash_scale.addItem("Grande", "large")
-        self.dash_scale.addItem("Normal", "normal")
-        self.dash_scale.addItem("Compacto", "small")
-        self.dash_scale.currentIndexChanged.connect(self._dash_form_changed)
-
-        self.dash_kpis = QCheckBox("Mostrar KPIs / totais")
-        self.dash_chart_on = QCheckBox("Mostrar gráfico")
-        self.dash_amanha = QCheckBox("Mostrar Amanhã (agenda)")
-        self.dash_status = QCheckBox("Mostrar status / alertas laterais")
-        for cb in (self.dash_kpis, self.dash_chart_on, self.dash_amanha, self.dash_status):
-            cb.setChecked(True)
-            cb.stateChanged.connect(self._dash_form_changed)
-
-        self.dash_locked = QCheckBox("Layout fixado (não altera até desbloquear)")
-        self.dash_locked.stateChanged.connect(self._dash_lock_toggled)
-
-        dash_form.addRow("Setor", self.dash_sector)
-        dash_form.addRow("Tela", self.dash_view)
-        dash_form.addRow("Gráfico", self.dash_chart)
-        dash_form.addRow("Tamanho", self.dash_scale)
-        lay.addLayout(dash_form)
-        lay.addWidget(self.dash_kpis)
-        lay.addWidget(self.dash_chart_on)
-        lay.addWidget(self.dash_amanha)
-        lay.addWidget(self.dash_status)
-        lay.addWidget(self.dash_locked)
-
-        dash_row = QHBoxLayout()
-        b_fix = QPushButton("Fixar este layout")
-        b_fix.setObjectName("primary")
-        b_fix.setToolTip("Salva e trava o dashboard deste setor/tela.")
-        b_fix.clicked.connect(self._dash_fix)
-        b_unlock = QPushButton("Desbloquear")
-        b_unlock.clicked.connect(self._dash_unlock)
-        dash_row.addWidget(b_fix)
-        dash_row.addWidget(b_unlock)
-        lay.addLayout(dash_row)
-
-        tip_sec = QLabel(
-            "A grade acima é o modo normal da parede. "
-            "Embaixo liga/desliga o modo pedaço (sem apagar esses setores)."
-        )
-        tip_sec.setObjectName("hint")
-        tip_sec.setWordWrap(True)
-        lay.addWidget(tip_sec)
-
-        self.tv_sync = QCheckBox("Sincronizar Coleta/Entrega/Agenda na parede Distribuição")
-        self.tv_sync.setChecked(True)
-        self.tv_sync.stateChanged.connect(self._tv_global_changed)
-        lay.addWidget(self.tv_sync)
-
-        self.tv_url = QLabel("")
+        self.tv_url = QLabel("Nas TVs: #tv/distribuicao · posição 1× por aparelho")
         self.tv_url.setObjectName("hint")
         self.tv_url.setWordWrap(True)
         lay.addWidget(self.tv_url)
 
-        self.tv_wall_status = QLabel("Modo: NORMAL (cada TV = seu setor)")
-        self.tv_wall_status.setObjectName("hint")
-        lay.addWidget(self.tv_wall_status)
+        b_open = QPushButton("Abrir editor TV / Dashboard")
+        b_open.setObjectName("primary")
+        b_open.setMinimumHeight(48)
+        b_open.clicked.connect(self._open_tv_editor)
+        lay.addWidget(b_open)
 
-        lay.addWidget(self._section("Modo parede"))
-        wall_row = QHBoxLayout()
-        self.tv_wall_sector = QComboBox()
-        for sid, lab in (
-            ("distribuicao", "Distribuição"),
-            ("armazem", "Armazém"),
-            ("contratacao", "Contratação"),
-            ("pendencia", "Pendência"),
-            ("rastreamento", "Rastreamento"),
-            ("emissao", "Emissão"),
-        ):
-            self.tv_wall_sector.addItem(lab, sid)
-        wall_row.addWidget(self.tv_wall_sector, 1)
-        b_mirror = QPushButton("Ativar parede")
-        b_mirror.setObjectName("primary")
-        b_mirror.setToolTip("As 6 TVs viram pedaço do setor escolhido (grade normal permanece).")
-        b_mirror.clicked.connect(self._tv_mirror)
-        b_normal = QPushButton("Voltar ao normal")
-        b_normal.setToolTip("Cada TV volta ao setor marcado na grade.")
-        b_normal.clicked.connect(self._tv_wall_off)
-        wall_row.addWidget(b_mirror)
-        wall_row.addWidget(b_normal)
-        lay.addLayout(wall_row)
-
-        row2 = QHBoxLayout()
+        row = QHBoxLayout()
         b_reload = QPushButton("Recarregar")
         b_reload.clicked.connect(self._tv_reload)
         b_save = QPushButton("Salvar TV")
         b_save.setObjectName("primary")
         b_save.clicked.connect(self._tv_save)
-        row2.addWidget(b_reload)
-        row2.addWidget(b_save)
-        lay.addLayout(row2)
-
+        row.addWidget(b_reload)
+        row.addWidget(b_save)
+        lay.addLayout(row)
         lay.addStretch(1)
+
+        self._tv_slot_btns = {}
+        self._tv_slot_group = QButtonGroup(self)
+        self.tv_sector = QComboBox()
+        self.tv_view = QComboBox()
+        self.tv_logo = QComboBox()
+        self.tv_margins = QComboBox()
+        self.tv_sync = QCheckBox()
+        self.tv_wall_sector = QComboBox()
+        self.dash_sector = QComboBox()
+        self.dash_view = QComboBox()
+        self.dash_chart = QComboBox()
+        self.dash_scale = QComboBox()
+        self.dash_kpis = QCheckBox()
+        self.dash_chart_on = QCheckBox()
+        self.dash_amanha = QCheckBox()
+        self.dash_status = QCheckBox()
+        self.dash_locked = QCheckBox()
         self._tv_reload()
         return wrap
+
+    def _open_tv_editor(self) -> None:
+        from ace_tv_editor import TvEditorDialog
+
+        self._tv_reload()
+        dlg = TvEditorDialog(self, self._tv_layout)
+        if dlg.exec():
+            self._tv_layout = dlg.resulting_layout()
+            self._tv_refresh_wall_status()
+            self._append_log("config", f"Editor TV · layout v{self._tv_layout.get('version')}.")
+            publish(online=True, label="TV", pct=0, detail="editor TV salvo", mode="OK")
 
     def _tv_reload(self) -> None:
         from tv_layout import load_layout
 
         self._tv_loading = True
         self._tv_layout = load_layout()
-        self.tv_sync.setChecked(bool(self._tv_layout.get("syncSwap", True)))
-        ws = str(self._tv_layout.get("wallSector") or "distribuicao")
-        idx = self.tv_wall_sector.findData(ws)
-        if idx >= 0:
-            self.tv_wall_sector.setCurrentIndex(idx)
-        self._tv_refresh_slot_labels()
-        self._tv_select_slot(self._tv_selected)
-        self._dash_load_form()
+        self._tv_refresh_wall_status()
         self._tv_loading = False
         self._append_log("config", "Layout TV recarregado.")
 
@@ -791,234 +648,29 @@ class AceCrtConsole(QWidget):
         if wall:
             sec = str((self._tv_layout or {}).get("wallSector") or "distribuicao")
             self.tv_wall_status.setText(
-                f"Modo: PAREDE · pedaços de {SECTOR_LABELS.get(sec, sec)} "
-                f"(grade normal guardada)"
+                f"Modo: PAREDE · pedaços de {SECTOR_LABELS.get(sec, sec)}"
             )
         else:
             self.tv_wall_status.setText("Modo: NORMAL · cada TV = setor da grade")
 
     def _tv_refresh_slot_labels(self) -> None:
-        from tv_layout import SECTOR_LABELS
-
-        wall = bool((self._tv_layout or {}).get("wallMode"))
-        wall_sec = str((self._tv_layout or {}).get("wallSector") or "")
-        for s in (self._tv_layout or {}).get("slots") or []:
-            sid = int(s["id"])
-            btn = self._tv_slot_btns.get(sid)
-            if not btn:
-                continue
-            sec = str(s.get("sector") or "distribuicao")
-            name = SECTOR_LABELS.get(sec, sec)
-            if wall:
-                btn.setText(f"TV {sid}\n▦ {SECTOR_LABELS.get(wall_sec, wall_sec)[:8]}\n({name[:6]})")
-            else:
-                btn.setText(f"TV {sid}\n{name}")
-            btn.setChecked(sid == self._tv_selected)
         self._tv_refresh_wall_status()
 
     def _tv_select_slot(self, slot_id: int) -> None:
         self._tv_selected = int(slot_id)
-        self._tv_loading = True
-        slot = next(
-            (s for s in (self._tv_layout or {}).get("slots") or [] if int(s["id"]) == self._tv_selected),
-            None,
-        )
-        if not slot:
-            self._tv_loading = False
-            return
-        sector = str(slot.get("sector") or "distribuicao")
-        sidx = self.tv_sector.findData(sector)
-        self.tv_sector.setCurrentIndex(sidx if sidx >= 0 else 0)
-        if sector == "distribuicao" and str(slot.get("mode") or "") == "rotate":
-            vkey = "rotate"
-        elif sector == "distribuicao":
-            vkey = str(slot.get("view") or "coleta")
-        else:
-            vkey = "rotate"
-        vidx = self.tv_view.findData(vkey)
-        self.tv_view.setCurrentIndex(vidx if vidx >= 0 else 0)
-        self.tv_view.setEnabled(sector == "distribuicao")
-        logo = slot.get("showLogo", None)
-        if logo is None:
-            self.tv_logo.setCurrentIndex(0)
-        else:
-            self.tv_logo.setCurrentIndex(1 if logo else 2)
-        marg = slot.get("margins", None)
-        if marg is None:
-            self.tv_margins.setCurrentIndex(0)
-        else:
-            self.tv_margins.setCurrentIndex(2 if marg == "none" else 1)
-        for sid, btn in self._tv_slot_btns.items():
-            btn.setChecked(sid == self._tv_selected)
-        row = int(slot.get("row") or 0)
-        col = int(slot.get("col") or 0)
-        from tv_layout import SECTOR_LABELS
-
-        self.tv_url.setText(
-            f"TV {self._tv_selected} · grade L{row + 1} C{col + 1}\n"
-            f"Setor normal: {SECTOR_LABELS.get(sector, sector)}\n"
-            f"Na TV: #tv/{sector} (posição escolhida 1× neste aparelho)."
-        )
-        self._tv_loading = False
-        self._tv_refresh_slot_labels()
 
     def _tv_form_changed(self) -> None:
-        if self._tv_loading or not self._tv_layout:
-            return
-        slot = next(
-            (s for s in self._tv_layout.get("slots") or [] if int(s["id"]) == self._tv_selected),
-            None,
-        )
-        if not slot:
-            return
-        sector = str(self.tv_sector.currentData() or "distribuicao")
-        slot["sector"] = sector
-        self.tv_view.setEnabled(sector == "distribuicao")
-        if sector == "distribuicao":
-            vkey = str(self.tv_view.currentData() or "rotate")
-            if vkey == "rotate":
-                slot["mode"] = "rotate"
-                slot["view"] = "coleta"
-            else:
-                slot["mode"] = "fixed"
-                slot["view"] = vkey
-        else:
-            slot["mode"] = "fixed"
-            slot["view"] = "coleta"
-        logo_mode = str(self.tv_logo.currentData() or "inherit")
-        if logo_mode == "inherit":
-            slot["showLogo"] = None
-        else:
-            slot["showLogo"] = logo_mode == "on"
-        marg_mode = str(self.tv_margins.currentData() or "inherit")
-        if marg_mode == "inherit":
-            slot["margins"] = None
-        else:
-            slot["margins"] = marg_mode
-        self._tv_refresh_slot_labels()
+        return
 
     def _tv_global_changed(self) -> None:
-        if self._tv_loading or not self._tv_layout:
-            return
-        self._tv_layout["syncSwap"] = self.tv_sync.isChecked()
-
-    def _dash_target_ui(self) -> dict:
-        from tv_layout import default_view_ui
-
-        lay = self._tv_layout or {}
-        sd = (lay.get("sectorDefaults") or {})
-        sector = str(self.dash_sector.currentData() or "distribuicao")
-        bucket = sd.setdefault(sector, {"showLogo": True, "margins": "normal", "ui": {}, "views": {}})
-        if sector == "distribuicao":
-            view = str(self.dash_view.currentData() or "agendamento")
-            views = bucket.setdefault("views", {})
-            if view not in views or not isinstance(views.get(view), dict):
-                views[view] = default_view_ui("towers")
-            return views[view]
-        if not isinstance(bucket.get("ui"), dict):
-            bucket["ui"] = default_view_ui("towers")
-        return bucket["ui"]
-
-    def _dash_set_enabled(self, enabled: bool) -> None:
-        for w in (
-            self.dash_chart,
-            self.dash_scale,
-            self.dash_kpis,
-            self.dash_chart_on,
-            self.dash_amanha,
-            self.dash_status,
-        ):
-            w.setEnabled(enabled)
-
-    def _dash_load_form(self) -> None:
-        if not hasattr(self, "dash_sector"):
-            return
-        self._tv_loading = True
-        sector = str(self.dash_sector.currentData() or "distribuicao")
-        self.dash_view.setEnabled(sector == "distribuicao")
-        ui = self._dash_target_ui()
-        ci = self.dash_chart.findData(str(ui.get("chart") or "towers"))
-        if ci >= 0:
-            self.dash_chart.setCurrentIndex(ci)
-        si = self.dash_scale.findData(str(ui.get("scale") or "large"))
-        if si >= 0:
-            self.dash_scale.setCurrentIndex(si)
-        self.dash_kpis.setChecked(ui.get("showKpis", True) is not False)
-        self.dash_chart_on.setChecked(ui.get("showChart", True) is not False)
-        self.dash_amanha.setChecked(ui.get("showAmanha", True) is not False)
-        self.dash_status.setChecked(ui.get("showStatus", True) is not False)
-        locked = bool(ui.get("locked"))
-        self.dash_locked.setChecked(locked)
-        self._dash_set_enabled(not locked)
-        self._tv_loading = False
-
-    def _dash_sector_changed(self) -> None:
-        if self._tv_loading:
-            return
-        sector = str(self.dash_sector.currentData() or "distribuicao")
-        self.dash_view.setEnabled(sector == "distribuicao")
-        if sector == "distribuicao":
-            idx = self.dash_view.findData("agendamento")
-            if idx >= 0:
-                self.dash_view.setCurrentIndex(idx)
-        self._dash_load_form()
+        return
 
     def _dash_form_changed(self) -> None:
-        if self._tv_loading or not self._tv_layout:
-            return
-        ui = self._dash_target_ui()
-        if ui.get("locked"):
-            return
-        ui["chart"] = str(self.dash_chart.currentData() or "towers")
-        ui["scale"] = str(self.dash_scale.currentData() or "large")
-        ui["showKpis"] = self.dash_kpis.isChecked()
-        ui["showChart"] = self.dash_chart_on.isChecked()
-        ui["showAmanha"] = self.dash_amanha.isChecked()
-        ui["showStatus"] = self.dash_status.isChecked()
-
-    def _dash_lock_toggled(self) -> None:
-        if self._tv_loading or not self._tv_layout:
-            return
-        ui = self._dash_target_ui()
-        ui["locked"] = self.dash_locked.isChecked()
-        self._dash_set_enabled(not ui["locked"])
-
-    def _dash_fix(self) -> None:
-        if not self._tv_layout:
-            return
-        self._dash_form_changed()
-        ui = self._dash_target_ui()
-        ui["locked"] = True
-        self._tv_loading = True
-        self.dash_locked.setChecked(True)
-        self._dash_set_enabled(False)
-        self._tv_loading = False
-        sector = str(self.dash_sector.currentData() or "")
-        view = str(self.dash_view.currentData() or "")
-        label = f"{sector}/{view}" if sector == "distribuicao" else sector
-        self._tv_persist(
-            title="Dashboard fixado",
-            body=f"Layout de {label} fixado e enviado às TVs.",
-        )
-
-    def _dash_unlock(self) -> None:
-        if not self._tv_layout:
-            return
-        ui = self._dash_target_ui()
-        ui["locked"] = False
-        self._tv_loading = True
-        self.dash_locked.setChecked(False)
-        self._dash_set_enabled(True)
-        self._tv_loading = False
-        self._append_log("config", "Dashboard desbloqueado para edição.")
+        return
 
     def _tv_persist(self, *, title: str, body: str) -> bool:
-        """Salva no PC e envia à planilha (é o que as TVs leem)."""
         from tv_layout import push_layout_to_sheets, save_layout
 
-        self._tv_form_changed()
-        self._tv_global_changed()
-        self._dash_form_changed()
         try:
             self._tv_layout = save_layout(self._tv_layout)
             ok, msg = push_layout_to_sheets(self._tv_layout)
@@ -1030,71 +682,27 @@ class AceCrtConsole(QWidget):
                 QMessageBox.information(
                     self,
                     "ACE TV",
-                    f"{body}\n\nLayout na planilha: OK (v{ver}).\n"
-                    "Se as TVs ainda ficarem separadas, publique o dashboard "
-                    "(site precisa do HTML novo com modo parede).",
+                    f"{body}\n\nLayout na planilha: OK (v{ver}).",
                 )
-                self._tv_refresh_slot_labels()
+                self._tv_refresh_wall_status()
                 return True
             self._append_log("erro", f"{title} · local v{ver} mas planilha falhou: {msg}")
-            publish(online=False, label="TV", pct=0, detail="planilha falhou", mode="ERR")
             QMessageBox.warning(
                 self,
                 "ACE TV · TVs não atualizaram",
-                f"{body}\n\n"
-                f"Salvo neste PC (v{ver}), mas NÃO chegou na planilha:\n{msg}\n\n"
-                "As TVs leem Apps Script. Clique Salvar de novo ou confira "
-                "Deploy → Nova versão do Code.gs.",
+                f"{body}\n\nSalvo neste PC (v{ver}), mas NÃO chegou na planilha:\n{msg}",
             )
-            self._tv_refresh_slot_labels()
+            self._tv_refresh_wall_status()
             return False
         except Exception as err:  # noqa: BLE001
             self._append_log("erro", str(err))
             QMessageBox.warning(self, "ACE TV", f"Falha ao salvar:\n{err}")
             return False
 
-    def _tv_mirror(self) -> None:
-        from tv_layout import SECTOR_LABELS, wall_on
-
-        self._tv_form_changed()
-        sector = str(self.tv_wall_sector.currentData() or "distribuicao")
-        self._tv_layout = wall_on(self._tv_layout, sector)
-        if sector == "distribuicao":
-            self.tv_sync.setChecked(True)
-            self._tv_layout["syncSwap"] = True
-        self._tv_loading = True
-        self._tv_refresh_slot_labels()
-        self._tv_select_slot(self._tv_selected)
-        self._tv_loading = False
-        label = SECTOR_LABELS.get(sector, sector)
-        self._tv_persist(
-            title="Parede ON",
-            body=(
-                f"Modo parede: as 6 TVs mostram pedaços de {label}.\n"
-                "A grade normal ficou salva — use Voltar ao normal depois."
-            ),
-        )
-
-    def _tv_wall_off(self) -> None:
-        from tv_layout import wall_off
-
-        self._tv_form_changed()
-        self._tv_layout = wall_off(self._tv_layout)
-        self._tv_loading = True
-        self._tv_refresh_slot_labels()
-        self._tv_select_slot(self._tv_selected)
-        self._tv_loading = False
-        self._tv_persist(
-            title="Parede OFF",
-            body="Modo normal: cada TV volta ao setor da grade.",
-        )
-
     def _tv_save(self) -> None:
         wall = "PAREDE" if (self._tv_layout or {}).get("wallMode") else "NORMAL"
-        self._tv_persist(
-            title="Layout TV",
-            body=f"Layout salvo ({wall}).",
-        )
+        self._tv_persist(title="Layout TV", body=f"Layout salvo ({wall}).")
+
     def _build_gestao_tab(self) -> QWidget:
         wrap = QWidget()
         lay = QVBoxLayout(wrap)

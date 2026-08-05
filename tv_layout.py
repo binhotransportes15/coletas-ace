@@ -57,6 +57,7 @@ def default_view_ui(chart: str = "towers") -> dict[str, Any]:
         "showAmanha": True,
         "showStatus": True,
         "locked": False,
+        "blocks": [],  # preenchido no editor; vazio = layout padrão do dashboard
     }
 
 
@@ -74,6 +75,25 @@ def _normalize_view_ui(raw: Any, fallback: dict[str, Any] | None = None) -> dict
     scale = str(raw.get("scale") or base["scale"]).lower()
     if scale not in ("small", "normal", "large"):
         scale = base["scale"]
+    blocks_raw = raw.get("blocks") if isinstance(raw.get("blocks"), list) else base.get("blocks") or []
+    blocks: list[dict[str, Any]] = []
+    for b in blocks_raw:
+        if not isinstance(b, dict) or not b.get("id"):
+            continue
+        try:
+            blocks.append(
+                {
+                    "id": str(b["id"]),
+                    "label": str(b.get("label") or b["id"]),
+                    "x": max(0, min(11, int(b.get("x", 0)))),
+                    "y": max(0, min(11, int(b.get("y", 0)))),
+                    "w": max(1, min(12, int(b.get("w", 4)))),
+                    "h": max(1, min(12, int(b.get("h", 4)))),
+                    "visible": bool(b.get("visible", True)),
+                }
+            )
+        except (TypeError, ValueError):
+            continue
     return {
         "chart": chart,
         "scale": scale,
@@ -82,6 +102,7 @@ def _normalize_view_ui(raw: Any, fallback: dict[str, Any] | None = None) -> dict
         "showAmanha": bool(raw.get("showAmanha", base["showAmanha"])),
         "showStatus": bool(raw.get("showStatus", base["showStatus"])),
         "locked": bool(raw.get("locked", base["locked"])),
+        "blocks": blocks,
     }
 
 

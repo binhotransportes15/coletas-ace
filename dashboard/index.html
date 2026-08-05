@@ -1159,22 +1159,38 @@
     @media (max-width: 700px) {
       .agenda-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
-    .agenda-hero {
+    .agenda-layout {
       flex: 1;
       min-height: 0;
       display: grid;
-      grid-template-columns: 1.35fr 0.65fr;
-      gap: 12px;
-      overflow: hidden;
-      position: relative;
-      align-items: stretch;
-    }
-    .agenda-left-col {
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-template-rows: repeat(12, minmax(0, 1fr));
       gap: 10px;
       overflow: hidden;
+      position: relative;
+    }
+    .agenda-layout .dash-block {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .agenda-layout .dash-block[hidden] { display: none !important; }
+    /* fallback se ainda não veio blocks do CRT */
+    .agenda-layout:not(.has-blocks) {
+      grid-template-columns: 1.35fr 0.65fr;
+      grid-template-rows: auto 1fr auto;
+    }
+    .agenda-layout:not(.has-blocks) [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
+    .agenda-layout:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; }
+    .agenda-layout:not(.has-blocks) [data-block="status"] { grid-column: 2; grid-row: 2; }
+    .agenda-layout:not(.has-blocks) [data-block="amanha"] { grid-column: 1; grid-row: 3; }
+    .agenda-hero {
+      flex: 1;
+      min-height: 0;
+      display: contents;
+    }
+    .agenda-left-col {
+      display: contents;
     }
     .agenda-hero > .agenda-alert-chip,
     .agenda-hero > span[hidden],
@@ -2471,7 +2487,8 @@
           </div>
         </header>
 
-        <div class="agenda-kpis" id="agendaKpis" aria-label="Totais do mês">
+        <div class="agenda-layout" id="agendaLayout">
+        <div class="agenda-kpis dash-block" data-block="kpis" id="agendaKpis" aria-label="Totais do mês">
           <div class="agenda-kpi">
             <span>Agendamentos</span>
             <b id="kpiTotal">0</b>
@@ -2516,7 +2533,7 @@
 
         <div class="agenda-hero">
           <div class="agenda-left-col">
-            <div class="agenda-chart-stage">
+            <div class="agenda-chart-stage dash-block" data-block="chart">
               <div class="agenda-towers-wrap" id="agendaTowersWrap" aria-label="Torres de agendamento">
                 <div class="torres agenda-torres" id="agendaTorres">
                   <div class="torre t-col">
@@ -2540,7 +2557,7 @@
                 <svg id="agendaPizza" class="agenda-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de agendamentos"></svg>
               </div>
             </div>
-            <div class="agenda-amanha-wrap" aria-label="Agendamentos de amanhã">
+            <div class="agenda-amanha-wrap dash-block" data-block="amanha" aria-label="Agendamentos de amanhã">
               <div class="agenda-table-head">
                 <strong>Amanhã</strong>
                 <span class="muted" id="agendaFilaMeta">dia seguinte</span>
@@ -2548,7 +2565,7 @@
               <div class="agenda-cards" id="agendaAmanhaCards"></div>
             </div>
           </div>
-          <aside class="agenda-tower-side" aria-label="Status e alertas">
+          <aside class="agenda-tower-side dash-block" data-block="status" aria-label="Status e alertas">
             <div class="tower-side-title">Status dos agendamentos</div>
             <div class="tower-bars" id="agendaStatusBars"></div>
             <div class="tower-side-title">Alertas</div>
@@ -2565,6 +2582,7 @@
           <span id="agRotaPct" hidden>0%</span>
           <span id="agParPct" hidden>0%</span>
           <span id="agOkPct" hidden>0%</span>
+        </div>
         </div>
 
         <div class="agenda-alerts" id="agendaAlerts"></div>
@@ -3432,6 +3450,7 @@
       }
       const chart = String(ui.chart || (sec === 'distribuicao' && (view || CURRENT_VIEW) === 'agendamento' ? 'towers' : 'towers')).toLowerCase();
       const scale = String(ui.scale || 'large').toLowerCase();
+      const blocks = Array.isArray(ui.blocks) ? ui.blocks : [];
       return {
         chart: ['towers', 'pizza', 'bars'].includes(chart) ? chart : 'towers',
         scale: ['small', 'normal', 'large'].includes(scale) ? scale : 'large',
@@ -3440,6 +3459,7 @@
         showAmanha: ui.showAmanha !== false,
         showStatus: ui.showStatus !== false,
         locked: !!ui.locked,
+        blocks,
       };
     }
 
@@ -3464,6 +3484,37 @@
       const towersWrap = document.getElementById('agendaTowersWrap');
       if (pizzaWrap) pizzaWrap.hidden = ui.chart !== 'pizza';
       if (towersWrap) towersWrap.hidden = ui.chart !== 'towers';
+
+      const layoutEl = document.getElementById('agendaLayout');
+      if (layoutEl) {
+        const blocks = ui.blocks || [];
+        const has = blocks.length > 0 && CURRENT_VIEW === 'agendamento';
+        layoutEl.classList.toggle('has-blocks', has);
+        layoutEl.querySelectorAll('[data-block]').forEach((el) => {
+          el.style.gridColumn = '';
+          el.style.gridRow = '';
+          const id = el.getAttribute('data-block');
+          const b = blocks.find((x) => String(x.id) === id);
+          if (!has || !b) {
+            el.hidden = false;
+            return;
+          }
+          el.hidden = b.visible === false;
+          const x = Math.max(0, Number(b.x) || 0) + 1;
+          const y = Math.max(0, Number(b.y) || 0) + 1;
+          const w = Math.max(1, Number(b.w) || 1);
+          const h = Math.max(1, Number(b.h) || 1);
+          el.style.gridColumn = x + ' / span ' + w;
+          el.style.gridRow = y + ' / span ' + h;
+        });
+        if (has) {
+          const by = Object.fromEntries(blocks.map((b) => [b.id, b]));
+          if (by.kpis && by.kpis.visible === false) document.body.classList.add('dash-hide-kpis');
+          if (by.chart && by.chart.visible === false) document.body.classList.add('dash-hide-chart');
+          if (by.amanha && by.amanha.visible === false) document.body.classList.add('dash-hide-amanha');
+          if (by.status && by.status.visible === false) document.body.classList.add('dash-hide-status');
+        }
+      }
     }
 
     function applyTvChrome() {
