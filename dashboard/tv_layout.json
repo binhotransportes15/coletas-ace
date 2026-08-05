@@ -132,7 +132,35 @@
           }
         ]
       },
-      "views": {}
+      "views": {
+        "patio": {
+          "chart": "towers",
+          "scale": "large",
+          "showKpis": true,
+          "showChart": true,
+          "showAmanha": true,
+          "showStatus": true,
+          "locked": false,
+          "blocks": [
+            {"id": "kpis", "label": "KPIs pátio", "x": 0, "y": 0, "w": 12, "h": 3, "visible": true},
+            {"id": "chart", "label": "Descarga", "x": 0, "y": 3, "w": 12, "h": 4, "visible": true},
+            {"id": "tabela", "label": "Veículos", "x": 0, "y": 7, "w": 12, "h": 5, "visible": true}
+          ]
+        },
+        "conferentes": {
+          "chart": "towers",
+          "scale": "large",
+          "showKpis": true,
+          "showChart": true,
+          "showAmanha": true,
+          "showStatus": true,
+          "locked": false,
+          "blocks": [
+            {"id": "kpis", "label": "KPIs 177", "x": 0, "y": 0, "w": 12, "h": 2, "visible": true},
+            {"id": "chart", "label": "Ranking", "x": 0, "y": 2, "w": 12, "h": 10, "visible": true}
+          ]
+        }
+      }
     },
     "contratacao": {
       "showLogo": true,
@@ -201,8 +229,8 @@
       "row": 0,
       "col": 0,
       "sector": "armazem",
-      "mode": "fixed",
-      "view": "coleta",
+      "mode": "rotate",
+      "view": "patio",
       "showLogo": null,
       "margins": null
     },

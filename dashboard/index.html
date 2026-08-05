@@ -4262,10 +4262,10 @@
       const ranked = (rows || [])
         .map((r) => ({
           rank: Number(r.rank) || 0,
-          nome: String(r.conferente || r.nome || r.login || '').trim() || '—',
+          nome: String(r.nome || r.conferente || r.login || '').trim() || '—',
           login: String(r.login || '').trim(),
           unidade: String(r.unidade || '').trim(),
-          kg: String(r.peso_lidos_fmt || r.peso_lidos || '0'),
+          kg: String(r.peso_lidos_fmt || r.peso_lidos || '0').replace(/\s*kg$/i, ''),
           peso: Number(r.peso_lidos) || 0,
         }))
         .filter((r) => r.peso > 0)
