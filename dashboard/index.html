@@ -813,7 +813,7 @@
       padding: 0 !important;
       gap: 0 !important;
     }
-    /* Com margem: respiro / moldura */
+    /* Com margem: moldura quadrada (estilo painel industrial) */
     body.tv-mode:not(.tv-no-margins) .board,
     body.tv-mode:not(.tv-no-margins) #panel-operacao,
     body.tv-mode:not(.tv-no-margins) #panel-armazem {
@@ -821,21 +821,27 @@
       max-width: none !important;
       height: 100dvh !important;
       margin: 0 !important;
-      padding: 10px 14px !important;
-      gap: 10px !important;
+      padding: 12px !important;
+      gap: 8px !important;
       box-sizing: border-box;
+      background:
+        linear-gradient(#050a14, #050a14) padding-box,
+        linear-gradient(180deg, #1e3a5f, #0b1220) border-box;
     }
     body.tv-mode:not(.tv-no-margins) .arm-wrap {
-      height: calc(100dvh - 20px) !important;
-      padding: 12px 14px !important;
-      gap: 10px !important;
-      max-width: 1680px !important;
-      margin: 0 auto !important;
+      height: 100% !important;
+      padding: 0 !important;
+      gap: 8px !important;
+      max-width: none !important;
+      margin: 0 !important;
       width: 100% !important;
     }
     body.tv-mode:not(.tv-no-margins) .topbar,
     body.tv-mode:not(.tv-no-margins) .arm-top {
-      border-radius: 14px !important;
+      border-radius: 0 !important;
+      border: 1px solid #1e3a5f !important;
+      background: linear-gradient(180deg, #0f1a2c, #0a1220) !important;
+      box-shadow: none !important;
     }
     body.tv-mode .arena,
     body.tv-mode .agenda-arena {
@@ -854,6 +860,124 @@
     }
     body.tv-mode .zone {
       border-radius: 0 !important;
+    }
+
+    /* TV profissional: cantos quadrados em tudo + tipografia de painel */
+    body.tv-mode,
+    body.tv-mode * {
+      border-radius: 0 !important;
+    }
+    body.tv-mode .topbar,
+    body.tv-mode .arm-top,
+    body.tv-mode .resumo-card,
+    body.tv-mode .arm-kpi,
+    body.tv-mode .agenda-kpi,
+    body.tv-mode .arm-hero-card,
+    body.tv-mode .arm-panel,
+    body.tv-mode .arm-podium-slot,
+    body.tv-mode .arm-rank-list,
+    body.tv-mode .zone,
+    body.tv-mode .zone-head,
+    body.tv-mode .pop-card,
+    body.tv-mode .clock-box,
+    body.tv-mode .nav-btn,
+    body.tv-mode .torre,
+    body.tv-mode .cyl-wrap,
+    body.tv-mode .agenda-layout .dash-block,
+    body.tv-mode .arm-layout .dash-block {
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    body.tv-mode .topbar,
+    body.tv-mode .arm-top {
+      border: 1px solid #1a2f4a !important;
+      background: linear-gradient(180deg, #0d1626 0%, #081018 100%) !important;
+      padding: 8px 14px !important;
+    }
+    body.tv-mode .brand .title,
+    body.tv-mode .arm-brand h1 {
+      letter-spacing: 0.12em !important;
+      font-weight: 800 !important;
+      text-transform: uppercase;
+    }
+    body.tv-mode .brand .kicker,
+    body.tv-mode .arm-brand .kicker {
+      letter-spacing: 0.18em !important;
+      color: #64748b !important;
+    }
+    body.tv-mode .resumo-card,
+    body.tv-mode .arm-kpi,
+    body.tv-mode .agenda-kpi,
+    body.tv-mode .arm-hero-card,
+    body.tv-mode .arm-panel,
+    body.tv-mode .zone {
+      border: 1px solid #1a2f4a !important;
+      background: #0a121e !important;
+    }
+    body.tv-mode .resumo-card,
+    body.tv-mode .arm-hero-card > header,
+    body.tv-mode .arm-panel > header,
+    body.tv-mode .zone-head {
+      border-bottom: 1px solid #16304a !important;
+    }
+    body.tv-mode .arm-kpi .lbl,
+    body.tv-mode .agenda-kpi span,
+    body.tv-mode .resumo-total span,
+    body.tv-mode .resumo-stats span {
+      letter-spacing: 0.1em !important;
+      text-transform: uppercase;
+      font-weight: 700 !important;
+    }
+    body.tv-mode .arm-kpi .val,
+    body.tv-mode .agenda-kpi b,
+    body.tv-mode .resumo-total strong,
+    body.tv-mode .resumo-stats b {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+    }
+    body.tv-mode .arm-podium-slot {
+      border: 1px solid #1a2f4a !important;
+      background: linear-gradient(180deg, #101c30, #0a121e) !important;
+    }
+    body.tv-mode .arm-rank-list {
+      border: 1px solid #1a2f4a !important;
+      background: #070e18 !important;
+    }
+    body.tv-mode .arm-rank-head {
+      background: #0d1626 !important;
+      border-bottom: 1px solid #1a2f4a !important;
+    }
+    body.tv-mode .clock-box {
+      border: 1px solid #1a2f4a !important;
+      background: #0a121e !important;
+      padding: 6px 10px !important;
+    }
+    body.tv-mode .nav-btn {
+      border: 1px solid #1a2f4a !important;
+      background: #0a121e !important;
+    }
+    body.tv-mode .arm-layout,
+    body.tv-mode .agenda-layout.has-blocks {
+      gap: 8px !important;
+    }
+    body.tv-mode .arm-kpis,
+    body.tv-mode .agenda-kpis {
+      gap: 8px !important;
+    }
+    /* Separadores finos estilo wallboard */
+    body.tv-mode .arm-layout.has-blocks .dash-block,
+    body.tv-mode .agenda-layout.has-blocks .dash-block {
+      outline: 1px solid rgba(30, 58, 95, 0.55);
+    }
+    body.tv-mode table th {
+      background: #0d1626 !important;
+      border-bottom: 1px solid #1e3a5f !important;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 11px !important;
+    }
+    body.tv-mode table td {
+      border-bottom: 1px solid #132033 !important;
     }
 
     /* Parede 2×3: cada TV mostra um pedaço do mesmo dashboard */

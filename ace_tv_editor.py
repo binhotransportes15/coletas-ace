@@ -449,7 +449,7 @@ class TvEditorDialog(QDialog):
         self.tv_margins = QComboBox()
         self.tv_margins.addItem("Padrão do setor", "inherit")
         self.tv_margins.addItem("Sem margem", "none")
-        self.tv_margins.addItem("Com margem", "normal")
+        self.tv_margins.addItem("Com margem quadrada", "normal")
         self.tv_margins.currentIndexChanged.connect(self._wall_slot_changed)
 
         form.addRow("Setor desta TV", self.tv_sector)
@@ -530,7 +530,7 @@ class TvEditorDialog(QDialog):
 
         self.dash_margins = QComboBox()
         self.dash_margins.addItem("Sem margem (borda a borda)", "none")
-        self.dash_margins.addItem("Com margem", "normal")
+        self.dash_margins.addItem("Com margem quadrada", "normal")
         self.dash_margins.currentIndexChanged.connect(self._dash_chrome_changed)
 
         form.addRow("Logo (setor)", self.dash_logo)
