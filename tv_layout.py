@@ -25,6 +25,7 @@ SECTOR_IDS = (
     "emissao",
 )
 OPS_VIEWS = ("coleta", "entrega", "agendamento")
+ARM_VIEWS = ("patio", "conferentes")
 SECTOR_LABELS = {
     "distribuicao": "Distribuição",
     "armazem": "Armazém",
@@ -36,13 +37,19 @@ SECTOR_LABELS = {
 
 
 def _slot(sid: int, row: int, col: int, sector: str = "distribuicao") -> dict[str, Any]:
+    if sector == "distribuicao":
+        mode, view = "rotate", "coleta"
+    elif sector == "armazem":
+        mode, view = "rotate", "patio"
+    else:
+        mode, view = "fixed", "coleta"
     return {
         "id": sid,
         "row": row,
         "col": col,
         "sector": sector,
-        "mode": "rotate" if sector == "distribuicao" else "fixed",
-        "view": "coleta",
+        "mode": mode,
+        "view": view,
         "showLogo": None,
         "margins": None,
     }
@@ -130,13 +137,20 @@ def default_layout() -> dict[str, Any]:
                 "showLogo": True,
                 "margins": "none" if sid == "distribuicao" else "normal",
                 "ui": _default_view_ui("towers" if sid == "armazem" else "towers"),
-                "views": {
-                    "coleta": _default_view_ui("towers"),
-                    "entrega": _default_view_ui("towers"),
-                    "agendamento": _default_view_ui("towers"),
-                }
-                if sid == "distribuicao"
-                else {},
+                "views": (
+                    {
+                        "coleta": _default_view_ui("towers"),
+                        "entrega": _default_view_ui("towers"),
+                        "agendamento": _default_view_ui("towers"),
+                    }
+                    if sid == "distribuicao"
+                    else {
+                        "patio": _default_view_ui("towers"),
+                        "conferentes": _default_view_ui("towers"),
+                    }
+                    if sid == "armazem"
+                    else {}
+                ),
             }
             for sid in SECTOR_IDS
         },
@@ -160,10 +174,20 @@ def _migrate_legacy_slot(s: dict[str, Any], template: dict[str, Any]) -> dict[st
         sector = str(template.get("sector") or "distribuicao")
     if mode not in ("rotate", "fixed"):
         mode = "rotate"
-    if view not in OPS_VIEWS:
+    if sector == "armazem":
+        if view in ("armazem", "descarga", "078", "veiculos"):
+            view = "patio"
+        if view in ("conferente", "177"):
+            view = "conferentes"
+        if view not in ARM_VIEWS:
+            view = "patio"
+        if mode not in ("rotate", "fixed"):
+            mode = "rotate"
+    elif view not in OPS_VIEWS:
         view = "coleta"
-    if sector != "distribuicao":
+    if sector not in ("distribuicao", "armazem"):
         mode = "fixed"
+        view = "coleta"
 
     show = s.get("showLogo", None)
     if show is not None:
@@ -227,6 +251,12 @@ def normalize_layout(raw: dict[str, Any] | None) -> dict[str, Any]:
                     views_in.get(v),
                     (base_d.get("views") or {}).get(v) or _default_view_ui("towers"),
                 )
+        elif sid == "armazem":
+            for v in ARM_VIEWS:
+                views_out[v] = _normalize_view_ui(
+                    views_in.get(v),
+                    (base_d.get("views") or {}).get(v) or _default_view_ui("towers"),
+                )
         out["sectorDefaults"][sid] = {
             "showLogo": bool(d.get("showLogo", base_d["showLogo"])),
             "margins": "none" if str(d.get("margins", base_d["margins"])) == "none" else "normal",
@@ -285,14 +315,24 @@ def resolve_slot(layout: dict[str, Any], slot_id: int) -> dict[str, Any]:
         show_logo = int(slot["row"]) == 0 and int(slot["col"]) == 0
         margins = "none"
         mosaic = True
-        mode = "rotate" if sector == "distribuicao" else "fixed"
-        view = "coleta"
+        if sector == "distribuicao":
+            mode, view = "rotate", "coleta"
+        elif sector == "armazem":
+            mode, view = "rotate", "patio"
+        else:
+            mode, view = "fixed", "coleta"
     else:
         show_logo = defaults["showLogo"] if slot["showLogo"] is None else bool(slot["showLogo"])
         margins = defaults["margins"] if slot["margins"] is None else slot["margins"]
         mosaic = False
-        mode = slot["mode"] if sector == "distribuicao" else "fixed"
-        view = slot["view"] if sector == "distribuicao" else "coleta"
+        if sector == "distribuicao":
+            mode = slot["mode"] if slot["mode"] in ("rotate", "fixed") else "rotate"
+            view = slot["view"] if slot["view"] in OPS_VIEWS else "coleta"
+        elif sector == "armazem":
+            mode = slot["mode"] if slot["mode"] in ("rotate", "fixed") else "rotate"
+            view = slot["view"] if slot["view"] in ARM_VIEWS else "patio"
+        else:
+            mode, view = "fixed", "coleta"
 
     return {
         "slotId": int(slot["id"]),
@@ -306,7 +346,7 @@ def resolve_slot(layout: dict[str, Any], slot_id: int) -> dict[str, Any]:
         "col": int(slot.get("col") or 0),
         "showLogo": show_logo,
         "margins": margins,
-        "syncSwap": bool(lay["syncSwap"]) and wall and sector == "distribuicao",
+        "syncSwap": bool(lay["syncSwap"]) and wall and sector in ("distribuicao", "armazem"),
         "swapMs": int(lay["swapMs"]),
         "layoutVersion": int(lay.get("version") or 1),
         "updatedAt": str(lay.get("updatedAt") or ""),
@@ -323,7 +363,7 @@ def wall_on(layout: dict[str, Any], sector: str) -> dict[str, Any]:
         chosen = "distribuicao"
     out["wallMode"] = True
     out["wallSector"] = chosen
-    out["syncSwap"] = chosen == "distribuicao"
+    out["syncSwap"] = chosen in ("distribuicao", "armazem")
     sd = out.setdefault("sectorDefaults", {})
     sd[chosen] = {"showLogo": True, "margins": "none"}
     return out

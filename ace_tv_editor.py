@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 )
 
 from tv_layout import (
+    ARM_VIEWS,
     SECTOR_LABELS,
     default_view_ui,
     load_layout,
@@ -64,6 +65,15 @@ BLOCK_DEFS: dict[str, list[dict[str, Any]]] = {
         {"id": "kpis", "label": "KPIs armazém", "x": 0, "y": 0, "w": 12, "h": 3},
         {"id": "chart", "label": "Gráfico", "x": 0, "y": 3, "w": 7, "h": 9},
         {"id": "tabela", "label": "Tabela veículos", "x": 7, "y": 3, "w": 5, "h": 9},
+    ],
+    "armazem:patio": [
+        {"id": "kpis", "label": "KPIs pátio", "x": 0, "y": 0, "w": 12, "h": 3},
+        {"id": "chart", "label": "Descarga", "x": 0, "y": 3, "w": 12, "h": 4},
+        {"id": "tabela", "label": "Veículos", "x": 0, "y": 7, "w": 12, "h": 5},
+    ],
+    "armazem:conferentes": [
+        {"id": "kpis", "label": "KPIs 177", "x": 0, "y": 0, "w": 12, "h": 2},
+        {"id": "chart", "label": "Ranking", "x": 0, "y": 2, "w": 12, "h": 10},
     ],
 }
 
@@ -370,10 +380,7 @@ class TvEditorDialog(QDialog):
         self.tv_sector.currentIndexChanged.connect(self._wall_slot_changed)
 
         self.tv_view = QComboBox()
-        self.tv_view.addItem("Girar Coleta → Entrega → Agenda", "rotate")
-        self.tv_view.addItem("Só Coleta", "coleta")
-        self.tv_view.addItem("Só Entrega", "entrega")
-        self.tv_view.addItem("Só Agendamento", "agendamento")
+        self._fill_tv_view_combo("distribuicao")
         self.tv_view.currentIndexChanged.connect(self._wall_slot_changed)
 
         self.tv_logo = QComboBox()
@@ -383,11 +390,11 @@ class TvEditorDialog(QDialog):
         self.tv_logo.currentIndexChanged.connect(self._wall_slot_changed)
 
         form.addRow("Setor desta TV", self.tv_sector)
-        form.addRow("Tela (Distribuição)", self.tv_view)
+        form.addRow("Tela / rotação", self.tv_view)
         form.addRow("Logo", self.tv_logo)
         lay.addLayout(form)
 
-        self.tv_sync = QCheckBox("Sincronizar Coleta/Entrega/Agenda na parede Distribuição")
+        self.tv_sync = QCheckBox("Sincronizar rotação nas TVs (parede Dist/Armazém)")
         self.tv_sync.stateChanged.connect(self._wall_global_changed)
         lay.addWidget(self.tv_sync)
 
@@ -431,9 +438,7 @@ class TvEditorDialog(QDialog):
         self.dash_sector.currentIndexChanged.connect(self._dash_context_changed)
 
         self.dash_view = QComboBox()
-        self.dash_view.addItem("Coleta", "coleta")
-        self.dash_view.addItem("Entrega", "entrega")
-        self.dash_view.addItem("Agendamento", "agendamento")
+        self._fill_dash_view_combo("distribuicao")
         self.dash_view.currentIndexChanged.connect(self._dash_context_changed)
 
         self.dash_chart = QComboBox()
@@ -501,10 +506,47 @@ class TvEditorDialog(QDialog):
         return wrap
 
     # ── data helpers ───────────────────────────────────────────────
+    def _fill_tv_view_combo(self, sector: str) -> None:
+        self.tv_view.blockSignals(True)
+        self.tv_view.clear()
+        if sector == "distribuicao":
+            self.tv_view.addItem("Girar Coleta → Entrega → Agenda", "rotate")
+            self.tv_view.addItem("Só Coleta", "coleta")
+            self.tv_view.addItem("Só Entrega", "entrega")
+            self.tv_view.addItem("Só Agendamento", "agendamento")
+        elif sector == "armazem":
+            self.tv_view.addItem("Girar Armazém ↔ Conferentes", "rotate")
+            self.tv_view.addItem("Só Armazém (pátio)", "patio")
+            self.tv_view.addItem("Só Conferentes", "conferentes")
+        else:
+            self.tv_view.addItem("Tela única", "fixed")
+        self.tv_view.blockSignals(False)
+
+    def _fill_dash_view_combo(self, sector: str) -> None:
+        self.dash_view.blockSignals(True)
+        cur = self.dash_view.currentData()
+        self.dash_view.clear()
+        if sector == "distribuicao":
+            self.dash_view.addItem("Coleta", "coleta")
+            self.dash_view.addItem("Entrega", "entrega")
+            self.dash_view.addItem("Agendamento", "agendamento")
+        elif sector == "armazem":
+            self.dash_view.addItem("Armazém (pátio)", "patio")
+            self.dash_view.addItem("Conferentes", "conferentes")
+        else:
+            self.dash_view.addItem("Padrão", "default")
+        if cur is not None:
+            i = self.dash_view.findData(cur)
+            if i >= 0:
+                self.dash_view.setCurrentIndex(i)
+        self.dash_view.blockSignals(False)
+
     def _dash_key(self) -> str:
         sector = str(self.dash_sector.currentData() or "distribuicao")
         if sector == "distribuicao":
             return f"distribuicao:{self.dash_view.currentData() or 'agendamento'}"
+        if sector == "armazem":
+            return f"armazem:{self.dash_view.currentData() or 'patio'}"
         return sector
 
     def _ui_bucket(self) -> dict[str, Any]:
@@ -514,8 +556,9 @@ class TvEditorDialog(QDialog):
             sector,
             {"showLogo": True, "margins": "none", "ui": default_view_ui(), "views": {}},
         )
-        if sector == "distribuicao":
-            view = str(self.dash_view.currentData() or "agendamento")
+        if sector in ("distribuicao", "armazem"):
+            default_view = "agendamento" if sector == "distribuicao" else "patio"
+            view = str(self.dash_view.currentData() or default_view)
             views = bucket.setdefault("views", {})
             if view not in views or not isinstance(views.get(view), dict):
                 views[view] = default_view_ui("towers")
@@ -574,12 +617,13 @@ class TvEditorDialog(QDialog):
         if si >= 0:
             self.tv_sector.setCurrentIndex(si)
         sector = str(slot.get("sector") or "distribuicao")
-        self.tv_view.setEnabled(sector == "distribuicao")
-        if sector == "distribuicao":
+        self._fill_tv_view_combo(sector)
+        self.tv_view.setEnabled(sector in ("distribuicao", "armazem"))
+        if sector in ("distribuicao", "armazem"):
             if slot.get("mode") == "rotate":
                 v = "rotate"
             else:
-                v = str(slot.get("view") or "coleta")
+                v = str(slot.get("view") or ("patio" if sector == "armazem" else "coleta"))
             vi = self.tv_view.findData(v)
             if vi >= 0:
                 self.tv_view.setCurrentIndex(vi)
@@ -602,7 +646,8 @@ class TvEditorDialog(QDialog):
             return
         sector = str(self.tv_sector.currentData() or "distribuicao")
         slot["sector"] = sector
-        self.tv_view.setEnabled(sector == "distribuicao")
+        self._fill_tv_view_combo(sector)
+        self.tv_view.setEnabled(sector in ("distribuicao", "armazem"))
         if sector == "distribuicao":
             vkey = str(self.tv_view.currentData() or "rotate")
             if vkey == "rotate":
@@ -611,6 +656,14 @@ class TvEditorDialog(QDialog):
             else:
                 slot["mode"] = "fixed"
                 slot["view"] = vkey
+        elif sector == "armazem":
+            vkey = str(self.tv_view.currentData() or "rotate")
+            if vkey == "rotate":
+                slot["mode"] = "rotate"
+                slot["view"] = "patio"
+            else:
+                slot["mode"] = "fixed"
+                slot["view"] = vkey if vkey in ARM_VIEWS else "patio"
         else:
             slot["mode"] = "fixed"
             slot["view"] = "coleta"
@@ -626,7 +679,7 @@ class TvEditorDialog(QDialog):
     def _wall_on(self) -> None:
         sector = str(self.wall_sector.currentData() or "distribuicao")
         self._layout = wall_on(self._layout, sector)
-        if sector == "distribuicao":
+        if sector in ("distribuicao", "armazem"):
             self.tv_sync.setChecked(True)
             self._layout["syncSwap"] = True
         self._refresh_slot_labels()
@@ -638,7 +691,8 @@ class TvEditorDialog(QDialog):
     def _load_dash_into_form(self) -> None:
         self._loading = True
         sector = str(self.dash_sector.currentData() or "distribuicao")
-        self.dash_view.setEnabled(sector == "distribuicao")
+        self._fill_dash_view_combo(sector)
+        self.dash_view.setEnabled(sector in ("distribuicao", "armazem"))
         ui = self._ui_bucket()
         key = self._dash_key()
         blocks = merge_blocks(ui.get("blocks"), key)
