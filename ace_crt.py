@@ -47,12 +47,238 @@ _ROOT = Path(__file__).resolve().parent
 _CUBES = _ROOT / "assets" / "cubes-binho.png"
 _LOGO = _ROOT / "assets" / "logo-binho.png"
 
-BG = "#050805"
-PANEL = "#0a100c"
-LINE = "#1a3d28"
-NEON = "#39ff14"
-DIM = "#6b8f71"
-MUTED = "#3d5c45"
+# Temas do CRT (fundo + texto + accentos)
+CRT_THEMES: dict[str, dict[str, object]] = {
+    "binho": {
+        "label": "Escuro BINHO",
+        "bg": "#050805",
+        "panel": "#0a100c",
+        "line": "#1a3d28",
+        "text": "#39ff14",
+        "dim": "#6b8f71",
+        "muted": "#3d5c45",
+        "input_bg": "#07110a",
+        "input_text": "#8b1a1a",
+        "btn_bg": "#07140c",
+        "btn_hover": "#0d2416",
+        "btn_press": "#11301c",
+        "btn_dis_bd": "#102016",
+        "sel": "#1a5c36",
+        "prog_bg": "#07110a",
+        "chunk0": "#009245",
+        "chunk1": "#00ff66",
+        "chunk2": "#8cc63f",
+        "scan": True,
+    },
+    "painel": {
+        "label": "Azul painel",
+        "bg": "#050a14",
+        "panel": "#0a121e",
+        "line": "#1a2f4a",
+        "text": "#7dd3fc",
+        "dim": "#94a3b8",
+        "muted": "#64748b",
+        "input_bg": "#071018",
+        "input_text": "#e2e8f0",
+        "btn_bg": "#0c1624",
+        "btn_hover": "#132338",
+        "btn_press": "#1a3250",
+        "btn_dis_bd": "#0f1a28",
+        "sel": "#0c4a6e",
+        "prog_bg": "#071018",
+        "chunk0": "#0369a1",
+        "chunk1": "#38bdf8",
+        "chunk2": "#7dd3fc",
+        "scan": True,
+    },
+    "ops": {
+        "label": "Verde ops",
+        "bg": "#080b09",
+        "panel": "#0e1511",
+        "line": "#2a4032",
+        "text": "#c4ff4d",
+        "dim": "#9caf88",
+        "muted": "#5c6f58",
+        "input_bg": "#0a100c",
+        "input_text": "#e8f5c8",
+        "btn_bg": "#101a14",
+        "btn_hover": "#1a2a1e",
+        "btn_press": "#243828",
+        "btn_dis_bd": "#121a14",
+        "sel": "#3f6212",
+        "prog_bg": "#0a100c",
+        "chunk0": "#65a30d",
+        "chunk1": "#a3e635",
+        "chunk2": "#d9f99d",
+        "scan": True,
+    },
+    "claro": {
+        "label": "Claro",
+        "bg": "#e8edf2",
+        "panel": "#f5f7fa",
+        "line": "#c5d0dc",
+        "text": "#0f172a",
+        "dim": "#475569",
+        "muted": "#64748b",
+        "input_bg": "#ffffff",
+        "input_text": "#0f172a",
+        "btn_bg": "#ffffff",
+        "btn_hover": "#e2e8f0",
+        "btn_press": "#cbd5e1",
+        "btn_dis_bd": "#dbe3ec",
+        "sel": "#bae6fd",
+        "prog_bg": "#dde5ee",
+        "chunk0": "#0284c7",
+        "chunk1": "#0ea5e9",
+        "chunk2": "#38bdf8",
+        "scan": False,
+    },
+}
+
+DEFAULT_CRT_THEME = "binho"
+
+
+def build_crt_stylesheet(theme_id: str = DEFAULT_CRT_THEME) -> str:
+    t = CRT_THEMES.get(theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
+    return f"""
+QWidget {{
+    background: {t['bg']};
+    color: {t['text']};
+    font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace;
+    font-size: 12px;
+}}
+QFrame#panel, QFrame#side {{
+    background: {t['panel']};
+    border: 1px solid {t['line']};
+}}
+QLabel#title {{
+    color: {t['text']};
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}}
+QLabel#mode {{
+    color: {t['dim']};
+    font-size: 11px;
+    letter-spacing: 1px;
+}}
+QLabel#status {{
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 3px;
+}}
+QLabel#detail, QLabel#hint {{
+    color: {t['dim']};
+    font-size: 11px;
+}}
+QLabel#section {{
+    color: {t['text']};
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 4px 0;
+}}
+QLabel#foot {{
+    color: {t['muted']};
+    font-size: 10px;
+}}
+QProgressBar {{
+    background: {t['prog_bg']};
+    border: 1px solid {t['line']};
+    border-radius: 0;
+    text-align: center;
+    color: {t['text']};
+    height: 16px;
+    font-size: 10px;
+}}
+QProgressBar::chunk {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 {t['chunk0']}, stop:0.55 {t['chunk1']}, stop:1 {t['chunk2']});
+}}
+QPushButton {{
+    background: {t['btn_bg']};
+    color: {t['text']};
+    border: 1px solid {t['line']};
+    padding: 7px 10px;
+    text-align: left;
+}}
+QPushButton:hover {{
+    background: {t['btn_hover']};
+    border-color: {t['text']};
+}}
+QPushButton:pressed {{
+    background: {t['btn_press']};
+}}
+QPushButton:disabled {{
+    color: {t['muted']};
+    border-color: {t['btn_dis_bd']};
+}}
+QPushButton#primary {{
+    background: {t['btn_hover']};
+    font-weight: 700;
+}}
+QLineEdit, QTextEdit, QComboBox {{
+    background: {t['input_bg']};
+    color: {t['input_text']};
+    border: 1px solid {t['line']};
+    selection-background-color: {t['sel']};
+    padding: 4px 6px;
+}}
+QComboBox QAbstractItemView {{
+    background: {t['input_bg']};
+    color: {t['input_text']};
+    selection-background-color: {t['sel']};
+}}
+QLineEdit:focus, QTextEdit:focus, QComboBox:focus {{
+    border-color: {t['text']};
+}}
+QCheckBox {{
+    color: {t['dim']};
+    spacing: 8px;
+}}
+QCheckBox::indicator {{
+    width: 14px;
+    height: 14px;
+    border: 1px solid {t['line']};
+    background: {t['input_bg']};
+}}
+QCheckBox::indicator:checked {{
+    background: {t['text']};
+}}
+QTabWidget::pane {{
+    border: 1px solid {t['line']};
+    background: {t['panel']};
+}}
+QTabBar::tab {{
+    background: {t['input_bg']};
+    color: {t['dim']};
+    border: 1px solid {t['line']};
+    padding: 8px 14px;
+    margin-right: 2px;
+}}
+QTabBar::tab:selected {{
+    color: {t['text']};
+    background: {t['panel']};
+    border-bottom-color: {t['panel']};
+}}
+QScrollArea {{
+    border: none;
+    background: transparent;
+}}
+QSplitter::handle {{
+    background: {t['line']};
+    width: 2px;
+}}
+"""
+
+
+# Compat: constantes antigas = tema BINHO (widgets que ainda referem)
+BG = str(CRT_THEMES[DEFAULT_CRT_THEME]["bg"])
+PANEL = str(CRT_THEMES[DEFAULT_CRT_THEME]["panel"])
+LINE = str(CRT_THEMES[DEFAULT_CRT_THEME]["line"])
+NEON = str(CRT_THEMES[DEFAULT_CRT_THEME]["text"])
+DIM = str(CRT_THEMES[DEFAULT_CRT_THEME]["dim"])
+MUTED = str(CRT_THEMES[DEFAULT_CRT_THEME]["muted"])
 WARN = "#c4ff4d"
 OFF = "#8b1a1a"
 SCAN = QColor(0, 0, 0, 90)
@@ -126,135 +352,20 @@ def _resolve_friendly_cmd(raw: str) -> str:
 
 ERR = "#ed1c24"
 
-STYLESHEET = f"""
-QWidget {{
-    background: {BG};
-    color: {NEON};
-    font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace;
-    font-size: 12px;
-}}
-QFrame#panel, QFrame#side {{
-    background: {PANEL};
-    border: 1px solid {LINE};
-}}
-QLabel#title {{
-    color: {NEON};
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 2px;
-}}
-QLabel#mode {{
-    color: {DIM};
-    font-size: 11px;
-    letter-spacing: 1px;
-}}
-QLabel#status {{
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: 3px;
-}}
-QLabel#detail, QLabel#hint {{
-    color: {DIM};
-    font-size: 11px;
-}}
-QLabel#section {{
-    color: {NEON};
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    padding: 4px 0;
-}}
-QLabel#foot {{
-    color: {MUTED};
-    font-size: 10px;
-}}
-QProgressBar {{
-    background: #07110a;
-    border: 1px solid {LINE};
-    border-radius: 0;
-    text-align: center;
-    color: {NEON};
-    height: 16px;
-    font-size: 10px;
-}}
-QProgressBar::chunk {{
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 #009245, stop:0.55 #00ff66, stop:1 #8cc63f);
-}}
-QPushButton {{
-    background: #07140c;
-    color: {NEON};
-    border: 1px solid {LINE};
-    padding: 7px 10px;
-    text-align: left;
-}}
-QPushButton:hover {{
-    background: #0d2416;
-    border-color: {NEON};
-}}
-QPushButton:pressed {{
-    background: #11301c;
-}}
-QPushButton:disabled {{
-    color: {MUTED};
-    border-color: #102016;
-}}
-QPushButton#primary {{
-    background: #0d2416;
-    font-weight: 700;
-}}
-QLineEdit, QTextEdit, QComboBox {{
-    background: #07110a;
-    color: {OFF};
-    border: 1px solid {LINE};
-    selection-background-color: #1a5c36;
-    padding: 4px 6px;
-}}
-QLineEdit:focus, QTextEdit:focus, QComboBox:focus {{
-    border-color: {NEON};
-}}
-QCheckBox {{
-    color: {DIM};
-    spacing: 8px;
-}}
-QCheckBox::indicator {{
-    width: 14px;
-    height: 14px;
-    border: 1px solid {LINE};
-    background: #07110a;
-}}
-QCheckBox::indicator:checked {{
-    background: {NEON};
-}}
-QTabWidget::pane {{
-    border: 1px solid {LINE};
-    background: {PANEL};
-}}
-QTabBar::tab {{
-    background: #07110a;
-    color: {DIM};
-    border: 1px solid {LINE};
-    padding: 8px 14px;
-    margin-right: 2px;
-}}
-QTabBar::tab:selected {{
-    color: {NEON};
-    background: {PANEL};
-    border-bottom-color: {PANEL};
-}}
-QScrollArea {{
-    border: none;
-    background: transparent;
-}}
-QSplitter::handle {{
-    background: {LINE};
-    width: 2px;
-}}
-"""
-
 
 class Scanlines(QWidget):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._enabled = True
+
+    def set_enabled(self, on: bool) -> None:
+        self._enabled = bool(on)
+        self.setVisible(self._enabled)
+        self.update()
+
     def paintEvent(self, event) -> None:  # noqa: N802
+        if not self._enabled:
+            return
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, False)
         pen = QPen(QColor(0, 0, 0, 40))
@@ -331,7 +442,8 @@ class AceCrtConsole(QWidget):
         self.setWindowTitle("BINHO · Gestão")
         self.resize(1180, 680)
         self.setMinimumSize(980, 560)
-        self.setStyleSheet(STYLESHEET)
+        self._theme_id = DEFAULT_CRT_THEME
+        self.setStyleSheet(build_crt_stylesheet(self._theme_id))
 
         self.payload: dict = {}
         self._worker: CmdWorker | None = None
@@ -364,6 +476,17 @@ class AceCrtConsole(QWidget):
         self.mode.setObjectName("mode")
         self.mode.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         head.addWidget(self.title)
+        head.addStretch(1)
+        lab_theme = QLabel("Tema")
+        lab_theme.setObjectName("mode")
+        self.cmb_theme = QComboBox()
+        for tid, meta in CRT_THEMES.items():
+            self.cmb_theme.addItem(str(meta["label"]), tid)
+        self.cmb_theme.setMinimumWidth(140)
+        self.cmb_theme.currentIndexChanged.connect(self._on_theme_combo)
+        head.addWidget(lab_theme)
+        head.addWidget(self.cmb_theme)
+        head.addSpacing(12)
         head.addWidget(self.mode)
         root.addLayout(head)
 
@@ -546,6 +669,13 @@ class AceCrtConsole(QWidget):
 
         self.chk_viz = QCheckBox("Mostrar navegador ao trabalhar")
         form.addRow(self._section("Tela"), self.chk_viz)
+
+        form.addRow(self._section("Aparência"))
+        self.cmb_theme_cfg = QComboBox()
+        for tid, meta in CRT_THEMES.items():
+            self.cmb_theme_cfg.addItem(str(meta["label"]), tid)
+        self.cmb_theme_cfg.currentIndexChanged.connect(self._on_theme_combo_cfg)
+        form.addRow("Tema do painel", self.cmb_theme_cfg)
 
         scroll.setWidget(body)
         outer.addWidget(scroll, 1)
@@ -801,8 +931,48 @@ class AceCrtConsole(QWidget):
             elif isinstance(w, QLineEdit):
                 w.setText("" if val is None else str(val))
         self.chk_viz.setChecked(not bool(self.payload.get("headless", True)))
+        theme = str(self.payload.get("crt_theme") or DEFAULT_CRT_THEME)
+        if theme not in CRT_THEMES:
+            theme = DEFAULT_CRT_THEME
+        self._apply_theme(theme, persist=False)
         self._update_meta()
         self._append_log("config", "Configuração recarregada.")
+
+    def _on_theme_combo(self) -> None:
+        tid = str(self.cmb_theme.currentData() or DEFAULT_CRT_THEME)
+        self._apply_theme(tid, persist=True)
+
+    def _on_theme_combo_cfg(self) -> None:
+        tid = str(self.cmb_theme_cfg.currentData() or DEFAULT_CRT_THEME)
+        self._apply_theme(tid, persist=True)
+
+    def _apply_theme(self, theme_id: str, *, persist: bool = True) -> None:
+        tid = theme_id if theme_id in CRT_THEMES else DEFAULT_CRT_THEME
+        self._theme_id = tid
+        self.setStyleSheet(build_crt_stylesheet(tid))
+        meta = CRT_THEMES[tid]
+        if hasattr(self, "_scan"):
+            self._scan.set_enabled(bool(meta.get("scan", True)))
+        # sync combos sem loop
+        for cmb in (getattr(self, "cmb_theme", None), getattr(self, "cmb_theme_cfg", None)):
+            if cmb is None:
+                continue
+            cmb.blockSignals(True)
+            i = cmb.findData(tid)
+            if i >= 0:
+                cmb.setCurrentIndex(i)
+            cmb.blockSignals(False)
+        if persist:
+            try:
+                from ace_cmd import _load_payload, _save_payload
+
+                self.payload = _load_payload()
+                self.payload["crt_theme"] = tid
+                _save_payload(self.payload)
+                lab = str(meta.get("label") or tid)
+                self._append_log("config", f"Tema: {lab}")
+            except Exception:  # noqa: BLE001
+                pass
 
     def _save_config(self) -> None:
         from ace_cmd import EDITABLE, _save_payload
@@ -820,6 +990,7 @@ class AceCrtConsole(QWidget):
                 elif isinstance(w, QLineEdit):
                     self.payload[key] = w.text().strip()
             self.payload["headless"] = not self.chk_viz.isChecked()
+            self.payload["crt_theme"] = self._theme_id
             _save_payload(self.payload)
             self.payload = __import__("ace_cmd", fromlist=["_load_payload"])._load_payload()
             self._update_meta()
@@ -1032,17 +1203,21 @@ class AceCrtConsole(QWidget):
         if len(self._log_seen) > 2000:
             self._log_seen = set(list(self._log_seen)[-1000:])
 
+        t = CRT_THEMES.get(self._theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
+        accent = str(t["text"])
+        dim = str(t["dim"])
+        warn = WARN if self._theme_id != "claro" else "#b45309"
         color = {
-            "ok": NEON,
+            "ok": accent,
             "err": ERR,
             "erro": ERR,
-            "work": WARN,
-            "cmd": NEON,
-            "out": DIM,
-            "config": WARN,
-            "sistema": DIM,
-            "info": DIM,
-        }.get(kind, DIM)
+            "work": warn,
+            "cmd": accent,
+            "out": dim,
+            "config": warn,
+            "sistema": dim,
+            "info": dim,
+        }.get(kind, dim)
         tag = {
             "ok": "OK ",
             "err": "ERR",
@@ -1089,7 +1264,8 @@ class AceCrtConsole(QWidget):
         pct = float(st.get("pct") or 0.0)
 
         self.status.setText(label[:16])
-        color = NEON if online and "OFF" not in label and "ERR" not in label else OFF
+        accent = str((CRT_THEMES.get(self._theme_id) or CRT_THEMES[DEFAULT_CRT_THEME])["text"])
+        color = accent if online and "OFF" not in label and "ERR" not in label else OFF
         if "ERR" in label or mode == "ERR":
             color = ERR
         self.status.setStyleSheet(

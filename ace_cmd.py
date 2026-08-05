@@ -130,6 +130,7 @@ def _save_payload(payload: dict[str, Any]) -> None:
         github_token_env=str(payload.get("github_token_env") or "GH_TOKEN"),
         armazem_in_loop=bool(payload.get("armazem_in_loop", True)),
         headless=bool(payload.get("headless", True)),
+        crt_theme=str(payload.get("crt_theme") or "binho").strip() or "binho",
     )
     save_all(creds, settings)
 

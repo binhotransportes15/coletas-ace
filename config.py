@@ -84,6 +84,8 @@ class AceSettings:
     # (Sheets 078 usa a mesma enable_sheets / apps_script_url / token)
     armazem_in_loop: bool = True
     headless: bool = True
+    # Tema visual do CRT (binho | painel | ops | claro)
+    crt_theme: str = "binho"
 
 
 def ensure_dirs() -> None:
@@ -134,6 +136,8 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         or defaults.github_token_env,
         armazem_in_loop=bool(payload.get("armazem_in_loop", defaults.armazem_in_loop)),
         headless=bool(payload.get("headless", defaults.headless)),
+        crt_theme=str(payload.get("crt_theme") or defaults.crt_theme).strip()
+        or defaults.crt_theme,
     )
 
 
