@@ -761,13 +761,27 @@
     body.tv-mode .sector-soon-panel {
       height: 100dvh;
       min-height: 100dvh;
+      padding: 0;
+      background: #05080f;
     }
     body.tv-mode .sector-soon-panel .box {
       width: min(920px, 92vw);
       padding: clamp(28px, 4vmin, 56px);
+      border-radius: 0 !important;
+      border: 1px solid #1a2f4a !important;
+      background: #0a121e !important;
+      box-shadow: none !important;
     }
     body.tv-mode .sector-soon-panel h1 {
       font-size: clamp(36px, 6vmin, 72px);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    body.tv-mode .sector-soon-panel .tag {
+      letter-spacing: 0.18em;
+    }
+    body.tv-mode .sector-soon-panel p {
+      font-size: clamp(14px, 1.8vmin, 20px);
     }
     body.tv-mode.tv-no-margins .sector-soon-panel .box {
       border-radius: 0;
@@ -1045,11 +1059,43 @@
       padding: 4px 6px;
       height: 100%;
     }
-    body.tv-mode .arena-body {
+    body.tv-mode .arena-body:not(.ops-layout):not(.agenda-layout) {
       grid-template-rows: auto minmax(220px, 36fr) minmax(240px, 64fr);
       grid-template-columns: 1fr;
       gap: clamp(8px, 1.2vmin, 14px);
       height: 100%;
+    }
+    body.tv-mode .ops-layout:not(.has-blocks) {
+      display: grid !important;
+      grid-template-columns: minmax(150px, 0.85fr) minmax(280px, 1.7fr) minmax(150px, 0.85fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+      gap: clamp(8px, 1.1vmin, 14px) !important;
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode #opsLayoutEntrega:not(.has-blocks) {
+      grid-template-columns: minmax(320px, 1.55fr) minmax(200px, 0.9fr) !important;
+    }
+    body.tv-mode .ops-layout .ops-col,
+    body.tv-mode .ops-layout .resumo-top {
+      min-height: 0;
+      height: 100%;
+    }
+    body.tv-mode .ops-layout .torres {
+      height: 100%;
+      max-height: none;
+    }
+    body.tv-mode .agenda-layout:not(.has-blocks) {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) minmax(110px, 0.32fr) !important;
+      gap: clamp(8px, 1.1vmin, 14px) !important;
+      height: 100% !important;
+    }
+    body.tv-mode .arm-layout:not(.has-blocks) {
+      display: grid !important;
+      height: 100% !important;
+      gap: clamp(8px, 1.1vmin, 14px) !important;
     }
     body.tv-mode .cyl-ban-row {
       max-height: clamp(64px, 9vmin, 110px);
@@ -1328,15 +1374,16 @@
       container-name: dashblock;
     }
     .agenda-layout .dash-block[hidden] { display: none !important; }
-    /* fallback se ainda não veio blocks do CRT */
+    /* fallback TV fixo — agendamento */
     .agenda-layout:not(.has-blocks) {
-      grid-template-columns: 1.35fr 0.65fr;
-      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr);
+      grid-template-rows: auto minmax(0, 1fr) minmax(120px, 0.35fr);
+      gap: clamp(8px, 1vw, 14px);
     }
     .agenda-layout:not(.has-blocks) [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
     .agenda-layout:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; }
     .agenda-layout:not(.has-blocks) [data-block="status"] { grid-column: 2; grid-row: 2; }
-    .agenda-layout:not(.has-blocks) [data-block="amanha"] { grid-column: 1; grid-row: 3; }
+    .agenda-layout:not(.has-blocks) [data-block="amanha"] { grid-column: 1 / -1; grid-row: 3; }
 
     /* Blocos posicionados: tipografia acompanha a altura do bloco (sem cortar) */
     .agenda-layout.has-blocks [data-block="kpis"] {
@@ -2216,9 +2263,30 @@
       container-type: size;
     }
     .arm-layout .dash-block[hidden] { display: none !important; }
+    .arm-layout:not(.has-blocks) {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: clamp(8px, 1vw, 14px);
+      height: 100%;
+      min-height: 0;
+    }
+    .arm-layout:not(.has-blocks) [data-block="kpis"] { grid-column: 1; grid-row: 1; }
+    .arm-layout:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
+    .arm-layout:not(.has-blocks) [data-block="tabela"] { grid-column: 1; grid-row: 3; min-height: 0; }
+    /* Conferentes: só KPIs + ranking */
+    #armLayoutConferentes:not(.has-blocks) {
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    #armLayoutConferentes:not(.has-blocks) [data-block="chart"] { grid-row: 2; }
     .arm-layout:not(.has-blocks) [data-block="kpis"] { flex-shrink: 0; }
     .arm-layout:not(.has-blocks) [data-block="chart"],
-    .arm-layout:not(.has-blocks) [data-block="tabela"] { flex: 1; min-height: 0; }
+    .arm-layout:not(.has-blocks) [data-block="tabela"] {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
     .arm-layout.has-blocks [data-block="kpis"].arm-kpis {
       height: 100%;
       align-content: stretch;
@@ -2273,9 +2341,9 @@
     }
     .ops-layout:not(.has-blocks) {
       display: grid;
-      grid-template-columns: minmax(140px, 0.85fr) minmax(240px, 1.5fr) minmax(140px, 0.85fr);
+      grid-template-columns: minmax(160px, 0.9fr) minmax(280px, 1.6fr) minmax(160px, 0.9fr);
       grid-template-rows: auto minmax(0, 1fr);
-      gap: 12px;
+      gap: clamp(8px, 1vw, 14px);
       align-content: stretch;
     }
     .ops-layout:not(.has-blocks) > [data-block="resumo"] {
@@ -4194,48 +4262,12 @@
 
       document.documentElement.style.setProperty('--dash-font', String(ui.fontZoom || 1));
 
-      const blocks = ui.blocks || [];
-      const agendaLayout = document.getElementById('agendaLayout');
-      const hasAgenda = applyBlockLayout(
-        agendaLayout,
-        blocks,
-        { active: CURRENT_SECTOR === 'distribuicao' && CURRENT_VIEW === 'agendamento' },
-      );
-      if (hasAgenda) {
-        const by = Object.fromEntries(blocks.map((b) => [b.id, b]));
-        if (by.kpis && by.kpis.visible === false) document.body.classList.add('dash-hide-kpis');
-        if (by.chart && by.chart.visible === false) document.body.classList.add('dash-hide-chart');
-        if (by.amanha && by.amanha.visible === false) document.body.classList.add('dash-hide-amanha');
-        if (by.status && by.status.visible === false) document.body.classList.add('dash-hide-status');
-      }
-
-      const distActive = CURRENT_SECTOR === 'distribuicao';
-      const colUi = distActive && CURRENT_VIEW === 'coleta'
-        ? ui
-        : resolveDashboardUi(TV_LAYOUT, 'distribuicao', 'coleta');
-      const entUi = distActive && CURRENT_VIEW === 'entrega'
-        ? ui
-        : resolveDashboardUi(TV_LAYOUT, 'distribuicao', 'entrega');
-      applyBlockLayout(document.getElementById('opsLayoutColeta'), colUi.blocks || [], { active: true });
-      applyBlockLayout(document.getElementById('opsLayoutEntrega'), entUi.blocks || [], { active: true });
-
-      const armPatio = document.getElementById('armLayoutPatio');
-      const armConf = document.getElementById('armLayoutConferentes');
-      const armActive = CURRENT_SECTOR === 'armazem';
-      const patioUi = armActive && CURRENT_VIEW !== 'conferentes'
-        ? ui
-        : resolveDashboardUi(TV_LAYOUT, 'armazem', 'patio');
-      const confUi = armActive && CURRENT_VIEW === 'conferentes'
-        ? ui
-        : resolveDashboardUi(TV_LAYOUT, 'armazem', 'conferentes');
-      applyBlockLayout(armPatio, patioUi.blocks || [], { active: true });
-      applyBlockLayout(armConf, confUi.blocks || [], { active: true });
-      if (armActive) {
-        const by = Object.fromEntries(blocks.map((b) => [b.id, b]));
-        if (by.kpis && by.kpis.visible === false) document.body.classList.add('dash-hide-kpis');
-        if (by.chart && by.chart.visible === false) document.body.classList.add('dash-hide-chart');
-        if (by.tabela && by.tabela.visible === false) document.body.classList.add('dash-hide-tabela');
-      }
+      // Layout das TVs é fixo (CSS). Grades arrastáveis do CRT foram desativadas.
+      applyBlockLayout(document.getElementById('agendaLayout'), [], { active: false });
+      applyBlockLayout(document.getElementById('opsLayoutColeta'), [], { active: false });
+      applyBlockLayout(document.getElementById('opsLayoutEntrega'), [], { active: false });
+      applyBlockLayout(document.getElementById('armLayoutPatio'), [], { active: false });
+      applyBlockLayout(document.getElementById('armLayoutConferentes'), [], { active: false });
     }
 
     function applyTvChrome() {

@@ -2,7 +2,7 @@
 Editor de TV / Dashboard em janela separada (CRT).
 
 - Aba Parede: grade 2×3, setor por TV, modo parede
-- Aba Dashboard: setor + tela, gráfico/tamanho, canvas arrastável + preview ao vivo
+- Aba Dashboard: logo, margens, letras e gráfico (layout das telas é fixo para TV)
 """
 from __future__ import annotations
 
@@ -371,8 +371,8 @@ class TvEditorDialog(QDialog):
     def __init__(self, parent: QWidget | None = None, layout: dict[str, Any] | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("ACE · Editor TV e Dashboard")
-        self.setMinimumSize(1200, 720)
-        self.resize(1480, 860)
+        self.setMinimumSize(720, 520)
+        self.resize(900, 640)
         self._loading = False
         self._layout = normalize_layout(layout or load_layout())
         self._selected_slot = 1
@@ -401,7 +401,7 @@ class TvEditorDialog(QDialog):
         root.addWidget(buttons)
 
         self._reload_forms()
-        QTimer.singleShot(200, self._boot_preview)
+        # Preview / grade de blocos desativados — layout TV fixo
 
     def resulting_layout(self) -> dict[str, Any]:
         return deepcopy(self._layout)
@@ -490,16 +490,15 @@ class TvEditorDialog(QDialog):
         lay = QVBoxLayout(wrap)
 
         tip = QLabel(
-            "Esquerda: grade 12×12 (arraste / canto amarelo = redimensionar).\n"
-            "Direita: preview real — muda ao vivo. Logo e margens são por setor "
-            "(vale nas TVs desse setor; na aba Parede dá para sobrescrever por TV).\n"
-            "Depois Salvar. Fixar trava só os blocos."
+            "Layout das TVs é fixo (otimizado para painel).\n"
+            "Aqui você só ajusta: gráfico do agendamento, tamanho das letras, "
+            "logo e margens por setor.\n"
+            "Na aba Parede dá para sobrescrever logo/margem por TV. Depois Salvar."
         )
         tip.setWordWrap(True)
         tip.setObjectName("hint")
         lay.addWidget(tip)
 
-        top = QHBoxLayout()
         form = QFormLayout()
         self.dash_sector = QComboBox()
         for sid, lab in SECTOR_LABELS.items():
@@ -521,11 +520,11 @@ class TvEditorDialog(QDialog):
         self.dash_scale.addItem("Normal", "normal")
         self.dash_scale.addItem("Compacto", "small")
         self.dash_scale.currentIndexChanged.connect(self._dash_options_changed)
+        self.dash_scale.hide()  # escala de blocos desativada — layout TV fixo
 
         form.addRow("Setor", self.dash_sector)
         form.addRow("Tela", self.dash_view)
-        form.addRow("Gráfico", self.dash_chart)
-        form.addRow("Escala layout", self.dash_scale)
+        form.addRow("Gráfico (agendamento)", self.dash_chart)
 
         font_row = QHBoxLayout()
         self.dash_font = QSlider(Qt.Horizontal)
@@ -540,7 +539,7 @@ class TvEditorDialog(QDialog):
         self.dash_font_lbl.setMinimumWidth(44)
         font_row.addWidget(self.dash_font, 1)
         font_row.addWidget(self.dash_font_lbl)
-        form.addRow("Letras", font_row)
+        form.addRow("Letras na TV", font_row)
 
         self.dash_logo = QComboBox()
         self.dash_logo.addItem("Mostrar logo", "on")
@@ -554,97 +553,27 @@ class TvEditorDialog(QDialog):
 
         form.addRow("Logo (setor)", self.dash_logo)
         form.addRow("Margens (setor)", self.dash_margins)
-        top.addLayout(form, 1)
+        lay.addLayout(form)
 
-        vis = QVBoxLayout()
+        # Editor de blocos / preview desativados (causavam instabilidade nas TVs)
         self.block_checks: dict[str, QCheckBox] = {}
-        vis.addWidget(QLabel("Blocos visíveis"))
-        for bid, lab in (
-            ("kpis", "KPIs"),
-            ("resumo", "Resumo"),
-            ("chart", "Gráfico"),
-            ("torres", "Torres"),
-            ("banners", "Faixas"),
-            ("status", "Status"),
-            ("amanha", "Amanhã"),
-            ("placas", "Placas"),
-            ("prazo", "Prazo"),
-            ("pendencias", "Pendências"),
-            ("tabela", "Tabela"),
-        ):
-            cb = QCheckBox(lab)
-            cb.setChecked(True)
-            cb.stateChanged.connect(self._block_vis_changed)
-            self.block_checks[bid] = cb
-            vis.addWidget(cb)
-        vis.addStretch(1)
-        top.addLayout(vis)
-        lay.addLayout(top)
-
-        split = QSplitter(Qt.Horizontal)
-        split.setChildrenCollapsible(False)
-
-        left = QWidget()
-        left_lay = QVBoxLayout(left)
-        left_lay.setContentsMargins(0, 0, 0, 0)
-        left_lay.addWidget(QLabel("Grade de blocos"))
         self.canvas = BlockCanvas()
-        self.canvas.changed.connect(self._canvas_changed)
-        left_lay.addWidget(self.canvas, 1)
-        split.addWidget(left)
-
-        right = QWidget()
-        right_lay = QVBoxLayout(right)
-        right_lay.setContentsMargins(0, 0, 0, 0)
-        head = QHBoxLayout()
-        head.addWidget(QLabel("Preview (tela real)"))
-        head.addStretch(1)
-        b_reload = QPushButton("Recarregar")
-        b_reload.clicked.connect(self._reload_preview)
-        head.addWidget(b_reload)
-        right_lay.addLayout(head)
-
+        self.canvas.hide()
         self.preview: Any = None
         self.preview_status = QLabel("")
-        self.preview_status.setObjectName("hint")
-        self.preview_status.setWordWrap(True)
-        if _HAS_WEBENGINE and QWebEngineView is not None:
-            self.preview = QWebEngineView()
-            self.preview.setMinimumWidth(420)
-            settings = self.preview.settings()
-            if QWebEngineSettings is not None:
-                settings.setAttribute(QWebEngineSettings.LocalContentCanAccessFileUrls, True)
-                settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
-            self.preview.loadFinished.connect(self._on_preview_loaded)
-            right_lay.addWidget(self.preview, 1)
-        else:
-            self.preview_status.setText(
-                "Preview indisponível: instale PySide6 com Qt WebEngine "
-                "(pip install PySide6)."
-            )
-            right_lay.addStretch(1)
-        right_lay.addWidget(self.preview_status)
-        split.addWidget(right)
-        split.setStretchFactor(0, 2)
-        split.setStretchFactor(1, 3)
-        split.setSizes([520, 780])
-        lay.addWidget(split, 1)
-
-        row = QHBoxLayout()
+        self.preview_status.hide()
         self.dash_locked = QCheckBox("Layout fixado")
-        self.dash_locked.stateChanged.connect(self._dash_lock_toggled)
-        b_reset = QPushButton("Resetar posições")
-        b_reset.clicked.connect(self._dash_reset_blocks)
-        b_fix = QPushButton("Fixar")
-        b_fix.clicked.connect(self._dash_fix)
-        b_unlock = QPushButton("Desbloquear")
-        b_unlock.clicked.connect(self._dash_unlock)
-        row.addWidget(self.dash_locked)
-        row.addStretch(1)
-        row.addWidget(b_reset)
-        row.addWidget(b_unlock)
-        row.addWidget(b_fix)
-        lay.addLayout(row)
+        self.dash_locked.setChecked(True)
+        self.dash_locked.hide()
+
+        note = QLabel(
+            "As telas Coleta, Entrega, Agendamento e Armazém usam posição fixa "
+            "calibrada para TV. Não é mais necessário arrastar blocos."
+        )
+        note.setWordWrap(True)
+        note.setObjectName("hint")
+        lay.addWidget(note)
+        lay.addStretch(1)
         return wrap
 
     def _preview_route_hash(self) -> str:
@@ -970,9 +899,13 @@ class TvEditorDialog(QDialog):
         self._fill_dash_view_combo(sector)
         self.dash_view.setEnabled(sector in ("distribuicao", "armazem"))
         ui = self._ui_bucket()
-        key = self._dash_key()
-        blocks = merge_blocks(ui.get("blocks"), key)
-        ui["blocks"] = blocks
+        # Layout fixo nas TVs — não carrega/persiste grade de blocos
+        ui["blocks"] = []
+        ui["locked"] = True
+        ui["showKpis"] = True
+        ui["showChart"] = True
+        ui["showAmanha"] = True
+        ui["showStatus"] = True
 
         ci = self.dash_chart.findData(str(ui.get("chart") or "towers"))
         if ci >= 0:
@@ -990,21 +923,11 @@ class TvEditorDialog(QDialog):
         self.dash_font.blockSignals(False)
         self.dash_font_lbl.setText(f"{pct}%")
 
-        known = {b["id"] for b in blocks}
-        for bid, cb in self.block_checks.items():
-            cb.blockSignals(True)
-            if bid in known:
-                cb.show()
-                vis = next((b for b in blocks if b["id"] == bid), None)
-                cb.setChecked(bool(vis and vis.get("visible", True)))
-            else:
-                cb.hide()
-            cb.blockSignals(False)
-
-        locked = bool(ui.get("locked"))
-        self.dash_locked.setChecked(locked)
-        self.canvas.set_locked(locked)
-        self.canvas.set_blocks(blocks)
+        self.dash_locked.blockSignals(True)
+        self.dash_locked.setChecked(True)
+        self.dash_locked.blockSignals(False)
+        self.canvas.set_locked(True)
+        self.canvas.set_blocks([])
 
         chrome = self._sector_defaults_bucket()
         logo_key = "on" if chrome.get("showLogo", True) else "off"
@@ -1016,15 +939,14 @@ class TvEditorDialog(QDialog):
         if mi >= 0:
             self.dash_margins.setCurrentIndex(mi)
 
-        self._set_dash_controls_enabled(not locked)
+        chart_ok = sector == "distribuicao" and str(self.dash_view.currentData()) == "agendamento"
+        self.dash_chart.setEnabled(chart_ok)
+        self.dash_font.setEnabled(True)
         self._loading = False
-        self._schedule_preview()
 
     def _set_dash_controls_enabled(self, enabled: bool) -> None:
-        for w in (self.dash_chart, self.dash_scale, self.dash_font, *self.block_checks.values()):
-            w.setEnabled(enabled)
-        self.canvas.set_locked(not enabled)
-        # Logo/margem do setor ficam sempre editáveis
+        self.dash_chart.setEnabled(enabled)
+        self.dash_font.setEnabled(True)
 
     def _dash_chrome_changed(self) -> None:
         if self._loading:
@@ -1032,7 +954,6 @@ class TvEditorDialog(QDialog):
         chrome = self._sector_defaults_bucket()
         chrome["showLogo"] = str(self.dash_logo.currentData() or "on") == "on"
         chrome["margins"] = str(self.dash_margins.currentData() or "none")
-        self._schedule_preview()
 
     def _dash_context_changed(self) -> None:
         if self._loading:
@@ -1044,96 +965,64 @@ class TvEditorDialog(QDialog):
         if self._loading:
             return
         ui = self._ui_bucket()
-        if ui.get("locked"):
-            return
         ui["fontZoom"] = round(max(70, min(160, int(value))) / 100.0, 2)
-        self._schedule_preview()
+        ui["blocks"] = []
 
     def _dash_options_changed(self) -> None:
         if self._loading:
             return
         ui = self._ui_bucket()
-        if ui.get("locked"):
-            return
         ui["chart"] = str(self.dash_chart.currentData() or "towers")
-        ui["scale"] = str(self.dash_scale.currentData() or "large")
+        ui["scale"] = "large"
         ui["fontZoom"] = round(max(70, min(160, int(self.dash_font.value()))) / 100.0, 2)
-        # sync legacy flags from blocks
-        blocks = self.canvas.blocks()
-        by = {b["id"]: b for b in blocks}
-        ui["showKpis"] = bool(by.get("kpis", {}).get("visible", True)) if "kpis" in by else ui.get("showKpis", True)
-        ui["showChart"] = bool(
-            (by.get("chart") or by.get("torres") or by.get("banners") or {}).get("visible", True)
-        )
-        ui["showAmanha"] = bool(by.get("amanha", {}).get("visible", True)) if "amanha" in by else True
-        ui["showStatus"] = bool(by.get("status", {}).get("visible", True)) if "status" in by else True
-        self._schedule_preview()
+        ui["blocks"] = []
+        ui["showKpis"] = True
+        ui["showChart"] = True
+        ui["showAmanha"] = True
+        ui["showStatus"] = True
+        ui["locked"] = True
 
     def _block_vis_changed(self) -> None:
-        if self._loading:
-            return
-        ui = self._ui_bucket()
-        if ui.get("locked"):
-            return
-        blocks = self.canvas.blocks()
-        for b in blocks:
-            cb = self.block_checks.get(str(b["id"]))
-            if cb is not None:
-                b["visible"] = cb.isChecked()
-        ui["blocks"] = blocks
-        self.canvas.set_blocks(blocks)
-        self._dash_options_changed()
-        self._schedule_preview()
+        return
 
     def _canvas_changed(self) -> None:
-        if self._loading:
-            return
-        ui = self._ui_bucket()
-        if ui.get("locked"):
-            return
-        ui["blocks"] = self.canvas.blocks()
-        self._schedule_preview()
+        return
 
     def _dash_reset_blocks(self) -> None:
         ui = self._ui_bucket()
-        if ui.get("locked"):
-            QMessageBox.information(self, "ACE", "Desbloqueie o layout para resetar.")
-            return
-        ui["blocks"] = blocks_for_key(self._dash_key())
+        ui["blocks"] = []
         self._load_dash_into_form()
 
     def _dash_lock_toggled(self) -> None:
-        if self._loading:
-            return
-        ui = self._ui_bucket()
-        ui["locked"] = self.dash_locked.isChecked()
-        self._set_dash_controls_enabled(not ui["locked"])
+        return
 
     def _dash_fix(self) -> None:
         self._dash_options_changed()
-        self._canvas_changed()
         ui = self._ui_bucket()
         ui["locked"] = True
-        self._loading = True
-        self.dash_locked.setChecked(True)
-        self._set_dash_controls_enabled(False)
-        self._loading = False
-        QMessageBox.information(self, "ACE", "Layout fixado. Use Salvar para enviar às TVs.")
+        ui["blocks"] = []
 
     def _dash_unlock(self) -> None:
-        ui = self._ui_bucket()
-        ui["locked"] = False
-        self._loading = True
-        self.dash_locked.setChecked(False)
-        self._set_dash_controls_enabled(True)
-        self._loading = False
+        return
 
     def _save(self) -> None:
         self._wall_slot_changed()
         self._wall_global_changed()
         self._dash_chrome_changed()
         self._dash_options_changed()
-        self._canvas_changed()
+        for bucket in (self._layout.get("sectorDefaults") or {}).values():
+            if not isinstance(bucket, dict):
+                continue
+            ui = bucket.get("ui")
+            if isinstance(ui, dict):
+                ui["blocks"] = []
+                ui["locked"] = True
+            views = bucket.get("views")
+            if isinstance(views, dict):
+                for vui in views.values():
+                    if isinstance(vui, dict):
+                        vui["blocks"] = []
+                        vui["locked"] = True
         try:
             self._layout = save_layout(self._layout)
             ok, msg = push_layout_to_sheets(self._layout)

@@ -1301,11 +1301,13 @@ class AceSswClient:
         period_225: tuple[str, str],
         period_36: tuple[str, str] | None = None,
         run_36: bool = False,
+        on_report_ready: Callable[[str, str, str], None] | None = None,
     ) -> dict[str, Any]:
         """
         1) Login 1x e MANTÉM o browser aberto (SSW exige a sessão viva).
-        2) Abre 50 / 103 / 36 / 225 juntos (vários popups na mesma sessão).
-        3) Preenche e baixa cada um (sem fechar o login).
+        2) Abre 50 / 103 / 36 / 225 em sequência (mesma sessão).
+        3) Preenche e baixa cada um; opcionalmente dispara callback após cada OK
+           (analisar + Sheets na hora, sem esperar o ciclo inteiro).
         """
         try:
             from playwright.sync_api import sync_playwright
@@ -1441,6 +1443,11 @@ class AceSswClient:
                         self.paths[path_key] = str(path)
                         errors.pop(label, None)
                         self.on_status(f"[{label}] OK {path.name}")
+                        if on_report_ready is not None:
+                            try:
+                                on_report_ready(label, path_key, str(path))
+                            except Exception as cb_err:  # noqa: BLE001
+                                self.on_status(f"[{label}] pos-download: {cb_err}")
                     except Exception as err:  # noqa: BLE001
                         errors[label] = str(err)
                         self.on_status(f"[{label}] FALHOU: {err}")
@@ -1470,6 +1477,11 @@ class AceSswClient:
                         self.paths[path_key] = str(path)
                         errors.pop(label, None)
                         self.on_status(f"[{label}] OK (retry) {path.name}")
+                        if on_report_ready is not None:
+                            try:
+                                on_report_ready(label, path_key, str(path))
+                            except Exception as cb_err:  # noqa: BLE001
+                                self.on_status(f"[{label}] pos-download: {cb_err}")
                     except Exception as err:  # noqa: BLE001
                         errors[label] = str(err)
                         self.on_status(f"[{label}] retry falhou: {err}")
@@ -1609,8 +1621,9 @@ def download_ace_shared_cycle(
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
     clean_downloads: bool = True,
+    on_report_ready: Callable[[str, str, str], None] | None = None,
 ) -> dict[str, Any]:
-    """Login 1x; abre 50+103+(36)+225 na mesma sessão e baixa."""
+    """Login 1x; baixa 50+103+(36)+225 e dispara on_report_ready após cada OK."""
     client = AceSswClient(
         period_50[0],
         period_50[1],
@@ -1627,6 +1640,7 @@ def download_ace_shared_cycle(
         period_225=period_225,
         period_36=period_36,
         run_36=run_36,
+        on_report_ready=on_report_ready,
     )
 
 

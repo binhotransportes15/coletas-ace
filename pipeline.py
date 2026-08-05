@@ -8,7 +8,7 @@ from config import DOWNLOAD_DIR, LOG_DIR, AceSettings, SswCredentials, ensure_di
 from dates import format_period, normalize_date, periodo_103_hoje, periodo_36_ontem_hoje, periodo_50_coleta_hoje, periodo_mes_corrente, sugestao_periodo, titulo_agendamento_mes
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
-from sheets_sync import sync_cycle_sheets, sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36, sync_google_sheets_225
+from sheets_sync import sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36, sync_google_sheets_225
 from ssw_client import (
     cleanup_downloads,
     download_ace_103,
@@ -513,6 +513,7 @@ def run_dual_cycle(
     Baixa 50 + 103 (+ 36 se entrega_option=36) + 225 EM CICLO automatico.
 
     Um unico login SSW (sessao compartilhada) — mais rapido que logar por relatorio.
+    Assim que cada arquivo baixa: analisa e envia ao Sheets na hora (não espera o fim).
 
     Periodos automaticos (recalculados a cada ciclo / virada de dia):
       50  → periodo de COLETA = HOJE
@@ -554,54 +555,33 @@ def run_dual_cycle(
     result_103: dict[str, Any] = {}
     result_36: dict[str, Any] = {}
     result_225: dict[str, Any] = {}
+    sheets50: dict[str, Any] = {"ok": False, "skipped": True}
+    sheets103: dict[str, Any] = {"ok": False, "skipped": True}
+    sheets36: dict[str, Any] = {"ok": False, "skipped": True}
+    sheets225: dict[str, Any] = {"ok": False, "skipped": True}
     errors: dict[str, str] = {}
+    done: set[str] = set()
 
-    download_bundle: dict[str, Any] = {"paths": {}, "errors": {}}
-    try:
-        download_bundle = download_ace_shared_cycle(
-            period_50=(ini50, fim50),
-            period_103=(ini103, fim103),
-            period_225=(ini225, fim225),
-            period_36=(ini36, fim36) if run_36 else None,
-            run_36=run_36,
-            headless=use_headless,
-            on_status=emit,
-            credentials=creds,
-            settings=cfg,
-            clean_downloads=False,
-        )
-        errors.update(download_bundle.get("errors") or {})
-    except Exception as err:  # noqa: BLE001
-        errors["ssw"] = str(err)
-        emit(f"Sessao SSW FALHOU: {err}")
-
-    paths = (download_bundle.get("paths") or {}) if download_bundle else {}
-    dl_errors = download_bundle.get("errors") or {}
-    sessao_ok = "ssw" not in errors
-
-    def _resolve_report(path_key: str, finder) -> Path | None:
-        report = Path(paths.get(path_key) or "")
-        if report.is_file():
-            return report
-        latest = finder()
-        if latest and Path(latest).is_file():
-            return Path(latest)
-        return None
-
-    if sessao_ok or paths.get("coleta"):
-        try:
-            fresh = Path(paths.get("coleta") or "")
-            report = fresh if fresh.is_file() else find_latest_report()
-            if report is None:
-                raise RuntimeError("50 sem arquivo")
-            if not fresh.is_file():
+    def _analyze_and_push(
+        label: str,
+        report: Path,
+        *,
+        fresh: bool,
+        path_key: str,
+    ) -> None:
+        """Analisa 1 relatório e, se sync=True, manda ao Sheets na hora."""
+        nonlocal result_50, result_103, result_36, result_225
+        nonlocal sheets50, sheets103, sheets36, sheets225
+        if label in done:
+            return
+        if label == "50":
+            if not fresh:
                 emit(f"[50] Usando ultimo: {report.name}")
             analysis = run_analysis_only(
                 report, settings=cfg, on_status=lambda m: emit(f"[50] {m}"), sync=False
             )
             lote = int((analysis.get("analysis") or analysis).get("lote_atual") or 0)
-            # Download falhou + análise vazia (arquivo errado/antigo) → não zera Sheets
-            if not fresh.is_file() and lote <= 0:
+            if not fresh and lote <= 0:
                 raise RuntimeError(
                     f"50 cache invalido ({report.name}) com 0 coleta(s) — planilha nao sera sobrescrita"
                 )
@@ -609,21 +589,18 @@ def run_dual_cycle(
                 "download": {"paths": {"coleta": str(report)}},
                 **analysis,
                 "period": format_period(ini50, fim50),
-                "fresh": fresh.is_file(),
+                "fresh": fresh,
             }
             emit("50 concluido.")
-        except Exception as err:  # noqa: BLE001
-            errors["50"] = str(err)
-            emit(f"50 FALHOU: {err}")
-            result_50 = {}
+            if sync:
+                emit("[50] Sheets: enviando agora…")
+                sheets50 = sync_google_sheets(cfg, on_status=emit)
+                result_50["sheets"] = sheets50
+            done.add("50")
+            return
 
-    if sessao_ok or paths.get("coleta_103"):
-        try:
-            fresh = Path(paths.get("coleta_103") or "")
-            report = fresh if fresh.is_file() else find_latest_103()
-            if report is None:
-                raise RuntimeError("103 sem arquivo")
-            if not fresh.is_file():
+        if label == "103":
+            if not fresh:
                 emit(f"[103] Usando ultimo: {report.name}")
             analysis = run_analysis_103(
                 report,
@@ -633,7 +610,7 @@ def run_dual_cycle(
                 sync=False,
             )
             lote = int((analysis.get("analysis") or {}).get("lote") or analysis.get("lote") or 0)
-            if not fresh.is_file() and lote <= 0:
+            if not fresh and lote <= 0:
                 raise RuntimeError(
                     f"103 cache invalido ({report.name}) com 0 coleta(s) — planilha nao sera sobrescrita"
                 )
@@ -641,20 +618,18 @@ def run_dual_cycle(
                 "download": {"paths": {"coleta_103": str(report)}},
                 **analysis,
                 "period": format_period(ini103, fim103),
-                "fresh": fresh.is_file(),
+                "fresh": fresh,
             }
             emit("103 concluido.")
-        except Exception as err:  # noqa: BLE001
-            errors["103"] = str(err)
-            emit(f"103 FALHOU: {err}")
-            result_103 = {}
+            if sync:
+                emit("[103] Sheets: enviando agora…")
+                sheets103 = sync_google_sheets_103(cfg, on_status=emit)
+                result_103["sheets"] = sheets103
+            done.add("103")
+            return
 
-    if run_36 and (sessao_ok or paths.get("entrega_36")):
-        try:
-            report = _resolve_report("entrega_36", find_latest_36)
-            if report is None:
-                raise RuntimeError("36 sem arquivo")
-            if str(report) != str(paths.get("entrega_36") or ""):
+        if label == "36":
+            if not fresh:
                 emit(f"[36] Usando ultimo: {report.name}")
             analysis = run_analysis_36(
                 report,
@@ -669,15 +644,133 @@ def run_dual_cycle(
                 "period": format_period(ini36, fim36),
             }
             emit("36 concluido.")
+            if sync:
+                emit("[36] Sheets: enviando agora…")
+                sheets36 = sync_google_sheets_36(cfg, on_status=emit)
+                result_36["sheets"] = sheets36
+            done.add("36")
+            return
+
+        if label == "225":
+            if not fresh:
+                emit(f"[225] Usando ultimo: {report.name}")
+            analysis = run_analysis_225(
+                report,
+                periodo=titulo225,
+                settings=cfg,
+                on_status=lambda m: emit(f"[225] {m}"),
+                sync=False,
+            )
+            total_225 = int((analysis.get("total") or analysis.get("totais", {}).get("total") or 0))
+            if not fresh and total_225 <= 0:
+                raise RuntimeError(
+                    f"225 cache invalido ({report.name}) com 0 CTRC — Sheets 225 nao sera sobrescrito"
+                )
+            result_225 = {
+                "download": {"paths": {"agendamento_225": str(report)}},
+                **analysis,
+                "period": format_period(ini225, fim225),
+                "titulo": titulo225,
+            }
+            emit("225 concluido.")
+            if sync:
+                emit("[225] Sheets: enviando agora…")
+                sheets225 = sync_google_sheets_225(cfg, on_status=emit)
+                result_225["sheets"] = sheets225
+            done.add("225")
+            return
+
+    def _on_report_ready(label: str, path_key: str, path_str: str) -> None:
+        """Chamado pelo SSW assim que cada arquivo termina o download."""
+        nonlocal result_50, result_103, result_225
+        try:
+            report = Path(path_str)
+            if not report.is_file():
+                return
+            emit(f"[{label}] baixou — analisando e enviando Sheets…")
+            _analyze_and_push(label, report, fresh=True, path_key=path_key)
+        except Exception as err:  # noqa: BLE001
+            errors[label] = str(err)
+            emit(f"[{label}] FALHOU (pos-download): {err}")
+            if label == "50":
+                result_50 = {}
+            elif label == "103":
+                result_103 = {}
+            elif label == "225":
+                result_225 = {}
+
+    download_bundle: dict[str, Any] = {"paths": {}, "errors": {}}
+    try:
+        download_bundle = download_ace_shared_cycle(
+            period_50=(ini50, fim50),
+            period_103=(ini103, fim103),
+            period_225=(ini225, fim225),
+            period_36=(ini36, fim36) if run_36 else None,
+            run_36=run_36,
+            headless=use_headless,
+            on_status=emit,
+            credentials=creds,
+            settings=cfg,
+            clean_downloads=False,
+            on_report_ready=_on_report_ready if sync else None,
+        )
+        errors.update(download_bundle.get("errors") or {})
+    except Exception as err:  # noqa: BLE001
+        errors["ssw"] = str(err)
+        emit(f"Sessao SSW FALHOU: {err}")
+
+    paths = (download_bundle.get("paths") or {}) if download_bundle else {}
+    sessao_ok = "ssw" not in errors
+
+    def _resolve_report(path_key: str, finder) -> Path | None:
+        report = Path(paths.get(path_key) or "")
+        if report.is_file():
+            return report
+        latest = finder()
+        if latest and Path(latest).is_file():
+            return Path(latest)
+        return None
+
+    # Fallback: o que não foi processado no callback (sync off, falha parcial, cache)
+    if "50" not in done and (sessao_ok or paths.get("coleta")):
+        try:
+            fresh = Path(paths.get("coleta") or "")
+            report = fresh if fresh.is_file() else find_latest_report()
+            if report is None:
+                raise RuntimeError("50 sem arquivo")
+            _analyze_and_push("50", report, fresh=fresh.is_file(), path_key="coleta")
+        except Exception as err:  # noqa: BLE001
+            errors["50"] = str(err)
+            emit(f"50 FALHOU: {err}")
+            result_50 = {}
+
+    if "103" not in done and (sessao_ok or paths.get("coleta_103")):
+        try:
+            fresh = Path(paths.get("coleta_103") or "")
+            report = fresh if fresh.is_file() else find_latest_103()
+            if report is None:
+                raise RuntimeError("103 sem arquivo")
+            _analyze_and_push("103", report, fresh=fresh.is_file(), path_key="coleta_103")
+        except Exception as err:  # noqa: BLE001
+            errors["103"] = str(err)
+            emit(f"103 FALHOU: {err}")
+            result_103 = {}
+
+    if run_36 and "36" not in done and (sessao_ok or paths.get("entrega_36")):
+        try:
+            report = _resolve_report("entrega_36", find_latest_36)
+            if report is None:
+                raise RuntimeError("36 sem arquivo")
+            fresh = str(report) == str(paths.get("entrega_36") or "")
+            _analyze_and_push("36", report, fresh=fresh, path_key="entrega_36")
         except Exception as err:  # noqa: BLE001
             errors["36"] = str(err)
             emit(f"36 FALHOU: {err}")
 
-    if paths.get("agendamento_225") or sessao_ok or errors.get("225"):
+    if "225" not in done and (paths.get("agendamento_225") or sessao_ok or errors.get("225")):
         try:
             downloaded = Path(paths.get("agendamento_225") or "")
             report: Path | None = downloaded if downloaded.is_file() else None
-            # Ciclo compartilhado perdeu o 225 → tenta sessão dedicada antes do cache
             if report is None and (errors.get("225") or not paths.get("agendamento_225")):
                 emit("[225] Baixando de novo em sessão dedicada…")
                 try:
@@ -702,45 +795,15 @@ def run_dual_cycle(
                 report = find_latest_225()
             if report is None:
                 raise RuntimeError("225 sem arquivo (download falhou e nao ha cache 225 valido)")
-            if str(report) != str(paths.get("agendamento_225") or ""):
-                emit(f"[225] Usando ultimo: {report.name}")
-            analysis = run_analysis_225(
-                report,
-                periodo=titulo225,
-                settings=cfg,
-                on_status=lambda m: emit(f"[225] {m}"),
-                sync=False,
-            )
-            total_225 = int((analysis.get("total") or analysis.get("totais", {}).get("total") or 0))
-            if not downloaded.is_file() and total_225 <= 0:
-                raise RuntimeError(
-                    f"225 cache invalido ({report.name}) com 0 CTRC — Sheets 225 nao sera sobrescrito"
-                )
-            result_225 = {
-                "download": {"paths": {"agendamento_225": str(report)}},
-                **analysis,
-                "period": format_period(ini225, fim225),
-                "titulo": titulo225,
-            }
-            emit("225 concluido.")
+            fresh = downloaded.is_file()
+            _analyze_and_push("225", report, fresh=fresh, path_key="agendamento_225")
         except Exception as err:  # noqa: BLE001
             errors["225"] = str(err)
             emit(f"225 FALHOU: {err}")
             result_225 = {}
 
-    sheets50 = sheets103 = sheets36 = sheets225 = dash = {"ok": False, "skipped": True}
+    dash = {"ok": False, "skipped": True}
     if sync and (result_50 or result_103 or result_36 or result_225):
-        emit("Sheets: iniciando atualização da planilha…")
-        cycle = sync_cycle_sheets(
-            cfg,
-            do_50=bool(result_50),
-            do_103=bool(result_103),
-            do_36=bool(result_36),
-            do_225=bool(result_225),
-            include_historico=False,
-            on_status=emit,
-        )
-        sheets50 = sheets103 = sheets36 = sheets225 = cycle
         dash = publish_dashboard(cfg, on_status=emit)
 
     keep: list[Path] = []
@@ -826,19 +889,30 @@ def run_pipeline_78(
         body_text=str(capture.get("body_text") or ""),
         html=str(capture.get("html") or ""),
     )
+    status("078 capturado — enviando Sheets (pátio) agora…")
+    sheets78 = sync_sheets_78(cfg, on_status=status, include_78=True, include_177=False)
 
     conf177: dict[str, Any] = {"ok": False}
+    sheets177: dict[str, Any] = {"ok": False, "skipped": True}
     try:
         status("ACE ARMAZÉM · 177 conferentes (mensal)...")
         dl177 = download_report_177(headless=use_headless, on_status=status)
         conf177 = analyze_report_177(dl177["path"], on_status=status)
         conf177["download"] = dl177
+        status("177 analisado — enviando Sheets (conferentes) agora…")
+        sheets177 = sync_sheets_78(cfg, on_status=status, include_78=False, include_177=True)
     except Exception as err:  # noqa: BLE001
         status(f"177 falhou (pátio 078 segue): {err}")
         conf177 = {"ok": False, "error": str(err)}
 
     pub = publish_armazem_local(on_status=status)
-    sheets = sync_sheets_78(cfg, on_status=status)
+    sheets = {
+        "ok": bool(sheets78.get("ok") or sheets177.get("ok")),
+        "78": sheets78,
+        "177": sheets177,
+        "via": "apps_script",
+        "mode": "per_report",
+    }
     status(
         f"OK · linhas={analysis.get('total_linhas')} "
         f"veículos={analysis.get('total_veiculos')} "
