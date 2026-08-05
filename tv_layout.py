@@ -59,7 +59,7 @@ def default_view_ui(chart: str = "towers") -> dict[str, Any]:
     return {
         "chart": chart,  # towers | pizza | bars
         "scale": "large",  # small | normal | large
-        "fontZoom": 1.0,  # 0.7 .. 1.6 — tamanho das letras na TV
+        "fontZoom": 1.2,  # 0.7 .. 1.6 — TV 43" parede inicia um pouco maior
         "showKpis": True,
         "showChart": True,
         "showAmanha": True,

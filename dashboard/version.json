@@ -1,5 +1,5 @@
 {
-  "build": "2026-08-05-tv-refresh-fix",
-  "run": "fix-version-race-dist-arm",
-  "at": "2026-08-05T16:30:00Z"
+  "build": "2026-08-05-tv-43-wall",
+  "run": "tv-43-fullhd-wall-far",
+  "at": "2026-08-05T19:05:00Z"
 }

@@ -1035,20 +1035,20 @@
       display: none !important;
     }
     body.tv-mode .topbar {
-      padding: clamp(6px, 1vmin, 14px) clamp(12px, 1.6vmin, 22px);
+      padding: clamp(8px, 1.1vmin, 16px) clamp(14px, 1.8vmin, 24px);
       border-radius: 0;
       grid-template-columns: 1fr auto auto;
     }
-    body.tv-mode .brand img { height: clamp(40px, 5.5vmin, 72px); }
+    body.tv-mode .brand img { height: clamp(48px, 6.2vmin, 84px); }
     body.tv-mode .brand .title {
-      font-size: clamp(26px, 3.6vmin, 48px);
+      font-size: clamp(28px, 3.8vmin, 52px);
       letter-spacing: 0.14em;
     }
-    body.tv-mode .clock-box .lbl { font-size: clamp(10px, 1.1vmin, 14px); }
+    body.tv-mode .clock-box .lbl { font-size: clamp(11px, 1.25vmin, 15px); }
     body.tv-mode .clock-box .time {
-      font-size: clamp(28px, 4vmin, 52px);
+      font-size: clamp(32px, 4.4vmin, 56px);
     }
-    body.tv-mode .clock-box .date { font-size: clamp(12px, 1.4vmin, 18px); }
+    body.tv-mode .clock-box .date { font-size: clamp(13px, 1.55vmin, 20px); }
     body.tv-mode #viewColeta.active,
     body.tv-mode #viewEntrega.active {
       height: 100%;
@@ -2429,47 +2429,82 @@
       outline: 1px dashed rgba(255, 184, 0, 0.35);
       outline-offset: -2px;
     }
-    /* Tamanho das letras (CRT fontZoom) — tipografia dos números/títulos */
+    /* Tamanho das letras (CRT fontZoom) + escala TV 43" parede */
     html { --dash-font: 1; }
+    body.tv-mode {
+      /* Full HD 43" vista de longe — números dominam */
+      --tv-scale: 1.2;
+    }
+    @media (min-width: 1680px) and (max-width: 2100px) and (min-height: 900px) and (max-height: 1200px) {
+      body.tv-mode { --tv-scale: 1.28; }
+    }
     body.tv-mode .resumo-total strong {
-      font-size: calc(clamp(28px, 3.4vw, 44px) * var(--dash-font, 1));
+      font-size: calc(clamp(72px, 9.2vmin, 132px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
     }
     body.tv-mode .resumo-stats b,
     body.tv-mode .resumo-single .resumo-stats b {
-      font-size: calc(clamp(24px, 3.2vmin, 48px) * var(--dash-font, 1));
+      font-size: calc(clamp(32px, 4.2vmin, 56px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
+    }
+    body.tv-mode .resumo-stats span,
+    body.tv-mode .resumo-total span,
+    body.tv-mode .resumo-kicker {
+      font-size: calc(clamp(12px, 1.5vmin, 18px) * var(--dash-font, 1));
     }
     body.tv-mode .torre .barra strong,
     body.tv-mode .torres .barra strong {
-      font-size: calc(clamp(28px, 3.6vw, 52px) * var(--dash-font, 1));
+      font-size: calc(clamp(36px, 5.2vmin, 78px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
     }
     body.tv-mode .torre .pin span {
-      font-size: calc(clamp(14px, 1.6vw, 20px) * var(--dash-font, 1));
+      font-size: calc(clamp(16px, 2.1vmin, 26px) * var(--dash-font, 1));
+    }
+    body.tv-mode .torre .base .lbl {
+      font-size: calc(clamp(14px, 1.8vmin, 22px) * var(--dash-font, 1));
     }
     body.tv-mode .ban-pct,
     body.tv-mode .cyl-ban .ban-pct {
-      font-size: calc(clamp(18px, 2.2vw, 32px) * var(--dash-font, 1));
+      font-size: calc(clamp(40px, 5.4vmin, 80px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
     }
     body.tv-mode .agenda-kpi b {
-      font-size: calc(clamp(18px, 2.4vw, 36px) * var(--dash-font, 1));
+      font-size: calc(clamp(28px, 3.6vmin, 52px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
+    }
+    body.tv-mode .agenda-kpi span {
+      font-size: calc(clamp(11px, 1.4vmin, 16px) * var(--dash-font, 1));
     }
     body.tv-mode .arm-kpi .val {
-      font-size: calc(clamp(18px, 2.2vw, 32px) * var(--dash-font, 1));
+      font-size: calc(clamp(28px, 3.5vmin, 52px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
+    }
+    body.tv-mode .arm-kpi .lbl {
+      font-size: calc(clamp(11px, 1.35vmin, 15px) * var(--dash-font, 1));
     }
     body.tv-mode .brand .title,
-    body.tv-mode .arm-brand .title {
-      font-size: calc(clamp(22px, 3vw, 30px) * var(--dash-font, 1));
+    body.tv-mode .arm-brand .title,
+    body.tv-mode .arm-brand h1 {
+      font-size: calc(clamp(28px, 3.8vmin, 52px) * var(--dash-font, 1));
     }
     body.tv-mode .clock-box .time {
-      font-size: calc(clamp(20px, 2.8vw, 28px) * var(--dash-font, 1));
+      font-size: calc(clamp(32px, 4.4vmin, 56px) * var(--dash-font, 1));
     }
     body.tv-mode .pop .name {
-      font-size: calc(clamp(16px, 1.8vw, 22px) * var(--dash-font, 1));
+      font-size: calc(clamp(16px, 2vmin, 24px) * var(--dash-font, 1));
     }
     body.tv-mode .pop .badge {
-      font-size: calc(clamp(15px, 1.7vw, 22px) * var(--dash-font, 1));
+      font-size: calc(clamp(15px, 1.9vmin, 24px) * var(--dash-font, 1));
+    }
+    body.tv-mode .pop .meta {
+      font-size: calc(clamp(12px, 1.45vmin, 17px) * var(--dash-font, 1));
     }
     body.tv-mode .col-sub {
-      font-size: calc(10px * var(--dash-font, 1));
+      font-size: calc(12px * var(--dash-font, 1));
+    }
+    body.tv-mode .torre {
+      width: clamp(120px, 14.5vmin, 220px);
+    }
+    body.tv-mode .torre .barra {
+      min-height: clamp(56px, 7.5vmin, 110px);
+      max-height: 38vh;
+    }
+    body.tv-mode .cyl-ban-row {
+      max-height: clamp(72px, 10.5vmin, 128px);
     }
 
     .arm-wrap {
