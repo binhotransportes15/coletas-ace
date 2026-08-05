@@ -99,17 +99,22 @@ def merge_blocks(saved: Any, key: str) -> list[dict[str, Any]]:
 
 
 class BlockCanvas(QWidget):
-    """Grade 12×12 com blocos arrastáveis (snap)."""
+    """Grade 12×12 com blocos arrastáveis e redimensionáveis (snap)."""
 
     changed = Signal()
+    HANDLE = 14  # px no canto inferior direito
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setMinimumSize(520, 360)
         self._blocks: list[dict[str, Any]] = []
         self._drag_id: str | None = None
+        self._mode: str = "move"  # move | resize
         self._drag_origin = QPoint()
         self._drag_start_xy = (0, 0)
+        self._drag_start_wh = (1, 1)
+        self._hover_id: str | None = None
+        self._hover_resize = False
         self._locked = False
         self.setMouseTracking(True)
 
@@ -122,6 +127,8 @@ class BlockCanvas(QWidget):
 
     def set_locked(self, locked: bool) -> None:
         self._locked = bool(locked)
+        if locked:
+            self.unsetCursor()
 
     def _cell(self) -> tuple[float, float]:
         w = max(1, self.width() - 8)
@@ -136,6 +143,10 @@ class BlockCanvas(QWidget):
             max(8, int(b["w"] * cw) - 2),
             max(8, int(b["h"] * ch) - 2),
         )
+
+    def _handle_rect(self, b: dict[str, Any]) -> QRect:
+        r = self._block_rect(b)
+        return QRect(r.right() - self.HANDLE + 1, r.bottom() - self.HANDLE + 1, self.HANDLE, self.HANDLE)
 
     def _hit(self, pos: QPoint) -> dict[str, Any] | None:
         for b in reversed(self._blocks):
@@ -185,7 +196,11 @@ class BlockCanvas(QWidget):
             p.fillRect(rect, col)
             p.setPen(QPen(QColor("#e2e8f0")))
             p.drawRect(rect)
-            p.drawText(rect.adjusted(6, 4, -6, -4), Qt.AlignLeft | Qt.AlignTop, str(b.get("label") or b["id"]))
+            p.drawText(
+                rect.adjusted(6, 4, -6, -4),
+                Qt.AlignLeft | Qt.AlignTop,
+                str(b.get("label") or b["id"]),
+            )
             p.setPen(QPen(QColor("#94a3b8")))
             tiny = QFont("Segoe UI", 8)
             p.setFont(tiny)
@@ -194,39 +209,73 @@ class BlockCanvas(QWidget):
                 Qt.AlignLeft | Qt.AlignBottom,
                 f"{b['x']},{b['y']} · {b['w']}×{b['h']}",
             )
+            # alça de redimensionar (canto inferior direito)
+            hr = self._handle_rect(b)
+            p.fillRect(hr, QColor("#fbbf24" if self._hover_id == b["id"] and self._hover_resize else "#cbd5e1"))
+            p.setPen(QPen(QColor("#0f172a")))
+            p.drawRect(hr)
             p.setFont(font)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if self._locked or event.button() != Qt.LeftButton:
             return
-        hit = self._hit(event.position().toPoint())
+        pos = event.position().toPoint()
+        hit = self._hit(pos)
         if not hit:
             return
         self._drag_id = str(hit["id"])
-        self._drag_origin = event.position().toPoint()
+        self._drag_origin = pos
         self._drag_start_xy = (int(hit["x"]), int(hit["y"]))
+        self._drag_start_wh = (int(hit["w"]), int(hit["h"]))
+        self._mode = "resize" if self._handle_rect(hit).contains(pos) else "move"
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
-        if self._locked or not self._drag_id:
+        pos = event.position().toPoint()
+        if self._locked:
+            self.unsetCursor()
             return
+
+        # cursor / hover quando não arrasta
+        if not self._drag_id:
+            hit = self._hit(pos)
+            self._hover_id = str(hit["id"]) if hit else None
+            self._hover_resize = bool(hit and self._handle_rect(hit).contains(pos))
+            if self._hover_resize:
+                self.setCursor(Qt.SizeFDiagCursor)
+            elif hit:
+                self.setCursor(Qt.SizeAllCursor)
+            else:
+                self.unsetCursor()
+            self.update()
+            return
+
         cw, ch = self._cell()
-        delta = event.position().toPoint() - self._drag_origin
+        delta = pos - self._drag_origin
         dx = int(round(delta.x() / cw))
         dy = int(round(delta.y() / ch))
         for b in self._blocks:
             if b["id"] != self._drag_id:
                 continue
-            nx = max(0, min(GRID_COLS - int(b["w"]), self._drag_start_xy[0] + dx))
-            ny = max(0, min(GRID_ROWS - int(b["h"]), self._drag_start_xy[1] + dy))
-            if nx != b["x"] or ny != b["y"]:
-                b["x"], b["y"] = nx, ny
-                self.update()
-                self.changed.emit()
+            if self._mode == "resize":
+                nw = max(1, min(GRID_COLS - int(b["x"]), self._drag_start_wh[0] + dx))
+                nh = max(1, min(GRID_ROWS - int(b["y"]), self._drag_start_wh[1] + dy))
+                if nw != b["w"] or nh != b["h"]:
+                    b["w"], b["h"] = nw, nh
+                    self.update()
+                    self.changed.emit()
+            else:
+                nx = max(0, min(GRID_COLS - int(b["w"]), self._drag_start_xy[0] + dx))
+                ny = max(0, min(GRID_ROWS - int(b["h"]), self._drag_start_xy[1] + dy))
+                if nx != b["x"] or ny != b["y"]:
+                    b["x"], b["y"] = nx, ny
+                    self.update()
+                    self.changed.emit()
             break
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             self._drag_id = None
+            self._mode = "move"
             self.update()
 
 
@@ -343,7 +392,8 @@ class TvEditorDialog(QDialog):
         lay = QVBoxLayout(wrap)
 
         tip = QLabel(
-            "Escolha o setor (e a tela). Arraste os blocos no preview para posicionar. "
+            "Escolha o setor (e a tela). Arraste o bloco para mover. "
+            "Arraste o quadrado amarelo no canto para aumentar/diminuir. "
             "Depois Salvar. Fixar trava o layout."
         )
         tip.setWordWrap(True)
