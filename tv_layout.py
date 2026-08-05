@@ -48,6 +48,43 @@ def _slot(sid: int, row: int, col: int, sector: str = "distribuicao") -> dict[st
     }
 
 
+def default_view_ui(chart: str = "towers") -> dict[str, Any]:
+    return {
+        "chart": chart,  # towers | pizza | bars
+        "scale": "large",  # small | normal | large
+        "showKpis": True,
+        "showChart": True,
+        "showAmanha": True,
+        "showStatus": True,
+        "locked": False,
+    }
+
+
+def _default_view_ui(chart: str = "towers") -> dict[str, Any]:
+    return default_view_ui(chart)
+
+
+def _normalize_view_ui(raw: Any, fallback: dict[str, Any] | None = None) -> dict[str, Any]:
+    base = deepcopy(fallback or default_view_ui())
+    if not isinstance(raw, dict):
+        return base
+    chart = str(raw.get("chart") or base["chart"]).lower()
+    if chart not in ("towers", "pizza", "bars"):
+        chart = base["chart"]
+    scale = str(raw.get("scale") or base["scale"]).lower()
+    if scale not in ("small", "normal", "large"):
+        scale = base["scale"]
+    return {
+        "chart": chart,
+        "scale": scale,
+        "showKpis": bool(raw.get("showKpis", base["showKpis"])),
+        "showChart": bool(raw.get("showChart", base["showChart"])),
+        "showAmanha": bool(raw.get("showAmanha", base["showAmanha"])),
+        "showStatus": bool(raw.get("showStatus", base["showStatus"])),
+        "locked": bool(raw.get("locked", base["locked"])),
+    }
+
+
 def default_layout() -> dict[str, Any]:
     # Grade padrão espelhando a parede física (exemplo do usuário)
     slots = [
@@ -71,6 +108,14 @@ def default_layout() -> dict[str, Any]:
             sid: {
                 "showLogo": True,
                 "margins": "none" if sid == "distribuicao" else "normal",
+                "ui": _default_view_ui("towers" if sid == "armazem" else "towers"),
+                "views": {
+                    "coleta": _default_view_ui("towers"),
+                    "entrega": _default_view_ui("towers"),
+                    "agendamento": _default_view_ui("towers"),
+                }
+                if sid == "distribuicao"
+                else {},
             }
             for sid in SECTOR_IDS
         },
@@ -153,9 +198,19 @@ def normalize_layout(raw: dict[str, Any] | None) -> dict[str, Any]:
     for sid in SECTOR_IDS:
         d = defaults_in.get(sid) if isinstance(defaults_in.get(sid), dict) else {}
         base_d = out["sectorDefaults"][sid]
+        views_in = d.get("views") if isinstance(d.get("views"), dict) else {}
+        views_out: dict[str, Any] = {}
+        if sid == "distribuicao":
+            for v in OPS_VIEWS:
+                views_out[v] = _normalize_view_ui(
+                    views_in.get(v),
+                    (base_d.get("views") or {}).get(v) or _default_view_ui("towers"),
+                )
         out["sectorDefaults"][sid] = {
             "showLogo": bool(d.get("showLogo", base_d["showLogo"])),
             "margins": "none" if str(d.get("margins", base_d["margins"])) == "none" else "normal",
+            "ui": _normalize_view_ui(d.get("ui"), base_d.get("ui") or _default_view_ui("towers")),
+            "views": views_out,
         }
 
     by_id = {

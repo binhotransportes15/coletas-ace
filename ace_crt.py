@@ -634,6 +634,80 @@ class AceCrtConsole(QWidget):
         form.addRow("Margens", self.tv_margins)
         lay.addLayout(form)
 
+        lay.addWidget(self._section("Personalizar dashboard (por setor)"))
+        dash_hint = QLabel(
+            "Tipo de gráfico · tamanho · campos visíveis. "
+            "Fixar trava o layout desse setor até desbloquear."
+        )
+        dash_hint.setObjectName("hint")
+        dash_hint.setWordWrap(True)
+        lay.addWidget(dash_hint)
+
+        dash_form = QFormLayout()
+        dash_form.setSpacing(6)
+        self.dash_sector = QComboBox()
+        for sid, lab in (
+            ("distribuicao", "Distribuição"),
+            ("armazem", "Armazém"),
+            ("contratacao", "Contratação"),
+            ("pendencia", "Pendência"),
+            ("rastreamento", "Rastreamento"),
+            ("emissao", "Emissão"),
+        ):
+            self.dash_sector.addItem(lab, sid)
+        self.dash_sector.currentIndexChanged.connect(self._dash_sector_changed)
+
+        self.dash_view = QComboBox()
+        self.dash_view.addItem("Coleta", "coleta")
+        self.dash_view.addItem("Entrega", "entrega")
+        self.dash_view.addItem("Agendamento", "agendamento")
+        self.dash_view.currentIndexChanged.connect(self._dash_form_changed)
+
+        self.dash_chart = QComboBox()
+        self.dash_chart.addItem("Torres", "towers")
+        self.dash_chart.addItem("Pizza", "pizza")
+        self.dash_chart.addItem("Barras laterais", "bars")
+        self.dash_chart.currentIndexChanged.connect(self._dash_form_changed)
+
+        self.dash_scale = QComboBox()
+        self.dash_scale.addItem("Grande", "large")
+        self.dash_scale.addItem("Normal", "normal")
+        self.dash_scale.addItem("Compacto", "small")
+        self.dash_scale.currentIndexChanged.connect(self._dash_form_changed)
+
+        self.dash_kpis = QCheckBox("Mostrar KPIs / totais")
+        self.dash_chart_on = QCheckBox("Mostrar gráfico")
+        self.dash_amanha = QCheckBox("Mostrar Amanhã (agenda)")
+        self.dash_status = QCheckBox("Mostrar status / alertas laterais")
+        for cb in (self.dash_kpis, self.dash_chart_on, self.dash_amanha, self.dash_status):
+            cb.setChecked(True)
+            cb.stateChanged.connect(self._dash_form_changed)
+
+        self.dash_locked = QCheckBox("Layout fixado (não altera até desbloquear)")
+        self.dash_locked.stateChanged.connect(self._dash_lock_toggled)
+
+        dash_form.addRow("Setor", self.dash_sector)
+        dash_form.addRow("Tela", self.dash_view)
+        dash_form.addRow("Gráfico", self.dash_chart)
+        dash_form.addRow("Tamanho", self.dash_scale)
+        lay.addLayout(dash_form)
+        lay.addWidget(self.dash_kpis)
+        lay.addWidget(self.dash_chart_on)
+        lay.addWidget(self.dash_amanha)
+        lay.addWidget(self.dash_status)
+        lay.addWidget(self.dash_locked)
+
+        dash_row = QHBoxLayout()
+        b_fix = QPushButton("Fixar este layout")
+        b_fix.setObjectName("primary")
+        b_fix.setToolTip("Salva e trava o dashboard deste setor/tela.")
+        b_fix.clicked.connect(self._dash_fix)
+        b_unlock = QPushButton("Desbloquear")
+        b_unlock.clicked.connect(self._dash_unlock)
+        dash_row.addWidget(b_fix)
+        dash_row.addWidget(b_unlock)
+        lay.addLayout(dash_row)
+
         tip_sec = QLabel(
             "A grade acima é o modo normal da parede. "
             "Embaixo liga/desliga o modo pedaço (sem apagar esses setores)."
@@ -706,6 +780,7 @@ class AceCrtConsole(QWidget):
             self.tv_wall_sector.setCurrentIndex(idx)
         self._tv_refresh_slot_labels()
         self._tv_select_slot(self._tv_selected)
+        self._dash_load_form()
         self._tv_loading = False
         self._append_log("config", "Layout TV recarregado.")
 
@@ -827,12 +902,123 @@ class AceCrtConsole(QWidget):
             return
         self._tv_layout["syncSwap"] = self.tv_sync.isChecked()
 
+    def _dash_target_ui(self) -> dict:
+        from tv_layout import default_view_ui
+
+        lay = self._tv_layout or {}
+        sd = (lay.get("sectorDefaults") or {})
+        sector = str(self.dash_sector.currentData() or "distribuicao")
+        bucket = sd.setdefault(sector, {"showLogo": True, "margins": "normal", "ui": {}, "views": {}})
+        if sector == "distribuicao":
+            view = str(self.dash_view.currentData() or "agendamento")
+            views = bucket.setdefault("views", {})
+            if view not in views or not isinstance(views.get(view), dict):
+                views[view] = default_view_ui("towers")
+            return views[view]
+        if not isinstance(bucket.get("ui"), dict):
+            bucket["ui"] = default_view_ui("towers")
+        return bucket["ui"]
+
+    def _dash_set_enabled(self, enabled: bool) -> None:
+        for w in (
+            self.dash_chart,
+            self.dash_scale,
+            self.dash_kpis,
+            self.dash_chart_on,
+            self.dash_amanha,
+            self.dash_status,
+        ):
+            w.setEnabled(enabled)
+
+    def _dash_load_form(self) -> None:
+        if not hasattr(self, "dash_sector"):
+            return
+        self._tv_loading = True
+        sector = str(self.dash_sector.currentData() or "distribuicao")
+        self.dash_view.setEnabled(sector == "distribuicao")
+        ui = self._dash_target_ui()
+        ci = self.dash_chart.findData(str(ui.get("chart") or "towers"))
+        if ci >= 0:
+            self.dash_chart.setCurrentIndex(ci)
+        si = self.dash_scale.findData(str(ui.get("scale") or "large"))
+        if si >= 0:
+            self.dash_scale.setCurrentIndex(si)
+        self.dash_kpis.setChecked(ui.get("showKpis", True) is not False)
+        self.dash_chart_on.setChecked(ui.get("showChart", True) is not False)
+        self.dash_amanha.setChecked(ui.get("showAmanha", True) is not False)
+        self.dash_status.setChecked(ui.get("showStatus", True) is not False)
+        locked = bool(ui.get("locked"))
+        self.dash_locked.setChecked(locked)
+        self._dash_set_enabled(not locked)
+        self._tv_loading = False
+
+    def _dash_sector_changed(self) -> None:
+        if self._tv_loading:
+            return
+        sector = str(self.dash_sector.currentData() or "distribuicao")
+        self.dash_view.setEnabled(sector == "distribuicao")
+        if sector == "distribuicao":
+            idx = self.dash_view.findData("agendamento")
+            if idx >= 0:
+                self.dash_view.setCurrentIndex(idx)
+        self._dash_load_form()
+
+    def _dash_form_changed(self) -> None:
+        if self._tv_loading or not self._tv_layout:
+            return
+        ui = self._dash_target_ui()
+        if ui.get("locked"):
+            return
+        ui["chart"] = str(self.dash_chart.currentData() or "towers")
+        ui["scale"] = str(self.dash_scale.currentData() or "large")
+        ui["showKpis"] = self.dash_kpis.isChecked()
+        ui["showChart"] = self.dash_chart_on.isChecked()
+        ui["showAmanha"] = self.dash_amanha.isChecked()
+        ui["showStatus"] = self.dash_status.isChecked()
+
+    def _dash_lock_toggled(self) -> None:
+        if self._tv_loading or not self._tv_layout:
+            return
+        ui = self._dash_target_ui()
+        ui["locked"] = self.dash_locked.isChecked()
+        self._dash_set_enabled(not ui["locked"])
+
+    def _dash_fix(self) -> None:
+        if not self._tv_layout:
+            return
+        self._dash_form_changed()
+        ui = self._dash_target_ui()
+        ui["locked"] = True
+        self._tv_loading = True
+        self.dash_locked.setChecked(True)
+        self._dash_set_enabled(False)
+        self._tv_loading = False
+        sector = str(self.dash_sector.currentData() or "")
+        view = str(self.dash_view.currentData() or "")
+        label = f"{sector}/{view}" if sector == "distribuicao" else sector
+        self._tv_persist(
+            title="Dashboard fixado",
+            body=f"Layout de {label} fixado e enviado às TVs.",
+        )
+
+    def _dash_unlock(self) -> None:
+        if not self._tv_layout:
+            return
+        ui = self._dash_target_ui()
+        ui["locked"] = False
+        self._tv_loading = True
+        self.dash_locked.setChecked(False)
+        self._dash_set_enabled(True)
+        self._tv_loading = False
+        self._append_log("config", "Dashboard desbloqueado para edição.")
+
     def _tv_persist(self, *, title: str, body: str) -> bool:
         """Salva no PC e envia à planilha (é o que as TVs leem)."""
         from tv_layout import push_layout_to_sheets, save_layout
 
         self._tv_form_changed()
         self._tv_global_changed()
+        self._dash_form_changed()
         try:
             self._tv_layout = save_layout(self._tv_layout)
             ok, msg = push_layout_to_sheets(self._tv_layout)

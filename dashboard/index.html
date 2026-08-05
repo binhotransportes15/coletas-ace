@@ -1354,6 +1354,56 @@
       min-height: 0;
       width: 100%;
     }
+    .agenda-pizza-wrap[hidden] { display: none !important; }
+    .agenda-towers-wrap {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: clamp(8px, 1.2vmin, 18px) 0;
+    }
+    .agenda-towers-wrap[hidden] { display: none !important; }
+    .torres.agenda-torres {
+      width: min(100%, 920px);
+      height: 100%;
+      min-height: clamp(220px, 38vh, 420px);
+      align-items: flex-end;
+      justify-content: space-evenly;
+      gap: clamp(18px, 3vw, 48px);
+    }
+    .torres.agenda-torres .torre {
+      flex: 1 1 0;
+      max-width: 200px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .torres.agenda-torres .barra {
+      min-height: clamp(64px, 8vh, 96px);
+    }
+    body.dash-scale-large .torres.agenda-torres {
+      min-height: clamp(280px, 48vh, 520px);
+    }
+    body.dash-scale-large .torres.agenda-torres .barra strong {
+      font-size: clamp(36px, 5vw, 72px);
+    }
+    body.dash-scale-small .torres.agenda-torres {
+      min-height: clamp(160px, 28vh, 280px);
+    }
+    body.dash-hide-kpis .agenda-kpis { display: none !important; }
+    body.dash-hide-amanha .agenda-amanha-wrap { display: none !important; }
+    body.dash-hide-status .agenda-tower-side { display: none !important; }
+    body.dash-hide-chart .agenda-chart-stage { display: none !important; }
+    body.dash-chart-pizza .agenda-towers-wrap { display: none !important; }
+    body.dash-chart-pizza .agenda-pizza-wrap { display: grid !important; }
+    body.dash-chart-towers .agenda-pizza-wrap { display: none !important; }
+    body.dash-chart-towers .agenda-towers-wrap { display: flex !important; }
+    body.dash-chart-bars .agenda-towers-wrap { display: none !important; }
+    body.dash-chart-bars .agenda-pizza-wrap { display: none !important; }
+    body.dash-chart-bars .agenda-tower-side { display: block !important; flex: 1; max-width: none; }
     .agenda-pizza {
       width: min(100%, 980px);
       height: 100%;
@@ -2467,7 +2517,26 @@
         <div class="agenda-hero">
           <div class="agenda-left-col">
             <div class="agenda-chart-stage">
-              <div class="agenda-pizza-wrap">
+              <div class="agenda-towers-wrap" id="agendaTowersWrap" aria-label="Torres de agendamento">
+                <div class="torres agenda-torres" id="agendaTorres">
+                  <div class="torre t-col">
+                    <div class="pin" title="Quantidade"><span id="agRankOk">0</span></div>
+                    <div class="barra" id="agBarOk"><strong id="agNOk">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Realizado</div></div>
+                  </div>
+                  <div class="torre t-com">
+                    <div class="pin" title="Quantidade"><span id="agRankRota">0</span></div>
+                    <div class="barra" id="agBarRota"><strong id="agNRota">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Em rota</div></div>
+                  </div>
+                  <div class="torre t-cad">
+                    <div class="pin" title="Quantidade"><span id="agRankPar">0</span></div>
+                    <div class="barra" id="agBarPar"><strong id="agNPar">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Parado</div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="agenda-pizza-wrap" id="agendaPizzaWrap" hidden>
                 <svg id="agendaPizza" class="agenda-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de agendamentos"></svg>
               </div>
             </div>
@@ -3347,7 +3416,54 @@
       TV_LAYOUT = remote || TV_LAYOUT || defaultTvLayout();
       if (TV_SLOT) TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT);
       applyTvChrome();
+      applyDashboardChrome();
       return TV_LAYOUT;
+    }
+
+    function resolveDashboardUi(layout, sector, view) {
+      const lay = layout || TV_LAYOUT || defaultTvLayout();
+      const sec = normalizeSectorId(sector || CURRENT_SECTOR || 'distribuicao');
+      const defaults = (lay.sectorDefaults && lay.sectorDefaults[sec]) || {};
+      let ui = defaults.ui || {};
+      if (sec === 'distribuicao') {
+        const v = (view || CURRENT_VIEW || 'coleta').toLowerCase();
+        const views = defaults.views || {};
+        ui = views[v] || views.agendamento || ui || {};
+      }
+      const chart = String(ui.chart || (sec === 'distribuicao' && (view || CURRENT_VIEW) === 'agendamento' ? 'towers' : 'towers')).toLowerCase();
+      const scale = String(ui.scale || 'large').toLowerCase();
+      return {
+        chart: ['towers', 'pizza', 'bars'].includes(chart) ? chart : 'towers',
+        scale: ['small', 'normal', 'large'].includes(scale) ? scale : 'large',
+        showKpis: ui.showKpis !== false,
+        showChart: ui.showChart !== false,
+        showAmanha: ui.showAmanha !== false,
+        showStatus: ui.showStatus !== false,
+        locked: !!ui.locked,
+      };
+    }
+
+    function applyDashboardChrome() {
+      const wipe = [
+        'dash-chart-towers', 'dash-chart-pizza', 'dash-chart-bars',
+        'dash-scale-small', 'dash-scale-normal', 'dash-scale-large',
+        'dash-hide-kpis', 'dash-hide-chart', 'dash-hide-amanha', 'dash-hide-status',
+      ];
+      wipe.forEach((c) => document.body.classList.remove(c));
+      if (!isOpsSector(CURRENT_SECTOR) && CURRENT_SECTOR !== 'distribuicao') {
+        // Aplica só UI agendamento/dist por enquanto; setores em breve usam logo/margens
+      }
+      const ui = resolveDashboardUi(TV_LAYOUT, CURRENT_SECTOR, CURRENT_VIEW);
+      document.body.classList.add(`dash-chart-${ui.chart}`);
+      document.body.classList.add(`dash-scale-${ui.scale}`);
+      if (!ui.showKpis) document.body.classList.add('dash-hide-kpis');
+      if (!ui.showChart) document.body.classList.add('dash-hide-chart');
+      if (!ui.showAmanha) document.body.classList.add('dash-hide-amanha');
+      if (!ui.showStatus) document.body.classList.add('dash-hide-status');
+      const pizzaWrap = document.getElementById('agendaPizzaWrap');
+      const towersWrap = document.getElementById('agendaTowersWrap');
+      if (pizzaWrap) pizzaWrap.hidden = ui.chart !== 'pizza';
+      if (towersWrap) towersWrap.hidden = ui.chart !== 'towers';
     }
 
     function applyTvChrome() {
@@ -3357,10 +3473,14 @@
         document.body.style.removeProperty('--mosaic-row');
         document.body.style.removeProperty('--mosaic-cols');
         document.body.style.removeProperty('--mosaic-rows');
+        applyDashboardChrome();
         return;
       }
       const eff = TV_EFFECTIVE || (TV_SLOT ? resolveTvEffective(TV_LAYOUT, TV_SLOT) : null);
-      if (!eff) return;
+      if (!eff) {
+        applyDashboardChrome();
+        return;
+      }
       document.body.classList.toggle('tv-no-logo', !eff.showLogo);
       // Sempre borda a borda no modo TV
       document.body.classList.add('tv-no-margins');
@@ -3377,6 +3497,7 @@
         document.body.style.removeProperty('--mosaic-cols');
         document.body.style.removeProperty('--mosaic-rows');
       }
+      applyDashboardChrome();
     }
 
     function syncedOpsViewIndex(swapMs) {
@@ -3542,6 +3663,7 @@
         setTvMode(wantTv, { syncHash: false });
       }
       if (syncHash) writeRouteHash({ tv: wantTv, sector: CURRENT_SECTOR });
+      applyDashboardChrome();
     }
 
     const ARM_STATUS_RANK = { atrasado: 0, descarregando: 1, chegou: 2, aguardando: 3, finalizado: 4 };
@@ -4901,6 +5023,32 @@
       ].join(' ');
     }
 
+    function renderAgendaTorres(rota, parado, ok) {
+      const items = [
+        { pin: 'agRankOk', bar: 'agBarOk', n: 'agNOk', val: Number(ok) || 0 },
+        { pin: 'agRankRota', bar: 'agBarRota', n: 'agNRota', val: Number(rota) || 0 },
+        { pin: 'agRankPar', bar: 'agBarPar', n: 'agNPar', val: Number(parado) || 0 },
+      ];
+      const total = items.reduce((s, i) => s + i.val, 0);
+      const max = Math.max(...items.map((i) => i.val), 1);
+      items.forEach((it) => {
+        const pct = total > 0 ? Math.round((it.val / total) * 100) : 0;
+        const nEl = document.getElementById(it.n);
+        if (nEl) {
+          nEl.innerHTML = `${pct}<span class="pct-sign">%</span>`;
+          nEl.title = `${it.val} de ${total}`;
+        }
+        const pin = document.getElementById(it.pin);
+        if (pin) {
+          pin.textContent = String(it.val);
+          pin.classList.toggle('pin-lg', it.val >= 100);
+          pin.title = `${it.val} CTRC`;
+        }
+        const barEl = document.getElementById(it.bar);
+        if (barEl) barEl.style.height = alturaTorre(it.val, max) + 'px';
+      });
+    }
+
     function renderAgendaPizza(rota, parado, ok) {
       const svg = document.getElementById('agendaPizza');
       if (!svg) return;
@@ -5079,8 +5227,10 @@
         chip.classList.toggle('is-on', alerta > 0);
       }
 
+      renderAgendaTorres(rota, parado, ok);
       renderAgendaPizza(rota, parado, ok);
       renderAgendaTowerSide(rota, armazem, realizado, alerta, total);
+      applyDashboardChrome();
       updateAlertaSemSaidaLock();
 
       const hoje = new Date();
@@ -5647,6 +5797,7 @@
     window.addEventListener('hashchange', () => applyRouteFromHash());
 
     applyRouteFromHash();
+    applyDashboardChrome();
     // normaliza legado #tv → #tv/coleta (ou #tv/slot/N se já conhecido)
     if (/^#?(tv|fullscreen|tela)$/i.test((location.hash || '').replace(/^#/, ''))) {
       writeRouteHash({ tv: true, sector: 'distribuicao' });
