@@ -3507,19 +3507,31 @@
       });
 
       if (TV_MODE) {
-        await ensureTvSlot();
-        await loadTvLayout();
-        applyTvChrome();
-        await applyTvSlotAfterRoute();
+        // Visual + fullscreen no gesto do clique (sem await antes — senão a API atrasa/falha)
         if (isOpsSector(CURRENT_SECTOR)) setView('live');
-        await enterFullscreen();
-        await requestWakeLock();
+        else if (CURRENT_SECTOR === 'armazem') applyArmViews();
         showTvHint();
         bumpTvIdle();
-        if (isOpsSector(CURRENT_SECTOR) && !(TV_EFFECTIVE && TV_EFFECTIVE.mosaic && TV_EFFECTIVE.syncSwap)) {
-          startSwapLoop();
-        }
         if (syncHash) writeRouteHash({ tv: true });
+        const fsP = enterFullscreen();
+        const wakeP = requestWakeLock();
+
+        try {
+          await ensureTvSlot();
+          await loadTvLayout();
+          applyTvChrome();
+          await applyTvSlotAfterRoute();
+          if (
+            (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem')
+            && !(TV_EFFECTIVE && TV_EFFECTIVE.mosaic && !TV_EFFECTIVE.syncSwap && TV_EFFECTIVE.mode === 'fixed')
+          ) {
+            if (TV_EFFECTIVE && TV_EFFECTIVE.mode !== 'fixed') {
+              if (TV_EFFECTIVE.syncSwap) startTvSyncClock();
+              else startSwapLoop();
+            }
+          }
+        } catch (_) { /* layout offline — CSS tv-mode já ativo */ }
+        await Promise.allSettled([fsP, wakeP]);
       } else {
         await exitFullscreen();
         await releaseWakeLock();
