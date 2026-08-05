@@ -2596,10 +2596,50 @@
     }
     .arm-hero-card > header .meta { color: var(--muted); font-size: 12px; }
     .arm-pizza-wrap {
-      display: grid; place-items: center;
-      padding: 4px 8px 10px; min-height: 0;
+      display: none;
     }
-    .arm-pizza-wrap .agenda-pizza { width: 100%; height: auto; max-height: 280px; }
+    .arm-towers-wrap {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: clamp(8px, 1.2vmin, 16px) clamp(6px, 1vmin, 12px);
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+    .torres.arm-torres {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: clamp(10px, 1.8vmin, 28px);
+      min-height: 0;
+      height: 100%;
+      max-height: none;
+      padding-bottom: 4px;
+    }
+    .torres.arm-torres .torre {
+      width: clamp(88px, 11vmin, 180px);
+    }
+    .torres.arm-torres .t-atr .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
+    .torres.arm-torres .t-des .barra { background: linear-gradient(180deg, #fbbf24, #d97706); }
+    .torres.arm-torres .t-che .barra { background: linear-gradient(180deg, #38bdf8, #0284c7); }
+    .torres.arm-torres .t-agu .barra { background: linear-gradient(180deg, #94a3b8, #475569); }
+    .torres.arm-torres .t-fin .barra { background: linear-gradient(180deg, #4ade80, #15803d); }
+    .torres.arm-torres .t-atr .pin { background: #ef4444; }
+    .torres.arm-torres .t-des .pin { background: #f59e0b; }
+    .torres.arm-torres .t-che .pin { background: #0ea5e9; }
+    .torres.arm-torres .t-agu .pin { background: #64748b; }
+    .torres.arm-torres .t-fin .pin { background: #22c55e; }
+    body.tv-mode .torres.arm-torres {
+      gap: clamp(14px, 2vmin, 32px);
+    }
+    body.tv-mode .torres.arm-torres .torre {
+      width: clamp(110px, 13vmin, 200px);
+    }
+    body.tv-mode .arm-towers-wrap {
+      padding: clamp(10px, 1.4vmin, 20px);
+    }
     .agenda-pizza .slice.s-fin { fill: var(--col); }
     .agenda-pizza .slice.s-des { fill: var(--cad-dark); }
     .agenda-pizza .slice.s-pat { fill: #38bdf8; }
@@ -3380,10 +3420,36 @@
           <section class="arm-hero-card">
             <header>
               <h2>Descarga</h2>
-              <div class="meta">finalizado · descarregando · no pátio</div>
+              <div class="meta">atrasado · descarregando · pátio · aguardando · finalizado</div>
             </header>
-            <div class="arm-pizza-wrap">
-              <svg id="armPizza" class="agenda-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de descarga"></svg>
+            <div class="arm-towers-wrap">
+              <div class="torres arm-torres" id="armTorres" aria-label="Torres de status do pátio">
+                <div class="torre t-atr">
+                  <div class="pin" title="Quantidade"><span id="armRankAtr">0</span></div>
+                  <div class="barra" id="armBarAtr"><strong id="armPctAtr">0<span class="pct-sign">%</span></strong></div>
+                  <div class="base"><div class="lbl">Atrasado</div></div>
+                </div>
+                <div class="torre t-des">
+                  <div class="pin" title="Quantidade"><span id="armRankDes">0</span></div>
+                  <div class="barra" id="armBarDes"><strong id="armPctDes">0<span class="pct-sign">%</span></strong></div>
+                  <div class="base"><div class="lbl">Descarregando</div></div>
+                </div>
+                <div class="torre t-che">
+                  <div class="pin" title="Quantidade"><span id="armRankChe">0</span></div>
+                  <div class="barra" id="armBarChe"><strong id="armPctChe">0<span class="pct-sign">%</span></strong></div>
+                  <div class="base"><div class="lbl">No pátio</div></div>
+                </div>
+                <div class="torre t-agu">
+                  <div class="pin" title="Quantidade"><span id="armRankAgu">0</span></div>
+                  <div class="barra" id="armBarAgu"><strong id="armPctAgu">0<span class="pct-sign">%</span></strong></div>
+                  <div class="base"><div class="lbl">Aguardando</div></div>
+                </div>
+                <div class="torre t-fin">
+                  <div class="pin" title="Quantidade"><span id="armRankFin">0</span></div>
+                  <div class="barra" id="armBarFin"><strong id="armPctFin">0<span class="pct-sign">%</span></strong></div>
+                  <div class="base"><div class="lbl">Finalizado</div></div>
+                </div>
+              </div>
             </div>
           </section>
         </div>
@@ -4734,60 +4800,44 @@
       if (el) el.textContent = v;
     }
 
-    function renderArmPizza(finalizado, descarregando, patio) {
-      const svg = document.getElementById('armPizza');
-      if (!svg) return;
-      const parts = [
-        { cls: 's-fin', label: 'FINALIZADO', desc: 'Descarga concluída', value: Number(finalizado) || 0 },
-        { cls: 's-des', label: 'DESCARREGANDO', desc: 'Em operação', value: Number(descarregando) || 0 },
-        { cls: 's-pat', label: 'NO PÁTIO', desc: 'Só chegou', value: Number(patio) || 0 },
-      ].filter((p) => p.value > 0);
-      const total = parts.reduce((s, p) => s + p.value, 0);
-      const W = 900, H = 520;
-      const cx = 450, cy = 268, r = 168, explode = 20, depthY = 14;
-      if (!total) {
-        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-        svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#1e293b"/><text x="${cx}" y="${cy}" text-anchor="middle" fill="#64748b" font-size="14" font-weight="700">Sem dados</text>`;
-        return;
-      }
-      let angle = -10;
-      const slices = [];
-      const depths = [];
-      const callouts = [];
-      parts.forEach((p) => {
-        const sweep = (p.value / total) * 360;
-        const start = angle;
-        const end = angle + Math.max(sweep, 2);
-        const mid = start + (end - start) / 2;
-        const pct = Math.round((p.value / total) * 100);
-        depths.push(`<path class="slice-depth ${p.cls}" d="${pieSlicePath(cx, cy + depthY, r, start, end - 0.7, explode)}" />`);
-        depths.push(`<path class="slice-depth ${p.cls}" d="${pieSlicePath(cx, cy + depthY * 0.55, r, start, end - 0.7, explode)}" opacity="0.35" />`);
-        slices.push(`<path class="slice ${p.cls}" d="${pieSlicePath(cx, cy, r, start, end - 0.7, explode)}" />`);
-        const anchor = polar(cx, cy, r * 0.58, mid);
-        const off = polar(0, 0, explode, mid);
-        const ax = anchor.x + off.x;
-        const ay = anchor.y + off.y;
-        const right = Math.cos((mid - 90) * Math.PI / 180) >= 0;
-        const elbow = polar(cx, cy, r + 36, mid);
-        const ex = elbow.x + off.x;
-        const ey = elbow.y + off.y;
-        const lx = right ? Math.min(W - 28, Math.max(ex + 70, cx + r + 90)) : Math.max(28, Math.min(ex - 70, cx - r - 90));
-        const ly = Math.max(42, Math.min(H - 56, ey));
-        const anchorText = right ? 'start' : 'end';
-        const ruleX1 = right ? lx : lx - 70;
-        const ruleX2 = right ? lx + 70 : lx;
-        callouts.push(`
-          <circle class="callout-dot ${p.cls}" cx="${ax}" cy="${ay}" r="5.5" />
-          <path class="callout-line" d="M ${ax} ${ay} L ${ex} ${ey} L ${lx} ${ly}" />
-          <text class="callout-pct" x="${lx}" y="${ly - 10}" text-anchor="${anchorText}">${pct}%</text>
-          <line class="callout-rule" x1="${ruleX1}" y1="${ly - 2}" x2="${ruleX2}" y2="${ly - 2}" />
-          <text class="callout-lab" x="${lx}" y="${ly + 16}" text-anchor="${anchorText}">${p.label}</text>
-          <text class="callout-count" x="${lx}" y="${ly + 34}" text-anchor="${anchorText}">${p.value} · ${p.desc}</text>
-        `);
-        angle = end;
+    function renderArmTorres(counts) {
+      const c = counts || {};
+      const items = [
+        { key: 'Atr', bar: 'armBarAtr', val: Number(c.atrasado) || 0 },
+        { key: 'Des', bar: 'armBarDes', val: Number(c.descarregando) || 0 },
+        { key: 'Che', bar: 'armBarChe', val: Number(c.chegou) || 0 },
+        { key: 'Agu', bar: 'armBarAgu', val: Number(c.aguardando) || 0 },
+        { key: 'Fin', bar: 'armBarFin', val: Number(c.finalizado) || 0 },
+      ];
+      const total = items.reduce((s, i) => s + i.val, 0);
+      const max = Math.max(...items.map((i) => i.val), 1);
+      items.forEach(({ key, bar, val }) => {
+        const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+        const nEl = document.getElementById('armPct' + key);
+        if (nEl) {
+          nEl.innerHTML = `${pct}<span class="pct-sign">%</span>`;
+          nEl.title = `${val} de ${total}`;
+        }
+        const pin = document.getElementById('armRank' + key);
+        if (pin) {
+          pin.textContent = String(val);
+          pin.classList.toggle('pin-lg', val >= 100);
+          pin.title = `${val} veículo(s)`;
+        }
+        const barEl = document.getElementById(bar);
+        if (barEl) barEl.style.height = alturaTorre(val, max) + 'px';
       });
-      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-      svg.innerHTML = depths.join('') + slices.join('') + callouts.join('');
+    }
+
+    function renderArmPizza(finalizado, descarregando, patio) {
+      // Compat: redireciona para torres (pizza removida do pátio)
+      renderArmTorres({
+        finalizado,
+        descarregando,
+        chegou: patio,
+        atrasado: Number(document.getElementById('kAtr')?.textContent) || 0,
+        aguardando: Number(document.getElementById('kAgu')?.textContent) || 0,
+      });
     }
 
     function renderArmRanking(rows, resumo) {
@@ -4967,7 +5017,13 @@
         setArmText('kFin', r.finalizado || '0');
         setArmText('armAtualizado', 'atualizado ' + (r.atualizado || '—'));
 
-        renderArmPizza(r.finalizado, r.descarregando, r.chegou);
+        renderArmTorres({
+          atrasado: r.atrasado,
+          descarregando: r.descarregando,
+          chegou: r.chegou,
+          aguardando: r.aguardando,
+          finalizado: r.finalizado,
+        });
         renderArmRanking(confRows, resumo177);
 
         const veics = aggVeiculosArm(veicRows);
