@@ -1115,6 +1115,11 @@ class AceCrtConsole(QWidget):
 
 
 def main() -> int:
+    # Necessário para QWebEngineView (preview do dashboard no editor TV)
+    try:
+        QApplication.setAttribute(Qt.AA_ShareOpenGLContexts, True)
+    except Exception:  # noqa: BLE001
+        pass
     app = QApplication(sys.argv)
     app.setApplicationName("BINHO ACE Gestão CRT")
     w = AceCrtConsole()

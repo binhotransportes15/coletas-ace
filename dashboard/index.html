@@ -3789,6 +3789,14 @@
     }
 
     async function loadTvLayout() {
+      // Preview no CRT injeta o rascunho — não sobrescrever com planilha
+      if (window.__ACE_CRT_PREVIEW__ && window.__ACE_CRT_LAYOUT__) {
+        TV_LAYOUT = window.__ACE_CRT_LAYOUT__;
+        if (TV_SLOT) TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT);
+        applyTvChrome();
+        applyDashboardChrome();
+        return TV_LAYOUT;
+      }
       const remote = await fetchTvLayoutRemote();
       TV_LAYOUT = remote || TV_LAYOUT || defaultTvLayout();
       if (TV_SLOT) TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT);

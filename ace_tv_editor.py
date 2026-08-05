@@ -2,14 +2,19 @@
 Editor de TV / Dashboard em janela separada (CRT).
 
 - Aba Parede: grade 2×3, setor por TV, modo parede
-- Aba Dashboard: setor + tela, gráfico/tamanho, canvas arrastável dos blocos
+- Aba Dashboard: setor + tela, gráfico/tamanho, canvas arrastável + preview ao vivo
 """
 from __future__ import annotations
 
+import json
+import socket
+import threading
 from copy import deepcopy
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QPoint, QRect, Qt, Signal
+from PySide6.QtCore import QPoint, QRect, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QColor, QFont, QMouseEvent, QPainter, QPen
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -23,6 +28,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
+    QSplitter,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -40,8 +46,51 @@ from tv_layout import (
     wall_on,
 )
 
+try:
+    from PySide6.QtWebEngineWidgets import QWebEngineView
+    from PySide6.QtWebEngineCore import QWebEngineSettings
+
+    _HAS_WEBENGINE = True
+except Exception:  # noqa: BLE001
+    QWebEngineView = None  # type: ignore[misc, assignment]
+    QWebEngineSettings = None  # type: ignore[misc, assignment]
+    _HAS_WEBENGINE = False
+
 GRID_COLS = 12
 GRID_ROWS = 12
+DASHBOARD_DIR = Path(__file__).resolve().parent / "dashboard"
+
+_preview_httpd: ThreadingHTTPServer | None = None
+_preview_port: int = 0
+_preview_lock = threading.Lock()
+
+
+def _ensure_preview_server() -> int:
+    """HTTP local do /dashboard — evita CORS/file:// no WebEngine."""
+    global _preview_httpd, _preview_port
+    with _preview_lock:
+        if _preview_httpd is not None and _preview_port:
+            return _preview_port
+
+        class _Handler(SimpleHTTPRequestHandler):
+            def __init__(self, *args, **kwargs):  # noqa: ANN002, ANN003
+                super().__init__(*args, directory=str(DASHBOARD_DIR), **kwargs)
+
+            def log_message(self, *_args) -> None:  # noqa: ANN002
+                return
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(("127.0.0.1", 0))
+        port = int(sock.getsockname()[1])
+        sock.close()
+
+        httpd = ThreadingHTTPServer(("127.0.0.1", port), _Handler)
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True, name="ace-dash-preview")
+        thread.start()
+        _preview_httpd = httpd
+        _preview_port = port
+        return port
+
 
 BLOCK_DEFS: dict[str, list[dict[str, Any]]] = {
     "distribuicao:agendamento": [
@@ -318,11 +367,17 @@ class TvEditorDialog(QDialog):
     def __init__(self, parent: QWidget | None = None, layout: dict[str, Any] | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("ACE · Editor TV e Dashboard")
-        self.setMinimumSize(980, 640)
-        self.resize(1100, 720)
+        self.setMinimumSize(1200, 720)
+        self.resize(1480, 860)
         self._loading = False
         self._layout = normalize_layout(layout or load_layout())
         self._selected_slot = 1
+        self._preview_ready = False
+        self._preview_hash = ""
+        self._preview_timer = QTimer(self)
+        self._preview_timer.setSingleShot(True)
+        self._preview_timer.setInterval(280)
+        self._preview_timer.timeout.connect(self._push_preview_layout)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
@@ -330,6 +385,7 @@ class TvEditorDialog(QDialog):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_wall_tab(), "Parede / TVs")
         self.tabs.addTab(self._build_dash_tab(), "Dashboard")
+        self.tabs.currentChanged.connect(self._on_tab_changed)
         root.addWidget(self.tabs, 1)
 
         buttons = QDialogButtonBox()
@@ -341,6 +397,7 @@ class TvEditorDialog(QDialog):
         root.addWidget(buttons)
 
         self._reload_forms()
+        QTimer.singleShot(200, self._boot_preview)
 
     def resulting_layout(self) -> dict[str, Any]:
         return deepcopy(self._layout)
@@ -422,8 +479,8 @@ class TvEditorDialog(QDialog):
         lay = QVBoxLayout(wrap)
 
         tip = QLabel(
-            "Escolha o setor (e a tela). Arraste o bloco para mover. "
-            "Arraste o quadrado amarelo no canto para aumentar/diminuir. "
+            "Esquerda: grade 12×12 (arraste / canto amarelo = redimensionar).\n"
+            "Direita: preview real do dashboard — muda ao vivo ao ajustar. "
             "Depois Salvar. Fixar trava o layout."
         )
         tip.setWordWrap(True)
@@ -484,9 +541,54 @@ class TvEditorDialog(QDialog):
         top.addLayout(vis)
         lay.addLayout(top)
 
+        split = QSplitter(Qt.Horizontal)
+        split.setChildrenCollapsible(False)
+
+        left = QWidget()
+        left_lay = QVBoxLayout(left)
+        left_lay.setContentsMargins(0, 0, 0, 0)
+        left_lay.addWidget(QLabel("Grade de blocos"))
         self.canvas = BlockCanvas()
         self.canvas.changed.connect(self._canvas_changed)
-        lay.addWidget(self.canvas, 1)
+        left_lay.addWidget(self.canvas, 1)
+        split.addWidget(left)
+
+        right = QWidget()
+        right_lay = QVBoxLayout(right)
+        right_lay.setContentsMargins(0, 0, 0, 0)
+        head = QHBoxLayout()
+        head.addWidget(QLabel("Preview (tela real)"))
+        head.addStretch(1)
+        b_reload = QPushButton("Recarregar")
+        b_reload.clicked.connect(self._reload_preview)
+        head.addWidget(b_reload)
+        right_lay.addLayout(head)
+
+        self.preview: Any = None
+        self.preview_status = QLabel("")
+        self.preview_status.setObjectName("hint")
+        self.preview_status.setWordWrap(True)
+        if _HAS_WEBENGINE and QWebEngineView is not None:
+            self.preview = QWebEngineView()
+            self.preview.setMinimumWidth(420)
+            settings = self.preview.settings()
+            if QWebEngineSettings is not None:
+                settings.setAttribute(QWebEngineSettings.LocalContentCanAccessFileUrls, True)
+                settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
+            self.preview.loadFinished.connect(self._on_preview_loaded)
+            right_lay.addWidget(self.preview, 1)
+        else:
+            self.preview_status.setText(
+                "Preview indisponível: instale PySide6 com Qt WebEngine "
+                "(pip install PySide6)."
+            )
+            right_lay.addStretch(1)
+        right_lay.addWidget(self.preview_status)
+        split.addWidget(right)
+        split.setStretchFactor(0, 2)
+        split.setStretchFactor(1, 3)
+        split.setSizes([520, 780])
+        lay.addWidget(split, 1)
 
         row = QHBoxLayout()
         self.dash_locked = QCheckBox("Layout fixado")
@@ -504,6 +606,113 @@ class TvEditorDialog(QDialog):
         row.addWidget(b_fix)
         lay.addLayout(row)
         return wrap
+
+    def _preview_route_hash(self) -> str:
+        sector = str(self.dash_sector.currentData() or "distribuicao")
+        view = str(self.dash_view.currentData() or "coleta")
+        if sector == "armazem":
+            v = view if view in ARM_VIEWS else "patio"
+            return f"tv/armazem/{v}"
+        if sector == "distribuicao":
+            if view not in ("coleta", "entrega", "agendamento"):
+                view = "agendamento"
+            return f"tv/distribuicao/{view}"
+        return f"tv/{sector}"
+
+    def _boot_preview(self) -> None:
+        if not self.preview:
+            return
+        try:
+            port = _ensure_preview_server()
+        except Exception as err:  # noqa: BLE001
+            self.preview_status.setText(f"Preview offline: {err}")
+            return
+        self._preview_hash = self._preview_route_hash()
+        url = QUrl(f"http://127.0.0.1:{port}/index.html#{self._preview_hash}")
+        self.preview_status.setText(f"Carregando preview… #{self._preview_hash}")
+        self.preview.setUrl(url)
+
+    def _reload_preview(self) -> None:
+        self._preview_ready = False
+        self._boot_preview()
+
+    def _on_tab_changed(self, index: int) -> None:
+        if index == 1:
+            self._schedule_preview()
+
+    def _on_preview_loaded(self, ok: bool) -> None:
+        self._preview_ready = bool(ok)
+        if not ok:
+            self.preview_status.setText("Falha ao carregar o dashboard no preview.")
+            return
+        self.preview_status.setText(f"Preview · #{self._preview_hash}")
+        self._push_preview_layout()
+
+    def _schedule_preview(self) -> None:
+        if not self.preview:
+            return
+        self._preview_timer.start()
+
+    def _push_preview_layout(self) -> None:
+        if not self.preview or not self._preview_ready:
+            return
+        if not self._loading:
+            try:
+                self._dash_options_changed()
+                self._canvas_changed()
+            except Exception:  # noqa: BLE001
+                pass
+
+        want = self._preview_route_hash()
+        if want != self._preview_hash:
+            self._preview_hash = want
+            self._preview_ready = False
+            try:
+                port = _ensure_preview_server()
+            except Exception as err:  # noqa: BLE001
+                self.preview_status.setText(f"Preview offline: {err}")
+                return
+            self.preview.setUrl(QUrl(f"http://127.0.0.1:{port}/index.html#{want}"))
+            return
+
+        layout_json = json.dumps(self._layout, ensure_ascii=False)
+        sector = json.dumps(str(self.dash_sector.currentData() or "distribuicao"))
+        view = json.dumps(str(self.dash_view.currentData() or "coleta"))
+        js = f"""
+        (function() {{
+          try {{
+            window.__ACE_CRT_PREVIEW__ = true;
+            window.__ACE_CRT_LAYOUT__ = {layout_json};
+            TV_LAYOUT = window.__ACE_CRT_LAYOUT__;
+            if (!TV_SLOT) TV_SLOT = 1;
+            try {{ localStorage.setItem('ace_tv_slot', '1'); }} catch (e) {{}}
+            if (typeof resolveTvEffective === 'function') {{
+              TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT || 1);
+            }}
+            if (typeof setSector === 'function') {{
+              setSector({sector}, {{
+                syncHash: false,
+                forceTv: true,
+                view: {view},
+              }});
+            }}
+            if (typeof applyTvChrome === 'function') applyTvChrome();
+            if (typeof applyDashboardChrome === 'function') applyDashboardChrome();
+            if (typeof applyArmViews === 'function' && {sector} === 'armazem') applyArmViews();
+            if (typeof applyOpsLiveViews === 'function' && {sector} === 'distribuicao') applyOpsLiveViews();
+            return 'ok';
+          }} catch (err) {{
+            return String(err);
+          }}
+        }})();
+        """
+        self.preview.page().runJavaScript(js, self._on_preview_js_done)
+
+    def _on_preview_js_done(self, result: Any) -> None:
+        if result and result != "ok":
+            self.preview_status.setText(f"Preview: {result}")
+        else:
+            self.preview_status.setText(f"Preview ao vivo · #{self._preview_hash}")
 
     # ── data helpers ───────────────────────────────────────────────
     def _fill_tv_view_combo(self, sector: str) -> None:
@@ -722,6 +931,7 @@ class TvEditorDialog(QDialog):
         self.canvas.set_blocks(blocks)
         self._set_dash_controls_enabled(not locked)
         self._loading = False
+        self._schedule_preview()
 
     def _set_dash_controls_enabled(self, enabled: bool) -> None:
         for w in (self.dash_chart, self.dash_scale, *self.block_checks.values()):
@@ -750,6 +960,7 @@ class TvEditorDialog(QDialog):
         )
         ui["showAmanha"] = bool(by.get("amanha", {}).get("visible", True)) if "amanha" in by else True
         ui["showStatus"] = bool(by.get("status", {}).get("visible", True)) if "status" in by else True
+        self._schedule_preview()
 
     def _block_vis_changed(self) -> None:
         if self._loading:
@@ -765,6 +976,7 @@ class TvEditorDialog(QDialog):
         ui["blocks"] = blocks
         self.canvas.set_blocks(blocks)
         self._dash_options_changed()
+        self._schedule_preview()
 
     def _canvas_changed(self) -> None:
         if self._loading:
@@ -773,6 +985,7 @@ class TvEditorDialog(QDialog):
         if ui.get("locked"):
             return
         ui["blocks"] = self.canvas.blocks()
+        self._schedule_preview()
 
     def _dash_reset_blocks(self) -> None:
         ui = self._ui_bucket()
