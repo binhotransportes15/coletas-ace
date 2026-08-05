@@ -59,6 +59,7 @@ def default_view_ui(chart: str = "towers") -> dict[str, Any]:
     return {
         "chart": chart,  # towers | pizza | bars
         "scale": "large",  # small | normal | large
+        "fontZoom": 1.0,  # 0.7 .. 1.6 — tamanho das letras na TV
         "showKpis": True,
         "showChart": True,
         "showAmanha": True,
@@ -82,6 +83,11 @@ def _normalize_view_ui(raw: Any, fallback: dict[str, Any] | None = None) -> dict
     scale = str(raw.get("scale") or base["scale"]).lower()
     if scale not in ("small", "normal", "large"):
         scale = base["scale"]
+    try:
+        font_zoom = float(raw.get("fontZoom", base.get("fontZoom", 1.0)))
+    except (TypeError, ValueError):
+        font_zoom = float(base.get("fontZoom", 1.0) or 1.0)
+    font_zoom = max(0.7, min(1.6, font_zoom))
     blocks_raw = raw.get("blocks") if isinstance(raw.get("blocks"), list) else base.get("blocks") or []
     blocks: list[dict[str, Any]] = []
     for b in blocks_raw:
@@ -104,6 +110,7 @@ def _normalize_view_ui(raw: Any, fallback: dict[str, Any] | None = None) -> dict
     return {
         "chart": chart,
         "scale": scale,
+        "fontZoom": font_zoom,
         "showKpis": bool(raw.get("showKpis", base["showKpis"])),
         "showChart": bool(raw.get("showChart", base["showChart"])),
         "showAmanha": bool(raw.get("showAmanha", base["showAmanha"])),

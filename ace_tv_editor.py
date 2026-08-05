@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
+    QSlider,
     QSplitter,
     QTabWidget,
     QVBoxLayout,
@@ -355,10 +356,13 @@ class BlockCanvas(QWidget):
             break
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        was_drag = self._drag_id is not None
         if event.button() == Qt.LeftButton:
             self._drag_id = None
             self._mode = "move"
             self.update()
+            if was_drag:
+                self.changed.emit()
 
 
 class TvEditorDialog(QDialog):
@@ -376,7 +380,7 @@ class TvEditorDialog(QDialog):
         self._preview_hash = ""
         self._preview_timer = QTimer(self)
         self._preview_timer.setSingleShot(True)
-        self._preview_timer.setInterval(280)
+        self._preview_timer.setInterval(90)
         self._preview_timer.timeout.connect(self._push_preview_layout)
 
         root = QVBoxLayout(self)
@@ -521,7 +525,22 @@ class TvEditorDialog(QDialog):
         form.addRow("Setor", self.dash_sector)
         form.addRow("Tela", self.dash_view)
         form.addRow("Gráfico", self.dash_chart)
-        form.addRow("Tamanho", self.dash_scale)
+        form.addRow("Escala layout", self.dash_scale)
+
+        font_row = QHBoxLayout()
+        self.dash_font = QSlider(Qt.Horizontal)
+        self.dash_font.setRange(70, 160)
+        self.dash_font.setSingleStep(5)
+        self.dash_font.setPageStep(10)
+        self.dash_font.setTickInterval(10)
+        self.dash_font.setTickPosition(QSlider.TicksBelow)
+        self.dash_font.setValue(100)
+        self.dash_font.valueChanged.connect(self._dash_font_changed)
+        self.dash_font_lbl = QLabel("100%")
+        self.dash_font_lbl.setMinimumWidth(44)
+        font_row.addWidget(self.dash_font, 1)
+        font_row.addWidget(self.dash_font_lbl)
+        form.addRow("Letras", font_row)
 
         self.dash_logo = QComboBox()
         self.dash_logo.addItem("Mostrar logo", "on")
@@ -710,17 +729,26 @@ class TvEditorDialog(QDialog):
             if (typeof resolveTvEffective === 'function') {{
               TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT || 1);
             }}
-            if (typeof setSector === 'function') {{
-              setSector({sector}, {{
+            var wantSector = {sector};
+            var wantView = {view};
+            var sameRoute = (typeof CURRENT_SECTOR !== 'undefined' && CURRENT_SECTOR === wantSector
+              && typeof CURRENT_VIEW !== 'undefined' && CURRENT_VIEW === wantView
+              && typeof TV_MODE !== 'undefined' && !!TV_MODE);
+            document.body.classList.add('preview-layout');
+            if (!sameRoute && typeof setSector === 'function') {{
+              setSector(wantSector, {{
                 syncHash: false,
                 forceTv: true,
-                view: {view},
+                view: wantView,
               }});
+            }} else {{
+              if (typeof applyTvChrome === 'function') applyTvChrome();
+              if (typeof applyDashboardChrome === 'function') applyDashboardChrome();
+              if (typeof applyArmViews === 'function' && wantSector === 'armazem') applyArmViews();
+              if (typeof applyOpsLiveViews === 'function' && wantSector === 'distribuicao') applyOpsLiveViews();
             }}
             if (typeof applyTvChrome === 'function') applyTvChrome();
             if (typeof applyDashboardChrome === 'function') applyDashboardChrome();
-            if (typeof applyArmViews === 'function' && {sector} === 'armazem') applyArmViews();
-            if (typeof applyOpsLiveViews === 'function' && {sector} === 'distribuicao') applyOpsLiveViews();
             return 'ok';
           }} catch (err) {{
             return String(err);
@@ -952,6 +980,15 @@ class TvEditorDialog(QDialog):
         si = self.dash_scale.findData(str(ui.get("scale") or "large"))
         if si >= 0:
             self.dash_scale.setCurrentIndex(si)
+        try:
+            fz = float(ui.get("fontZoom", 1.0) or 1.0)
+        except (TypeError, ValueError):
+            fz = 1.0
+        pct = int(round(max(0.7, min(1.6, fz)) * 100))
+        self.dash_font.blockSignals(True)
+        self.dash_font.setValue(pct)
+        self.dash_font.blockSignals(False)
+        self.dash_font_lbl.setText(f"{pct}%")
 
         known = {b["id"] for b in blocks}
         for bid, cb in self.block_checks.items():
@@ -984,7 +1021,7 @@ class TvEditorDialog(QDialog):
         self._schedule_preview()
 
     def _set_dash_controls_enabled(self, enabled: bool) -> None:
-        for w in (self.dash_chart, self.dash_scale, *self.block_checks.values()):
+        for w in (self.dash_chart, self.dash_scale, self.dash_font, *self.block_checks.values()):
             w.setEnabled(enabled)
         self.canvas.set_locked(not enabled)
         # Logo/margem do setor ficam sempre editáveis
@@ -1002,6 +1039,16 @@ class TvEditorDialog(QDialog):
             return
         self._load_dash_into_form()
 
+    def _dash_font_changed(self, value: int) -> None:
+        self.dash_font_lbl.setText(f"{int(value)}%")
+        if self._loading:
+            return
+        ui = self._ui_bucket()
+        if ui.get("locked"):
+            return
+        ui["fontZoom"] = round(max(70, min(160, int(value))) / 100.0, 2)
+        self._schedule_preview()
+
     def _dash_options_changed(self) -> None:
         if self._loading:
             return
@@ -1010,6 +1057,7 @@ class TvEditorDialog(QDialog):
             return
         ui["chart"] = str(self.dash_chart.currentData() or "towers")
         ui["scale"] = str(self.dash_scale.currentData() or "large")
+        ui["fontZoom"] = round(max(70, min(160, int(self.dash_font.value()))) / 100.0, 2)
         # sync legacy flags from blocks
         blocks = self.canvas.blocks()
         by = {b["id"]: b for b in blocks}

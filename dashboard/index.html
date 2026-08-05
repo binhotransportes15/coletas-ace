@@ -2247,6 +2247,163 @@
     body[data-sector="armazem"][data-view="conferentes"] #armTitle { color: #fbbf24; }
     body[data-sector="armazem"][data-view="patio"] #armTitle { color: #7dd3fc; }
 
+    /* Coleta / Entrega — blocos arrastáveis (CRT) */
+    .ops-layout {
+      flex: 1;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow: hidden;
+    }
+    .ops-layout .ops-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .ops-layout .ops-col .pop-stack,
+    .ops-layout .ops-col .torres,
+    .ops-layout .ops-col .cyl-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .ops-layout:not(.has-blocks) {
+      display: grid;
+      grid-template-columns: minmax(140px, 0.85fr) minmax(240px, 1.5fr) minmax(140px, 0.85fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 12px;
+      align-content: stretch;
+    }
+    .ops-layout:not(.has-blocks) > [data-block="resumo"] {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+    .ops-layout:not(.has-blocks) > [data-block="placas"] {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .ops-layout:not(.has-blocks) > [data-block="torres"],
+    .ops-layout:not(.has-blocks) > [data-block="banners"] {
+      grid-column: 2;
+      grid-row: 2;
+    }
+    .ops-layout:not(.has-blocks) > [data-block="prazo"],
+    .ops-layout:not(.has-blocks) > [data-block="pendencias"] {
+      grid-column: 3;
+      grid-row: 2;
+    }
+    /* Entrega sem blocos CRT: faixas ocupam 2 colunas */
+    #opsLayoutEntrega:not(.has-blocks) {
+      grid-template-columns: minmax(280px, 1.5fr) minmax(180px, 0.85fr);
+    }
+    #opsLayoutEntrega:not(.has-blocks) > [data-block="banners"] {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    #opsLayoutEntrega:not(.has-blocks) > [data-block="pendencias"] {
+      grid-column: 2;
+      grid-row: 2;
+    }
+    .ops-layout.has-blocks {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-template-rows: repeat(12, minmax(0, 1fr));
+      gap: clamp(6px, 0.9vw, 14px);
+      align-content: stretch;
+    }
+    .ops-layout.has-blocks > .dash-block {
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .ops-layout.has-blocks > .dash-block[hidden] { display: none !important; }
+    .ops-layout.has-blocks .ops-col {
+      height: 100%;
+    }
+    .ops-layout.has-blocks .col-sub {
+      flex: 0 0 auto;
+      margin: 0;
+      font-size: calc(0.68rem * var(--dash-font, 1));
+    }
+    .ops-layout.has-blocks .placa-panel,
+    .ops-layout.has-blocks .torre-panel,
+    .ops-layout.has-blocks .prazo-panel,
+    .ops-layout.has-blocks .pop-stack,
+    .ops-layout.has-blocks .torres,
+    .ops-layout.has-blocks .cyl-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: auto;
+    }
+    .ops-layout.has-blocks .resumo-top {
+      margin: 0;
+      height: 100%;
+      align-self: stretch;
+    }
+    .ops-layout.has-blocks .resumo-card {
+      height: 100%;
+      box-sizing: border-box;
+    }
+    .ops-layout.has-blocks .cyl-wrap {
+      grid-template-columns: minmax(36px, 52px) minmax(0, 1fr);
+    }
+    .ops-layout.has-blocks .cyl {
+      min-height: 100px;
+      height: 100%;
+    }
+    body.tv-mode.preview-layout .dash-block {
+      outline: 1px dashed rgba(255, 184, 0, 0.35);
+      outline-offset: -2px;
+    }
+    /* Tamanho das letras (CRT fontZoom) — tipografia dos números/títulos */
+    html { --dash-font: 1; }
+    body.tv-mode .resumo-total strong {
+      font-size: calc(clamp(28px, 3.4vw, 44px) * var(--dash-font, 1));
+    }
+    body.tv-mode .resumo-stats b,
+    body.tv-mode .resumo-single .resumo-stats b {
+      font-size: calc(clamp(24px, 3.2vmin, 48px) * var(--dash-font, 1));
+    }
+    body.tv-mode .torre .barra strong,
+    body.tv-mode .torres .barra strong {
+      font-size: calc(clamp(28px, 3.6vw, 52px) * var(--dash-font, 1));
+    }
+    body.tv-mode .torre .pin span {
+      font-size: calc(clamp(14px, 1.6vw, 20px) * var(--dash-font, 1));
+    }
+    body.tv-mode .ban-pct,
+    body.tv-mode .cyl-ban .ban-pct {
+      font-size: calc(clamp(18px, 2.2vw, 32px) * var(--dash-font, 1));
+    }
+    body.tv-mode .agenda-kpi b {
+      font-size: calc(clamp(18px, 2.4vw, 36px) * var(--dash-font, 1));
+    }
+    body.tv-mode .arm-kpi .val {
+      font-size: calc(clamp(18px, 2.2vw, 32px) * var(--dash-font, 1));
+    }
+    body.tv-mode .brand .title,
+    body.tv-mode .arm-brand .title {
+      font-size: calc(clamp(22px, 3vw, 30px) * var(--dash-font, 1));
+    }
+    body.tv-mode .clock-box .time {
+      font-size: calc(clamp(20px, 2.8vw, 28px) * var(--dash-font, 1));
+    }
+    body.tv-mode .pop .name {
+      font-size: calc(clamp(16px, 1.8vw, 22px) * var(--dash-font, 1));
+    }
+    body.tv-mode .pop .badge {
+      font-size: calc(clamp(15px, 1.7vw, 22px) * var(--dash-font, 1));
+    }
+    body.tv-mode .col-sub {
+      font-size: calc(10px * var(--dash-font, 1));
+    }
+
     .arm-wrap {
       height: 100vh;
       padding: 12px 14px;
@@ -2799,8 +2956,8 @@
     <!-- COLETA (tela cheia) -->
     <div class="view active" id="viewColeta">
       <section class="arena arena-single">
-        <div class="arena-body">
-          <div class="resumo-top resumo-single" aria-label="Resumo coleta">
+        <div class="arena-body ops-layout" id="opsLayoutColeta">
+          <div class="resumo-top resumo-single dash-block" data-block="resumo" aria-label="Resumo coleta">
             <div class="resumo-card rc-col">
               <p class="resumo-kicker">Coleta</p>
               <div class="resumo-total"><span>Total</span><strong id="totalColetas">0</strong></div>
@@ -2813,47 +2970,39 @@
             </div>
           </div>
 
-          <section class="zone zone-col zone-solo">
-            <header class="zone-head">
-              <h2 class="zone-title">Coleta</h2>
-              <span class="zone-hint">placas · situações · prazo</span>
-            </header>
-            <div class="zone-col-body">
-              <div class="col-left">
-                <div class="col-sub">Placas</div>
-                <div class="pop-stack" id="placaStack"></div>
+          <div class="ops-col dash-block" data-block="placas">
+            <div class="col-sub">Placas</div>
+            <div class="pop-stack" id="placaStack"></div>
+          </div>
+          <div class="ops-col dash-block ops-col-torres" data-block="torres">
+            <div class="col-sub">Situações</div>
+            <div class="torres">
+              <div class="torre t-col">
+                <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
+                <div class="barra" id="barReal"><strong id="nReal">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Realizada</div></div>
               </div>
-              <div class="col-center">
-                <div class="col-sub">Situações</div>
-                <div class="torres">
-                  <div class="torre t-col">
-                    <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
-                    <div class="barra" id="barReal"><strong id="nReal">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Realizada</div></div>
-                  </div>
-                  <div class="torre t-com">
-                    <div class="pin" title="Quantidade"><span id="rankRota">0</span></div>
-                    <div class="barra" id="barRota"><strong id="nRota">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Em rota</div></div>
-                  </div>
-                  <div class="torre t-cad">
-                    <div class="pin" title="Quantidade"><span id="rankPar">0</span></div>
-                    <div class="barra" id="barPar"><strong id="nPar">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Parado</div></div>
-                  </div>
-                  <div class="torre t-can">
-                    <div class="pin" title="Quantidade"><span id="rankCan">0</span></div>
-                    <div class="barra" id="barCan"><strong id="nCan">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Cancelada</div></div>
-                  </div>
-                </div>
+              <div class="torre t-com">
+                <div class="pin" title="Quantidade"><span id="rankRota">0</span></div>
+                <div class="barra" id="barRota"><strong id="nRota">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Em rota</div></div>
               </div>
-              <div class="col-right">
-                <div class="col-sub">Prazo / perdidas</div>
-                <div class="pop-stack" id="prazoStack"></div>
+              <div class="torre t-cad">
+                <div class="pin" title="Quantidade"><span id="rankPar">0</span></div>
+                <div class="barra" id="barPar"><strong id="nPar">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Parado</div></div>
+              </div>
+              <div class="torre t-can">
+                <div class="pin" title="Quantidade"><span id="rankCan">0</span></div>
+                <div class="barra" id="barCan"><strong id="nCan">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Cancelada</div></div>
               </div>
             </div>
-          </section>
+          </div>
+          <div class="ops-col dash-block" data-block="prazo">
+            <div class="col-sub">Prazo / perdidas</div>
+            <div class="pop-stack" id="prazoStack"></div>
+          </div>
         </div>
       </section>
     </div>
@@ -2861,8 +3010,8 @@
     <!-- ENTREGA (tela cheia) -->
     <div class="view" id="viewEntrega">
       <section class="arena arena-single">
-        <div class="arena-body">
-          <div class="resumo-top resumo-single" aria-label="Resumo entrega">
+        <div class="arena-body ops-layout" id="opsLayoutEntrega">
+          <div class="resumo-top resumo-single dash-block" data-block="resumo" aria-label="Resumo entrega">
             <div class="resumo-card rc-ent">
               <p class="resumo-kicker">Entrega</p>
               <div class="resumo-total"><span>Total</span><strong id="entTotal">0</strong></div>
@@ -2874,59 +3023,55 @@
             </div>
           </div>
 
-          <section class="zone zone-ent zone-solo">
-            <header class="zone-head">
-              <h2 class="zone-title">Entrega</h2>
-              <span class="zone-hint">faixas · pendências</span>
-            </header>
-            <div class="ent-panel">
-              <div class="ent-main">
-                <div class="cyl-wrap" aria-label="Resumo de entregas">
-                  <div class="cyl">
-                    <div class="cyl-seg c-real" id="cylSegReal" style="flex-grow:1"></div>
-                    <div class="cyl-seg c-rota" id="cylSegRota" style="flex-grow:1"></div>
-                    <div class="cyl-seg c-par" id="cylSegPar" style="flex-grow:1"></div>
+          <div class="ops-col dash-block ops-col-banners" data-block="banners">
+            <div class="col-sub">Faixas %</div>
+            <div class="cyl-wrap" aria-label="Resumo de entregas">
+              <div class="cyl">
+                <div class="cyl-seg c-real" id="cylSegReal" style="flex-grow:1"></div>
+                <div class="cyl-seg c-rota" id="cylSegRota" style="flex-grow:1"></div>
+                <div class="cyl-seg c-par" id="cylSegPar" style="flex-grow:1"></div>
+              </div>
+              <div class="cyl-banners">
+                <div class="cyl-ban-row r-real">
+                  <div class="ban-left">
+                    <div class="ban-title">Realizada</div>
+                    <div class="ban-meta"><b id="entNReal">0</b></div>
                   </div>
-                  <div class="cyl-banners">
-                    <div class="cyl-ban-row r-real">
-                      <div class="ban-left">
-                        <div class="ban-title">Realizada</div>
-                        <div class="ban-meta"><b id="entNReal">0</b></div>
-                      </div>
-                      <div class="cyl-ban-track">
-                        <div class="cyl-ban b-real" id="cylBanReal" style="width:100%">
-                          <div class="ban-pct" id="entPReal">0%</div>
-                        </div>
-                      </div>
+                  <div class="cyl-ban-track">
+                    <div class="cyl-ban b-real" id="cylBanReal" style="width:100%">
+                      <div class="ban-pct" id="entPReal">0%</div>
                     </div>
-                    <div class="cyl-ban-row r-rota">
-                      <div class="ban-left">
-                        <div class="ban-title">Em rota</div>
-                        <div class="ban-meta"><b id="entNRota">0</b></div>
-                      </div>
-                      <div class="cyl-ban-track">
-                        <div class="cyl-ban b-rota" id="cylBanRota" style="width:100%">
-                          <div class="ban-pct" id="entPRota">0%</div>
-                        </div>
-                      </div>
+                  </div>
+                </div>
+                <div class="cyl-ban-row r-rota">
+                  <div class="ban-left">
+                    <div class="ban-title">Em rota</div>
+                    <div class="ban-meta"><b id="entNRota">0</b></div>
+                  </div>
+                  <div class="cyl-ban-track">
+                    <div class="cyl-ban b-rota" id="cylBanRota" style="width:100%">
+                      <div class="ban-pct" id="entPRota">0%</div>
                     </div>
-                    <div class="cyl-ban-row r-par">
-                      <div class="ban-left">
-                        <div class="ban-title">Pendência</div>
-                        <div class="ban-meta"><b id="entNPar">0</b></div>
-                      </div>
-                      <div class="cyl-ban-track">
-                        <div class="cyl-ban b-par" id="cylBanPar" style="width:100%">
-                          <div class="ban-pct" id="entPPar">0%</div>
-                        </div>
-                      </div>
+                  </div>
+                </div>
+                <div class="cyl-ban-row r-par">
+                  <div class="ban-left">
+                    <div class="ban-title">Pendência</div>
+                    <div class="ban-meta"><b id="entNPar">0</b></div>
+                  </div>
+                  <div class="cyl-ban-track">
+                    <div class="cyl-ban b-par" id="cylBanPar" style="width:100%">
+                      <div class="ban-pct" id="entPPar">0%</div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="pop-stack" id="pendenciaStack"></div>
             </div>
-          </section>
+          </div>
+          <div class="ops-col dash-block" data-block="pendencias">
+            <div class="col-sub">Pendências</div>
+            <div class="pop-stack" id="pendenciaStack"></div>
+          </div>
         </div>
       </section>
     </div>
@@ -3973,10 +4118,14 @@
       }
       const chart = String(ui.chart || (sec === 'distribuicao' && (view || CURRENT_VIEW) === 'agendamento' ? 'towers' : 'towers')).toLowerCase();
       const scale = String(ui.scale || 'large').toLowerCase();
+      let fontZoom = Number(ui.fontZoom);
+      if (!Number.isFinite(fontZoom)) fontZoom = 1;
+      fontZoom = Math.max(0.7, Math.min(1.6, fontZoom));
       const blocks = Array.isArray(ui.blocks) ? ui.blocks : [];
       return {
         chart: ['towers', 'pizza', 'bars'].includes(chart) ? chart : 'towers',
         scale: ['small', 'normal', 'large'].includes(scale) ? scale : 'large',
+        fontZoom,
         showKpis: ui.showKpis !== false,
         showChart: ui.showChart !== false,
         showAmanha: ui.showAmanha !== false,
@@ -4001,8 +4150,14 @@
           return;
         }
         el.hidden = b.visible === false;
-        const mins = { kpis: 2, resumo: 3, chart: 4, torres: 5, banners: 5, status: 4, amanha: 2, tabela: 3 };
-        const minWs = { kpis: 4, resumo: 4, chart: 4, torres: 4, banners: 4, tabela: 4 };
+        const mins = {
+          kpis: 2, resumo: 3, chart: 4, torres: 5, banners: 5, status: 4, amanha: 2,
+          tabela: 3, placas: 3, prazo: 3, pendencias: 3,
+        };
+        const minWs = {
+          kpis: 4, resumo: 4, chart: 4, torres: 4, banners: 4, tabela: 4,
+          placas: 2, prazo: 2, pendencias: 2,
+        };
         let w = Math.max(minWs[id] || 1, Number(b.w) || 1);
         let h = Math.max(mins[id] || 1, Number(b.h) || 1);
         w = Math.min(12, w);
@@ -4037,6 +4192,8 @@
       if (pizzaWrap) pizzaWrap.hidden = ui.chart !== 'pizza';
       if (towersWrap) towersWrap.hidden = ui.chart !== 'towers';
 
+      document.documentElement.style.setProperty('--dash-font', String(ui.fontZoom || 1));
+
       const blocks = ui.blocks || [];
       const agendaLayout = document.getElementById('agendaLayout');
       const hasAgenda = applyBlockLayout(
@@ -4051,6 +4208,16 @@
         if (by.amanha && by.amanha.visible === false) document.body.classList.add('dash-hide-amanha');
         if (by.status && by.status.visible === false) document.body.classList.add('dash-hide-status');
       }
+
+      const distActive = CURRENT_SECTOR === 'distribuicao';
+      const colUi = distActive && CURRENT_VIEW === 'coleta'
+        ? ui
+        : resolveDashboardUi(TV_LAYOUT, 'distribuicao', 'coleta');
+      const entUi = distActive && CURRENT_VIEW === 'entrega'
+        ? ui
+        : resolveDashboardUi(TV_LAYOUT, 'distribuicao', 'entrega');
+      applyBlockLayout(document.getElementById('opsLayoutColeta'), colUi.blocks || [], { active: true });
+      applyBlockLayout(document.getElementById('opsLayoutEntrega'), entUi.blocks || [], { active: true });
 
       const armPatio = document.getElementById('armLayoutPatio');
       const armConf = document.getElementById('armLayoutConferentes');
