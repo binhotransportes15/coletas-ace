@@ -76,6 +76,7 @@ MENU_PROGRAM = {
     "103": "/bin/ssw0166",  # 103 - Situacao de Coletas (coletas normais / Excel)
     "36": "/bin/ssw0146",  # 36 - Relacao de romaneios e CTRCs de entrega
     "225": "/bin/ssw2862",  # 225 - Acompanhamento dos agendamentos de entrega
+    "31": "/bin/ssw0495",  # 031 - CTRCs com determinada ocorrência
 }
 
 _PATCH_CREATE_NEW_DOC = """

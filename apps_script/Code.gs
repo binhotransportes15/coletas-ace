@@ -89,6 +89,8 @@ function doGet(e) {
       alertas225: 'Alertas225',
       resumo78: 'Resumo78',
       resumo177: 'Resumo177',
+      resumo31: 'Resumo31',
+      ofensores31: 'Ofensores31',
     };
     if (cachedActions[action]) {
       return cachedSheetJson_(action, cachedActions[action]);
@@ -229,6 +231,18 @@ function doGet(e) {
         rows: rows177,
         total: rows177.length,
         report: '177',
+      });
+    }
+
+    if (action === 'pendencias31' || action === 'pendencias' || action === '31') {
+      var rows31 = sheetToObjects_('Pendencias31');
+      return json_({
+        ok: true,
+        version: getDataVersion_(),
+        updated_at: new Date().toISOString(),
+        rows: rows31,
+        total: rows31.length,
+        report: '031',
       });
     }
 
