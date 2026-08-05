@@ -446,9 +446,16 @@ class TvEditorDialog(QDialog):
         self.tv_logo.addItem("Esconder logo", "off")
         self.tv_logo.currentIndexChanged.connect(self._wall_slot_changed)
 
+        self.tv_margins = QComboBox()
+        self.tv_margins.addItem("Padrão do setor", "inherit")
+        self.tv_margins.addItem("Sem margem", "none")
+        self.tv_margins.addItem("Com margem", "normal")
+        self.tv_margins.currentIndexChanged.connect(self._wall_slot_changed)
+
         form.addRow("Setor desta TV", self.tv_sector)
         form.addRow("Tela / rotação", self.tv_view)
         form.addRow("Logo", self.tv_logo)
+        form.addRow("Margens", self.tv_margins)
         lay.addLayout(form)
 
         self.tv_sync = QCheckBox("Sincronizar rotação nas TVs (parede Dist/Armazém)")
@@ -480,8 +487,9 @@ class TvEditorDialog(QDialog):
 
         tip = QLabel(
             "Esquerda: grade 12×12 (arraste / canto amarelo = redimensionar).\n"
-            "Direita: preview real do dashboard — muda ao vivo ao ajustar. "
-            "Depois Salvar. Fixar trava o layout."
+            "Direita: preview real — muda ao vivo. Logo e margens são por setor "
+            "(vale nas TVs desse setor; na aba Parede dá para sobrescrever por TV).\n"
+            "Depois Salvar. Fixar trava só os blocos."
         )
         tip.setWordWrap(True)
         tip.setObjectName("hint")
@@ -514,6 +522,19 @@ class TvEditorDialog(QDialog):
         form.addRow("Tela", self.dash_view)
         form.addRow("Gráfico", self.dash_chart)
         form.addRow("Tamanho", self.dash_scale)
+
+        self.dash_logo = QComboBox()
+        self.dash_logo.addItem("Mostrar logo", "on")
+        self.dash_logo.addItem("Esconder logo", "off")
+        self.dash_logo.currentIndexChanged.connect(self._dash_chrome_changed)
+
+        self.dash_margins = QComboBox()
+        self.dash_margins.addItem("Sem margem (borda a borda)", "none")
+        self.dash_margins.addItem("Com margem", "normal")
+        self.dash_margins.currentIndexChanged.connect(self._dash_chrome_changed)
+
+        form.addRow("Logo (setor)", self.dash_logo)
+        form.addRow("Margens (setor)", self.dash_margins)
         top.addLayout(form, 1)
 
         vis = QVBoxLayout()
@@ -760,11 +781,7 @@ class TvEditorDialog(QDialog):
 
     def _ui_bucket(self) -> dict[str, Any]:
         sector = str(self.dash_sector.currentData() or "distribuicao")
-        sd = self._layout.setdefault("sectorDefaults", {})
-        bucket = sd.setdefault(
-            sector,
-            {"showLogo": True, "margins": "none", "ui": default_view_ui(), "views": {}},
-        )
+        bucket = self._sector_defaults_bucket()
         if sector in ("distribuicao", "armazem"):
             default_view = "agendamento" if sector == "distribuicao" else "patio"
             view = str(self.dash_view.currentData() or default_view)
@@ -775,6 +792,21 @@ class TvEditorDialog(QDialog):
         if not isinstance(bucket.get("ui"), dict):
             bucket["ui"] = default_view_ui("towers")
         return bucket["ui"]
+
+    def _sector_defaults_bucket(self) -> dict[str, Any]:
+        sector = str(self.dash_sector.currentData() or "distribuicao")
+        sd = self._layout.setdefault("sectorDefaults", {})
+        bucket = sd.setdefault(
+            sector,
+            {"showLogo": True, "margins": "none", "ui": default_view_ui(), "views": {}},
+        )
+        if not isinstance(bucket, dict):
+            bucket = {"showLogo": True, "margins": "none", "ui": default_view_ui(), "views": {}}
+            sd[sector] = bucket
+        bucket.setdefault("showLogo", True)
+        bucket.setdefault("margins", "none")
+        bucket.setdefault("views", {})
+        return bucket
 
     def _reload_forms(self) -> None:
         self._loading = True
@@ -841,6 +873,11 @@ class TvEditorDialog(QDialog):
         li = self.tv_logo.findData(lm)
         if li >= 0:
             self.tv_logo.setCurrentIndex(li)
+        marg = slot.get("margins")
+        mm = "inherit" if marg is None else ("none" if str(marg) == "none" else "normal")
+        mi = self.tv_margins.findData(mm)
+        if mi >= 0:
+            self.tv_margins.setCurrentIndex(mi)
         self._loading = False
         self._refresh_slot_labels()
 
@@ -878,6 +915,8 @@ class TvEditorDialog(QDialog):
             slot["view"] = "coleta"
         logo_mode = str(self.tv_logo.currentData() or "inherit")
         slot["showLogo"] = None if logo_mode == "inherit" else (logo_mode == "on")
+        marg_mode = str(self.tv_margins.currentData() or "inherit")
+        slot["margins"] = None if marg_mode == "inherit" else marg_mode
         self._refresh_slot_labels()
 
     def _wall_global_changed(self) -> None:
@@ -929,6 +968,17 @@ class TvEditorDialog(QDialog):
         self.dash_locked.setChecked(locked)
         self.canvas.set_locked(locked)
         self.canvas.set_blocks(blocks)
+
+        chrome = self._sector_defaults_bucket()
+        logo_key = "on" if chrome.get("showLogo", True) else "off"
+        li = self.dash_logo.findData(logo_key)
+        if li >= 0:
+            self.dash_logo.setCurrentIndex(li)
+        marg_key = "none" if str(chrome.get("margins") or "none") == "none" else "normal"
+        mi = self.dash_margins.findData(marg_key)
+        if mi >= 0:
+            self.dash_margins.setCurrentIndex(mi)
+
         self._set_dash_controls_enabled(not locked)
         self._loading = False
         self._schedule_preview()
@@ -937,6 +987,15 @@ class TvEditorDialog(QDialog):
         for w in (self.dash_chart, self.dash_scale, *self.block_checks.values()):
             w.setEnabled(enabled)
         self.canvas.set_locked(not enabled)
+        # Logo/margem do setor ficam sempre editáveis
+
+    def _dash_chrome_changed(self) -> None:
+        if self._loading:
+            return
+        chrome = self._sector_defaults_bucket()
+        chrome["showLogo"] = str(self.dash_logo.currentData() or "on") == "on"
+        chrome["margins"] = str(self.dash_margins.currentData() or "none")
+        self._schedule_preview()
 
     def _dash_context_changed(self) -> None:
         if self._loading:
@@ -1024,6 +1083,7 @@ class TvEditorDialog(QDialog):
     def _save(self) -> None:
         self._wall_slot_changed()
         self._wall_global_changed()
+        self._dash_chrome_changed()
         self._dash_options_changed()
         self._canvas_changed()
         try:

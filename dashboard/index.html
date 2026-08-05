@@ -757,6 +757,7 @@
     body.tv-mode.tv-no-logo .brand img,
     body.tv-mode.tv-no-logo .arm-brand img,
     body.tv-mode.tv-no-logo .sector-soon-panel img { display: none !important; }
+    body.tv-mode.tv-no-logo .arm-brand { gap: 0; }
     body.tv-mode .sector-soon-panel {
       height: 100dvh;
       min-height: 100dvh;
@@ -768,8 +769,7 @@
     body.tv-mode .sector-soon-panel h1 {
       font-size: clamp(36px, 6vmin, 72px);
     }
-    body.tv-mode.tv-no-margins .sector-soon-panel .box,
-    body.tv-mode .sector-soon-panel .box {
+    body.tv-mode.tv-no-margins .sector-soon-panel .box {
       border-radius: 0;
       border: none;
       width: 100%;
@@ -777,10 +777,10 @@
       display: grid;
       place-content: center;
     }
-    /* Modo TV: contentor de ponta a ponta (sem moldura / faixas) */
-    body.tv-mode .board,
-    body.tv-mode #panel-operacao,
-    body.tv-mode #panel-armazem {
+    /* Sem margem: ponta a ponta */
+    body.tv-mode.tv-no-margins .board,
+    body.tv-mode.tv-no-margins #panel-operacao,
+    body.tv-mode.tv-no-margins #panel-armazem {
       width: 100vw !important;
       max-width: none !important;
       height: 100dvh !important;
@@ -790,17 +790,17 @@
       border-radius: 0 !important;
       box-sizing: border-box;
     }
-    body.tv-mode .topbar,
-    body.tv-mode .arm-top {
+    body.tv-mode.tv-no-margins .topbar,
+    body.tv-mode.tv-no-margins .arm-top {
       border-radius: 0 !important;
       margin: 0 !important;
       border-left: none !important;
       border-right: none !important;
       border-top: none !important;
     }
-    body.tv-mode .arena,
-    body.tv-mode .agenda-arena,
-    body.tv-mode .arm-wrap {
+    body.tv-mode.tv-no-margins .arena,
+    body.tv-mode.tv-no-margins .agenda-arena,
+    body.tv-mode.tv-no-margins .arm-wrap {
       border-radius: 0 !important;
       border-left: none !important;
       border-right: none !important;
@@ -808,10 +808,34 @@
       max-width: none !important;
       width: 100% !important;
     }
-    body.tv-mode .arm-wrap {
+    body.tv-mode.tv-no-margins .arm-wrap {
       height: 100dvh !important;
       padding: 0 !important;
       gap: 0 !important;
+    }
+    /* Com margem: respiro / moldura */
+    body.tv-mode:not(.tv-no-margins) .board,
+    body.tv-mode:not(.tv-no-margins) #panel-operacao,
+    body.tv-mode:not(.tv-no-margins) #panel-armazem {
+      width: 100vw !important;
+      max-width: none !important;
+      height: 100dvh !important;
+      margin: 0 !important;
+      padding: 10px 14px !important;
+      gap: 10px !important;
+      box-sizing: border-box;
+    }
+    body.tv-mode:not(.tv-no-margins) .arm-wrap {
+      height: calc(100dvh - 20px) !important;
+      padding: 12px 14px !important;
+      gap: 10px !important;
+      max-width: 1680px !important;
+      margin: 0 auto !important;
+      width: 100% !important;
+    }
+    body.tv-mode:not(.tv-no-margins) .topbar,
+    body.tv-mode:not(.tv-no-margins) .arm-top {
+      border-radius: 14px !important;
     }
     body.tv-mode .arena,
     body.tv-mode .agenda-arena {
@@ -3571,7 +3595,11 @@
       const want = !!on;
       TV_MODE = want;
       document.body.classList.toggle('tv-mode', TV_MODE);
-      if (TV_MODE) document.body.classList.add('tv-no-margins');
+      if (TV_MODE) {
+        // margens/logo vêm do layout via applyTvChrome (não força sem margem)
+      } else {
+        document.body.classList.remove('tv-no-margins', 'tv-no-logo');
+      }
       const btns = [document.getElementById('btnTv'), document.getElementById('btnTvArmazem')];
       btns.forEach((btn) => {
         if (btn) btn.textContent = TV_MODE ? 'Sair TV' : 'TV';
@@ -3935,8 +3963,8 @@
         return;
       }
       document.body.classList.toggle('tv-no-logo', !eff.showLogo);
-      // Sempre borda a borda no modo TV
-      document.body.classList.add('tv-no-margins');
+      // Parede (mosaico) sempre sem margem; senão respeita layout do setor/slot
+      document.body.classList.toggle('tv-no-margins', !!eff.mosaic || eff.margins === 'none');
       document.body.classList.toggle('tv-mosaic', !!eff.mosaic);
       if (eff.mosaic) {
         document.body.style.setProperty('--mosaic-col', String(eff.col || 0));
