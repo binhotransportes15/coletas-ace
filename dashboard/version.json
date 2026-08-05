@@ -1,5 +1,5 @@
 {
-  "build": "2026-08-04-arm-inicio-fim",
-  "run": "armazem-inicio-fim-descarga",
-  "at": "2026-08-04T13:55:00Z"
+  "build": "2026-08-05-tv-refresh-fix",
+  "run": "fix-version-race-dist-arm",
+  "at": "2026-08-05T16:30:00Z"
 }

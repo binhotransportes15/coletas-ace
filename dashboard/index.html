@@ -3576,24 +3576,50 @@
       return dados;
     }
 
-    /** Versão dos dados no Apps Script — evita reler planilha grande se nada mudou. */
-    let lastDataVersion = null;
+    /** Versão dos dados no Apps Script — Dist e Armazém controlam separado
+     *  (antes um "comia" a versão e o outro pulava o refresh). */
+    let lastDistDataVersion = null;
+    let lastArmDataVersion = null;
     let forceNextRefresh = true;
 
-    async function dadosVersionChanged() {
+    async function fetchDataVersion() {
       try {
         const v = await chamarPlanilha('version');
-        const ver = v && v.version != null ? String(v.version) : null;
-        if (ver == null) return true;
-        if (forceNextRefresh || lastDataVersion == null || lastDataVersion !== ver) {
-          lastDataVersion = ver;
-          forceNextRefresh = false;
-          return true;
-        }
-        return false;
+        return v && v.version != null ? String(v.version) : null;
       } catch (_) {
-        return true; // se version falhar (script antigo), mantém refresh completo
+        return null;
       }
+    }
+
+    async function distVersionChanged() {
+      if (forceNextRefresh) {
+        forceNextRefresh = false;
+        return true;
+      }
+      const ver = await fetchDataVersion();
+      if (ver == null) return true;
+      if (lastDistDataVersion == null || lastDistDataVersion !== ver) return true;
+      return false;
+    }
+
+    async function armVersionChanged() {
+      const ver = await fetchDataVersion();
+      if (ver == null) return true;
+      if (lastArmDataVersion == null || lastArmDataVersion !== ver) return true;
+      return false;
+    }
+
+    function commitDistVersion(ver) {
+      if (ver != null) lastDistDataVersion = String(ver);
+    }
+
+    function commitArmVersion(ver) {
+      if (ver != null) lastArmDataVersion = String(ver);
+    }
+
+    // compat: alguns fluxos usavam lastDataVersion no status
+    function getLastDataVersionLabel() {
+      return lastDistDataVersion || lastArmDataVersion || '—';
     }
 
     function coletaKey(r) {
@@ -4838,7 +4864,10 @@
       if (CURRENT_SECTOR !== 'armazem') return;
       const err = document.getElementById('armErr');
       try {
-        const changed = await dadosVersionChanged();
+        const remoteVer = await fetchDataVersion();
+        const changed = remoteVer == null
+          || lastArmDataVersion == null
+          || lastArmDataVersion !== remoteVer;
         if (!changed && (lastGoodArmVeic.length || lastGoodArmConf.length)) {
           return;
         }
@@ -4908,19 +4937,19 @@
 
         const veics = aggVeiculosArm(veicRows);
         const tb = document.getElementById('armTbody');
-        if (!tb) return;
-        tb.innerHTML = veics.map((v) => {
-          const chegou = (v.chegada || '').trim();
-          const prev = (v.prev_chegada || '').trim();
-          const chegCell = chegou
-            ? `<span class="mono">${chegou}</span>`
-            : `<span class="muted">—</span>`;
-          const prevCell = !chegou && prev
-            ? `<span class="mono">${prev}</span>`
-            : (chegou ? `<span class="muted">—</span>` : `<span class="mono">${prev || '—'}</span>`);
-          const ini = (v.inicio_descarga || '').trim();
-          const fim = (v.final_descarga || '').trim();
-          return `<tr>
+        if (tb) {
+          tb.innerHTML = veics.map((v) => {
+            const chegou = (v.chegada || '').trim();
+            const prev = (v.prev_chegada || '').trim();
+            const chegCell = chegou
+              ? `<span class="mono">${chegou}</span>`
+              : `<span class="muted">—</span>`;
+            const prevCell = !chegou && prev
+              ? `<span class="mono">${prev}</span>`
+              : (chegou ? `<span class="muted">—</span>` : `<span class="mono">${prev || '—'}</span>`);
+            const ini = (v.inicio_descarga || '').trim();
+            const fim = (v.final_descarga || '').trim();
+            return `<tr>
             <td>${armBadge(v.status)}</td>
             <td>${v.origem || '—'}</td>
             <td class="mono">${v.cavalo || '—'}</td>
@@ -4932,7 +4961,10 @@
             <td class="mono">${ini || '—'}</td>
             <td class="mono">${fim || '—'}</td>
           </tr>`;
-        }).join('') || `<tr><td colspan="10" class="muted">Sem veículos</td></tr>`;
+          }).join('') || `<tr><td colspan="10" class="muted">Sem veículos</td></tr>`;
+        }
+        if (remoteVer != null) commitArmVersion(remoteVer);
+        else commitArmVersion(await fetchDataVersion());
       } catch (e) {
         if (err) {
           err.hidden = false;
@@ -6541,9 +6573,14 @@
       const status = document.getElementById('statusLine');
       const seq = ++refreshSeq;
       try {
-        const changed = await dadosVersionChanged();
+        const remoteVer = await fetchDataVersion();
+        const changed = forceNextRefresh
+          || remoteVer == null
+          || lastDistDataVersion == null
+          || lastDistDataVersion !== remoteVer;
+        if (forceNextRefresh) forceNextRefresh = false;
         if (!changed && (COLETAS_103.length || COLETAS_50.length || ENTREGAS_ALL.length)) {
-          if (status) status.textContent = `Atualizado · v${lastDataVersion} (sem mudança)`;
+          if (status) status.textContent = `Atualizado · v${getLastDataVersionLabel()} (sem mudança)`;
           return;
         }
         const [r103, r50, r36, rRom] = await Promise.all([
@@ -6552,6 +6589,8 @@
           chamarPlanilha('entregas36').catch(() => null),
           chamarPlanilha('romaneios36').catch(() => ({ rows: [] })),
         ]);
+        if (seq !== refreshSeq) return;
+        await carregarAgendamentos225().catch(() => {});
         if (seq !== refreshSeq) return;
 
         COLETAS_50 = (() => {
@@ -6630,8 +6669,11 @@
           renderFiltrosGestao();
           renderTabelaGestao();
         }
+        if (CURRENT_VIEW === 'agendamento') renderAgendamento();
+        if (remoteVer != null) commitDistVersion(remoteVer);
+        else commitDistVersion(await fetchDataVersion());
         status.textContent =
-          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · coleta(103): ${COLETAS.length} · entrega(36): ${ENTREGAS_36.length} · agenda(225): ${AGENDAMENTOS_225.length}`;
+          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · v${getLastDataVersionLabel()} · coleta(103): ${COLETAS.length} · entrega(36): ${ENTREGAS_36.length} · agenda(225): ${AGENDAMENTOS_225.length}`;
       } catch (err) {
         if (seq !== refreshSeq) return;
         status.textContent = err.message;
@@ -6813,7 +6855,7 @@
     tickClock();
     setInterval(tickClock, 1000);
     refresh();
-    setInterval(refresh, 20000);
+    setInterval(refresh, TV_MODE ? 12000 : 20000);
     startAlertaSemSaidaPoll();
 
     // Depois de um /push + deploy Pages, TVs recarregam sozinhas
