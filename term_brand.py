@@ -363,7 +363,11 @@ def work_line(text: str) -> str:
 
 def classify_status_msg(msg: str) -> str:
     m = (msg or "").lower()
-    if any(x in m for x in ("falhou", "erro", "error", "traceback", "exception")):
+    # "erros={}" no CICLO OK não é falha (antes caía em ERR por substring "erro")
+    m_check = m.replace("erros={}", "").replace("errors={}", "")
+    if any(x in m_check for x in ("falhou", " falha", "erro ", "erro:", "error", "traceback", "exception")):
+        return "err"
+    if "erro" in m_check and "erros" not in m_check:
         return "err"
     if any(x in m for x in ("ok", "concluido", "concluído", "atualizada", "salvo", "pronta")):
         return "ok"
