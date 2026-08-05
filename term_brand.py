@@ -365,6 +365,9 @@ def classify_status_msg(msg: str) -> str:
     m = (msg or "").lower()
     # "erros={}" no CICLO OK não é falha (antes caía em ERR por substring "erro")
     m_check = m.replace("erros={}", "").replace("errors={}", "")
+    # Ping lento / timeout do Apps Script não é falha do ciclo
+    if "ping" in m_check and any(x in m_check for x in ("lento", "instáv", "instav", "timed out", "timeout")):
+        return "work"
     if any(x in m_check for x in ("falhou", " falha", "erro ", "erro:", "error", "traceback", "exception")):
         return "err"
     if "erro" in m_check and "erros" not in m_check:

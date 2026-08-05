@@ -321,7 +321,7 @@ def sync_google_sheets(
     cfg = settings or load_settings()
     result: dict[str, Any] = {"ok": False, "skipped": False}
 
-    gate = _ensure_apps_script(cfg, status)
+    gate = _ensure_apps_script(cfg, status, ping=False)
     if not gate.get("ok"):
         return gate
 
@@ -412,13 +412,13 @@ def _ensure_apps_script(
         status("Sheets: configure apps_script_token (igual ao SECRET do Apps Script).")
         return result
 
-    # Ping recente ou pulado → segue direto (o POST do lote já valida o Script)
+    # Ping recente (15 min) ou pulado → segue direto (o POST do lote já valida o Script)
     if (
         not ping
         or (
             _ping_cache.get("url") == url
             and _ping_cache.get("token") == token
-            and (time.time() - float(_ping_cache.get("ok_at") or 0)) < 600
+            and (time.time() - float(_ping_cache.get("ok_at") or 0)) < 900
         )
     ):
         if not ping:
@@ -427,37 +427,34 @@ def _ensure_apps_script(
         return result
 
     status("Sheets: testando conexão…")
-    payloads = (
-        {
-            "token": token,
-            "action": "ping",
-            "sheet": "_ping",
-            "headers": ["ok"],
-            "rows": [],
-        },
-    )
-
     last_error = ""
-    for attempt in range(1, 2 + 1):
-        try:
-            auth = _post_json(url, payloads[0], timeout=25)
-            if auth.get("ok"):
-                _ping_cache.update({"ok_at": time.time(), "url": url, "token": token})
-                result.update({"ok": True, "url": url, "token": token})
-                return result
-            last_error = str(auth.get("error") or auth)
-            if "nao autorizado" in last_error.lower() or "autorizado" in last_error.lower():
-                status(f"Sheets nao autorizado: {last_error}")
-                result["error"] = last_error
-                return result
-        except Exception as error:  # noqa: BLE001
-            last_error = str(error)
-        if attempt < 2:
-            status(f"Sheets ping falhou ({last_error}); nova tentativa…")
-            time.sleep(0.8)
+    try:
+        # Timeout curto: Apps Script costuma demorar no cold start
+        auth = _post_json(
+            url,
+            {
+                "token": token,
+                "action": "ping",
+                "sheet": "_ping",
+                "headers": ["ok"],
+                "rows": [],
+            },
+            timeout=12,
+        )
+        if auth.get("ok"):
+            _ping_cache.update({"ok_at": time.time(), "url": url, "token": token})
+            result.update({"ok": True, "url": url, "token": token})
+            return result
+        last_error = str(auth.get("error") or auth)
+        if "nao autorizado" in last_error.lower() or "autorizado" in last_error.lower():
+            status(f"Sheets nao autorizado: {last_error}")
+            result["error"] = last_error
+            return result
+    except Exception as error:  # noqa: BLE001
+        last_error = str(error)
 
-    # Mesmo com ping ruim, deixa o lote tentar (ping às vezes é só lento/HTML)
-    status(f"Sheets: ping instável ({last_error}) — seguindo mesmo assim…")
+    # Não classificar como ERR de ciclo — só atraso do Google
+    status(f"Sheets: ping lento ({last_error[:80]}) — enviando direto…")
     result.update({"ok": True, "url": url, "token": token, "ping_soft_fail": True})
     return result
 
@@ -548,7 +545,7 @@ def sync_google_sheets_103(
     """Envia cache 103 (Coletas103 + Resumo103) para a planilha."""
     status = on_status or _noop
     cfg = settings or load_settings()
-    gate = _ensure_apps_script(cfg, status)
+    gate = _ensure_apps_script(cfg, status, ping=False)
     if not gate.get("ok"):
         return gate
 
@@ -604,7 +601,7 @@ def sync_google_sheets_36(
     """Envia cache 36 (Entregas36 + Romaneios36 + Resumo36) para a planilha."""
     status = on_status or _noop
     cfg = settings or load_settings()
-    gate = _ensure_apps_script(cfg, status)
+    gate = _ensure_apps_script(cfg, status, ping=False)
     if not gate.get("ok"):
         return gate
 
@@ -662,7 +659,7 @@ def sync_google_sheets_225(
     """Envia cache 225 (Resumo225 + Alertas225 + Agendamentos225)."""
     status = on_status or _noop
     cfg = settings or load_settings()
-    gate = _ensure_apps_script(cfg, status)
+    gate = _ensure_apps_script(cfg, status, ping=False)
     if not gate.get("ok"):
         return gate
 
