@@ -1,5 +1,5 @@
 {
-  "build": "2026-08-05-arm-torres",
-  "run": "armazem-patio-torres",
-  "at": "2026-08-05T20:40:00Z"
+  "build": "2026-08-05-arm-torres-tabela",
+  "run": "armazem-torres-e-tabela-lado-a-lado",
+  "at": "2026-08-05T20:45:00Z"
 }

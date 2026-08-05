@@ -1094,8 +1094,28 @@
     }
     body.tv-mode .arm-layout:not(.has-blocks) {
       display: grid !important;
+      grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.4fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
       height: 100% !important;
       gap: clamp(8px, 1.1vmin, 14px) !important;
+    }
+    body.tv-mode #armLayoutConferentes:not(.has-blocks) {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+    }
+    body.tv-mode .arm-table-wrap th,
+    body.tv-mode .arm-table-wrap td {
+      font-size: clamp(13px, 1.55vmin, 20px) !important;
+      padding: clamp(7px, 0.9vmin, 12px) clamp(8px, 1vmin, 14px) !important;
+    }
+    body.tv-mode .arm-panel > header h2 {
+      font-size: clamp(13px, 1.5vmin, 18px) !important;
+    }
+    body.tv-mode .arm-hero-card > header h2 {
+      font-size: clamp(13px, 1.5vmin, 18px) !important;
+    }
+    body.tv-mode .arm-hero-card > header .meta {
+      font-size: clamp(11px, 1.25vmin, 15px) !important;
     }
     body.tv-mode .cyl-ban-row {
       max-height: clamp(64px, 9vmin, 110px);
@@ -2263,22 +2283,25 @@
       container-type: size;
     }
     .arm-layout .dash-block[hidden] { display: none !important; }
+    /* Pátio: KPIs em cima · torres | tabela lado a lado (ver status + veículos) */
     .arm-layout:not(.has-blocks) {
       display: grid;
-      grid-template-columns: 1fr;
-      grid-template-rows: auto minmax(0, 0.9fr) minmax(0, 1.1fr);
+      grid-template-columns: minmax(300px, 0.88fr) minmax(0, 1.42fr);
+      grid-template-rows: auto minmax(0, 1fr);
       gap: clamp(8px, 1vw, 14px);
       height: 100%;
       min-height: 0;
     }
-    .arm-layout:not(.has-blocks) [data-block="kpis"] { grid-column: 1; grid-row: 1; }
+    .arm-layout:not(.has-blocks) [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
     .arm-layout:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
-    .arm-layout:not(.has-blocks) [data-block="tabela"] { grid-column: 1; grid-row: 3; min-height: 0; }
-    /* Conferentes: só KPIs + ranking */
+    .arm-layout:not(.has-blocks) [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
+    /* Conferentes: só KPIs + ranking (empilhado) */
     #armLayoutConferentes:not(.has-blocks) {
+      grid-template-columns: 1fr;
       grid-template-rows: auto minmax(0, 1fr);
     }
-    #armLayoutConferentes:not(.has-blocks) [data-block="chart"] { grid-row: 2; }
+    #armLayoutConferentes:not(.has-blocks) [data-block="kpis"] { grid-column: 1; grid-row: 1; }
+    #armLayoutConferentes:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; }
     .arm-layout:not(.has-blocks) [data-block="kpis"] { flex-shrink: 0; }
     .arm-layout:not(.has-blocks) [data-block="chart"],
     .arm-layout:not(.has-blocks) [data-block="tabela"] {
@@ -2602,7 +2625,7 @@
       display: flex;
       align-items: stretch;
       justify-content: center;
-      padding: clamp(8px, 1.2vmin, 16px) clamp(6px, 1vmin, 12px);
+      padding: clamp(6px, 1vmin, 12px) clamp(4px, 0.8vmin, 10px);
       min-height: 0;
       height: 100%;
       overflow: hidden;
@@ -2611,15 +2634,23 @@
       flex: 1;
       display: flex;
       align-items: flex-end;
-      justify-content: center;
-      gap: clamp(10px, 1.8vmin, 28px);
+      justify-content: space-evenly;
+      gap: clamp(6px, 1.1vmin, 16px);
       min-height: 0;
       height: 100%;
       max-height: none;
-      padding-bottom: 4px;
+      padding-bottom: 2px;
+      width: 100%;
     }
     .torres.arm-torres .torre {
-      width: clamp(88px, 11vmin, 180px);
+      flex: 1 1 0;
+      width: auto;
+      min-width: 0;
+      max-width: clamp(72px, 9.5vmin, 140px);
+    }
+    .torres.arm-torres .barra {
+      min-height: 36px;
+      max-height: none;
     }
     .torres.arm-torres .t-atr .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
     .torres.arm-torres .t-des .barra { background: linear-gradient(180deg, #fbbf24, #d97706); }
@@ -2632,13 +2663,26 @@
     .torres.arm-torres .t-agu .pin { background: #64748b; }
     .torres.arm-torres .t-fin .pin { background: #22c55e; }
     body.tv-mode .torres.arm-torres {
-      gap: clamp(14px, 2vmin, 32px);
+      gap: clamp(8px, 1.2vmin, 18px);
     }
     body.tv-mode .torres.arm-torres .torre {
-      width: clamp(110px, 13vmin, 200px);
+      max-width: clamp(88px, 10.5vmin, 160px);
+    }
+    body.tv-mode .torres.arm-torres .barra strong {
+      font-size: clamp(18px, 2.6vmin, 36px);
+    }
+    body.tv-mode .torres.arm-torres .base .lbl {
+      font-size: clamp(11px, 1.35vmin, 16px);
+    }
+    body.tv-mode .torres.arm-torres .pin {
+      width: clamp(28px, 3.4vmin, 42px);
+      height: clamp(28px, 3.4vmin, 42px);
+    }
+    body.tv-mode .torres.arm-torres .pin span {
+      font-size: clamp(12px, 1.5vmin, 18px);
     }
     body.tv-mode .arm-towers-wrap {
-      padding: clamp(10px, 1.4vmin, 20px);
+      padding: clamp(8px, 1.1vmin, 14px);
     }
     .agenda-pizza .slice.s-fin { fill: var(--col); }
     .agenda-pizza .slice.s-des { fill: var(--cad-dark); }
@@ -2875,6 +2919,7 @@
       display: grid;
       grid-template-rows: auto 1fr;
       min-height: 0;
+      height: 100%;
       overflow: hidden;
     }
     .arm-panel > header {
@@ -2944,6 +2989,13 @@
       .arm-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .arm-hero { grid-template-columns: 1fr; }
       .arm-wrap { height: auto; min-height: 100vh; }
+      #armLayoutPatio:not(.has-blocks) {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(220px, 0.75fr) minmax(280px, 1.25fr);
+      }
+      #armLayoutPatio:not(.has-blocks) [data-block="kpis"] { grid-column: 1; grid-row: 1; }
+      #armLayoutPatio:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; }
+      #armLayoutPatio:not(.has-blocks) [data-block="tabela"] { grid-column: 1; grid-row: 3; }
     }
 
     /* Escolher qual TV física (slot 1–6) */
@@ -3927,6 +3979,21 @@
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
 
+    /** Torres do pátio: preenche a coluna ao lado da tabela. */
+    function alturaTorreArm(valor, max) {
+      const wrap = document.querySelector('.arm-towers-wrap');
+      const pin = 52;
+      const base = 44;
+      const pad = 28;
+      const avail = wrap && wrap.clientHeight > 80
+        ? wrap.clientHeight
+        : Math.round((window.innerHeight || 800) * 0.42);
+      const maxH = Math.max(56, Math.round(avail - pin - base - pad));
+      const minH = Math.max(28, Math.round(maxH * 0.14));
+      if (!max || max <= 0) return minH;
+      return Math.round(minH + (valor / max) * (maxH - minH));
+    }
+
     function prazoVisivel() {
       const tv = document.body.classList.contains('tv-mode');
       const stack = document.getElementById('prazoStack');
@@ -4825,7 +4892,7 @@
           pin.title = `${val} veículo(s)`;
         }
         const barEl = document.getElementById(bar);
-        if (barEl) barEl.style.height = alturaTorre(val, max) + 'px';
+        if (barEl) barEl.style.height = alturaTorreArm(val, max) + 'px';
       });
     }
 
