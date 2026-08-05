@@ -768,7 +768,8 @@
     body.tv-mode .sector-soon-panel h1 {
       font-size: clamp(36px, 6vmin, 72px);
     }
-    body.tv-mode.tv-no-margins .sector-soon-panel .box {
+    body.tv-mode.tv-no-margins .sector-soon-panel .box,
+    body.tv-mode .sector-soon-panel .box {
       border-radius: 0;
       border: none;
       width: 100%;
@@ -776,24 +777,59 @@
       display: grid;
       place-content: center;
     }
-    body.tv-mode.tv-no-margins .board {
+    /* Modo TV: contentor de ponta a ponta (sem moldura / faixas) */
+    body.tv-mode .board,
+    body.tv-mode #panel-operacao,
+    body.tv-mode #panel-armazem {
+      width: 100vw !important;
+      max-width: none !important;
+      height: 100dvh !important;
+      margin: 0 !important;
       padding: 0 !important;
       gap: 0 !important;
+      border-radius: 0 !important;
+      box-sizing: border-box;
     }
-    body.tv-mode.tv-no-margins .topbar,
-    body.tv-mode.tv-no-margins .arm-top {
+    body.tv-mode .topbar,
+    body.tv-mode .arm-top {
       border-radius: 0 !important;
       margin: 0 !important;
+      border-left: none !important;
+      border-right: none !important;
+      border-top: none !important;
     }
-    body.tv-mode.tv-no-margins .arena,
-    body.tv-mode.tv-no-margins .agenda-arena,
-    body.tv-mode.tv-no-margins .arm-wrap {
+    body.tv-mode .arena,
+    body.tv-mode .agenda-arena,
+    body.tv-mode .arm-wrap {
       border-radius: 0 !important;
       border-left: none !important;
       border-right: none !important;
+      margin: 0 !important;
+      max-width: none !important;
+      width: 100% !important;
     }
-    body.tv-mode.tv-no-margins .arena {
-      padding: 2px clamp(4px, 0.6vmin, 10px) !important;
+    body.tv-mode .arm-wrap {
+      height: 100dvh !important;
+      padding: 0 !important;
+      gap: 0 !important;
+    }
+    body.tv-mode .arena,
+    body.tv-mode .agenda-arena {
+      padding: 4px 6px !important;
+      height: 100% !important;
+      flex: 1;
+      min-height: 0;
+    }
+    body.tv-mode #viewColeta.active,
+    body.tv-mode #viewEntrega.active,
+    body.tv-mode #viewAgendamento.active {
+      height: 100% !important;
+      min-height: 0 !important;
+      display: flex !important;
+      flex-direction: column;
+    }
+    body.tv-mode .zone {
+      border-radius: 0 !important;
     }
 
     /* Parede 2×3: cada TV mostra um pedaço do mesmo dashboard */
@@ -822,12 +858,12 @@
       display: none !important;
     }
     body.tv-mode .board {
-      width: 100%;
+      width: 100vw;
       max-width: none;
       height: 100dvh;
       margin: 0;
-      padding: clamp(10px, 1.4vmin, 28px);
-      gap: clamp(8px, 1vmin, 16px);
+      padding: 0;
+      gap: 0;
       grid-template-rows: auto 1fr;
     }
     body.tv-mode .status-line,
@@ -838,7 +874,7 @@
     }
     body.tv-mode .topbar {
       padding: clamp(6px, 1vmin, 14px) clamp(12px, 1.6vmin, 22px);
-      border-radius: clamp(10px, 1.2vmin, 18px);
+      border-radius: 0;
       grid-template-columns: 1fr auto auto;
     }
     body.tv-mode .brand img { height: clamp(40px, 5.5vmin, 72px); }
@@ -857,8 +893,8 @@
       min-height: 0;
     }
     body.tv-mode .arena {
-      border-radius: clamp(12px, 1.4vmin, 22px);
-      padding: clamp(12px, 1.6vmin, 28px);
+      border-radius: 0;
+      padding: 4px 6px;
       height: 100%;
     }
     body.tv-mode .arena-body {
@@ -3117,6 +3153,7 @@
     async function setTvMode(on, { syncHash = true } = {}) {
       TV_MODE = !!on;
       document.body.classList.toggle('tv-mode', TV_MODE);
+      if (TV_MODE) document.body.classList.add('tv-no-margins');
       const btns = [document.getElementById('btnTv'), document.getElementById('btnTvArmazem')];
       btns.forEach((btn) => {
         if (btn) btn.textContent = TV_MODE ? 'Sair TV' : 'TV';
@@ -3325,7 +3362,8 @@
       const eff = TV_EFFECTIVE || (TV_SLOT ? resolveTvEffective(TV_LAYOUT, TV_SLOT) : null);
       if (!eff) return;
       document.body.classList.toggle('tv-no-logo', !eff.showLogo);
-      document.body.classList.toggle('tv-no-margins', eff.margins === 'none' || !!eff.mosaic);
+      // Sempre borda a borda no modo TV
+      document.body.classList.add('tv-no-margins');
       document.body.classList.toggle('tv-mosaic', !!eff.mosaic);
       if (eff.mosaic) {
         document.body.style.setProperty('--mosaic-col', String(eff.col || 0));
