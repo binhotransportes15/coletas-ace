@@ -1,11 +1,11 @@
 {
-  "version": 8,
-  "updatedAt": "2026-08-04T17:52:36",
+  "version": 10,
+  "updatedAt": "2026-08-04T18:09:48",
   "rows": 2,
   "cols": 3,
   "syncSwap": true,
   "swapMs": 15000,
-  "wallMode": true,
+  "wallMode": false,
   "wallSector": "armazem",
   "sectorDefaults": {
     "distribuicao": {
