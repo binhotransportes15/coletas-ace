@@ -44,27 +44,42 @@ GRID_ROWS = 12
 
 BLOCK_DEFS: dict[str, list[dict[str, Any]]] = {
     "distribuicao:agendamento": [
-        {"id": "kpis", "label": "KPIs / totais", "x": 0, "y": 0, "w": 12, "h": 2},
-        {"id": "chart", "label": "Gráfico / torres", "x": 0, "y": 2, "w": 8, "h": 7},
-        {"id": "status", "label": "Status / alertas", "x": 8, "y": 2, "w": 4, "h": 7},
+        {"id": "kpis", "label": "KPIs / totais", "x": 0, "y": 0, "w": 12, "h": 3},
+        {"id": "chart", "label": "Gráfico / torres", "x": 0, "y": 3, "w": 8, "h": 6},
+        {"id": "status", "label": "Status / alertas", "x": 8, "y": 3, "w": 4, "h": 6},
         {"id": "amanha", "label": "Amanhã", "x": 0, "y": 9, "w": 12, "h": 3},
     ],
     "distribuicao:coleta": [
-        {"id": "resumo", "label": "Resumo total", "x": 0, "y": 0, "w": 12, "h": 2},
-        {"id": "placas", "label": "Placas", "x": 0, "y": 2, "w": 3, "h": 10},
-        {"id": "torres", "label": "Torres", "x": 3, "y": 2, "w": 6, "h": 10},
-        {"id": "prazo", "label": "Prazo", "x": 9, "y": 2, "w": 3, "h": 10},
+        {"id": "resumo", "label": "Resumo total", "x": 0, "y": 0, "w": 12, "h": 3},
+        {"id": "placas", "label": "Placas", "x": 0, "y": 3, "w": 3, "h": 9},
+        {"id": "torres", "label": "Torres", "x": 3, "y": 3, "w": 6, "h": 9},
+        {"id": "prazo", "label": "Prazo", "x": 9, "y": 3, "w": 3, "h": 9},
     ],
     "distribuicao:entrega": [
-        {"id": "resumo", "label": "Resumo entrega", "x": 0, "y": 0, "w": 12, "h": 2},
-        {"id": "banners", "label": "Faixas %", "x": 0, "y": 2, "w": 8, "h": 10},
-        {"id": "pendencias", "label": "Pendências", "x": 8, "y": 2, "w": 4, "h": 10},
+        {"id": "resumo", "label": "Resumo entrega", "x": 0, "y": 0, "w": 12, "h": 3},
+        {"id": "banners", "label": "Faixas %", "x": 0, "y": 3, "w": 8, "h": 9},
+        {"id": "pendencias", "label": "Pendências", "x": 8, "y": 3, "w": 4, "h": 9},
     ],
     "armazem": [
-        {"id": "kpis", "label": "KPIs armazém", "x": 0, "y": 0, "w": 12, "h": 2},
-        {"id": "chart", "label": "Gráfico", "x": 0, "y": 2, "w": 7, "h": 10},
-        {"id": "tabela", "label": "Tabela veículos", "x": 7, "y": 2, "w": 5, "h": 10},
+        {"id": "kpis", "label": "KPIs armazém", "x": 0, "y": 0, "w": 12, "h": 3},
+        {"id": "chart", "label": "Gráfico", "x": 0, "y": 3, "w": 7, "h": 9},
+        {"id": "tabela", "label": "Tabela veículos", "x": 7, "y": 3, "w": 5, "h": 9},
     ],
+}
+
+# Altura mínima sugerida por tipo de bloco (evita texto cortado na TV)
+BLOCK_MIN_H: dict[str, int] = {
+    "kpis": 3,
+    "resumo": 3,
+    "chart": 5,
+    "torres": 5,
+    "banners": 5,
+    "status": 4,
+    "amanha": 2,
+    "placas": 4,
+    "prazo": 4,
+    "pendencias": 4,
+    "tabela": 4,
 }
 
 
@@ -84,14 +99,20 @@ def merge_blocks(saved: Any, key: str) -> list[dict[str, Any]]:
         if not s:
             out.append(b)
             continue
+        min_h = int(BLOCK_MIN_H.get(b["id"], 1))
+        min_w = 2 if b["id"] in ("kpis", "resumo", "chart", "torres", "banners") else 1
+        h = max(min_h, min(GRID_ROWS, int(s.get("h", b["h"]))))
+        w = max(min_w, min(GRID_COLS, int(s.get("w", b["w"]))))
+        x = max(0, min(GRID_COLS - w, int(s.get("x", b["x"]))))
+        y = max(0, min(GRID_ROWS - h, int(s.get("y", b["y"]))))
         out.append(
             {
                 "id": b["id"],
                 "label": b["label"],
-                "x": max(0, min(GRID_COLS - 1, int(s.get("x", b["x"])))),
-                "y": max(0, min(GRID_ROWS - 1, int(s.get("y", b["y"])))),
-                "w": max(1, min(GRID_COLS, int(s.get("w", b["w"])))),
-                "h": max(1, min(GRID_ROWS, int(s.get("h", b["h"])))),
+                "x": x,
+                "y": y,
+                "w": w,
+                "h": h,
                 "visible": bool(s.get("visible", True)),
             }
         )
@@ -257,8 +278,10 @@ class BlockCanvas(QWidget):
             if b["id"] != self._drag_id:
                 continue
             if self._mode == "resize":
-                nw = max(1, min(GRID_COLS - int(b["x"]), self._drag_start_wh[0] + dx))
-                nh = max(1, min(GRID_ROWS - int(b["y"]), self._drag_start_wh[1] + dy))
+                min_h = int(BLOCK_MIN_H.get(str(b["id"]), 1))
+                min_w = 2 if b["id"] in ("kpis", "resumo", "chart", "torres", "banners") else 1
+                nw = max(min_w, min(GRID_COLS - int(b["x"]), self._drag_start_wh[0] + dx))
+                nh = max(min_h, min(GRID_ROWS - int(b["y"]), self._drag_start_wh[1] + dy))
                 if nw != b["w"] or nh != b["h"]:
                     b["w"], b["h"] = nw, nh
                     self.update()

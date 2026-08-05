@@ -1,6 +1,6 @@
 {
-  "version": 10,
-  "updatedAt": "2026-08-04T18:09:48",
+  "version": 13,
+  "updatedAt": "2026-08-05T09:43:13",
   "rows": 2,
   "cols": 3,
   "syncSwap": true,
@@ -10,27 +10,189 @@
   "sectorDefaults": {
     "distribuicao": {
       "showLogo": true,
-      "margins": "none"
+      "margins": "none",
+      "ui": {
+        "chart": "towers",
+        "scale": "large",
+        "showKpis": true,
+        "showChart": true,
+        "showAmanha": true,
+        "showStatus": true,
+        "locked": false,
+        "blocks": []
+      },
+      "views": {
+        "coleta": {
+          "chart": "towers",
+          "scale": "large",
+          "showKpis": true,
+          "showChart": true,
+          "showAmanha": true,
+          "showStatus": true,
+          "locked": false,
+          "blocks": []
+        },
+        "entrega": {
+          "chart": "towers",
+          "scale": "large",
+          "showKpis": true,
+          "showChart": true,
+          "showAmanha": true,
+          "showStatus": true,
+          "locked": false,
+          "blocks": []
+        },
+        "agendamento": {
+          "chart": "towers",
+          "scale": "large",
+          "showKpis": true,
+          "showChart": true,
+          "showAmanha": true,
+          "showStatus": true,
+          "locked": false,
+          "blocks": [
+            {
+              "id": "kpis",
+              "label": "KPIs / totais",
+              "x": 0,
+              "y": 0,
+              "w": 12,
+              "h": 3,
+              "visible": true
+            },
+            {
+              "id": "chart",
+              "label": "Gráfico / torres",
+              "x": 0,
+              "y": 3,
+              "w": 8,
+              "h": 6,
+              "visible": true
+            },
+            {
+              "id": "status",
+              "label": "Status / alertas",
+              "x": 8,
+              "y": 3,
+              "w": 4,
+              "h": 6,
+              "visible": true
+            },
+            {
+              "id": "amanha",
+              "label": "Amanhã",
+              "x": 0,
+              "y": 9,
+              "w": 12,
+              "h": 3,
+              "visible": true
+            }
+          ]
+        }
+      }
     },
     "armazem": {
       "showLogo": true,
-      "margins": "none"
+      "margins": "none",
+      "ui": {
+        "chart": "towers",
+        "scale": "large",
+        "showKpis": true,
+        "showChart": true,
+        "showAmanha": true,
+        "showStatus": true,
+        "locked": false,
+        "blocks": [
+          {
+            "id": "kpis",
+            "label": "KPIs armazém",
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 2,
+            "visible": true
+          },
+          {
+            "id": "chart",
+            "label": "Gráfico",
+            "x": 0,
+            "y": 2,
+            "w": 7,
+            "h": 10,
+            "visible": true
+          },
+          {
+            "id": "tabela",
+            "label": "Tabela veículos",
+            "x": 7,
+            "y": 2,
+            "w": 5,
+            "h": 10,
+            "visible": true
+          }
+        ]
+      },
+      "views": {}
     },
     "contratacao": {
       "showLogo": true,
-      "margins": "normal"
+      "margins": "normal",
+      "ui": {
+        "chart": "towers",
+        "scale": "large",
+        "showKpis": true,
+        "showChart": true,
+        "showAmanha": true,
+        "showStatus": true,
+        "locked": false,
+        "blocks": []
+      },
+      "views": {}
     },
     "pendencia": {
       "showLogo": true,
-      "margins": "normal"
+      "margins": "normal",
+      "ui": {
+        "chart": "towers",
+        "scale": "large",
+        "showKpis": true,
+        "showChart": true,
+        "showAmanha": true,
+        "showStatus": true,
+        "locked": false,
+        "blocks": []
+      },
+      "views": {}
     },
     "rastreamento": {
       "showLogo": true,
-      "margins": "normal"
+      "margins": "normal",
+      "ui": {
+        "chart": "towers",
+        "scale": "large",
+        "showKpis": true,
+        "showChart": true,
+        "showAmanha": true,
+        "showStatus": true,
+        "locked": false,
+        "blocks": []
+      },
+      "views": {}
     },
     "emissao": {
       "showLogo": true,
-      "margins": "normal"
+      "margins": "normal",
+      "ui": {
+        "chart": "towers",
+        "scale": "large",
+        "showKpis": true,
+        "showChart": true,
+        "showAmanha": true,
+        "showStatus": true,
+        "locked": false,
+        "blocks": []
+      },
+      "views": {}
     }
   },
   "slots": [
