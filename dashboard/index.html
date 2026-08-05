@@ -1998,7 +1998,29 @@
     }
     .resumo-single {
       grid-template-columns: 1fr !important;
-      max-width: 520px;
+      max-width: none;
+      width: 100%;
+    }
+    .resumo-single .resumo-card {
+      width: 100%;
+      grid-template-columns: minmax(120px, 0.35fr) minmax(0, 1fr);
+      gap: 12px 24px;
+    }
+    .resumo-single .resumo-stats {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px 20px;
+    }
+    .resumo-single .resumo-stats.stats-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    body.tv-mode .resumo-single .resumo-card {
+      padding: 14px 20px;
+    }
+    body.tv-mode .resumo-single .resumo-stats div {
+      font-size: clamp(13px, 1.5vmin, 18px);
+    }
+    body.tv-mode .resumo-single .resumo-stats b {
+      font-size: clamp(32px, 4vmin, 52px);
     }
     body[data-view="coleta"] .resumo-single .rc-col,
     body[data-view="entrega"] .resumo-single .rc-ent {
