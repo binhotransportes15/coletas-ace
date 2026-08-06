@@ -1,5 +1,5 @@
 {
-  "build": "2026-08-05-arm-torres-tabela",
-  "run": "armazem-torres-e-tabela-lado-a-lado",
-  "at": "2026-08-05T20:45:00Z"
+  "build": "2026-08-06-arm-descarga-tv",
+  "run": "armazem-descarga-estilo-coleta",
+  "at": "2026-08-06T13:25:00Z"
 }

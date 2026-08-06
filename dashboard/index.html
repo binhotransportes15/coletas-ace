@@ -1092,10 +1092,15 @@
       gap: clamp(8px, 1.1vmin, 14px) !important;
       height: 100% !important;
     }
+    body.tv-mode #armLayoutPatio:not(.has-blocks) {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.95fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+      height: 100% !important;
+      gap: clamp(8px, 1.1vmin, 14px) !important;
+    }
     body.tv-mode .arm-layout:not(.has-blocks) {
       display: grid !important;
-      grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.4fr) !important;
-      grid-template-rows: auto minmax(0, 1fr) !important;
       height: 100% !important;
       gap: clamp(8px, 1.1vmin, 14px) !important;
     }
@@ -1103,19 +1108,90 @@
       grid-template-columns: 1fr !important;
       grid-template-rows: auto minmax(0, 1fr) !important;
     }
+    body.tv-mode .arm-wrap {
+      max-width: none !important;
+      width: 100% !important;
+      margin: 0 !important;
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode .arm-view.active {
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode #armLayoutPatio [data-block="chart"],
+    body.tv-mode #armLayoutPatio .arm-hero,
+    body.tv-mode #armLayoutPatio .arm-hero-card {
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-hero-card {
+      display: grid !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-towers-wrap {
+      height: 100% !important;
+      min-height: 0 !important;
+      padding: clamp(8px, 1.2vmin, 16px) clamp(10px, 1.4vmin, 20px) !important;
+    }
+    body.tv-mode #armLayoutPatio .torres.arm-torres {
+      height: 100% !important;
+      max-height: none !important;
+      gap: clamp(12px, 1.8vmin, 28px) !important;
+      justify-content: center !important;
+      align-items: flex-end !important;
+    }
+    body.tv-mode #armLayoutPatio .torres.arm-torres .torre {
+      flex: 0 0 auto !important;
+      width: clamp(96px, 11.5vmin, 176px) !important;
+      max-width: none !important;
+    }
+    body.tv-mode #armLayoutPatio .torres.arm-torres .pin {
+      width: clamp(36px, 4.2vmin, 52px) !important;
+      height: clamp(36px, 4.2vmin, 52px) !important;
+      margin-bottom: clamp(8px, 1vmin, 12px) !important;
+    }
+    body.tv-mode #armLayoutPatio .torres.arm-torres .pin span {
+      font-size: clamp(14px, 1.8vmin, 22px) !important;
+    }
+    body.tv-mode #armLayoutPatio .torres.arm-torres .barra {
+      min-height: clamp(56px, 7vmin, 100px) !important;
+      max-height: none !important;
+    }
+    body.tv-mode #armLayoutPatio .torres.arm-torres .barra strong {
+      font-size: clamp(26px, 3.8vmin, 56px) !important;
+    }
+    body.tv-mode #armLayoutPatio .torres.arm-torres .base {
+      padding: clamp(8px, 1vmin, 12px) 4px !important;
+    }
+    body.tv-mode #armLayoutPatio .torres.arm-torres .base .lbl {
+      font-size: clamp(12px, 1.45vmin, 18px) !important;
+      letter-spacing: 0.04em;
+    }
+    body.tv-mode #armLayoutPatio .arm-panel {
+      height: 100% !important;
+      min-height: 0 !important;
+    }
     body.tv-mode .arm-table-wrap th,
     body.tv-mode .arm-table-wrap td {
-      font-size: clamp(13px, 1.55vmin, 20px) !important;
-      padding: clamp(7px, 0.9vmin, 12px) clamp(8px, 1vmin, 14px) !important;
+      font-size: clamp(12px, 1.4vmin, 17px) !important;
+      padding: clamp(6px, 0.8vmin, 10px) clamp(7px, 0.9vmin, 12px) !important;
     }
-    body.tv-mode .arm-panel > header h2 {
-      font-size: clamp(13px, 1.5vmin, 18px) !important;
+    body.tv-mode .arm-panel > header {
+      padding: clamp(8px, 1vmin, 12px) clamp(10px, 1.2vmin, 14px) !important;
     }
+    body.tv-mode .arm-panel > header h2,
     body.tv-mode .arm-hero-card > header h2 {
       font-size: clamp(13px, 1.5vmin, 18px) !important;
     }
     body.tv-mode .arm-hero-card > header .meta {
-      font-size: clamp(11px, 1.25vmin, 15px) !important;
+      font-size: clamp(11px, 1.2vmin, 14px) !important;
+    }
+    body.tv-mode .arm-kpis {
+      gap: clamp(8px, 1.1vmin, 12px) !important;
+    }
+    body.tv-mode .arm-kpi {
+      padding: clamp(8px, 1vmin, 14px) clamp(10px, 1.2vmin, 16px) !important;
     }
     body.tv-mode .cyl-ban-row {
       max-height: clamp(64px, 9vmin, 110px);
@@ -2283,18 +2359,26 @@
       container-type: size;
     }
     .arm-layout .dash-block[hidden] { display: none !important; }
-    /* Pátio: KPIs em cima · torres | tabela lado a lado (ver status + veículos) */
-    .arm-layout:not(.has-blocks) {
+    /* Pátio: KPIs · torres grandes | tabela (mesmo espírito Coleta/Entrega) */
+    #armLayoutPatio:not(.has-blocks) {
       display: grid;
-      grid-template-columns: minmax(300px, 0.88fr) minmax(0, 1.42fr);
+      grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
       grid-template-rows: auto minmax(0, 1fr);
       gap: clamp(8px, 1vw, 14px);
       height: 100%;
       min-height: 0;
     }
-    .arm-layout:not(.has-blocks) [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
-    .arm-layout:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
-    .arm-layout:not(.has-blocks) [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
+    #armLayoutPatio:not(.has-blocks) [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
+    #armLayoutPatio:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
+    #armLayoutPatio:not(.has-blocks) [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
+    .arm-layout:not(.has-blocks) {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: clamp(8px, 1vw, 14px);
+      height: 100%;
+      min-height: 0;
+    }
     /* Conferentes: só KPIs + ranking (empilhado) */
     #armLayoutConferentes:not(.has-blocks) {
       grid-template-columns: 1fr;
@@ -2309,6 +2393,7 @@
       flex-direction: column;
       min-height: 0;
       overflow: hidden;
+      height: 100%;
     }
     .arm-layout.has-blocks [data-block="kpis"].arm-kpis {
       height: 100%;
@@ -2625,31 +2710,31 @@
       display: flex;
       align-items: stretch;
       justify-content: center;
-      padding: clamp(6px, 1vmin, 12px) clamp(4px, 0.8vmin, 10px);
+      padding: clamp(8px, 1.2vmin, 14px);
       min-height: 0;
       height: 100%;
       overflow: hidden;
+      flex: 1;
     }
     .torres.arm-torres {
       flex: 1;
       display: flex;
       align-items: flex-end;
-      justify-content: space-evenly;
-      gap: clamp(6px, 1.1vmin, 16px);
+      justify-content: center;
+      gap: clamp(10px, 1.6vmin, 24px);
       min-height: 0;
       height: 100%;
       max-height: none;
-      padding-bottom: 2px;
+      padding-bottom: 4px;
       width: 100%;
     }
     .torres.arm-torres .torre {
-      flex: 1 1 0;
-      width: auto;
-      min-width: 0;
-      max-width: clamp(72px, 9.5vmin, 140px);
+      flex: 0 0 auto;
+      width: min(120px, 14vw);
+      max-width: none;
     }
     .torres.arm-torres .barra {
-      min-height: 36px;
+      min-height: 56px;
       max-height: none;
     }
     .torres.arm-torres .t-atr .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
@@ -2662,27 +2747,16 @@
     .torres.arm-torres .t-che .pin { background: #0ea5e9; }
     .torres.arm-torres .t-agu .pin { background: #64748b; }
     .torres.arm-torres .t-fin .pin { background: #22c55e; }
-    body.tv-mode .torres.arm-torres {
-      gap: clamp(8px, 1.2vmin, 18px);
+    .arm-hero.arm-hero-solo {
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
     }
-    body.tv-mode .torres.arm-torres .torre {
-      max-width: clamp(88px, 10.5vmin, 160px);
-    }
-    body.tv-mode .torres.arm-torres .barra strong {
-      font-size: clamp(18px, 2.6vmin, 36px);
-    }
-    body.tv-mode .torres.arm-torres .base .lbl {
-      font-size: clamp(11px, 1.35vmin, 16px);
-    }
-    body.tv-mode .torres.arm-torres .pin {
-      width: clamp(28px, 3.4vmin, 42px);
-      height: clamp(28px, 3.4vmin, 42px);
-    }
-    body.tv-mode .torres.arm-torres .pin span {
-      font-size: clamp(12px, 1.5vmin, 18px);
-    }
-    body.tv-mode .arm-towers-wrap {
-      padding: clamp(8px, 1.1vmin, 14px);
+    .arm-hero.arm-hero-solo .arm-hero-card {
+      flex: 1;
+      min-height: 0;
+      height: 100%;
     }
     .agenda-pizza .slice.s-fin { fill: var(--col); }
     .agenda-pizza .slice.s-des { fill: var(--cad-dark); }
@@ -3979,17 +4053,19 @@
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
 
-    /** Torres do pátio: preenche a coluna ao lado da tabela. */
+    /** Torres do pátio: preenche a coluna principal (estilo Coleta). */
     function alturaTorreArm(valor, max) {
-      const wrap = document.querySelector('.arm-towers-wrap');
-      const pin = 52;
-      const base = 44;
-      const pad = 28;
+      const wrap = document.querySelector('#armLayoutPatio .arm-towers-wrap')
+        || document.querySelector('.arm-towers-wrap');
+      const tv = document.body.classList.contains('tv-mode');
+      const pin = tv ? 64 : 52;
+      const base = tv ? 52 : 44;
+      const pad = tv ? 36 : 28;
       const avail = wrap && wrap.clientHeight > 80
         ? wrap.clientHeight
-        : Math.round((window.innerHeight || 800) * 0.42);
-      const maxH = Math.max(56, Math.round(avail - pin - base - pad));
-      const minH = Math.max(28, Math.round(maxH * 0.14));
+        : Math.round((window.innerHeight || 800) * (tv ? 0.55 : 0.42));
+      const maxH = Math.max(tv ? 90 : 56, Math.round(avail - pin - base - pad));
+      const minH = Math.max(tv ? 48 : 28, Math.round(maxH * 0.16));
       if (!max || max <= 0) return minH;
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
