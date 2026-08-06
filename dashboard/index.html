@@ -1095,11 +1095,12 @@
     body.tv-mode #armLayoutPatio:not(.has-blocks) {
       display: grid !important;
       grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.95fr) !important;
-      grid-template-rows: auto minmax(0, 1fr) !important;
+      grid-template-rows: max-content minmax(0, 1fr) !important;
       height: 100% !important;
       gap: clamp(8px, 1.1vmin, 14px) !important;
     }
     body.tv-mode #armLayoutPatio:not(.has-blocks) [data-block="kpis"] {
+      container-type: normal !important;
       min-height: min-content !important;
       height: auto !important;
       overflow: visible !important;
@@ -2372,7 +2373,8 @@
     #armLayoutPatio:not(.has-blocks) {
       display: grid;
       grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
-      grid-template-rows: auto minmax(0, 1fr);
+      /* max-content: container-type:size nos dash-blocks faz auto → 0px */
+      grid-template-rows: max-content minmax(0, 1fr);
       gap: clamp(8px, 1vw, 14px);
       height: 100%;
       min-height: 0;
@@ -2380,7 +2382,8 @@
     #armLayoutPatio:not(.has-blocks) [data-block="kpis"] {
       grid-column: 1 / -1;
       grid-row: 1;
-      /* dash-block força min-height:0 + overflow:hidden → linha auto vira 0px na TV */
+      /* size containment impede a linha medir os cards → KPIs somem */
+      container-type: normal !important;
       min-height: min-content !important;
       height: auto !important;
       overflow: visible !important;
