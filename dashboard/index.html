@@ -1099,6 +1099,15 @@
       height: 100% !important;
       gap: clamp(8px, 1.1vmin, 14px) !important;
     }
+    body.tv-mode #armLayoutPatio:not(.has-blocks) [data-block="kpis"] {
+      min-height: min-content !important;
+      height: auto !important;
+      overflow: visible !important;
+      display: grid !important;
+      grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+      gap: clamp(8px, 1.1vmin, 12px) !important;
+      align-self: start !important;
+    }
     body.tv-mode .arm-layout:not(.has-blocks) {
       display: grid !important;
       height: 100% !important;
@@ -2368,7 +2377,18 @@
       height: 100%;
       min-height: 0;
     }
-    #armLayoutPatio:not(.has-blocks) [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
+    #armLayoutPatio:not(.has-blocks) [data-block="kpis"] {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      /* dash-block força min-height:0 + overflow:hidden → linha auto vira 0px na TV */
+      min-height: min-content !important;
+      height: auto !important;
+      overflow: visible !important;
+      align-self: start;
+      display: grid !important;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+    }
     #armLayoutPatio:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
     #armLayoutPatio:not(.has-blocks) [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
     .arm-layout:not(.has-blocks) {
