@@ -31,6 +31,7 @@
  * Abas 225: Agendamentos225, Resumo225, Alertas225
  * Abas 078: Veiculos78, Resumo78
  * Abas 177: Conferentes177, Resumo177
+ * Abas 031: Pendencias31, Resumo31, Ofensores31
  */
 
 var SPREADSHEET_ID = '1VOkCF1Hn-VUZC7aKu_pa0Hgo1VjjuEJOqFqNSAErCzU';

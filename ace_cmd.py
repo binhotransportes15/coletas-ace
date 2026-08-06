@@ -68,6 +68,7 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "github_token_env": ("cloud", "str", False),
     # Armazém 078 (mesmo Sheets da distribuição)
     "armazem_in_loop": ("armazem", "bool", False),
+    "pendencia_in_loop": ("pendencia", "bool", False),
     "headless": ("auto", "bool", False),
 }
 
@@ -129,6 +130,7 @@ def _save_payload(payload: dict[str, Any]) -> None:
         github_branch=str(payload.get("github_branch") or "main"),
         github_token_env=str(payload.get("github_token_env") or "GH_TOKEN"),
         armazem_in_loop=bool(payload.get("armazem_in_loop", True)),
+        pendencia_in_loop=bool(payload.get("pendencia_in_loop", False)),
         headless=bool(payload.get("headless", True)),
         crt_theme=str(payload.get("crt_theme") or "binho").strip() or "binho",
     )
@@ -200,12 +202,14 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     sheets_on = bool(payload.get("enable_sheets"))
     viz_on = not bool(payload.get("headless", True))
     arm_on = bool(payload.get("armazem_in_loop", True))
+    pend_on = bool(payload.get("pendencia_in_loop", False))
 
     print_header_banner(subtitle="OPERACIONAL · Console CMD", payload=payload)
     print(
         f"  {status_online('SHEETS') if sheets_on else status_offline('SHEETS')}  "
         f"{status_work('SSW·VIZ') if viz_on else status_idle('SSW·HIDE')}  "
-        f"{status_online('078') if arm_on else status_idle('078·OFF')}"
+        f"{status_online('078') if arm_on else status_idle('078·OFF')}  "
+        f"{status_online('031') if pend_on else status_idle('031·OFF')}"
     )
     print(f"  {rule()}")
     print(f"  {muted('config')}  {CONFIG_PATH}")
@@ -260,12 +264,15 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
         print(f"    {muted(key.ljust(18))} {shown}")
     print(f"  {g('[ARMAZEM 078]', bold=True)}")
     print(f"    {muted('armazem_in_loop'.ljust(18))} {str(arm_on).lower()}")
+    print(f"  {g('[PENDENCIA 031]', bold=True)}")
+    print(f"    {muted('pendencia_in_loop'.ljust(18))} {str(pend_on).lower()}")
     print(f"  {rule()}")
     print(f"  {w('COMMANDS', bold=True)}  {cubes_row()}")
     print(f"    {g('1/50')}  baixar 50     {g('2/103')} baixar 103    {g('3/sync')} sheets")
     print(f"    {g('4/dash')} dashboard    {g('5/gui')}  ACE gráfico   {g('6/show')} config")
     print(f"    {g('7/auto')} /automatica  {g('8/git')}  status        {g('9/push')} pages")
     print(f"    {g('78')} {g('177')} {g('607')} armazém/ranking/nomes  {g('sync78')} sheets arm")
+    print(f"    {g('31')} pendência SSW  {g('sync31')} sheets 31")
     print(f"    {g('/viz')} on|off   {g('brand')} ANSI   {g('crt')} CRT   {g('help')}   {g('sair')}")
     print(f"  {rule('═')}")
     if message:
@@ -298,7 +305,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
 def cmd_help() -> str:
     keys = ", ".join(sorted(EDITABLE.keys()))
     return (
-        "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | sync | sync78 | dash | gui | "
+        "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | 31 | sync | sync78 | sync31 | dash | gui | "
         "brand | crt | /automatica | /status | /push | /pull | show | help | sair\n"
         f"  Campos: {keys}\n"
         "  Bool: true/false | sim/nao | 1/0\n"
@@ -307,6 +314,7 @@ def cmd_help() -> str:
         "    /e intervalo 30s\n"
         "  Visualização SSW: /viz on|off  ou  /e visualizar sim|nao\n"
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
+        "  Pendência: /e pendencia_in_loop true|false · comando 31 (11 códigos, demora)\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
@@ -341,6 +349,9 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "tempo": "loop_intervalo",
         "loop": "loop_intervalo",
         "armazem_loop": "armazem_in_loop",
+        "pendencia_loop": "pendencia_in_loop",
+        "pend_loop": "pendencia_in_loop",
+        "31_loop": "pendencia_in_loop",
         "visualizar": "visualizar",
         "viz": "visualizar",
         "mostrar": "visualizar",
@@ -531,6 +542,38 @@ def run_pipeline_78_cmd() -> str:
     )
 
 
+def run_pipeline_31_cmd(extra: list[str] | None = None) -> str:
+    """`31` ou `31 13,14` (só esses códigos)."""
+    from pipeline import run_pipeline_31
+
+    codes = None
+    if extra:
+        raw = " ".join(extra).replace(";", ",")
+        codes = [c.strip() for c in raw.split(",") if c.strip()] or None
+    print("\n=== Pipeline 031 (Pendência) ===")
+    if codes:
+        print(f"  códigos: {', '.join(codes)}")
+    result = run_pipeline_31(on_status=_on_status, headless=_cfg_headless(), codes=codes)
+    resumo = result.get("resumo") or {}
+    return (
+        f"031 OK · CTRCs={result.get('total')} "
+        f"topo={resumo.get('topo_codigo')} ({resumo.get('topo_qtd')}) "
+        f"sheets={(result.get('sheets') or {}).get('ok')}"
+    )
+
+
+def run_sync_31() -> str:
+    from publish_dashboard import publish_pendencia_local
+    from sheets_sync_31 import sync_sheets_31
+
+    print("\n=== Sync Sheets Pendência 031 ===")
+    r = sync_sheets_31(on_status=_on_status)
+    publish_pendencia_local(on_status=_on_status)
+    if r.get("ok"):
+        return f"sync31 OK · pendencias={r.get('pendencias')} ofensores={r.get('ofensores')}"
+    return f"sync31: {r.get('error') or r.get('reason') or r}"
+
+
 def run_pipeline_177_cmd() -> str:
     from parser_ssw177 import analyze_report_177
     from publish_dashboard import publish_dashboard
@@ -652,6 +695,7 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
             "enable_sheets": cfg.enable_sheets,
             "headless": cfg.headless,
             "armazem_in_loop": cfg.armazem_in_loop,
+            "pendencia_in_loop": getattr(cfg, "pendencia_in_loop", False),
             "loop_intervalo": cfg.loop_intervalo,
             "unit": getattr(load_credentials(), "unit", ""),
             "user": getattr(load_credentials(), "user", ""),
@@ -664,6 +708,10 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
         print(f"  {status_online('078')} Armazém no loop")
     else:
         print(f"  {status_idle('078')} fora do loop")
+    if getattr(cfg, "pendencia_in_loop", False):
+        print(f"  {status_online('031')} Pendência no loop")
+    else:
+        print(f"  {status_idle('031')} fora do loop (rode `31` sob demanda)")
     print(f"  {rule()}")
     print(f"  {muted('Ctrl+C → menu · /viz on|off · /e intervalo 30s|5m')}")
     print(f"  {rule()}\n")
@@ -709,6 +757,10 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
         return (run_pipeline_225(), _load_payload())
     if cmd in {"78", "/78", "armazem", "/armazem"}:
         return (run_pipeline_78_cmd(), _load_payload())
+    if cmd in {"31", "/31", "pendencia", "/pendencia", "pendencias"}:
+        return (run_pipeline_31_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
+    if cmd in {"sync31", "/sync31", "sheets31"}:
+        return (run_sync_31(), payload)
     if cmd in {"177", "/177", "conferentes", "/conferentes"}:
         return (run_pipeline_177_cmd(), _load_payload())
     if cmd in {"607", "/607", "0607", "/0607", "mapa", "nomes"}:
@@ -871,6 +923,9 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0].lstrip("/").lower() in {"78", "armazem", "once78"}:
         print(run_pipeline_78_cmd())
         return 0
+    if args and args[0].lstrip("/").lower() in {"31", "pendencia", "pendencias", "once31"}:
+        print(run_pipeline_31_cmd(args[1:] if len(args) > 1 else None))
+        return 0
     if args and args[0].lstrip("/").lower() in {"177", "conferentes", "once177"}:
         print(run_pipeline_177_cmd())
         return 0
@@ -883,6 +938,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args and args[0].lstrip("/").lower() in {"sync78", "sheets78"}:
         print(run_sync_78())
+        return 0
+    if args and args[0].lstrip("/").lower() in {"sync31", "sheets31"}:
+        print(run_sync_31())
         return 0
     if args and args[0].lstrip("/").lower() in {"brand", "logo", "cubos", "neofetch"}:
         from term_brand import main as brand_main
@@ -942,6 +1000,9 @@ def main(argv: list[str] | None = None) -> int:
             elif cmd in {"78", "/78", "armazem", "/armazem"}:
                 message = run_pipeline_78_cmd()
                 payload = _load_payload()
+            elif cmd in {"31", "/31", "pendencia", "/pendencia", "pendencias"}:
+                message = run_pipeline_31_cmd(parts[1:] if len(parts) > 1 else None)
+                payload = _load_payload()
             elif cmd in {"177", "/177", "conferentes", "/conferentes"}:
                 message = run_pipeline_177_cmd()
                 payload = _load_payload()
@@ -950,6 +1011,8 @@ def main(argv: list[str] | None = None) -> int:
                 payload = _load_payload()
             elif cmd in {"sync78", "/sync78", "sheets78"}:
                 message = run_sync_78()
+            elif cmd in {"sync31", "/sync31", "sheets31"}:
+                message = run_sync_31()
             elif cmd in {"3", "sync", "/sync"}:
                 message = run_sync()
             elif cmd in {"4", "dash", "/dash", "dashboard"}:

@@ -2422,6 +2422,75 @@
     body[data-sector="armazem"] .swap-nav { display: grid; }
     body[data-sector="armazem"][data-view="conferentes"] #armTitle { color: #fbbf24; }
     body[data-sector="armazem"][data-view="patio"] #armTitle { color: #7dd3fc; }
+    body[data-sector="pendencia"] #penTitle { color: #f472b6; }
+
+    /* Pendência 031 — mesmo grid do pátio (KPIs · torres | tabela) */
+    .pen-wrap {
+      height: 100vh;
+      padding: 12px 14px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+    .pen-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: clamp(8px, 1vw, 14px);
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .pen-layout [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
+    .pen-layout [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
+    .pen-layout [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
+    .pen-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .pen-torres .torre { width: min(110px, 12vw); }
+    .pen-torres .t-of .barra { background: linear-gradient(180deg, #f9a8d4, #db2777); }
+    .pen-torres .t-of .pin { background: #ec4899; }
+    .pen-torres .t-of2 .barra { background: linear-gradient(180deg, #fbbf24, #d97706); }
+    .pen-torres .t-of2 .pin { background: #f59e0b; }
+    .pen-torres .t-of3 .barra { background: linear-gradient(180deg, #38bdf8, #0284c7); }
+    .pen-torres .t-of3 .pin { background: #0ea5e9; }
+    .pen-torres .t-of4 .barra { background: linear-gradient(180deg, #a78bfa, #6d28d9); }
+    .pen-torres .t-of4 .pin { background: #8b5cf6; }
+    .pen-torres .t-of5 .barra { background: linear-gradient(180deg, #4ade80, #15803d); }
+    .pen-torres .t-of5 .pin { background: #22c55e; }
+    .pen-torres .t-of6 .barra { background: linear-gradient(180deg, #94a3b8, #475569); }
+    .pen-torres .t-of6 .pin { background: #64748b; }
+    .pen-torres .t-of7 .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
+    .pen-torres .t-of7 .pin { background: #ef4444; }
+    body.tv-mode .pen-wrap {
+      max-width: none !important;
+      width: 100% !important;
+      margin: 0 !important;
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode .pen-layout {
+      grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.95fr) !important;
+      height: 100% !important;
+      gap: clamp(8px, 1.1vmin, 14px) !important;
+    }
+    body.tv-mode.tv-no-margins #panel-pendencia,
+    body.tv-mode:not(.tv-no-margins) #panel-pendencia {
+      width: 100vw !important;
+      max-width: none !important;
+      height: 100dvh !important;
+    }
+    @media (max-width: 1100px) {
+      .pen-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(220px, 0.75fr) minmax(280px, 1.25fr);
+      }
+      .pen-layout [data-block="kpis"] { grid-column: 1; grid-row: 1; }
+      .pen-layout [data-block="chart"] { grid-column: 1; grid-row: 2; }
+      .pen-layout [data-block="tabela"] { grid-column: 1; grid-row: 3; }
+      .pen-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .pen-wrap { height: auto; min-height: 100vh; }
+    }
 
     /* Coleta / Entrega — blocos arrastáveis (CRT) */
     .ops-layout {
@@ -3160,10 +3229,10 @@
           <span class="name">Contratação</span>
           <span class="desc">Em desenvolvimento</span>
         </button>
-        <button type="button" class="sector-card soon" data-sector="pendencia" data-soon="1">
-          <span class="tag">Em breve</span>
+        <button type="button" class="sector-card" data-sector="pendencia">
+          <span class="tag">031</span>
           <span class="name">Pendência</span>
-          <span class="desc">Em desenvolvimento</span>
+          <span class="desc">Ocorrências · ofensores · CTRCs</span>
         </button>
         <button type="button" class="sector-card soon" data-sector="rastreamento" data-soon="1">
           <span class="tag">Em breve</span>
@@ -3640,12 +3709,74 @@
     </div></div>
   </div>
   <div id="panel-pendencia" class="sector-root" hidden>
-    <div class="sector-soon-panel"><div class="box">
-      <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
-      <div class="tag">Em breve</div>
-      <h1>PENDÊNCIA</h1>
-      <p>Tela reservada para a parede TV. Já pode fixar neste slot pelo CRT · aba TV (#tv/slot/N).</p>
-    </div></div>
+    <div class="pen-wrap">
+      <div class="arm-top pen-top">
+        <div class="arm-brand">
+          <img
+            class="js-sector-menu"
+            src="logo-binho.png"
+            alt="BINHO Transportes"
+            title="Trocar setor"
+            role="button"
+            tabindex="0"
+          />
+          <div class="arm-titles">
+            <div class="kicker" id="penKicker">BINHO · OPERACIONAL · 031</div>
+            <h1 id="penTitle">PENDÊNCIA</h1>
+          </div>
+        </div>
+        <nav class="nav">
+          <button type="button" class="nav-btn tv-btn" id="btnTvPendencia" title="Modo TV / tela inteira (F)">TV</button>
+        </nav>
+        <div class="clock-box">
+          <div class="lbl">Tempo real</div>
+          <div class="time" id="penClock">--:--:--</div>
+          <div class="date" id="penDate">—</div>
+        </div>
+      </div>
+      <div class="pen-layout" id="penLayout">
+        <div class="arm-kpis pen-kpis dash-block" data-block="kpis">
+          <div class="arm-kpi"><div class="lbl">CTRCs</div><div class="val" id="penTotal">0</div></div>
+          <div class="arm-kpi"><div class="lbl">Códigos</div><div class="val" id="penCodigos">0</div></div>
+          <div class="arm-kpi atrasado"><div class="lbl">Topo</div><div class="val" id="penTopoCod">—</div></div>
+          <div class="arm-kpi peso"><div class="lbl">Topo qtd</div><div class="val" id="penTopoQtd">0</div></div>
+          <div class="arm-kpi chegou"><div class="lbl">Período</div><div class="val" id="penPeriodo" style="font-size:clamp(14px,1.6vw,20px)">—</div></div>
+        </div>
+        <div class="arm-hero arm-hero-solo dash-block" data-block="chart">
+          <section class="arm-hero-card">
+            <header>
+              <h2>Ofensores</h2>
+              <div class="meta" id="penOfMeta">códigos de ocorrência · mês</div>
+            </header>
+            <div class="arm-towers-wrap pen-towers-wrap">
+              <div class="torres arm-torres pen-torres" id="penTorres" aria-label="Torres de ofensores"></div>
+            </div>
+          </section>
+        </div>
+        <section class="arm-panel dash-block" data-block="tabela">
+          <header>
+            <h2>CTRCs pendentes</h2>
+            <div class="meta" id="penAtualizado">atualizado —</div>
+          </header>
+          <div class="arm-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Cód.</th>
+                  <th>Ocorrência</th>
+                  <th>CTRC</th>
+                  <th>Emissão</th>
+                  <th>Última ocorrência</th>
+                  <th>Histórico</th>
+                </tr>
+              </thead>
+              <tbody id="penTbody"></tbody>
+            </table>
+            <div class="arm-err" id="penErr" hidden></div>
+          </div>
+        </section>
+      </div>
+    </div>
   </div>
   <div id="panel-rastreamento" class="sector-root" hidden>
     <div class="sector-soon-panel"><div class="box">
@@ -3676,6 +3807,12 @@
   <script>
     const SCRIPT_URL = (window.ACE_CONFIG && window.ACE_CONFIG.scriptUrl) || '';
     const ARMA_CSV = (window.ACE_CONFIG && window.ACE_CONFIG.armazemCsv) || {};
+    const PEN_CSV = (window.ACE_CONFIG && window.ACE_CONFIG.pendenciaCsv) || {};
+    let lastPenDataVersion = null;
+    let lastGoodPenResumo = null;
+    let lastGoodPenOfens = [];
+    let lastGoodPenRows = [];
+    let penRefreshTimer = null;
     const JANELA_MIN = 120;
     const PLACA_VISIBLE = 3;
     const PRAZO_VISIBLE = 4;
@@ -3693,7 +3830,7 @@
       distribuicao: { id: 'distribuicao', label: 'Distribuição', ready: true, panel: 'operacao' },
       armazem: { id: 'armazem', label: 'Armazém', ready: true, panel: 'armazem' },
       contratacao: { id: 'contratacao', label: 'Contratação', ready: false, panel: 'contratacao' },
-      pendencia: { id: 'pendencia', label: 'Pendência', ready: false, panel: 'pendencia' },
+      pendencia: { id: 'pendencia', label: 'Pendência', ready: true, panel: 'pendencia' },
       rastreamento: { id: 'rastreamento', label: 'Rastreamento', ready: false, panel: 'rastreamento' },
       emissao: { id: 'emissao', label: 'Emissão', ready: false, panel: 'emissao' },
     };
@@ -3781,6 +3918,14 @@
       if (armClock) armClock.textContent = time;
       if (armDate) {
         armDate.textContent = now.toLocaleDateString('pt-BR', {
+          weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+        });
+      }
+      const penClock = document.getElementById('penClock');
+      const penDate = document.getElementById('penDate');
+      if (penClock) penClock.textContent = time;
+      if (penDate) {
+        penDate.textContent = now.toLocaleDateString('pt-BR', {
           weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
         });
       }
@@ -4207,7 +4352,11 @@
       } else {
         document.body.classList.remove('tv-no-margins', 'tv-no-logo');
       }
-      const btns = [document.getElementById('btnTv'), document.getElementById('btnTvArmazem')];
+      const btns = [
+        document.getElementById('btnTv'),
+        document.getElementById('btnTvArmazem'),
+        document.getElementById('btnTvPendencia'),
+      ];
       btns.forEach((btn) => {
         if (btn) btn.textContent = TV_MODE ? 'Sair TV' : 'TV';
       });
@@ -4805,6 +4954,14 @@
         armRefreshTimer = null;
       }
 
+      if (CURRENT_SECTOR === 'pendencia') {
+        refreshPendencia();
+        if (!penRefreshTimer) penRefreshTimer = setInterval(refreshPendencia, 15000);
+      } else if (penRefreshTimer) {
+        clearInterval(penRefreshTimer);
+        penRefreshTimer = null;
+      }
+
       if (isOpsSector(CURRENT_SECTOR)) {
         applyOpsLiveViews();
         if (VIEW === 'live' && TV_MODE) startSwapLoop();
@@ -5203,6 +5360,141 @@
         if (err) {
           err.hidden = false;
           err.textContent = 'Sem dados do Armazém (Sheets/CSV). ' + e.message;
+        }
+      }
+    }
+
+    function setPenText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text == null || text === '' ? '—' : String(text);
+    }
+
+    function alturaTorrePen(valor, max) {
+      const wrap = document.querySelector('#penLayout .pen-towers-wrap')
+        || document.querySelector('.pen-towers-wrap');
+      const tv = document.body.classList.contains('tv-mode');
+      const pin = tv ? 64 : 52;
+      const base = tv ? 52 : 44;
+      const pad = tv ? 36 : 28;
+      const avail = wrap && wrap.clientHeight > 80
+        ? wrap.clientHeight
+        : Math.round((window.innerHeight || 800) * (tv ? 0.55 : 0.42));
+      const maxH = Math.max(tv ? 90 : 56, Math.round(avail - pin - base - pad));
+      const minH = Math.max(tv ? 48 : 28, Math.round(maxH * 0.16));
+      if (!max || max <= 0) return minH;
+      return Math.round(minH + (valor / max) * (maxH - minH));
+    }
+
+    function renderPenTorres(ofensores) {
+      const host = document.getElementById('penTorres');
+      if (!host) return;
+      const items = (ofensores || []).slice(0, 7);
+      if (!items.length) {
+        host.innerHTML = '<div class="arm-rank-empty">Sem ofensores no período</div>';
+        return;
+      }
+      const max = Math.max(...items.map((o) => Number(o.qtd) || 0), 1);
+      const total = items.reduce((s, o) => s + (Number(o.qtd) || 0), 0) || 1;
+      const skins = ['t-of', 't-of2', 't-of3', 't-of4', 't-of5', 't-of6', 't-of7'];
+      host.innerHTML = items.map((o, i) => {
+        const qtd = Number(o.qtd) || 0;
+        const pct = Math.round((qtd / total) * 100);
+        const skin = skins[i] || 't-of6';
+        const cod = esc(o.codigo || '?');
+        const lab = esc(String(o.label || '').slice(0, 28));
+        const h = alturaTorrePen(qtd, max);
+        return `<div class="torre ${skin}" title="${lab}">
+          <div class="pin"><span class="${qtd >= 100 ? 'pin-lg' : ''}">${qtd}</span></div>
+          <div class="barra" style="height:${h}px"><strong>${pct}<span class="pct-sign">%</span></strong></div>
+          <div class="base"><div class="lbl">${cod}</div></div>
+        </div>`;
+      }).join('');
+    }
+
+    async function refreshPendencia() {
+      const err = document.getElementById('penErr');
+      try {
+        let remoteVer = null;
+        try {
+          remoteVer = await fetchDataVersion();
+          if (remoteVer != null && lastPenDataVersion != null && remoteVer === lastPenDataVersion) {
+            return;
+          }
+        } catch (_) { /* segue */ }
+
+        let resumo = {};
+        let ofens = [];
+        let rows = [];
+        try {
+          const [rResumo, rOf, rPend] = await Promise.all([
+            chamarPlanilha('resumo31'),
+            chamarPlanilha('ofensores31'),
+            chamarPlanilha('pendencias31'),
+          ]);
+          resumo = (rResumo && (rResumo.rows || rResumo.row || [])[0]) || rResumo || {};
+          if (Array.isArray(rResumo?.rows) && rResumo.rows[0]) resumo = rResumo.rows[0];
+          ofens = (rOf && rOf.rows) || [];
+          rows = (rPend && rPend.rows) || [];
+          if (resumo && Object.keys(resumo).length) lastGoodPenResumo = { ...resumo };
+          if (ofens.length) lastGoodPenOfens = ofens.slice();
+          if (rows.length) lastGoodPenRows = rows.slice();
+        } catch (_) {
+          try {
+            const rCsv = await loadCsvLocal(PEN_CSV.resumo || 'data/pendencia/resumo_31.csv');
+            resumo = rCsv[0] || {};
+            ofens = await loadCsvLocal(PEN_CSV.ofensores || 'data/pendencia/ofensores_31.csv');
+            rows = await loadCsvLocal(PEN_CSV.pendencias || 'data/pendencia/pendencias_31.csv');
+          } catch (__ ) {
+            resumo = lastGoodPenResumo ? { ...lastGoodPenResumo } : {};
+            ofens = lastGoodPenOfens.slice();
+            rows = lastGoodPenRows.slice();
+          }
+        }
+        if (!Object.keys(resumo).length && lastGoodPenResumo) resumo = { ...lastGoodPenResumo };
+        if (!ofens.length && lastGoodPenOfens.length) ofens = lastGoodPenOfens.slice();
+        if (!rows.length && lastGoodPenRows.length) rows = lastGoodPenRows.slice();
+
+        if (err) err.hidden = true;
+        setPenText('penTotal', resumo.total_ctrcs || rows.length || '0');
+        setPenText('penCodigos', resumo.total_codigos || ofens.length || '0');
+        setPenText('penTopoCod', resumo.topo_codigo || '—');
+        setPenText('penTopoQtd', resumo.topo_qtd || '0');
+        setPenText('penPeriodo', resumo.periodo || '—');
+        setPenText('penAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
+        const topoLab = resumo.topo_label || '';
+        const meta = document.getElementById('penOfMeta');
+        if (meta) meta.textContent = topoLab
+          ? `topo ${resumo.topo_codigo || ''} · ${topoLab}`
+          : 'códigos de ocorrência · mês';
+
+        renderPenTorres(ofens);
+        const tb = document.getElementById('penTbody');
+        if (tb) {
+          const sorted = rows.slice().sort((a, b) => {
+            const ca = String(a.codigo || '');
+            const cb = String(b.codigo || '');
+            if (ca !== cb) return ca.localeCompare(cb);
+            return String(a.ctrc || '').localeCompare(String(b.ctrc || ''));
+          });
+          tb.innerHTML = sorted.slice(0, 200).map((r) => `
+            <tr>
+              <td class="mono">${esc(r.codigo || '—')}</td>
+              <td>${esc(String(r.descricao_codigo || r.ultima_ocorrencia || '').slice(0, 42))}</td>
+              <td class="mono">${esc(r.ctrc || '—')}</td>
+              <td class="mono">${esc(r.data_emissao || '—')}</td>
+              <td>${esc(String(r.ultima_ocorrencia || '').slice(0, 48))}</td>
+              <td>${esc(String(r.historico || '').slice(0, 60))}</td>
+            </tr>
+          `).join('') || `<tr><td colspan="6" class="muted">Sem CTRCs — rode o pipeline 31 no ACE</td></tr>`;
+        }
+        if (remoteVer != null) lastPenDataVersion = remoteVer;
+        else {
+          try { lastPenDataVersion = await fetchDataVersion(); } catch (_) {}
+        }
+      } catch (e) {
+        if (err) {
+          err.hidden = false;
+          err.textContent = 'Sem dados da Pendência (Sheets/CSV). ' + e.message;
         }
       }
     }
@@ -6940,6 +7232,7 @@
     });
     document.getElementById('btnTv')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvArmazem')?.addEventListener('click', () => toggleTvMode());
+    document.getElementById('btnTvPendencia')?.addEventListener('click', () => toggleTvMode());
     document.querySelectorAll('.js-sector-menu').forEach((logo) => {
       logo.addEventListener('click', (e) => {
         e.preventDefault();

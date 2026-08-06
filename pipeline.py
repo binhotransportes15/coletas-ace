@@ -833,11 +833,26 @@ def run_dual_cycle(
             errors["78"] = str(err)
             emit(f"078 FALHOU: {err}")
 
-    if errors and not result_50 and not result_103 and not result_36 and not result_225 and not result_78:
+    result_31: dict[str, Any] = {}
+    if getattr(cfg, "pendencia_in_loop", False):
+        emit("031 / Pendencia sequencial apos armazem...")
+        try:
+            result_31 = run_pipeline_31(
+                credentials=creds,
+                settings=cfg,
+                headless=use_headless,
+                on_status=lambda m: emit(f"[31] {m}"),
+            )
+            emit("031 concluido.")
+        except Exception as err:  # noqa: BLE001
+            errors["31"] = str(err)
+            emit(f"031 FALHOU: {err}")
+
+    if errors and not result_50 and not result_103 and not result_36 and not result_225 and not result_78 and not result_31:
         raise RuntimeError("; ".join(f"{k}: {v}" for k, v in errors.items()))
 
     return {
-        "ok": not errors or bool(result_50 or result_103 or result_36 or result_225 or result_78),
+        "ok": not errors or bool(result_50 or result_103 or result_36 or result_225 or result_78 or result_31),
         "errors": errors,
         "period_50": format_period(ini50, fim50),
         "period_103": format_period(ini103, fim103),
@@ -848,6 +863,7 @@ def run_dual_cycle(
         "36": result_36,
         "225": result_225,
         "78": result_78,
+        "31": result_31,
         "sheets_50": sheets50,
         "sheets_103": sheets103,
         "sheets_36": sheets36,
@@ -928,5 +944,54 @@ def run_pipeline_78(
         "publish": pub,
         "sheets": sheets,
         "177": conf177,
+        **analysis,
+    }
+
+
+def run_pipeline_31(
+    *,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    headless: bool | None = None,
+    codes: list[str] | tuple[str, ...] | None = None,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    """SSW 031: download Excel por ocorrência → análise → Sheets → dashboard local."""
+    status = on_status or _noop
+    ensure_dirs()
+    creds = credentials or load_credentials()
+    cfg = settings or load_settings()
+    from parser_ssw31 import analyze_reports_31
+    from publish_dashboard import publish_pendencia_local
+    from sheets_sync_31 import sync_sheets_31
+    from ssw_31 import download_reports_31
+
+    status(f"ACE PENDENCIA · 31 | {datetime.now():%d/%m %H:%M:%S}")
+    use_headless = cfg.headless if headless is None else headless
+    dl = download_reports_31(
+        codes=codes,
+        credentials=creds,
+        settings=cfg,
+        headless=use_headless,
+        on_status=status,
+    )
+    analysis = analyze_reports_31(
+        dl.get("paths") or {},
+        periodo=str(dl.get("period") or ""),
+        on_status=status,
+    )
+    status("031 analisado — enviando Sheets agora…")
+    sheets = sync_sheets_31(cfg, on_status=status)
+    pub = publish_pendencia_local(on_status=status)
+    status(
+        f"OK · CTRCs={analysis.get('total')} "
+        f"ofensores={len(analysis.get('ofensores') or [])} "
+        f"topo={(analysis.get('resumo') or {}).get('topo_codigo')}"
+    )
+    return {
+        "download": dl,
+        "analysis": analysis,
+        "sheets": sheets,
+        "publish": pub,
         **analysis,
     }

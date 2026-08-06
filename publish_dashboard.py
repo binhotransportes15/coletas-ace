@@ -16,6 +16,11 @@ from parser_ssw0146 import ENTREGAS_36_CSV, ROMANEIOS_36_CSV, RESUMO_36_CSV
 from parser_ssw225 import AGENDAMENTOS_225_CSV, RESUMO_225_CSV, ALERTAS_225_CSV
 from parser_ssw78 import RESUMO_CSV as RESUMO_78_CSV, VEICULOS_CSV as VEICULOS_78_CSV
 from parser_ssw177 import CONFERENTES_CSV as CONF_177_CSV, RESUMO_177_CSV
+from parser_ssw31 import (
+    OFENSORES_31_CSV,
+    PENDENCIAS_31_CSV,
+    RESUMO_31_CSV,
+)
 
 StatusCallback = Callable[[str], None]
 
@@ -86,7 +91,45 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
         json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     paths.update(_copy_armazem_to_dashboard())
+    paths.update(_copy_pendencia_to_dashboard())
     return paths
+
+
+def _copy_pendencia_to_dashboard() -> dict[str, str]:
+    """Copia CSVs 031 para dashboard/data/pendencia/."""
+    data_dir = DASHBOARD_DIR / "data" / "pendencia"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    out: dict[str, str] = {}
+    defaults = {
+        "pendencias_31.csv": (
+            "ctrc,data_emissao,ultima_ocorrencia,historico,codigo,codigo_consulta,"
+            "descricao_ocorrencia,complemento_ocorrencia,descricao_codigo\n"
+        ),
+        "resumo_31.csv": (
+            "periodo,atualizado,total_ctrcs,total_codigos,topo_codigo,topo_label,topo_qtd\n"
+        ),
+        "ofensores_31.csv": "codigo,label,qtd,pct\n",
+    }
+    for src, name in (
+        (PENDENCIAS_31_CSV, "pendencias_31.csv"),
+        (RESUMO_31_CSV, "resumo_31.csv"),
+        (OFENSORES_31_CSV, "ofensores_31.csv"),
+    ):
+        dest = data_dir / name
+        if src.exists():
+            shutil.copy2(src, dest)
+            out[f"pendencia/{name}"] = str(dest)
+        elif not dest.exists():
+            dest.write_text(defaults[name], encoding="utf-8-sig")
+            out[f"pendencia/{name}"] = str(dest)
+    return out
+
+
+def publish_pendencia_local(*, on_status: StatusCallback | None = None) -> dict[str, Any]:
+    status = on_status or _noop
+    paths = _copy_pendencia_to_dashboard()
+    status(f"Dashboard Pendência local: {len(paths)} arquivo(s).")
+    return {"ok": True, "local": paths}
 
 
 def _copy_armazem_to_dashboard() -> dict[str, str]:
