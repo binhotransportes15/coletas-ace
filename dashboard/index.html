@@ -2366,7 +2366,8 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      container-type: size;
+      /* size containment zera altura dos KPIs na linha do grid */
+      container-type: normal;
     }
     .arm-layout .dash-block[hidden] { display: none !important; }
     /* Pátio: KPIs · torres grandes | tabela (mesmo espírito Coleta/Entrega) */

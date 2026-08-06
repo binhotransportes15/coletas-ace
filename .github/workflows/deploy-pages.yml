@@ -14,7 +14,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  # v2: evita fila presa no grupo antigo "pages" (runs waiting eternas no Actions)
+  group: pages-deploy-v2
   # Não cancelar: push de CSV (chore) logo após feature matava o deploy do HTML
   cancel-in-progress: false
 
