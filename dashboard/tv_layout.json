@@ -1,9 +1,9 @@
 {
-  "version": 14,
-  "updatedAt": "2026-08-05T10:42:43",
+  "version": 15,
+  "updatedAt": "2026-08-05T18:09:26",
   "rows": 2,
   "cols": 3,
-  "syncSwap": true,
+  "syncSwap": false,
   "swapMs": 15000,
   "wallMode": false,
   "wallSector": "armazem",
@@ -14,80 +14,47 @@
       "ui": {
         "chart": "towers",
         "scale": "large",
+        "fontZoom": 1.2,
         "showKpis": true,
         "showChart": true,
         "showAmanha": true,
         "showStatus": true,
-        "locked": false,
+        "locked": true,
         "blocks": []
       },
       "views": {
         "coleta": {
           "chart": "towers",
           "scale": "large",
+          "fontZoom": 1.2,
           "showKpis": true,
           "showChart": true,
           "showAmanha": true,
           "showStatus": true,
-          "locked": false,
+          "locked": true,
           "blocks": []
         },
         "entrega": {
           "chart": "towers",
           "scale": "large",
+          "fontZoom": 1.2,
           "showKpis": true,
           "showChart": true,
           "showAmanha": true,
           "showStatus": true,
-          "locked": false,
+          "locked": true,
           "blocks": []
         },
         "agendamento": {
           "chart": "towers",
           "scale": "large",
+          "fontZoom": 1.2,
           "showKpis": true,
           "showChart": true,
           "showAmanha": true,
           "showStatus": true,
-          "locked": false,
-          "blocks": [
-            {
-              "id": "kpis",
-              "label": "KPIs / totais",
-              "x": 0,
-              "y": 0,
-              "w": 12,
-              "h": 3,
-              "visible": true
-            },
-            {
-              "id": "chart",
-              "label": "Gráfico / torres",
-              "x": 0,
-              "y": 3,
-              "w": 8,
-              "h": 6,
-              "visible": true
-            },
-            {
-              "id": "status",
-              "label": "Status / alertas",
-              "x": 8,
-              "y": 3,
-              "w": 4,
-              "h": 6,
-              "visible": true
-            },
-            {
-              "id": "amanha",
-              "label": "Amanhã",
-              "x": 0,
-              "y": 9,
-              "w": 12,
-              "h": 3,
-              "visible": true
-            }
-          ]
+          "locked": true,
+          "blocks": []
         }
       }
     },
@@ -97,108 +64,36 @@
       "ui": {
         "chart": "towers",
         "scale": "large",
+        "fontZoom": 1.2,
         "showKpis": true,
         "showChart": true,
         "showAmanha": true,
         "showStatus": true,
-        "locked": false,
-        "blocks": [
-          {
-            "id": "kpis",
-            "label": "KPIs armazém",
-            "x": 0,
-            "y": 0,
-            "w": 12,
-            "h": 2,
-            "visible": true
-          },
-          {
-            "id": "chart",
-            "label": "Gráfico",
-            "x": 0,
-            "y": 2,
-            "w": 7,
-            "h": 10,
-            "visible": true
-          },
-          {
-            "id": "tabela",
-            "label": "Tabela veículos",
-            "x": 7,
-            "y": 2,
-            "w": 5,
-            "h": 10,
-            "visible": true
-          }
-        ]
+        "locked": true,
+        "blocks": []
       },
       "views": {
         "patio": {
           "chart": "towers",
           "scale": "large",
+          "fontZoom": 1.2,
           "showKpis": true,
           "showChart": true,
           "showAmanha": true,
           "showStatus": true,
           "locked": true,
-          "blocks": [
-            {
-              "id": "kpis",
-              "label": "KPIs pátio",
-              "x": 0,
-              "y": 0,
-              "w": 6,
-              "h": 7,
-              "visible": true
-            },
-            {
-              "id": "chart",
-              "label": "Descarga",
-              "x": 6,
-              "y": 0,
-              "w": 6,
-              "h": 8,
-              "visible": true
-            },
-            {
-              "id": "tabela",
-              "label": "Veículos",
-              "x": 0,
-              "y": 7,
-              "w": 12,
-              "h": 5,
-              "visible": true
-            }
-          ]
+          "blocks": []
         },
         "conferentes": {
           "chart": "towers",
           "scale": "large",
+          "fontZoom": 1.2,
           "showKpis": true,
           "showChart": true,
           "showAmanha": true,
           "showStatus": true,
-          "locked": false,
-          "blocks": [
-            {
-              "id": "kpis",
-              "label": "KPIs 177",
-              "x": 0,
-              "y": 0,
-              "w": 12,
-              "h": 2,
-              "visible": true
-            },
-            {
-              "id": "chart",
-              "label": "Ranking",
-              "x": 0,
-              "y": 2,
-              "w": 12,
-              "h": 10,
-              "visible": true
-            }
-          ]
+          "locked": true,
+          "blocks": []
         }
       }
     },
@@ -208,11 +103,12 @@
       "ui": {
         "chart": "towers",
         "scale": "large",
+        "fontZoom": 1.2,
         "showKpis": true,
         "showChart": true,
         "showAmanha": true,
         "showStatus": true,
-        "locked": false,
+        "locked": true,
         "blocks": []
       },
       "views": {}
@@ -223,11 +119,12 @@
       "ui": {
         "chart": "towers",
         "scale": "large",
+        "fontZoom": 1.2,
         "showKpis": true,
         "showChart": true,
         "showAmanha": true,
         "showStatus": true,
-        "locked": false,
+        "locked": true,
         "blocks": []
       },
       "views": {}
@@ -238,11 +135,12 @@
       "ui": {
         "chart": "towers",
         "scale": "large",
+        "fontZoom": 1.2,
         "showKpis": true,
         "showChart": true,
         "showAmanha": true,
         "showStatus": true,
-        "locked": false,
+        "locked": true,
         "blocks": []
       },
       "views": {}
@@ -253,11 +151,12 @@
       "ui": {
         "chart": "towers",
         "scale": "large",
+        "fontZoom": 1.2,
         "showKpis": true,
         "showChart": true,
         "showAmanha": true,
         "showStatus": true,
-        "locked": false,
+        "locked": true,
         "blocks": []
       },
       "views": {}

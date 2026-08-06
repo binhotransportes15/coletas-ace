@@ -934,7 +934,7 @@ class AceSswClient:
         passes = units if units else [""]
         label = ",".join(passes) if units else "TODAS"
         self.on_status(
-            f"Gerando coleta (50) | periodo de coleta "
+            f"Gerando coleta (50) | periodo de cadastramento "
             f"{format_period(self.start_date_ui, self.end_date_ui)} "
             f"({self.start_date_yy} a {self.end_date_yy}) | un={label}..."
         )
@@ -955,28 +955,28 @@ class AceSswClient:
             markers=("coleta", "050", "periodo", "ssw0157", "relacao", "cadastr"),
         )
         try:
-            popup.locator('[id="4"]').wait_for()
-            self._preencher_periodo_coleta_50(popup, unidade=unidade)
-            with popup.expect_download(timeout=120000) as download_info:
-                popup.locator('[id="21"]').click()
-            suffix = (unidade or "todas").lower()
-            return self._save_download(
-                download_info.value,
-                f"coleta_50_col_{self.start_date_yy}_{self.end_date_yy}_{suffix}_{self.timestamp}.sswweb",
-            )
+            try:
+                popup.on("dialog", lambda d: d.accept())
+            except Exception:
+                pass
+            return self._gerar_download_50_popup(popup, unidade)
         finally:
             try:
-                popup.close()
+                if not popup.is_closed():
+                    popup.close()
             except Exception:
                 pass
 
     def _preencher_periodo_coleta_50(self, popup, *, unidade: str = "") -> None:
         """
-        Tela ssw0157:
-        - Usa 'Periodo de coleta (opc)' = HOJE (DDMMYY)
-        - Limpa 'Periodo de cadastramento (opc)'
-        - Unidade = sigla (SPO/LEO/RIS) ou vazio = todas
-        Layout tipico CyberMap: 4/5 = coleta, 6/7 = cadastramento
+        Tela ssw0157 (confirmado 2026-08):
+          #2 unidade · #3 tipo (A)
+          #4/#5 Periodo de CADASTRAMENTO (opc)  ← gera o .sswweb
+          #6/#7 Periodo de COLETA (opc)         ← nao dispara download sozinho
+          #21 Play → ajaxEnvia('ENV', 0)
+
+        Preenche CADASTRAMENTO = HOJE e limpa coleta.
+        (Teste: coleta-only = timeout; cadastramento = download OK.)
         """
         ini = self.start_date_yy
         fim = self.end_date_yy
@@ -984,21 +984,6 @@ class AceSswClient:
 
         filled = popup.evaluate(
             """([ini, fim, unidade]) => {
-              const norm = (t) => String(t || '')
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\\u0300-\\u036f]/g, '');
-              const setPair = (a, b, v1, v2) => {
-                if (!a || !b) return false;
-                a.focus(); a.value = v1;
-                a.dispatchEvent(new Event('input', {bubbles:true}));
-                a.dispatchEvent(new Event('change', {bubbles:true}));
-                b.focus(); b.value = v2;
-                b.dispatchEvent(new Event('input', {bubbles:true}));
-                b.dispatchEvent(new Event('change', {bubbles:true}));
-                return true;
-              };
-              const clearPair = (a, b) => setPair(a, b, '', '');
               const setVal = (el, v) => {
                 if (!el) return false;
                 el.focus();
@@ -1007,72 +992,52 @@ class AceSswClient:
                 el.dispatchEvent(new Event('change', {bubbles:true}));
                 return true;
               };
-              const nodes = Array.from(document.querySelectorAll('div, span, td, label, font'));
-              const findInputsAfter = (pred) => {
-                const label = nodes.find(n => pred(norm(n.textContent || '')));
-                const inputs = [];
-                if (!label) return inputs;
-                let el = label;
-                for (let i = 0; i < 8 && el; i++) {
-                  el = el.nextElementSibling || (el.parentElement && el.parentElement.nextElementSibling);
-                  if (!el) break;
-                  if (el.tagName === 'INPUT') inputs.push(el);
-                  el.querySelectorAll && el.querySelectorAll('input').forEach(inp => inputs.push(inp));
-                  if (inputs.length >= 2) break;
-                }
-                return inputs;
+              const f2 = document.getElementById('2');
+              const f3 = document.getElementById('3');
+              const f4 = document.getElementById('4');
+              const f5 = document.getElementById('5');
+              const f6 = document.getElementById('6');
+              const f7 = document.getElementById('7');
+              if (!f4 || !f5 || !f6 || !f7) {
+                return {ok: false, reason: 'campos 4-7 ausentes'};
+              }
+              setVal(f2, unidade || (f2 && f2.value) || '');
+              if (f3 && !String(f3.value || '').trim()) setVal(f3, 'A');
+              // cadastramento (#4/#5) = periodo que dispara o download
+              setVal(f4, ini);
+              setVal(f5, fim);
+              // limpa coleta (#6/#7)
+              setVal(f6, '');
+              setVal(f7, '');
+              return {
+                ok: true,
+                via: 'fixed-ids',
+                unidade: (f2 && f2.value) || '',
+                tipo: (f3 && f3.value) || '',
+                cad: [(f4 && f4.value) || '', (f5 && f5.value) || ''],
+                col: [(f6 && f6.value) || '', (f7 && f7.value) || ''],
               };
-              // Unidade (filtro): limpa ou preenche
-              let unOk = false;
-              const unLabel = nodes.find(n => {
-                const t = norm(n.textContent || '');
-                return t.includes('unidade') && !t.includes('cadastr') && (t.length < 40);
-              });
-              if (unLabel) {
-                let el = unLabel;
-                for (let i = 0; i < 6 && el; i++) {
-                  el = el.nextElementSibling || (el.parentElement && el.parentElement.nextElementSibling);
-                  if (!el) break;
-                  const inp = el.tagName === 'INPUT' ? el : (el.querySelector && el.querySelector('input'));
-                  if (inp && inp.type !== 'hidden') {
-                    unOk = setVal(inp, unidade || '');
-                    break;
-                  }
-                }
-              }
-              if (!unOk) {
-                const cand = document.getElementById('2') || document.getElementById('3');
-                if (cand) unOk = setVal(cand, unidade || '');
-              }
-              const coletaInputs = findInputsAfter(t =>
-                t.includes('periodo') && t.includes('coleta') && !t.includes('cadastr')
-              );
-              const cadInputs = findInputsAfter(t =>
-                t.includes('cadastramento') && t.includes('periodo')
-              );
-              if (cadInputs.length >= 2) clearPair(cadInputs[0], cadInputs[1]);
-              if (coletaInputs.length >= 2) {
-                setPair(coletaInputs[0], coletaInputs[1], ini, fim);
-                return {
-                  ok: true,
-                  via: 'label',
-                  ids: [coletaInputs[0].id, coletaInputs[1].id],
-                  unidade: unidade || '',
-                  unOk,
-                };
-              }
-              return {ok: false, unOk, unidade: unidade || ''};
             }""",
             [ini, fim, un],
         )
         if filled and filled.get("ok"):
             self.on_status(
-                f"Periodo de coleta preenchido ({filled.get('via')}): {ini} a {fim} | "
-                f"un={un or 'TODAS'}"
+                f"Periodo de cadastramento (#4/#5): {ini} a {fim} | "
+                f"un={filled.get('unidade') or 'TODAS'} | coleta limpa"
             )
             return
 
-        # Fallback CyberMap: preenche coleta 4/5, limpa cadastramento 6/7
+        # Fallback Playwright fill (mesmo mapa)
+        try:
+            popup.locator('[id="2"]').fill(un)
+        except Exception:
+            pass
+        try:
+            tipo = popup.locator('[id="3"]')
+            if tipo.count() and not (tipo.first.input_value() or "").strip():
+                tipo.first.fill("A")
+        except Exception:
+            pass
         popup.locator('[id="4"]').fill(ini)
         popup.locator('[id="4"]').press("Tab")
         popup.locator('[id="5"]').fill(fim)
@@ -1082,18 +1047,33 @@ class AceSswClient:
                 popup.locator(f'[id="{fid}"]').fill("")
             except Exception:
                 pass
-        # tenta unidade em campos comuns
-        for fid in ("2", "3", "8"):
-            try:
-                loc = popup.locator(f'[id="{fid}"]')
-                if loc.count() > 0:
-                    loc.first.fill(un)
-                    break
-            except Exception:
-                pass
         self.on_status(
-            f"Periodo de coleta (campos 4/5): {ini} a {fim} | un={un or 'TODAS'} | cadastramento limpo"
+            f"Periodo de cadastramento (campos 4/5): {ini} a {fim} | "
+            f"un={un or 'TODAS'} | coleta limpa"
         )
+
+    def _clicar_gerar_50(self, popup) -> None:
+        """Play ► → ajaxEnvia('ENV', 0) (#21)."""
+        via = popup.evaluate(
+            """() => {
+              if (typeof ajaxEnvia === 'function') {
+                ajaxEnvia('ENV', 0);
+                return 'ajax';
+              }
+              const el = document.getElementById('21');
+              if (el) { el.click(); return 'click21'; }
+              return null;
+            }"""
+        )
+        if via:
+            self.on_status(f"50: gerar via {via}")
+            return
+        btn = popup.locator('[id="21"]')
+        if btn.count():
+            btn.first.click()
+            self.on_status("50: clique #21")
+            return
+        raise RuntimeError("50: nao achei botao #21 / ajaxEnvia('ENV').")
 
     def run_103(self) -> dict[str, Any]:
         """Baixa somente a opcao 103 (Excel coletas normais)."""
@@ -1514,22 +1494,49 @@ class AceSswClient:
                             pass
 
     def _gerar_download_50_popup(self, popup, unidade: str) -> Path:
+        try:
+            popup.on("dialog", lambda d: d.accept())
+        except Exception:
+            pass
         popup.locator('[id="4"]').wait_for()
         self._preencher_periodo_coleta_50(popup, unidade=unidade)
-        with popup.expect_download(timeout=120000) as download_info:
-            popup.locator('[id="21"]').click()
-        suffix = (unidade or "todas").lower()
-        try:
-            path = self._save_download(
-                download_info.value,
-                f"coleta_50_col_{self.start_date_yy}_{self.end_date_yy}_{suffix}_{self.timestamp}.sswweb",
+        # Confirma mapeamento antes de gerar
+        check = popup.evaluate(
+            """() => {
+              const g = id => (document.getElementById(String(id)) || {}).value || '';
+              return {un:g(2), tipo:g(3), cad:[g(4),g(5)], col:[g(6),g(7)]};
+            }"""
+        )
+        self.on_status(f"50 tela: {check}")
+        if not (check and check.get("cad") and check["cad"][0] and check["cad"][1]):
+            raise RuntimeError(
+                f"50: periodo de cadastramento vazio (tela={check}). "
+                "Sem #4/#5 o SSW nao gera download."
             )
+        # Download pode disparar no context se o popup fechar — espera no context.
+        context = popup.context
+        suffix = (unidade or "todas").lower()
+        dest_name = (
+            f"coleta_50_col_{self.start_date_yy}_{self.end_date_yy}_{suffix}_{self.timestamp}.sswweb"
+        )
+        try:
+            with context.expect_event("download", timeout=180000) as download_info:
+                self._clicar_gerar_50(popup)
+            download = download_info.value
+            suggested = (download.suggested_filename or "").lower()
+            if suggested.endswith(".xlsx"):
+                dest_name = dest_name.replace(".sswweb", ".xlsx")
+            elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
+                dest_name = dest_name.replace(".sswweb", ".xls")
+            elif suggested.endswith(".csv"):
+                dest_name = dest_name.replace(".sswweb", ".csv")
+            return self._save_download(download, dest_name)
         finally:
             try:
-                popup.close()
+                if not popup.is_closed():
+                    popup.close()
             except Exception:
                 pass
-        return path
 
     def _gerar_download_103_popup(self, popup, unidade: str) -> Path:
         self._preencher_tela_103(popup, unidade=unidade)

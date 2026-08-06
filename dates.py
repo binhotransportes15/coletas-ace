@@ -95,7 +95,13 @@ def periodo_50_cadastramento(hoje: date | datetime | None = None) -> tuple[str, 
 
 
 def periodo_50_coleta_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
-    """Relatorio 50 · Periodo de COLETA = HOJE (sempre o dia atual)."""
+    """
+    Relatorio 50 (ssw0157) · periodo = HOJE.
+
+    Na tela SSW o campo que dispara o .sswweb e o
+    'Periodo de cadastramento' (#4/#5). O nome historico da funcao
+    ficou 'coleta_hoje', mas o fill usa cadastramento.
+    """
     today = _as_date(hoje)
     return to_ddmm(today), to_ddmm(today)
 
