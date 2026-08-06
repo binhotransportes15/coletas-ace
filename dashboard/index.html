@@ -7393,7 +7393,8 @@
         const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
-        const build = String(data.build || data.at || '').trim();
+        // Só o fingerprint de UI (não use `at`/commit — mudam a cada chore de CSV)
+        const build = String(data.build || '').trim();
         if (!build) return;
         const prev = sessionStorage.getItem(VERSION_KEY);
         if (!prev) {

@@ -3,6 +3,9 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -26,13 +29,29 @@ jobs:
       - name: Stamp dashboard version
         run: |
           python - <<'PY'
+          import hashlib
           import json
+          import os
           from datetime import datetime, timezone
           from pathlib import Path
-          import os
+
+          # Só o UI (HTML/CSS/JS) dispara reload nas TVs.
+          # CSV/dados mudam a cada chore — não devem derrubar a tela.
+          ui_files = [
+              Path("dashboard/index.html"),
+              Path("dashboard/config.js"),
+              Path("dashboard/tv_layout.json"),
+          ]
+          h = hashlib.sha256()
+          for p in ui_files:
+              if p.is_file():
+                  h.update(p.read_bytes())
+          ui_build = h.hexdigest()[:12]
+
           path = Path("dashboard/version.json")
           payload = {
-              "build": os.environ.get("GITHUB_SHA", "")[:12] or "local",
+              "build": ui_build,
+              "commit": (os.environ.get("GITHUB_SHA") or "")[:12] or "local",
               "run": os.environ.get("GITHUB_RUN_ID", ""),
               "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
           }
@@ -48,3 +67,5 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+        # Evita falha/fila quando outro deploy Pages ainda está ativo
+        continue-on-error: false
