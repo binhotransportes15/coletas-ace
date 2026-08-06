@@ -1,5 +1,5 @@
 {
-  "build": "2026-08-06-pendencia-31",
-  "run": "painel-pendencia-031",
-  "at": "2026-08-06T13:45:00Z"
+  "build": "2026-08-06-fix-pages",
+  "run": "redeploy-pendencia",
+  "at": "2026-08-06T14:05:00Z"
 }

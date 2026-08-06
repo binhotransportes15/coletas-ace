@@ -12,7 +12,8 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Não cancelar: push de CSV (chore) logo após feature matava o deploy do HTML
+  cancel-in-progress: false
 
 jobs:
   deploy:
