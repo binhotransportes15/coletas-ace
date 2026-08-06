@@ -1,6 +1,6 @@
 ﻿origem,origem_sigla,cavalo,carreta,manifesto,peso,peso_num,saida,prev_chegada,chegada,inicio_descarga,final_descarga,status,atrasado,tempo_descarga_min,tempo_descarga,peso_veiculo
+GOIANIA,GYN,ATX9J44,GGC6912,016036-9,20.851,20851,04/08 13:54,HOJE 06:00,05/08 20:18,HOJE 12:22 domingos,,descarregando,0,60,1h (andamento),20.851
 GOIANIA,GYN,EMU7J31,EZP3E25,016032-6,29.796,29796,04/08 09:16,05/08 23:00,05/08 07:09,,,chegou,0,,,29.796
-GOIANIA,GYN,ATX9J44,GGC6912,016036-9,20.851,20851,04/08 13:54,HOJE 06:00,05/08 20:18,,,chegou,0,,,20.851
 SERRA,VIX,SUJ7D66,GJZ3744,002453-8,11.935,11935,05/08 12:15,07/08 00:15,,,,aguardando,0,,,11.945
 SERRA,VIX,SUJ7D66,GJZ3744,002454-6,10,10,05/08 12:15,07/08 00:15,,,,aguardando,0,,,11.945
 SERRA,VIX,FPO8341,GHD7J46,002456-2,717,717,05/08 15:13,07/08 03:13,,,,aguardando,0,,,717
