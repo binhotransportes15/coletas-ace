@@ -59,12 +59,22 @@ jobs:
           path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           print("wrote", path, payload)
           PY
+      - name: Build Pages tree
+        run: |
+          # App na raiz E em /dashboard/ (bookmarks / index do repo).
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site/dashboard
+          cp -a dashboard/. _site/
+          cp -a dashboard/. _site/dashboard/
+          test -f _site/index.html
+          test -f _site/dashboard/index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload dashboard
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dashboard
+          path: _site
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
