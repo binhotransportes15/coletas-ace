@@ -2506,11 +2506,101 @@
       margin: 0 !important;
       height: 100% !important;
       min-height: 0 !important;
+      padding: clamp(8px, 1.2vmin, 16px) clamp(10px, 1.4vmin, 18px) !important;
     }
     body.tv-mode .pen-layout {
+      display: grid !important;
       grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.95fr) !important;
+      grid-template-rows: max-content minmax(0, 1fr) !important;
       height: 100% !important;
       gap: clamp(8px, 1.1vmin, 14px) !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode .pen-layout [data-block="kpis"] {
+      container-type: normal !important;
+      min-height: min-content !important;
+      height: auto !important;
+      overflow: visible !important;
+      align-self: start !important;
+      display: grid !important;
+      grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+      gap: clamp(8px, 1.1vmin, 12px) !important;
+    }
+    body.tv-mode .pen-layout [data-block="chart"],
+    body.tv-mode .pen-layout .arm-hero,
+    body.tv-mode .pen-layout .arm-hero-card {
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode .pen-layout .arm-hero-card {
+      display: grid !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+    }
+    body.tv-mode .pen-towers-wrap {
+      height: 100% !important;
+      min-height: 0 !important;
+      padding: clamp(8px, 1.2vmin, 16px) clamp(10px, 1.4vmin, 18px) !important;
+    }
+    body.tv-mode .pen-torres {
+      height: 100% !important;
+      max-height: none !important;
+      gap: clamp(10px, 1.6vmin, 24px) !important;
+      justify-content: center !important;
+      align-items: flex-end !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode .pen-torres .torre {
+      flex: 0 0 auto !important;
+      width: clamp(118px, 13vmin, 176px) !important;
+      max-width: none !important;
+    }
+    body.tv-mode .pen-torres .pin {
+      width: clamp(36px, 4.2vmin, 52px) !important;
+      height: clamp(36px, 4.2vmin, 52px) !important;
+      margin-bottom: clamp(8px, 1vmin, 12px) !important;
+    }
+    body.tv-mode .pen-torres .pin span {
+      font-size: clamp(14px, 1.8vmin, 22px) !important;
+    }
+    body.tv-mode .pen-torres .barra {
+      min-height: clamp(48px, 6vmin, 90px) !important;
+    }
+    body.tv-mode .pen-torres .barra strong {
+      font-size: clamp(22px, 3.2vmin, 48px) !important;
+    }
+    body.tv-mode .pen-torres .base {
+      min-height: clamp(58px, 7.5vmin, 86px) !important;
+      padding: clamp(6px, 0.9vmin, 10px) 4px !important;
+      align-items: flex-start !important;
+    }
+    body.tv-mode .pen-torres .base .lbl {
+      font-size: clamp(11px, 1.35vmin, 16px) !important;
+      line-height: 1.15 !important;
+      letter-spacing: 0.02em;
+      white-space: normal !important;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+      word-break: break-word;
+    }
+    body.tv-mode .pen-layout [data-block="tabela"],
+    body.tv-mode .pen-layout .arm-panel {
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode #panel-pendencia .arm-kpi .val {
+      font-size: clamp(22px, 2.8vmin, 40px) !important;
+    }
+    body.tv-mode #penTopoCod,
+    body.tv-mode #penPeriodo {
+      font-size: clamp(14px, 1.7vmin, 22px) !important;
+      line-height: 1.2 !important;
+    }
+    /* TV: esconde Histórico p/ caber CTRC + ocorrência */
+    body.tv-mode #panel-pendencia table th:nth-child(6),
+    body.tv-mode #panel-pendencia table td:nth-child(6) {
+      display: none !important;
     }
     body.tv-mode.tv-no-margins #panel-pendencia,
     body.tv-mode:not(.tv-no-margins) #panel-pendencia {
@@ -5412,13 +5502,14 @@
         || document.querySelector('.pen-towers-wrap');
       const tv = document.body.classList.contains('tv-mode');
       const pin = tv ? 64 : 52;
-      const base = tv ? 52 : 44;
-      const pad = tv ? 36 : 28;
+      // TV: reserva base alta p/ nome da ocorrência em até 3 linhas
+      const base = tv ? 92 : 56;
+      const pad = tv ? 40 : 28;
       const avail = wrap && wrap.clientHeight > 80
         ? wrap.clientHeight
-        : Math.round((window.innerHeight || 800) * (tv ? 0.55 : 0.42));
-      const maxH = Math.max(tv ? 90 : 56, Math.round(avail - pin - base - pad));
-      const minH = Math.max(tv ? 48 : 28, Math.round(maxH * 0.16));
+        : Math.round((window.innerHeight || 800) * (tv ? 0.52 : 0.42));
+      const maxH = Math.max(tv ? 80 : 56, Math.round(avail - pin - base - pad));
+      const minH = Math.max(tv ? 40 : 28, Math.round(maxH * 0.14));
       if (!max || max <= 0) return minH;
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
@@ -5437,7 +5528,6 @@
         const b = digits.slice(4, 8);
         return `${a.slice(0, 2)}/${a.slice(2)} – ${b.slice(0, 2)}/${b.slice(2)}`;
       }
-      // já formatado ou com hífen simples
       return s
         .replace(/\s*[-–—]\s*/g, ' – ')
         .replace(/^(\d{2})(\d{2})(\d{2})\s*–\s*(\d{2})(\d{2})(\d{2})$/, '$1/$2/$3 – $4/$5/$6');
@@ -5462,6 +5552,7 @@
       const max = Math.max(...items.map((o) => Number(o.qtd) || 0), 1);
       const total = items.reduce((s, o) => s + (Number(o.qtd) || 0), 0) || 1;
       const skins = ['t-of', 't-of2', 't-of3', 't-of4', 't-of5', 't-of6', 't-of7'];
+      const tv = document.body.classList.contains('tv-mode');
       host.innerHTML = items.map((o, i) => {
         const qtd = Number(o.qtd) || 0;
         const pct = Math.round((qtd / total) * 100);
@@ -5469,7 +5560,8 @@
         const cod = String(o.codigo || '').trim();
         const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
         const labFull = esc(cod ? `${cod} · ${nome}` : nome);
-        const lab = esc(shortPenLabel(nome, 24));
+        // TV: nome completo (CSS faz line-clamp); desktop: encurta
+        const lab = esc(tv ? nome : shortPenLabel(nome, 24));
         const h = alturaTorrePen(qtd, max);
         return `<div class="torre ${skin}" title="${labFull}">
           <div class="pin"><span class="${qtd >= 100 ? 'pin-lg' : ''}">${qtd}</span></div>
