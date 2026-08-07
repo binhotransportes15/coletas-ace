@@ -4782,7 +4782,7 @@
         else if (CURRENT_SECTOR === 'armazem') applyArmViews();
         showTvHint();
         bumpTvIdle();
-        if (syncHash) writeRouteHash({ tv: true });
+        if (syncHash) writeRouteHash({ tv: true, sector: CURRENT_SECTOR });
         const fsP = enterFullscreen();
         const wakeP = requestWakeLock();
 
@@ -4792,7 +4792,8 @@
           await loadTvLayout();
           if (gen !== tvModeGen || !TV_MODE) return;
           applyTvChrome();
-          await applyTvSlotAfterRoute({ gen });
+          // Mantém o setor que o usuário está vendo (não volta pra distribuição do slot)
+          await applyTvSlotAfterRoute({ gen, preferCurrentSector: true });
           if (gen !== tvModeGen || !TV_MODE) return;
           if (
             (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem')
@@ -6201,7 +6202,7 @@
       if (tv) applyTvSlotAfterRoute();
     }
 
-    async function applyTvSlotAfterRoute({ gen = null } = {}) {
+    async function applyTvSlotAfterRoute({ gen = null, preferCurrentSector = false } = {}) {
       // Saiu do TV enquanto o enter ainda carregava layout → não reaplica modo TV
       if (gen != null && (gen !== tvModeGen || !TV_MODE)) return;
 
@@ -6212,18 +6213,48 @@
       if (!eff) return;
       applyTvChrome();
 
-      const hashTv = /^tv(\/|$)/i.test((location.hash || '').replace(/^#/, '').toLowerCase());
+      const hashRaw = (location.hash || '').replace(/^#/, '').toLowerCase();
+      const hashTv = /^tv(\/|$)/i.test(hashRaw);
       const keepTv = TV_MODE || hashTv;
       if (!keepTv) return;
 
-      // Sempre segue o setor do layout deste slot (modo parede = todos o mesmo)
-      const sec = normalizeSectorId(eff.sector);
-      if (sec !== CURRENT_SECTOR || (eff.mode === 'fixed' && CURRENT_VIEW !== eff.view)) {
+      const hp = hashRaw.split('/').filter(Boolean);
+      const isSlotHash = hp[0] === 'tv' && hp[1] === 'slot';
+      let hashSector = null;
+      if (hp[0] === 'tv' || hp[0] === 'fullscreen' || hp[0] === 'tela') {
+        if (!isSlotHash && hp[1]) {
+          const rest = hp[1];
+          if (isOpsView(rest) || rest === 'agenda') hashSector = 'distribuicao';
+          else if (isArmView(rest) || rest === '177' || rest === 'conferente' || rest === 'descarga') {
+            hashSector = 'armazem';
+          } else {
+            hashSector = normalizeSectorId(rest);
+          }
+        }
+      }
+
+      // Parede/mosaico ou #tv/slot/N → setor do layout do CRT.
+      // TV manual (#tv/pendencia, botão TV no setor) → mantém setor atual / da URL.
+      let sec;
+      if (eff.mosaic || isSlotHash) {
+        sec = normalizeSectorId(eff.sector);
+      } else if (hashSector) {
+        sec = hashSector;
+      } else if (preferCurrentSector && CURRENT_SECTOR) {
+        sec = normalizeSectorId(CURRENT_SECTOR);
+      } else {
+        sec = normalizeSectorId(eff.sector);
+      }
+
+      if (sec !== CURRENT_SECTOR || (eff.mode === 'fixed' && (eff.mosaic || isSlotHash) && CURRENT_VIEW !== eff.view)) {
         if (gen != null && (gen !== tvModeGen || !TV_MODE)) return;
+        const fixedView = (eff.mosaic || isSlotHash) && eff.mode === 'fixed' ? eff.view : null;
         setSector(sec, {
           syncHash: false,
           forceTv: true,
-          view: eff.mode === 'fixed' ? eff.view : (sec === 'armazem' ? (isArmView(CURRENT_VIEW) ? CURRENT_VIEW : 'patio') : null),
+          view: fixedView
+            || (sec === 'armazem' ? (isArmView(CURRENT_VIEW) ? CURRENT_VIEW : 'patio') : null)
+            || (sec === 'distribuicao' ? (isOpsView(CURRENT_VIEW) ? CURRENT_VIEW : null) : null),
         });
       } else if (!TV_MODE && hashTv) {
         await setTvMode(true, { syncHash: false });
@@ -6250,13 +6281,16 @@
         return;
       }
 
+      // Fora da parede: só gira coleta/entrega/pátio se o setor atual for Dist/Armazém
+      // e o slot do CRT estiver amarrado a esse mesmo setor (ou TV aberta nele).
       if (sec !== 'distribuicao' && sec !== 'armazem') {
         stopSwapLoop();
         stopTvSyncClock();
         return;
       }
 
-      if (eff.mode === 'fixed') {
+      // Modo fixed do layout só vale na parede ou #tv/slot/N
+      if ((eff.mosaic || isSlotHash) && eff.mode === 'fixed') {
         setSector(sec, { syncHash: false, forceTv: true, view: eff.view });
         stopSwapLoop();
         stopTvSyncClock();
@@ -6264,7 +6298,7 @@
         return;
       }
 
-      if (eff.syncSwap) {
+      if (eff.syncSwap && (eff.mosaic || isSlotHash || sec === normalizeSectorId(eff.sector))) {
         const views = sec === 'armazem' ? ARM_VIEWS : OPS_VIEWS;
         const want = views[syncedOpsViewIndex(eff.swapMs) % views.length];
         if (want && want !== CURRENT_VIEW) {
