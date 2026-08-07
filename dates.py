@@ -153,6 +153,16 @@ def periodo_mes_corrente(hoje: date | datetime | None = None) -> tuple[str, str]
     )
 
 
+def periodo_mes_ate_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
+    """
+    Pendência 031 · data da ocorrência: dia 1 do mês até HOJE (DDMM).
+
+    O SSW rejeita 'Data final maior que data corrente' se usar o fim do mês.
+    """
+    today = _as_date(hoje)
+    return to_ddmm(date(today.year, today.month, 1)), to_ddmm(today)
+
+
 def nome_mes_pt(hoje: date | datetime | None = None) -> str:
     """Nome do mes em portugues maiusculo (ex.: AGOSTO)."""
     today = _as_date(hoje)

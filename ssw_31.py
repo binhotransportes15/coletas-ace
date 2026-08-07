@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import periodo_mes_corrente, to_ssw_ddmmyy
-from ocorrencias_pendencia import OCORR_PENDENCIA_CODES
+from dates import periodo_mes_ate_hoje, to_ssw_ddmmyy
+from ocorrencias_pendencia import OCORR_PENDENCIA_CODES, label_ocorrencia
 from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
@@ -51,7 +51,7 @@ def download_reports_31(
     if not code_list:
         raise RuntimeError("31: nenhum código de ocorrência")
 
-    ini_ddmm, fim_ddmm = period or periodo_mes_corrente()
+    ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
     ini = to_ssw_ddmmyy(ini_ddmm)
     fim = to_ssw_ddmmyy(fim_ddmm)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -98,7 +98,10 @@ def download_reports_31(
                     status(f"[31/{code}] ({idx}/{len(code_list)}) abrindo opção 31…")
                     popup = _reopen_31(client, page, popup)
                     status(f"[31/{code}] preenchendo…")
-                    _preencher_31(popup, ini=ini, fim=fim, codigo=code)
+                    _preencher_31(
+                        popup, ini=ini, fim=fim, codigo=code, on_status=status
+                    )
+                    status(f"[31/{code}] gerando Excel…")
                     dest_name = f"pendencia_31_{code}_{ts}.xlsx"
                     path = _gerar_download_31(
                         client, context, page, popup, dest_name, code, status
@@ -170,45 +173,93 @@ def _reopen_31(client: AceSswClient, page, popup=None):
     return fresh
 
 
-def _preencher_31(popup, *, ini: str, fim: str, codigo: str) -> None:
-    """ssw0495: #3/#4 ocorrência, #6 código, #11=T, #12=S. Emissão (#1/#2) vazia."""
-    popup.locator('[id="3"]').wait_for(timeout=20000)
-    values = popup.evaluate(
-        """([ini, fim, codigo]) => {
-          const set = (id, v) => {
-            const el = document.getElementById(String(id));
-            if (!el) return false;
-            el.value = v;
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-            el.dispatchEvent(new Event('change', { bubbles: true }));
-            return true;
-          };
-          set('1', '');
-          set('2', '');
-          const okIni = set('3', ini);
-          const okFim = set('4', fim);
-          const okCod = set('6', String(codigo || '').slice(0, 2));
-          const okSit = set('11', 'T');
-          const okExcel = set('12', 'S');
-          try {
-            const el = document.getElementById('12');
-            if (el) el.focus();
-          } catch (e) {}
-          return {
-            ok: okIni && okFim && okCod && okSit && okExcel,
-            ini: (document.getElementById('3') || {}).value || '',
-            fim: (document.getElementById('4') || {}).value || '',
-            codigo: (document.getElementById('6') || {}).value || '',
-            situacao: (document.getElementById('11') || {}).value || '',
-            excel: (document.getElementById('12') || {}).value || '',
-          };
-        }""",
-        [ini, fim, str(codigo).strip()],
-    )
-    if not values or not values.get("ok"):
-        raise RuntimeError(f"31: falha ao preencher: {values}")
+def _preencher_31(
+    popup,
+    *,
+    ini: str,
+    fim: str,
+    codigo: str,
+    on_status: StatusCallback | None = None,
+) -> None:
+    """
+    ssw0495:
+      #1/#2 emissão (vazio) · #3/#4 data ocorrência · #6 código (2 dígitos)
+      #11 situação=T · #12 excel=S
+
+    Importante: NÃO usar evaluate+change no #6 — o alert/lookup do SSW
+    trava o evaluate. Playwright fill/Tab trata o dialog normalmente.
+    """
+    status = on_status or _noop
+    cod = str(codigo or "").strip()[:2]
+    if not cod:
+        raise RuntimeError("31: código vazio")
+
+    try:
+        popup.locator('[id="3"]').wait_for(state="visible", timeout=15000)
+    except Exception as err:  # noqa: BLE001
+        url = ""
+        try:
+            url = popup.url
+        except Exception:
+            pass
+        raise RuntimeError(f"31: formulário não pronto ({url}): {err}") from err
+
+    status(f"[31/{cod}] datas {ini}-{fim}")
+    popup.locator('[id="1"]').fill("")
+    popup.locator('[id="2"]').fill("")
+    popup.locator('[id="3"]').fill(ini)
+    popup.locator('[id="4"]').fill(fim)
+
+    status(f"[31/{cod}] código {cod} (lookup descrição)")
+    campo = popup.locator('[id="6"]')
+    campo.click()
+    campo.fill(cod)
+    try:
+        campo.press("Tab")
+    except Exception:
+        pass
+
+    # espera a descrição preencher (lookup AJAX); se não vier, usa rótulo local
+    label = label_ocorrencia(cod)
+    desc_ok = False
+    for _ in range(40):
+        try:
+            desc = (popup.locator("#ocor_descr").input_value(timeout=1000) or "").strip()
+        except Exception:
+            desc = ""
+        low = desc.lower()
+        if desc and len(desc) > 2 and "aguarde" not in low and "..." not in desc:
+            desc_ok = True
+            status(f"[31/{cod}] descrição: {desc[:60]}")
+            break
+        popup.wait_for_timeout(300)
+    if not desc_ok:
+        try:
+            popup.locator("#ocor_descr").fill(label)
+            status(f"[31/{cod}] descrição local: {label[:60]}")
+        except Exception:
+            pass
+        # dá mais um tempo pro lookup terminar antes do ►
+        popup.wait_for_timeout(800)
+
+    popup.locator('[id="11"]').fill("T")
+    popup.locator('[id="12"]').fill("S")
+
+    values = {
+        "ini": popup.locator('[id="3"]').input_value(),
+        "fim": popup.locator('[id="4"]').input_value(),
+        "codigo": popup.locator('[id="6"]').input_value(),
+        "situacao": popup.locator('[id="11"]').input_value(),
+        "excel": popup.locator('[id="12"]').input_value(),
+    }
+    if str(values.get("codigo") or "").strip() != cod:
+        raise RuntimeError(f"31: código não ficou {cod}: {values}")
     if str(values.get("excel") or "").upper() != "S":
         raise RuntimeError(f"31: excel não ficou S: {values}")
+    status(
+        f"[31/{cod}] OK form · oc={values.get('ini')}-{values.get('fim')} "
+        f"cod={values.get('codigo')} excel={values.get('excel')}"
+    )
     popup.wait_for_timeout(200)
 
 
@@ -227,14 +278,19 @@ def _clicar_gerar_31(popup) -> None:
 
 
 def _gerar_download_31(client, context, page, popup, dest_name: str, code: str, status) -> Path:
-    """Tenta download direto; se timeout, cai em Ver fila (ssw1440)."""
+    """Tenta download direto (curto); se for pra fila, baixa via ssw1440."""
     try:
-        with context.expect_event("download", timeout=90000) as di:
+        with context.expect_event("download", timeout=20000) as di:
             _clicar_gerar_31(popup)
         download = di.value
         return _save_named(client, download, dest_name)
     except Exception as direct_err:  # noqa: BLE001
-        status(f"[31/{code}] download direto falhou ({direct_err}); tentando Ver fila…")
+        status(f"[31/{code}] sem download imediato; abrindo Ver fila…")
+        # dialog “enviado à fila” costuma aparecer aqui
+        try:
+            popup.wait_for_timeout(800)
+        except Exception:
+            pass
         return _baixar_via_fila_31(client, context, page, popup, dest_name, code, status)
 
 
@@ -250,98 +306,171 @@ def _save_named(client, download, dest_name: str) -> Path:
     return client._save_download(download, name)
 
 
-def _baixar_via_fila_31(client, context, page, popup, dest_name: str, code: str, status) -> Path:
-    """Abre Ver fila (ssw1440) e baixa o relatório 0495 mais recente."""
-    # Disparar Ver fila a partir do popup 31 ou do menu
+def _abrir_ver_fila_31(client, context, page, popup, status):
+    """Abre ssw1440 (Ver fila) a partir do popup 31 ou do menu."""
     fila = None
+    # 1) botão Ver fila no próprio 0495 (id=15 / ajaxEnvia)
     try:
-        with context.expect_page(timeout=15000) as pi:
-            popup.evaluate(
+        with context.expect_page(timeout=12000) as pi:
+            opened = popup.evaluate(
                 """() => {
+                  const a = document.getElementById('15');
+                  if (a) { a.click(); return '15'; }
                   if (typeof ajaxEnvia === 'function') {
                     ajaxEnvia('', 1, 'ssw1440');
                     return 'ajax';
                   }
-                  const a = document.getElementById('15');
-                  if (a) { a.click(); return '15'; }
                   return '';
                 }"""
             )
+            if not opened:
+                raise RuntimeError("sem botão Ver fila")
         fila = pi.value
-    except Exception:
-        # talvez navegou no mesmo popup
+        status("[31] Ver fila aberta (popup)")
+    except Exception as err:
+        status(f"[31] Ver fila popup: {err}")
+        fila = None
+
+    if fila is None:
         try:
             if "ssw1440" in (popup.url or ""):
                 fila = popup
-            else:
+        except Exception:
+            pass
+
+    if fila is None:
+        try:
+            with context.expect_page(timeout=12000) as pi:
+                page.bring_to_front()
                 page.evaluate(
                     """() => {
                       if (typeof ajaxEnvia === 'function') ajaxEnvia('', 1, 'ssw1440');
                     }"""
                 )
-                page.wait_for_timeout(1500)
-                for pg in context.pages:
+            fila = pi.value
+        except Exception:
+            for pg in context.pages:
+                try:
                     if "ssw1440" in (pg.url or ""):
                         fila = pg
                         break
-        except Exception:
-            pass
+                except Exception:
+                    continue
+
     if fila is None:
         raise RuntimeError("31: não abriu Ver fila (ssw1440)")
 
-    fila.wait_for_load_state("domcontentloaded", timeout=30000)
+    # blank.html → forçar programa da fila (mesmo padrão das outras telas)
+    try:
+        url = (fila.url or "").lower()
+    except Exception:
+        url = ""
+    if "blank.html" in url or url.startswith("about:blank") or "ssw1440" not in url:
+        status("[31] recuperando ssw1440…")
+        try:
+            fila.goto(
+                "https://sistema.ssw.inf.br/bin/ssw1440",
+                wait_until="domcontentloaded",
+                timeout=30000,
+            )
+            fila.wait_for_timeout(1000)
+        except Exception as err:
+            status(f"[31] goto ssw1440: {err}")
+            try:
+                if client._recuperar_blank(page, fila, "1440", ("fila", "dow", "relat", "1440")):
+                    status("[31] ssw1440 via blank patch")
+            except Exception:
+                pass
+    return fila
+
+
+def _baixar_via_fila_31(client, context, page, popup, dest_name: str, code: str, status) -> Path:
+    """Abre Ver fila (ssw1440) e baixa o relatório 0495 mais recente."""
+    fila = _abrir_ver_fila_31(client, context, page, popup, status)
+    try:
+        fila.wait_for_load_state("domcontentloaded", timeout=30000)
+    except Exception:
+        pass
     try:
         fila.on("dialog", lambda d: d.accept())
     except Exception:
         pass
+    try:
+        fila.bring_to_front()
+    except Exception:
+        pass
 
-    # Poll até achar link de download do 0495 / excel
-    deadline = time.time() + 120
+    deadline = time.time() + 150
     last_hint = ""
     while time.time() < deadline:
         info = fila.evaluate(
             """() => {
-              const text = (document.body && document.body.innerText || '').slice(0, 2500);
-              const links = Array.from(document.querySelectorAll('a[onclick], a[href]'));
-              const hits = links.map((a, i) => ({
-                i,
-                text: (a.textContent || '').trim().slice(0, 80),
-                onclick: String(a.getAttribute('onclick') || '').slice(0, 160),
-                href: String(a.getAttribute('href') || '').slice(0, 120),
-              })).filter(x =>
-                /DOW|download|ssw0495|0495|xlsx|excel|baixar/i.test(
-                  x.onclick + ' ' + x.text + ' ' + x.href
-                )
-              );
-              return { text, hits: hits.slice(0, 12), url: location.href };
+              const text = (document.body && document.body.innerText || '').slice(0, 3500);
+              const links = Array.from(document.querySelectorAll('a[onclick], a[href], img[onclick]'));
+              const mapped = links.map((a, i) => {
+                const text = ((a.textContent || a.alt || a.title || '') + '').trim().slice(0, 80);
+                const onclick = String(a.getAttribute('onclick') || '').slice(0, 220);
+                const href = String(a.getAttribute('href') || '').slice(0, 160);
+                const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
+                return { i, text, onclick, href, blob };
+              });
+              // Só links reais de download da fila — nunca Imprimir/Correio/menu
+              const hits = mapped.filter(x => {
+                if (/imprimir|correio|e-mails|emails|retaguarda|voltar|fechar|sair/i.test(x.text)) {
+                  return false;
+                }
+                return /\\bdow\\b|download\\(|ssw0495|\\.xlsx|\\.xls|\\.csv|baixar/.test(x.blob)
+                  || (/0495/.test(x.blob) && /dow|href=|http/.test(x.blob));
+              });
+              return {
+                text,
+                url: location.href,
+                hits: hits.slice(0, 15),
+                sample: mapped.slice(0, 20),
+              };
             }"""
         )
-        last_hint = str(info.get("text") or "")[:200]
+        last_hint = f"url={info.get('url')} | " + str(info.get("text") or "")[:220]
         hits = info.get("hits") or []
-        # Prefer DOW / 0495
+        if "ssw1440" not in str(info.get("url") or ""):
+            status(f"[31/{code}] fila ainda não é ssw1440 ({info.get('url')}); retry…")
+            fila.wait_for_timeout(2000)
+            continue
+
         pick = None
         for h in hits:
-            blob = f"{h.get('onclick','')} {h.get('text','')} {h.get('href','')}"
-            if re.search(r"DOW|ssw0495|0495", blob, re.I):
+            blob = h.get("blob") or ""
+            if re.search(r"\bdow\b|download\(|ssw0495", blob, re.I):
                 pick = h
                 break
         if not pick and hits:
             pick = hits[0]
+
         if pick is not None:
-            status(f"[31/{code}] fila: baixando via {pick.get('text') or pick.get('onclick')}")
+            status(
+                f"[31/{code}] fila: baixando · {pick.get('text') or pick.get('onclick')}"
+            )
             try:
-                with context.expect_event("download", timeout=90000) as di:
+                with context.expect_event("download", timeout=60000) as di:
                     fila.evaluate(
                         """(idx) => {
-                          const links = Array.from(document.querySelectorAll('a[onclick], a[href]'));
-                          const filtered = links.filter(a => {
-                            const blob = String(a.getAttribute('onclick')||'') + ' ' +
-                              (a.textContent||'') + ' ' + String(a.getAttribute('href')||'');
-                            return /DOW|download|ssw0495|0495|xlsx|excel|baixar/i.test(blob);
+                          const links = Array.from(document.querySelectorAll('a[onclick], a[href], img[onclick]'));
+                          const mapped = links.map((a) => {
+                            const text = ((a.textContent || a.alt || a.title || '') + '').trim();
+                            const onclick = String(a.getAttribute('onclick') || '');
+                            const href = String(a.getAttribute('href') || '');
+                            const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
+                            return { a, text, blob };
+                          }).filter(x => {
+                            if (/imprimir|correio|e-mails|emails|retaguarda|voltar|fechar|sair/i.test(x.text)) {
+                              return false;
+                            }
+                            return /\\bdow\\b|download\\(|ssw0495|\\.xlsx|\\.xls|\\.csv|baixar/.test(x.blob)
+                              || (/0495/.test(x.blob) && /dow|href=|http/.test(x.blob));
                           });
-                          const a = filtered[idx];
-                          if (!a) return false;
-                          a.click();
+                          const item = mapped[idx];
+                          if (!item) return false;
+                          item.a.click();
                           return true;
                         }""",
                         hits.index(pick) if pick in hits else 0,
@@ -356,6 +485,19 @@ def _baixar_via_fila_31(client, context, page, popup, dest_name: str, code: str,
                 return path
             except Exception as err:  # noqa: BLE001
                 status(f"[31/{code}] clique fila falhou: {err}")
+        else:
+            # ainda processando na fila
+            if int(time.time()) % 8 < 3:
+                status(f"[31/{code}] aguardando DOW na fila…")
+        try:
+            # refresh leve
+            fila.evaluate(
+                """() => {
+                  if (typeof ajaxEnvia === 'function') { try { ajaxEnvia('ATU', 0); } catch (e) {} }
+                }"""
+            )
+        except Exception:
+            pass
         fila.wait_for_timeout(2500)
 
-    raise RuntimeError(f"31: Ver fila sem download em 120s. Hint: {last_hint}")
+    raise RuntimeError(f"31: Ver fila sem download em 150s. Hint: {last_hint}")
