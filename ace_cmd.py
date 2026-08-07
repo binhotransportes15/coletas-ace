@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import getpass
 import os
+import re
 import subprocess
 import sys
 from dataclasses import asdict
@@ -314,7 +315,8 @@ def cmd_help() -> str:
         "    /e intervalo 30s\n"
         "  Visualização SSW: /viz on|off  ou  /e visualizar sim|nao\n"
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
-        "  Pendência: /e pendencia_in_loop true|false · comando 31 (11 códigos, demora)\n"
+        "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 11 códigos (reabre a 31 cada um)\n"
+        "             `31 13 14` ou `31 13,14` = só esses códigos\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
@@ -542,17 +544,24 @@ def run_pipeline_78_cmd() -> str:
     )
 
 
+def _parse_codes_31(extra: list[str] | None) -> list[str] | None:
+    """Aceita `13,14`, `13 14` ou `13;14`."""
+    if not extra:
+        return None
+    raw = " ".join(extra).replace(";", ",").replace("|", ",")
+    codes = [c.strip() for c in re.split(r"[\s,]+", raw) if c.strip()]
+    return codes or None
+
+
 def run_pipeline_31_cmd(extra: list[str] | None = None) -> str:
-    """`31` ou `31 13,14` (só esses códigos)."""
+    """`31` = todos os códigos; `31 13,14` ou `31 13 14` = só esses."""
+    from ocorrencias_pendencia import OCORR_PENDENCIA_CODES
     from pipeline import run_pipeline_31
 
-    codes = None
-    if extra:
-        raw = " ".join(extra).replace(";", ",")
-        codes = [c.strip() for c in raw.split(",") if c.strip()] or None
+    codes = _parse_codes_31(extra)
+    show = codes or list(OCORR_PENDENCIA_CODES)
     print("\n=== Pipeline 031 (Pendência) ===")
-    if codes:
-        print(f"  códigos: {', '.join(codes)}")
+    print(f"  códigos ({len(show)}): {', '.join(show)}")
     result = run_pipeline_31(on_status=_on_status, headless=_cfg_headless(), codes=codes)
     resumo = result.get("resumo") or {}
     return (

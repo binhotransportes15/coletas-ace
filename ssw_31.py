@@ -73,7 +73,10 @@ def download_reports_31(
 
     paths: dict[str, str] = {}
     errors: dict[str, str] = {}
-    status(f"SSW 31 | {len(code_list)} código(s) | ocorrência {ini}-{fim} | excel=S")
+    status(
+        f"SSW 31 | {len(code_list)} código(s) um a um | ocorrência {ini}-{fim} | excel=S"
+    )
+    status("códigos: " + ", ".join(code_list))
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
@@ -82,48 +85,36 @@ def download_reports_31(
         page.set_default_timeout(60000)
         page.on("dialog", lambda d: d.accept())
         context.on("page", lambda pg: pg.on("dialog", lambda d: d.accept()))
+        popup = None
         try:
             client._login(page)
             client._ensure_unit(page)
             client._patch_blank_popup_fix(page)
-            popup = _open_31(client, page)
 
-            for code in code_list:
+            # SSW 0495: cada código precisa de uma entrada nova na opção 31
+            # (reaproveitar o mesmo popup falha / mistura relatório).
+            for idx, code in enumerate(code_list, start=1):
                 try:
+                    status(f"[31/{code}] ({idx}/{len(code_list)}) abrindo opção 31…")
+                    popup = _reopen_31(client, page, popup)
                     status(f"[31/{code}] preenchendo…")
-                    if popup.is_closed():
-                        popup = _open_31(client, page)
-                    try:
-                        popup.on("dialog", lambda d: d.accept())
-                    except Exception:
-                        pass
                     _preencher_31(popup, ini=ini, fim=fim, codigo=code)
                     dest_name = f"pendencia_31_{code}_{ts}.xlsx"
                     path = _gerar_download_31(
                         client, context, page, popup, dest_name, code, status
                     )
-                    # popup pode ter sido fechado / trocado na fila
-                    try:
-                        if popup.is_closed():
-                            popup = _open_31(client, page)
-                    except Exception:
-                        popup = _open_31(client, page)
                     paths[code] = str(path)
                     status(f"[31/{code}] OK {path.name} ({path.stat().st_size} bytes)")
-                    popup.wait_for_timeout(350)
+                    page.wait_for_timeout(400)
                 except Exception as err:  # noqa: BLE001
                     errors[code] = str(err)
                     status(f"[31/{code}] FALHOU: {err}")
                     try:
-                        if popup.is_closed():
-                            popup = _open_31(client, page)
+                        popup = _reopen_31(client, page, popup)
                     except Exception:
-                        try:
-                            popup = _open_31(client, page)
-                        except Exception:
-                            pass
+                        popup = None
             try:
-                if not popup.is_closed():
+                if popup is not None and not popup.is_closed():
                     popup.close()
             except Exception:
                 pass
@@ -157,6 +148,26 @@ def _open_31(client: AceSswClient, page):
         "31",
         markers=("ocorr", "ctrc", "excel", "pendenc", "31", "arquivo", "0495"),
     )
+
+
+def _reopen_31(client: AceSswClient, page, popup=None):
+    """Fecha a tela 31 anterior (se houver) e abre de novo para o próximo código."""
+    if popup is not None:
+        try:
+            if not popup.is_closed():
+                popup.close()
+        except Exception:
+            pass
+        try:
+            page.wait_for_timeout(350)
+        except Exception:
+            pass
+    fresh = _open_31(client, page)
+    try:
+        fresh.on("dialog", lambda d: d.accept())
+    except Exception:
+        pass
+    return fresh
 
 
 def _preencher_31(popup, *, ini: str, fim: str, codigo: str) -> None:
