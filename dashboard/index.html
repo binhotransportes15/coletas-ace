@@ -2448,7 +2448,7 @@
     body[data-sector="armazem"][data-view="patio"] #armTitle { color: #7dd3fc; }
     body[data-sector="pendencia"] #penTitle { color: #f472b6; }
 
-    /* Pendência 031 — mesmo grid do pátio (KPIs · torres | tabela) */
+    /* Pendência 031 — KPIs + torres em tela cheia (sem tabela CTRCs) */
     .pen-wrap {
       height: 100vh;
       padding: 12px 14px;
@@ -2460,25 +2460,58 @@
     }
     .pen-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
+      grid-template-columns: 1fr;
       grid-template-rows: auto minmax(0, 1fr);
       gap: clamp(8px, 1vw, 14px);
       height: 100%;
       min-height: 0;
       overflow: hidden;
     }
-    .pen-layout [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
+    .pen-layout [data-block="kpis"] { grid-column: 1; grid-row: 1; }
     .pen-layout [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
-    .pen-layout [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
-    .pen-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .pen-torres .torre { width: min(148px, 15vw); }
+    .pen-layout [data-block="tabela"] { display: none !important; }
+    .pen-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .pen-hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .pen-towers-wrap {
+      min-height: clamp(280px, 52vh, 640px);
+      padding: clamp(12px, 1.8vw, 28px) clamp(10px, 1.4vw, 22px);
+    }
+    .pen-torres {
+      height: 100%;
+      max-height: none;
+      gap: clamp(14px, 2vw, 36px);
+      justify-content: center;
+      align-items: flex-end;
+    }
+    .pen-torres .torre { width: min(188px, 16vw); }
+    .pen-torres .pin {
+      width: clamp(44px, 5vw, 64px);
+      height: clamp(44px, 5vw, 64px);
+      margin-bottom: clamp(10px, 1.2vw, 16px);
+    }
+    .pen-torres .pin span {
+      font-size: clamp(18px, 2.2vw, 28px);
+      font-weight: 800;
+    }
+    .pen-torres .pin span.pin-lg {
+      font-size: clamp(15px, 1.8vw, 22px);
+    }
+    .pen-torres .barra strong {
+      font-size: clamp(20px, 2.6vw, 42px);
+    }
     .pen-torres .base {
-      min-height: 2.8em;
+      min-height: 3.2em;
       align-items: flex-start;
-      padding-top: 4px;
+      padding-top: 6px;
     }
     .pen-torres .base .lbl {
-      font-size: clamp(9px, 1.05vw, 12px);
+      font-size: clamp(10px, 1.2vw, 14px);
       line-height: 1.15;
       white-space: normal;
       word-break: break-word;
@@ -2513,7 +2546,7 @@
     }
     body.tv-mode .pen-layout {
       display: grid !important;
-      grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.95fr) !important;
+      grid-template-columns: 1fr !important;
       grid-template-rows: max-content minmax(0, 1fr) !important;
       height: 100% !important;
       gap: clamp(8px, 1.1vmin, 14px) !important;
@@ -2526,7 +2559,7 @@
       overflow: visible !important;
       align-self: start !important;
       display: grid !important;
-      grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
       gap: clamp(8px, 1.1vmin, 12px) !important;
     }
     body.tv-mode .pen-layout [data-block="chart"],
@@ -2542,34 +2575,38 @@
     body.tv-mode .pen-towers-wrap {
       height: 100% !important;
       min-height: 0 !important;
-      padding: clamp(8px, 1.2vmin, 16px) clamp(10px, 1.4vmin, 18px) !important;
+      padding: clamp(12px, 1.8vmin, 28px) clamp(14px, 2vmin, 32px) !important;
     }
     body.tv-mode .pen-torres {
       height: 100% !important;
       max-height: none !important;
-      gap: clamp(10px, 1.6vmin, 24px) !important;
+      gap: clamp(16px, 2.4vmin, 40px) !important;
       justify-content: center !important;
       align-items: flex-end !important;
       overflow: hidden !important;
     }
     body.tv-mode .pen-torres .torre {
       flex: 0 0 auto !important;
-      width: clamp(118px, 13vmin, 176px) !important;
+      width: clamp(140px, 15vmin, 220px) !important;
       max-width: none !important;
     }
     body.tv-mode .pen-torres .pin {
-      width: clamp(36px, 4.2vmin, 52px) !important;
-      height: clamp(36px, 4.2vmin, 52px) !important;
-      margin-bottom: clamp(8px, 1vmin, 12px) !important;
+      width: clamp(52px, 6vmin, 76px) !important;
+      height: clamp(52px, 6vmin, 76px) !important;
+      margin-bottom: clamp(10px, 1.4vmin, 18px) !important;
     }
     body.tv-mode .pen-torres .pin span {
-      font-size: clamp(14px, 1.8vmin, 22px) !important;
+      font-size: clamp(22px, 2.8vmin, 36px) !important;
+      font-weight: 800 !important;
+    }
+    body.tv-mode .pen-torres .pin span.pin-lg {
+      font-size: clamp(18px, 2.2vmin, 28px) !important;
     }
     body.tv-mode .pen-torres .barra {
-      min-height: clamp(48px, 6vmin, 90px) !important;
+      min-height: clamp(64px, 8vmin, 120px) !important;
     }
     body.tv-mode .pen-torres .barra strong {
-      font-size: clamp(22px, 3.2vmin, 48px) !important;
+      font-size: clamp(28px, 4vmin, 58px) !important;
     }
     body.tv-mode .pen-torres .base {
       min-height: clamp(58px, 7.5vmin, 86px) !important;
@@ -2577,7 +2614,7 @@
       align-items: flex-start !important;
     }
     body.tv-mode .pen-torres .base .lbl {
-      font-size: clamp(11px, 1.35vmin, 16px) !important;
+      font-size: clamp(12px, 1.5vmin, 18px) !important;
       line-height: 1.15 !important;
       letter-spacing: 0.02em;
       white-space: normal !important;
@@ -2587,10 +2624,8 @@
       overflow: hidden;
       word-break: break-word;
     }
-    body.tv-mode .pen-layout [data-block="tabela"],
-    body.tv-mode .pen-layout .arm-panel {
-      height: 100% !important;
-      min-height: 0 !important;
+    body.tv-mode .pen-layout [data-block="tabela"] {
+      display: none !important;
     }
     body.tv-mode #panel-pendencia .arm-kpi .val {
       font-size: clamp(22px, 2.8vmin, 40px) !important;
@@ -2599,11 +2634,6 @@
     body.tv-mode #penSla {
       font-size: clamp(18px, 2.2vmin, 36px) !important;
       line-height: 1.15 !important;
-    }
-    /* TV: esconde Histórico p/ caber CTRC + ocorrência */
-    body.tv-mode #panel-pendencia table th:nth-child(6),
-    body.tv-mode #panel-pendencia table td:nth-child(6) {
-      display: none !important;
     }
     body.tv-mode.tv-no-margins #panel-pendencia,
     body.tv-mode:not(.tv-no-margins) #panel-pendencia {
@@ -2614,13 +2644,13 @@
     @media (max-width: 1100px) {
       .pen-layout {
         grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(220px, 0.75fr) minmax(280px, 1.25fr);
+        grid-template-rows: auto minmax(320px, 1fr);
       }
       .pen-layout [data-block="kpis"] { grid-column: 1; grid-row: 1; }
       .pen-layout [data-block="chart"] { grid-column: 1; grid-row: 2; }
-      .pen-layout [data-block="tabela"] { grid-column: 1; grid-row: 3; }
-      .pen-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .pen-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .pen-wrap { height: auto; min-height: 100vh; }
+      .pen-towers-wrap { min-height: 360px; }
     }
 
     /* Coleta / Entrega — blocos arrastáveis (CRT) */
@@ -3868,44 +3898,25 @@
       <div class="pen-layout" id="penLayout">
         <div class="arm-kpis pen-kpis dash-block" data-block="kpis">
           <div class="arm-kpi finalizado"><div class="lbl">SLA</div><div class="val" id="penSla">0%</div></div>
-          <div class="arm-kpi"><div class="lbl">Solucionadas</div><div class="val" id="penSoluc">0</div></div>
+          <div class="arm-kpi"><div class="lbl">Solucionadas - 63</div><div class="val" id="penSoluc">0</div></div>
           <div class="arm-kpi atrasado"><div class="lbl">Em aberto</div><div class="val" id="penAbertas">0</div></div>
-          <div class="arm-kpi"><div class="lbl">CTRCs</div><div class="val" id="penTotal">0</div></div>
           <div class="arm-kpi chegou"><div class="lbl">Período</div><div class="val" id="penPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
         </div>
         <div class="arm-hero arm-hero-solo dash-block" data-block="chart">
           <section class="arm-hero-card">
             <header>
               <h2>SLA do setor</h2>
-              <div class="meta" id="penOfMeta">63 positiva · demais negativas</div>
+              <div class="pen-hero-meta">
+                <div class="meta" id="penOfMeta">63 positiva · demais negativas</div>
+                <div class="meta" id="penAtualizado">atualizado —</div>
+              </div>
             </header>
             <div class="arm-towers-wrap pen-towers-wrap">
               <div class="torres arm-torres pen-torres" id="penTorres" aria-label="Torres de ofensores"></div>
             </div>
+            <div class="arm-err" id="penErr" hidden></div>
           </section>
         </div>
-        <section class="arm-panel dash-block" data-block="tabela">
-          <header>
-            <h2>CTRCs pendentes</h2>
-            <div class="meta" id="penAtualizado">atualizado —</div>
-          </header>
-          <div class="arm-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Cód.</th>
-                  <th>Ocorrência</th>
-                  <th>CTRC</th>
-                  <th>Emissão</th>
-                  <th>Última ocorrência</th>
-                  <th>Histórico</th>
-                </tr>
-              </thead>
-              <tbody id="penTbody"></tbody>
-            </table>
-            <div class="arm-err" id="penErr" hidden></div>
-          </div>
-        </section>
       </div>
     </div>
   </div>
@@ -5504,15 +5515,15 @@
       const wrap = document.querySelector('#penLayout .pen-towers-wrap')
         || document.querySelector('.pen-towers-wrap');
       const tv = document.body.classList.contains('tv-mode');
-      const pin = tv ? 64 : 52;
-      // TV: reserva base alta p/ nome da ocorrência em até 3 linhas
-      const base = tv ? 92 : 56;
-      const pad = tv ? 40 : 28;
+      const pin = tv ? 88 : 72;
+      // Reserva base p/ nome da ocorrência; chart ocupa quase a tela toda
+      const base = tv ? 96 : 64;
+      const pad = tv ? 36 : 24;
       const avail = wrap && wrap.clientHeight > 80
         ? wrap.clientHeight
-        : Math.round((window.innerHeight || 800) * (tv ? 0.52 : 0.42));
-      const maxH = Math.max(tv ? 80 : 56, Math.round(avail - pin - base - pad));
-      const minH = Math.max(tv ? 40 : 28, Math.round(maxH * 0.14));
+        : Math.round((window.innerHeight || 800) * (tv ? 0.72 : 0.58));
+      const maxH = Math.max(tv ? 120 : 90, Math.round(avail - pin - base - pad));
+      const minH = Math.max(tv ? 48 : 36, Math.round(maxH * 0.16));
       if (!max || max <= 0) return minH;
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
@@ -5627,7 +5638,6 @@
         setPenText('penSla', slaTxt);
         setPenText('penSoluc', resumo.solucionadas || '0');
         setPenText('penAbertas', resumo.abertas || '0');
-        setPenText('penTotal', resumo.total_ctrcs || rows.length || '0');
         setPenText('penPeriodo', formatPeriodo31(resumo.periodo || ''));
         setPenText('penAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
         const meta = document.getElementById('penOfMeta');
@@ -5640,25 +5650,6 @@
         }
 
         renderPenTorres(ofens);
-        const tb = document.getElementById('penTbody');
-        if (tb) {
-          const sorted = rows.slice().sort((a, b) => {
-            const ca = String(a.codigo || '');
-            const cb = String(b.codigo || '');
-            if (ca !== cb) return ca.localeCompare(cb);
-            return String(a.ctrc || '').localeCompare(String(b.ctrc || ''));
-          });
-          tb.innerHTML = sorted.slice(0, 200).map((r) => `
-            <tr>
-              <td class="mono">${esc(r.codigo || '—')}</td>
-              <td>${esc(String(r.descricao_codigo || r.ultima_ocorrencia || '').slice(0, 42))}</td>
-              <td class="mono">${esc(r.ctrc || '—')}</td>
-              <td class="mono">${esc(r.data_emissao || '—')}</td>
-              <td>${esc(String(r.ultima_ocorrencia || '').slice(0, 48))}</td>
-              <td>${esc(String(r.historico || '').slice(0, 60))}</td>
-            </tr>
-          `).join('') || `<tr><td colspan="6" class="muted">Sem CTRCs — rode o pipeline 31 no ACE</td></tr>`;
-        }
         if (remoteVer != null) lastPenDataVersion = remoteVer;
         else {
           try { lastPenDataVersion = await fetchDataVersion(); } catch (_) {}
