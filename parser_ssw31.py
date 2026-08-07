@@ -193,6 +193,22 @@ def _dedupe(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     return list(by.values())
 
 
+def _format_periodo_display(periodo: str) -> str:
+    """010826-070826 → 01/08/26 – 07/08/26"""
+    raw = str(periodo or "").strip()
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    if len(digits) == 12:
+        a, b = digits[:6], digits[6:]
+        return f"{a[:2]}/{a[2:4]}/{a[4:]} – {b[:2]}/{b[2:4]}/{b[4:]}"
+    if len(digits) == 8:
+        a, b = digits[:4], digits[4:]
+        return f"{a[:2]}/{a[2:]} – {b[:2]}/{b[2:]}"
+    if "-" in raw and "/" not in raw:
+        left, _, right = raw.partition("-")
+        return f"{left.strip()} – {right.strip()}".strip(" –")
+    return raw
+
+
 def analyze_reports_31(
     paths_by_code: dict[str, str | Path],
     *,
@@ -202,6 +218,7 @@ def analyze_reports_31(
     status = on_status or (lambda _m: None)
     ensure_dirs()
     all_rows: list[dict[str, str]] = []
+    periodo_fmt = _format_periodo_display(periodo)
     for code, path in (paths_by_code or {}).items():
         p = Path(path)
         if not p.is_file():
@@ -245,7 +262,7 @@ def analyze_reports_31(
     now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     resumo = [
         {
-            "periodo": periodo or "",
+            "periodo": periodo_fmt or "",
             "atualizado": now,
             "total_ctrcs": total,
             "total_codigos": len(ofensores),
@@ -263,7 +280,7 @@ def analyze_reports_31(
         "total": total,
         "ofensores": ofensores[:12],
         "resumo": resumo[0],
-        "periodo": periodo,
+        "periodo": periodo_fmt,
         "files": {
             "pendencias": str(PENDENCIAS_31_CSV),
             "resumo": str(RESUMO_31_CSV),

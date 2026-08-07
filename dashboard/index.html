@@ -2471,7 +2471,21 @@
     .pen-layout [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
     .pen-layout [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
     .pen-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .pen-torres .torre { width: min(110px, 12vw); }
+    .pen-torres .torre { width: min(148px, 15vw); }
+    .pen-torres .base {
+      min-height: 2.8em;
+      align-items: flex-start;
+      padding-top: 4px;
+    }
+    .pen-torres .base .lbl {
+      font-size: clamp(9px, 1.05vw, 12px);
+      line-height: 1.15;
+      white-space: normal;
+      word-break: break-word;
+      text-align: center;
+      max-width: 100%;
+      letter-spacing: 0.02em;
+    }
     .pen-torres .t-of .barra { background: linear-gradient(180deg, #f9a8d4, #db2777); }
     .pen-torres .t-of .pin { background: #ec4899; }
     .pen-torres .t-of2 .barra { background: linear-gradient(180deg, #fbbf24, #d97706); }
@@ -3762,9 +3776,9 @@
         <div class="arm-kpis pen-kpis dash-block" data-block="kpis">
           <div class="arm-kpi"><div class="lbl">CTRCs</div><div class="val" id="penTotal">0</div></div>
           <div class="arm-kpi"><div class="lbl">Códigos</div><div class="val" id="penCodigos">0</div></div>
-          <div class="arm-kpi atrasado"><div class="lbl">Topo</div><div class="val" id="penTopoCod">—</div></div>
+          <div class="arm-kpi atrasado"><div class="lbl">Topo</div><div class="val" id="penTopoCod" style="font-size:clamp(12px,1.4vw,18px);line-height:1.15">—</div></div>
           <div class="arm-kpi peso"><div class="lbl">Topo qtd</div><div class="val" id="penTopoQtd">0</div></div>
-          <div class="arm-kpi chegou"><div class="lbl">Período</div><div class="val" id="penPeriodo" style="font-size:clamp(14px,1.6vw,20px)">—</div></div>
+          <div class="arm-kpi chegou"><div class="lbl">Período</div><div class="val" id="penPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
         </div>
         <div class="arm-hero arm-hero-solo dash-block" data-block="chart">
           <section class="arm-hero-card">
@@ -5409,6 +5423,34 @@
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
 
+    function formatPeriodo31(raw) {
+      const s = String(raw || '').trim();
+      if (!s) return '—';
+      const digits = s.replace(/\D/g, '');
+      if (digits.length === 12) {
+        const a = digits.slice(0, 6);
+        const b = digits.slice(6, 12);
+        return `${a.slice(0, 2)}/${a.slice(2, 4)}/${a.slice(4)} – ${b.slice(0, 2)}/${b.slice(2, 4)}/${b.slice(4)}`;
+      }
+      if (digits.length === 8) {
+        const a = digits.slice(0, 4);
+        const b = digits.slice(4, 8);
+        return `${a.slice(0, 2)}/${a.slice(2)} – ${b.slice(0, 2)}/${b.slice(2)}`;
+      }
+      // já formatado ou com hífen simples
+      return s
+        .replace(/\s*[-–—]\s*/g, ' – ')
+        .replace(/^(\d{2})(\d{2})(\d{2})\s*–\s*(\d{2})(\d{2})(\d{2})$/, '$1/$2/$3 – $4/$5/$6');
+    }
+
+    function shortPenLabel(text, maxLen = 22) {
+      const raw = String(text || '').trim() || '—';
+      if (raw.length <= maxLen) return raw;
+      const cut = raw.slice(0, maxLen - 1);
+      const sp = cut.lastIndexOf(' ');
+      return ((sp > 8 ? cut.slice(0, sp) : cut).trim() + '…');
+    }
+
     function renderPenTorres(ofensores) {
       const host = document.getElementById('penTorres');
       if (!host) return;
@@ -5424,13 +5466,15 @@
         const qtd = Number(o.qtd) || 0;
         const pct = Math.round((qtd / total) * 100);
         const skin = skins[i] || 't-of6';
-        const cod = esc(o.codigo || '?');
-        const lab = esc(String(o.label || '').slice(0, 28));
+        const cod = String(o.codigo || '').trim();
+        const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
+        const labFull = esc(cod ? `${cod} · ${nome}` : nome);
+        const lab = esc(shortPenLabel(nome, 24));
         const h = alturaTorrePen(qtd, max);
-        return `<div class="torre ${skin}" title="${lab}">
+        return `<div class="torre ${skin}" title="${labFull}">
           <div class="pin"><span class="${qtd >= 100 ? 'pin-lg' : ''}">${qtd}</span></div>
           <div class="barra" style="height:${h}px"><strong>${pct}<span class="pct-sign">%</span></strong></div>
-          <div class="base"><div class="lbl">${cod}</div></div>
+          <div class="base"><div class="lbl">${lab}</div></div>
         </div>`;
       }).join('');
     }
@@ -5481,15 +5525,18 @@
         if (err) err.hidden = true;
         setPenText('penTotal', resumo.total_ctrcs || rows.length || '0');
         setPenText('penCodigos', resumo.total_codigos || ofens.length || '0');
-        setPenText('penTopoCod', resumo.topo_codigo || '—');
+        setPenText(
+          'penTopoCod',
+          shortPenLabel(resumo.topo_label || resumo.topo_codigo || '—', 28)
+        );
         setPenText('penTopoQtd', resumo.topo_qtd || '0');
-        setPenText('penPeriodo', resumo.periodo || '—');
+        setPenText('penPeriodo', formatPeriodo31(resumo.periodo || ''));
         setPenText('penAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
         const topoLab = resumo.topo_label || '';
         const meta = document.getElementById('penOfMeta');
         if (meta) meta.textContent = topoLab
-          ? `topo ${resumo.topo_codigo || ''} · ${topoLab}`
-          : 'códigos de ocorrência · mês';
+          ? `topo · ${topoLab}`
+          : 'ocorrências · mês';
 
         renderPenTorres(ofens);
         const tb = document.getElementById('penTbody');
