@@ -754,6 +754,17 @@
       background: #05080f;
     }
     body.tv-mode.tv-idle { cursor: none; }
+    /* TV: logo só na Distribuição */
+    body.tv-mode:not([data-sector="distribuicao"]) .brand img,
+    body.tv-mode:not([data-sector="distribuicao"]) .arm-brand > img,
+    body.tv-mode:not([data-sector="distribuicao"]) .js-sector-menu,
+    body.tv-mode:not([data-sector="distribuicao"]) .sector-soon-panel img {
+      display: none !important;
+    }
+    body.tv-mode:not([data-sector="distribuicao"]) .arm-brand,
+    body.tv-mode:not([data-sector="distribuicao"]) .brand {
+      gap: 0;
+    }
     body.tv-mode.tv-no-logo .brand img,
     body.tv-mode.tv-no-logo .arm-brand img,
     body.tv-mode.tv-no-logo .sector-soon-panel img { display: none !important; }
@@ -768,7 +779,7 @@
       width: min(920px, 92vw);
       padding: clamp(28px, 4vmin, 56px);
       border-radius: 0 !important;
-      border: 1px solid #1a2f4a !important;
+      border: none !important;
       background: #0a121e !important;
       box-shadow: none !important;
     }
@@ -808,9 +819,7 @@
     body.tv-mode.tv-no-margins .arm-top {
       border-radius: 0 !important;
       margin: 0 !important;
-      border-left: none !important;
-      border-right: none !important;
-      border-top: none !important;
+      border: none !important;
     }
     body.tv-mode.tv-no-margins .arena,
     body.tv-mode.tv-no-margins .agenda-arena,
@@ -853,7 +862,7 @@
     body.tv-mode:not(.tv-no-margins) .topbar,
     body.tv-mode:not(.tv-no-margins) .arm-top {
       border-radius: 0 !important;
-      border: 1px solid #1e3a5f !important;
+      border: none !important;
       background: linear-gradient(180deg, #0f1a2c, #0a1220) !important;
       box-shadow: none !important;
     }
@@ -904,7 +913,7 @@
     }
     body.tv-mode .topbar,
     body.tv-mode .arm-top {
-      border: 1px solid #1a2f4a !important;
+      border: none !important;
       background: linear-gradient(180deg, #0d1626 0%, #081018 100%) !important;
       padding: 8px 14px !important;
     }
@@ -924,15 +933,20 @@
     body.tv-mode .agenda-kpi,
     body.tv-mode .arm-hero-card,
     body.tv-mode .arm-panel,
-    body.tv-mode .zone {
-      border: 1px solid #1a2f4a !important;
+    body.tv-mode .zone,
+    body.tv-mode .agenda-layout .dash-block,
+    body.tv-mode .arm-layout .dash-block,
+    body.tv-mode .ops-layout .dash-block,
+    body.tv-mode .pen-layout .dash-block {
+      border: none !important;
       background: #0a121e !important;
+      box-shadow: none !important;
     }
     body.tv-mode .resumo-card,
     body.tv-mode .arm-hero-card > header,
     body.tv-mode .arm-panel > header,
     body.tv-mode .zone-head {
-      border-bottom: 1px solid #16304a !important;
+      border-bottom: none !important;
     }
     body.tv-mode .arm-kpi .lbl,
     body.tv-mode .agenda-kpi span,
@@ -950,24 +964,27 @@
       font-feature-settings: "tnum";
     }
     body.tv-mode .arm-podium-slot {
-      border: 1px solid #1a2f4a !important;
+      border: none !important;
       background: linear-gradient(180deg, #101c30, #0a121e) !important;
     }
     body.tv-mode .arm-rank-list {
-      border: 1px solid #1a2f4a !important;
+      border: none !important;
       background: #070e18 !important;
     }
     body.tv-mode .arm-rank-head {
       background: #0d1626 !important;
-      border-bottom: 1px solid #1a2f4a !important;
+      border-bottom: none !important;
+    }
+    body.tv-mode .arm-rank-row {
+      border-bottom: none !important;
     }
     body.tv-mode .clock-box {
-      border: 1px solid #1a2f4a !important;
+      border: none !important;
       background: #0a121e !important;
       padding: 6px 10px !important;
     }
     body.tv-mode .nav-btn {
-      border: 1px solid #1a2f4a !important;
+      border: none !important;
       background: #0a121e !important;
     }
     body.tv-mode .arm-layout,
@@ -2998,73 +3015,96 @@
     .agenda-pizza .callout-dot.s-des { fill: var(--cad-dark); }
     .agenda-pizza .callout-dot.s-pat { fill: #38bdf8; }
     .arm-rank-body {
-      padding: 12px 14px 14px;
+      padding: 14px 16px 16px;
       display: grid;
-      grid-template-rows: auto 1fr;
-      gap: 14px;
+      /* Pódio sobe e ganha destaque; lista embaixo com espaço próprio */
+      grid-template-rows: minmax(260px, 1.25fr) minmax(160px, 0.9fr);
+      gap: 16px;
       min-height: 0;
+      flex: 1;
     }
     .arm-podium {
       display: grid;
-      grid-template-columns: 1fr 1.2fr 1fr;
-      gap: 10px;
+      grid-template-columns: 1fr 1.28fr 1fr;
+      gap: clamp(10px, 1.2vw, 18px);
       align-items: end;
-      min-height: 168px;
+      min-height: 0;
+      height: 100%;
     }
     .arm-podium-slot {
       position: relative;
-      background: linear-gradient(180deg, #15233c 0%, #0d1728 100%);
+      background: linear-gradient(180deg, #182640 0%, #0d1728 100%);
       border: 1px solid rgba(148, 163, 184, 0.18);
       border-radius: 16px;
-      padding: 14px 10px 12px;
+      padding: 16px 12px 14px;
       text-align: center;
       min-width: 0;
       overflow: hidden;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
     }
     .arm-podium-slot::before {
       content: '';
       position: absolute;
       left: 0; right: 0; bottom: 0;
-      height: var(--bar-h, 28%);
-      background: linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.12));
+      height: var(--bar-h, 34%);
+      background: linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.14));
       pointer-events: none;
     }
     .arm-podium-slot.p1 {
-      border-color: rgba(251, 191, 36, 0.55);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(251, 191, 36, 0.1);
-      min-height: 196px;
-      padding-top: 16px;
+      border-color: rgba(251, 191, 36, 0.6);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32), inset 0 0 0 1px rgba(251, 191, 36, 0.12);
+      min-height: 100%;
+      padding-top: 18px;
+      transform: translateY(-10px);
+      z-index: 2;
     }
     .arm-podium-slot.p1::before {
-      background: linear-gradient(180deg, transparent, rgba(251, 191, 36, 0.16));
+      background: linear-gradient(180deg, transparent, rgba(251, 191, 36, 0.2));
     }
-    .arm-podium-slot.p2 { min-height: 168px; border-color: rgba(203, 213, 225, 0.35); }
+    .arm-podium-slot.p2 {
+      min-height: 88%;
+      max-height: 92%;
+      border-color: rgba(203, 213, 225, 0.4);
+      transform: translateY(4px);
+    }
     .arm-podium-slot.p2::before {
-      background: linear-gradient(180deg, transparent, rgba(203, 213, 225, 0.1));
+      background: linear-gradient(180deg, transparent, rgba(203, 213, 225, 0.12));
     }
-    .arm-podium-slot.p3 { min-height: 150px; border-color: rgba(180, 120, 70, 0.45); }
+    .arm-podium-slot.p3 {
+      min-height: 78%;
+      max-height: 86%;
+      border-color: rgba(180, 120, 70, 0.5);
+      transform: translateY(10px);
+    }
     .arm-podium-slot.p3::before {
-      background: linear-gradient(180deg, transparent, rgba(180, 120, 70, 0.14));
+      background: linear-gradient(180deg, transparent, rgba(180, 120, 70, 0.16));
     }
     .arm-podium-slot .avatar {
-      width: clamp(42px, 4.2vw, 56px);
-      height: clamp(42px, 4.2vw, 56px);
-      margin: 0 auto 8px;
+      width: clamp(52px, 5.2vw, 72px);
+      height: clamp(52px, 5.2vw, 72px);
+      margin: 0 auto 10px;
       border-radius: 50%;
       display: grid;
       place-items: center;
       font-weight: 800;
-      font-size: clamp(14px, 1.4vw, 18px);
+      font-size: clamp(16px, 1.7vw, 22px);
       letter-spacing: 0.04em;
       color: #0b1220;
       background: #94a3b8;
-      border: 2px solid rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.22);
       position: relative;
       z-index: 1;
     }
     .arm-podium-slot.p1 .avatar {
+      width: clamp(64px, 6.4vw, 88px);
+      height: clamp(64px, 6.4vw, 88px);
+      font-size: clamp(20px, 2.1vw, 28px);
       background: linear-gradient(145deg, #fde68a, #f59e0b);
-      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
+      box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.22);
     }
     .arm-podium-slot.p2 .avatar {
       background: linear-gradient(145deg, #e2e8f0, #94a3b8);
@@ -3076,36 +3116,46 @@
     .arm-podium-slot .place {
       position: relative;
       z-index: 1;
-      font-size: 11px; font-weight: 800; letter-spacing: 0.14em;
-      text-transform: uppercase; color: var(--muted);
+      font-size: clamp(12px, 1.15vw, 14px);
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
     }
-    .arm-podium-slot.p1 .place { color: #fbbf24; }
+    .arm-podium-slot.p1 .place { color: #fbbf24; font-size: clamp(13px, 1.3vw, 16px); }
     .arm-podium-slot.p2 .place { color: #cbd5e1; }
     .arm-podium-slot.p3 .place { color: #d4a574; }
     .arm-podium-slot .name {
       position: relative;
       z-index: 1;
-      margin-top: 6px;
-      font-size: clamp(13px, 1.35vw, 17px);
+      margin-top: 8px;
+      font-size: clamp(15px, 1.65vw, 22px);
       font-weight: 800;
       line-height: 1.2;
       word-break: break-word;
+      max-width: 100%;
+    }
+    .arm-podium-slot.p1 .name {
+      font-size: clamp(17px, 1.9vw, 26px);
     }
     .arm-podium-slot .kg {
       position: relative;
       z-index: 1;
-      margin-top: 8px;
-      font-size: clamp(15px, 1.7vw, 22px);
+      margin-top: 10px;
+      font-size: clamp(18px, 2.1vw, 28px);
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       color: #e2e8f0;
     }
-    .arm-podium-slot.p1 .kg { color: #fde68a; }
+    .arm-podium-slot.p1 .kg {
+      color: #fde68a;
+      font-size: clamp(22px, 2.5vw, 34px);
+    }
     .arm-podium-slot .share {
       position: relative;
       z-index: 1;
-      margin-top: 2px;
-      font-size: 11px;
+      margin-top: 4px;
+      font-size: clamp(12px, 1.2vw, 15px);
       font-weight: 700;
       color: #38bdf8;
       font-variant-numeric: tabular-nums;
@@ -3113,47 +3163,59 @@
     .arm-podium-slot .unit {
       position: relative;
       z-index: 1;
-      margin-top: 4px; font-size: 10px; color: var(--muted);
-      text-transform: uppercase; letter-spacing: 0.06em;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-top: 6px;
+      font-size: clamp(11px, 1.05vw, 13px);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
     }
     .arm-rank-list {
-      overflow: auto; min-height: 0;
-      border: 1px solid rgba(148, 163, 184, 0.12);
+      overflow: auto;
+      min-height: 0;
+      border: 1px solid rgba(148, 163, 184, 0.14);
       border-radius: 12px;
-      background: rgba(8, 14, 24, 0.35);
+      background: rgba(8, 14, 24, 0.45);
+      display: flex;
+      flex-direction: column;
     }
     .arm-rank-head,
     .arm-rank-row {
       display: grid;
-      grid-template-columns: 48px minmax(0, 1.4fr) minmax(72px, 0.7fr) minmax(96px, 0.7fr) 56px minmax(72px, 1fr);
-      gap: 8px;
+      grid-template-columns: 56px minmax(0, 1.6fr) minmax(88px, 0.85fr) minmax(110px, 0.85fr) 64px minmax(90px, 1.1fr);
+      gap: 10px;
       align-items: center;
-      padding: 8px 12px;
+      padding: 11px 16px;
     }
     .arm-rank-head {
       position: sticky;
       top: 0;
       z-index: 1;
-      background: #101a2c;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      background: #121e32;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.16);
       color: var(--muted);
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
+      flex-shrink: 0;
     }
     .arm-rank-row {
-      border-bottom: 1px solid rgba(19, 32, 51, 0.9);
-      font-size: 13px;
+      border-bottom: 1px solid rgba(19, 32, 51, 0.95);
+      font-size: 14px;
+      min-height: 44px;
     }
     .arm-rank-row:last-child { border-bottom: none; }
-    .arm-rank-row:nth-child(even) { background: rgba(255, 255, 255, 0.015); }
+    .arm-rank-row:nth-child(even) { background: rgba(255, 255, 255, 0.025); }
+    .arm-rank-row:hover { background: rgba(56, 189, 248, 0.06); }
     .arm-rank-row .rk {
-      color: var(--muted);
+      color: #94a3b8;
       font-weight: 800;
       font-variant-numeric: tabular-nums;
-      font-size: 12px;
+      font-size: 13px;
     }
     .arm-rank-row .nm {
       font-weight: 700;
@@ -3161,10 +3223,11 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-size: 14px;
     }
     .arm-rank-row .un {
       color: var(--muted);
-      font-size: 11px;
+      font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
       overflow: hidden;
@@ -3172,23 +3235,24 @@
       white-space: nowrap;
     }
     .arm-rank-row .kg {
-      color: #e2e8f0;
+      color: #f1f5f9;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       font-family: ui-monospace, Consolas, monospace;
       text-align: right;
+      font-size: 14px;
     }
     .arm-rank-row .pct {
       color: #38bdf8;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       text-align: right;
-      font-size: 12px;
+      font-size: 13px;
     }
     .arm-rank-row .bar {
-      height: 8px;
+      height: 10px;
       border-radius: 999px;
-      background: rgba(30, 41, 59, 0.9);
+      background: rgba(30, 41, 59, 0.95);
       overflow: hidden;
     }
     .arm-rank-row .bar > i {
@@ -3196,25 +3260,71 @@
       height: 100%;
       width: var(--w, 0%);
       border-radius: inherit;
-      background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+      background: linear-gradient(90deg, #0ea5e9, #7dd3fc);
     }
     .arm-rank-empty {
-      padding: 18px 12px;
+      padding: 22px 14px;
       color: var(--muted);
       text-align: center;
-      font-size: 13px;
+      font-size: 14px;
     }
-    body.tv-mode #viewArmConferentes .arm-podium { min-height: 220px; }
-    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 { min-height: 240px; }
+    body.tv-mode #viewArmConferentes .arm-rank-body {
+      grid-template-rows: minmax(320px, 1.35fr) minmax(180px, 0.85fr) !important;
+      gap: clamp(14px, 1.6vmin, 22px) !important;
+      padding: clamp(12px, 1.4vmin, 20px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-podium {
+      gap: clamp(12px, 1.8vmin, 28px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 {
+      transform: translateY(-14px);
+    }
+    body.tv-mode #viewArmConferentes .arm-podium-slot .avatar {
+      width: clamp(60px, 6.5vmin, 92px) !important;
+      height: clamp(60px, 6.5vmin, 92px) !important;
+      font-size: clamp(18px, 2.2vmin, 28px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 .avatar {
+      width: clamp(76px, 8vmin, 112px) !important;
+      height: clamp(76px, 8vmin, 112px) !important;
+      font-size: clamp(24px, 2.8vmin, 36px) !important;
+    }
     body.tv-mode #viewArmConferentes .arm-podium-slot .name {
-      font-size: clamp(16px, 1.8vw, 22px);
+      font-size: clamp(18px, 2.2vmin, 28px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 .name {
+      font-size: clamp(22px, 2.6vmin, 34px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-podium-slot .kg {
-      font-size: clamp(20px, 2.2vw, 28px);
+      font-size: clamp(22px, 2.6vmin, 36px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 .kg {
+      font-size: clamp(28px, 3.2vmin, 44px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-podium-slot .share {
+      font-size: clamp(13px, 1.5vmin, 18px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-rank-head,
+    body.tv-mode #viewArmConferentes .arm-rank-row {
+      grid-template-columns: 64px minmax(0, 1.7fr) minmax(100px, 0.9fr) minmax(120px, 0.9fr) 72px minmax(110px, 1.15fr) !important;
+      padding: clamp(12px, 1.4vmin, 18px) clamp(14px, 1.6vmin, 22px) !important;
+      gap: clamp(10px, 1.2vmin, 16px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-rank-head {
+      font-size: clamp(12px, 1.3vmin, 15px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-rank-row {
-      padding: 10px 14px;
-      font-size: clamp(14px, 1.3vw, 18px);
+      font-size: clamp(15px, 1.7vmin, 22px) !important;
+      min-height: clamp(48px, 5vmin, 64px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-rank-row .nm {
+      font-size: clamp(15px, 1.7vmin, 22px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-rank-row .kg {
+      font-size: clamp(15px, 1.7vmin, 22px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-rank-row .bar {
+      height: clamp(10px, 1.2vmin, 14px) !important;
     }
     .arm-panel {
       background: var(--panel);
@@ -5126,6 +5236,48 @@
     }
 
     const ARM_STATUS_RANK = { atrasado: 0, descarregando: 1, chegou: 2, aguardando: 3, finalizado: 4 };
+    const ARM_DESC_ATR_MS = 4 * 60 * 60 * 1000; // >4h sem fim de descarga → vermelho
+
+    function parseArmDt(raw) {
+      const s = String(raw || '').trim().replace(/\s+[a-zA-Z_.À-ú]{2,}$/i, '').trim();
+      if (!s) return null;
+      const hoje = new Date();
+      let m = s.match(/^HOJE\s+(\d{1,2}):(\d{2})$/i);
+      if (m) {
+        return new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), +m[1], +m[2]);
+      }
+      m = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s+(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      let y = m[3] ? parseInt(m[3], 10) : hoje.getFullYear();
+      if (m[3] && y < 100) y += 2000;
+      const mo = parseInt(m[2], 10) - 1;
+      const d = parseInt(m[1], 10);
+      if (!m[3] && mo > hoje.getMonth() + 1) y -= 1;
+      return new Date(y, mo, d, +m[4], +m[5]);
+    }
+
+    /** Descarga iniciada, sem fim, passando de 4h → atrasado (vermelho). */
+    function armDescargaAtrasada(v) {
+      const fim = (v.final_descarga || '').trim();
+      if (fim) return false;
+      const ini = (v.inicio_descarga || '').trim();
+      if (!ini) return false;
+      const minsCsv = Number(v.tempo_descarga_min);
+      if (Number.isFinite(minsCsv) && minsCsv > 240) return true;
+      const dt = parseArmDt(ini);
+      return !!(dt && (Date.now() - dt.getTime()) > ARM_DESC_ATR_MS);
+    }
+
+    function armStatusEfetivo(v) {
+      const fim = (v.final_descarga || '').trim();
+      if (fim) return 'finalizado';
+      if (armDescargaAtrasada(v)) return 'atrasado';
+      const st = String(v.status || '').toLowerCase();
+      if ((v.inicio_descarga || '').trim()) {
+        return st === 'atrasado' ? 'atrasado' : 'descarregando';
+      }
+      return st || 'aguardando';
+    }
 
     /** Sigla filial → cidade (mesma base do ACE / siglas_filiais.py) */
     const SIGLAS_FILIAIS = {
@@ -5202,12 +5354,18 @@
             prev_chegada: r.prev_chegada,
             status: r.status,
             tempo_descarga: r.tempo_descarga,
+            tempo_descarga_min: r.tempo_descarga_min || '',
             inicio_descarga: r.inicio_descarga || '',
             final_descarga: r.final_descarga || '',
           };
           map.set(key, slot);
         }
         if ((r.peso_veiculo || '').length) slot.peso_veiculo = r.peso_veiculo;
+        if ((r.tempo_descarga_min || '').length) {
+          const a = Number(slot.tempo_descarga_min) || 0;
+          const b = Number(r.tempo_descarga_min) || 0;
+          if (b >= a) slot.tempo_descarga_min = r.tempo_descarga_min;
+        }
         if ((r.inicio_descarga || '').trim() && !(slot.inicio_descarga || '').trim()) {
           slot.inicio_descarga = r.inicio_descarga;
         }
@@ -5230,7 +5388,11 @@
           slot.final_descarga = r.final_descarga || slot.final_descarga;
         }
       }
-      return [...map.values()].sort((x, y) => {
+      const out = [...map.values()];
+      for (const slot of out) {
+        slot.status = armStatusEfetivo(slot);
+      }
+      return out.sort((x, y) => {
         const d = (ARM_STATUS_RANK[x.status] ?? 9) - (ARM_STATUS_RANK[y.status] ?? 9);
         if (d) return d;
         return String(x.cavalo).localeCompare(String(y.cavalo));
@@ -5344,7 +5506,7 @@
           </div>`;
         }
         const pct = sharePct(item.peso);
-        const barH = Math.max(18, Math.round(28 + barVsLeader(item.peso) * 0.45));
+        const barH = Math.max(28, Math.round(40 + barVsLeader(item.peso) * 0.5));
         return `<div class="arm-podium-slot p${place}" style="--bar-h:${barH}%">
           <div class="place">${place === 1 ? '★ 1º' : place + 'º'}</div>
           <div class="avatar" title="${item.login || item.nome}">${initials(item.nome)}</div>
@@ -5450,25 +5612,36 @@
         }
         if (err) err.hidden = true;
         const r = resumoRows[0] || {};
-        setArmText('kVeic', r.total_veiculos || '0');
+        const veics = aggVeiculosArm(veicRows);
+        const live = { atrasado: 0, descarregando: 0, chegou: 0, aguardando: 0, finalizado: 0 };
+        for (const v of veics) {
+          const st = String(v.status || '').toLowerCase();
+          if (st in live) live[st] += 1;
+        }
+        const useLive = veics.length > 0;
+        const atr = useLive ? live.atrasado : (r.atrasado || '0');
+        const des = useLive ? live.descarregando : (r.descarregando || '0');
+        const che = useLive ? live.chegou : (r.chegou || '0');
+        const agu = useLive ? live.aguardando : (r.aguardando || '0');
+        const fin = useLive ? live.finalizado : (r.finalizado || '0');
+        setArmText('kVeic', useLive ? String(veics.length) : (r.total_veiculos || '0'));
         setArmText('kPeso', (r.peso_total || '0') + ' kg');
-        setArmText('kAtr', r.atrasado || '0');
-        setArmText('kDes', r.descarregando || '0');
-        setArmText('kChe', r.chegou || '0');
-        setArmText('kAgu', r.aguardando || '0');
-        setArmText('kFin', r.finalizado || '0');
+        setArmText('kAtr', atr);
+        setArmText('kDes', des);
+        setArmText('kChe', che);
+        setArmText('kAgu', agu);
+        setArmText('kFin', fin);
         setArmText('armAtualizado', 'atualizado ' + (r.atualizado || '—'));
 
         renderArmTorres({
-          atrasado: r.atrasado,
-          descarregando: r.descarregando,
-          chegou: r.chegou,
-          aguardando: r.aguardando,
-          finalizado: r.finalizado,
+          atrasado: atr,
+          descarregando: des,
+          chegou: che,
+          aguardando: agu,
+          finalizado: fin,
         });
         renderArmRanking(confRows, resumo177);
 
-        const veics = aggVeiculosArm(veicRows);
         const tb = document.getElementById('armTbody');
         if (tb) {
           tb.innerHTML = veics.map((v) => {

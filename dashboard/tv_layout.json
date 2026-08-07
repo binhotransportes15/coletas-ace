@@ -1,6 +1,6 @@
 {
-  "version": 15,
-  "updatedAt": "2026-08-05T18:09:26",
+  "version": 16,
+  "updatedAt": "2026-08-07T10:54:08",
   "rows": 2,
   "cols": 3,
   "syncSwap": false,
@@ -9,7 +9,7 @@
   "wallSector": "armazem",
   "sectorDefaults": {
     "distribuicao": {
-      "showLogo": true,
+      "showLogo": false,
       "margins": "none",
       "ui": {
         "chart": "towers",
@@ -48,7 +48,7 @@
         "agendamento": {
           "chart": "towers",
           "scale": "large",
-          "fontZoom": 1.2,
+          "fontZoom": 1.4,
           "showKpis": true,
           "showChart": true,
           "showAmanha": true,

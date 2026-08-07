@@ -34,6 +34,9 @@ VEICULO_FIELDS = [
     "tempo_descarga",
 ]
 
+# Descarga em andamento há mais de 4h (sem fim) → status atrasado (vermelho na TV)
+LIMITE_DESCARGA_ATRASO_MIN = 4 * 60
+
 RESUMO_FIELDS = [
     "atualizado",
     "total_linhas",
@@ -124,6 +127,7 @@ def mapear_status(
 ) -> tuple[str, bool]:
     """
     final_descarga → finalizado
+    inicio_descarga + >4h sem fim → atrasado (vermelho)
     inicio_descarga → descarregando
     sem chegada + prev passada → atrasado
     com chegada → chegou
@@ -133,6 +137,11 @@ def mapear_status(
     if _clean(final):
         return "finalizado", False
     if _clean(inicio):
+        ini_dt = _parse_dt(inicio, hoje=now.date())
+        if ini_dt is not None:
+            mins = int((now - ini_dt).total_seconds() // 60)
+            if mins > LIMITE_DESCARGA_ATRASO_MIN:
+                return "atrasado", True
         return "descarregando", False
     if not _clean(chegada):
         prev_dt = _parse_dt(prev, hoje=now.date())
