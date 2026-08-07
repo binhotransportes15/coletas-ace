@@ -305,6 +305,7 @@ _FIELD_LABELS: dict[str, str] = {
     "github_branch": "Linha do site",
     "github_token_env": "Nome da chave do site",
     "armazem_in_loop": "Incluir armazém no ciclo",
+    "pendencia_in_loop": "Incluir pendência no ciclo",
     "headless": "Ocultar navegador",
 }
 
@@ -323,6 +324,10 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "armazém": "78",
     "conferentes": "177",
     "nomes": "607",
+    "pendencia": "31",
+    "pendência": "31",
+    "pendencias": "31",
+    "pendências": "31",
     "atualizar tudo": "sync",
     "sincronizar": "sync",
     "planilha": "sync",
@@ -583,6 +588,7 @@ class AceCrtConsole(QWidget):
             ("Entregas", "36"),
             ("Agendamentos", "225"),
             ("Armazém", "78"),
+            ("Pendência", "31"),
             ("Atualizar tudo", "sync"),
             ("Abrir painel", "dash"),
         ]
@@ -641,6 +647,7 @@ class AceCrtConsole(QWidget):
             "auto": "Atualização",
             "cloud": "Planilha e site",
             "armazem": "Armazém",
+            "pendencia": "Pendência",
         }
         # headless: controlado só pelo “Mostrar navegador”
         skip_keys = {"headless"}
@@ -857,6 +864,15 @@ class AceCrtConsole(QWidget):
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
             lay.addWidget(b)
 
+        lay.addWidget(self._section("Pendência"))
+        for label, cmd in (
+            ("Puxar pendência (11 códigos)", "31"),
+            ("Enviar só a pendência", "sync31"),
+        ):
+            b = QPushButton(label)
+            b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
+            lay.addWidget(b)
+
         lay.addWidget(self._section("Publicar"))
         for label, cmd in (
             ("Ver situação da publicação", "status"),
@@ -1006,12 +1022,14 @@ class AceCrtConsole(QWidget):
         viz = "navegador ligado" if not p.get("headless", True) else "navegador oculto"
         sheets = "planilha ligada" if p.get("enable_sheets") else "planilha desligada"
         arm = "armazém no ciclo" if p.get("armazem_in_loop", True) else "armazém fora do ciclo"
+        pend = "pendência no ciclo" if p.get("pendencia_in_loop") else "pendência fora do ciclo"
         modo = str(p.get("periodo_modo") or "diario")
         modo_txt = "diário" if modo == "diario" else "a partir da sexta"
         self.meta.setText(
             f"usuário {p.get('user') or '—'}  ·  unidades {p.get('unit') or '—'}\n"
             f"{sheets}  ·  {viz}\n"
-            f"{arm}  ·  a cada {p.get('loop_intervalo') or '5m'}  ·  {modo_txt}"
+            f"{arm}  ·  {pend}\n"
+            f"a cada {p.get('loop_intervalo') or '5m'}  ·  {modo_txt}"
         )
 
     def _submit_prompt(self) -> None:
@@ -1106,10 +1124,16 @@ class AceCrtConsole(QWidget):
         publish(online=True, label="RUN", pct=5, detail=raw[:80], mode="RUN")
 
         self._worker = CmdWorker(raw, self.payload)
-        self._worker.status.connect(lambda m: publish(online=True, label="RUN", pct=20, detail=m[:80], mode="RUN"))
+        self._worker.status.connect(self._on_worker_status)
         self._worker.finished_ok.connect(self._on_cmd_ok)
         self._worker.failed.connect(self._on_cmd_fail)
         self._worker.start()
+
+    def _on_worker_status(self, msg: str) -> None:
+        publish(online=True, label="RUN", pct=20, detail=(msg or "")[:80], mode="RUN")
+        # espelha progresso no CMD do CRT (ex.: [31/13] abrindo…)
+        if msg and not str(msg).startswith("exec ·"):
+            self._append_log("work", msg, mirror=False)
 
     def _on_cmd_ok(self, msg: str, payload: object) -> None:
         self.btn_run.setEnabled(True)
