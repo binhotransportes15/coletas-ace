@@ -2464,6 +2464,95 @@
     body[data-sector="armazem"][data-view="conferentes"] #armTitle { color: #fbbf24; }
     body[data-sector="armazem"][data-view="patio"] #armTitle { color: #7dd3fc; }
     body[data-sector="pendencia"] #penTitle { color: #f472b6; }
+    body[data-sector="contratacao"] #ctrTitle { color: #fb923c; }
+
+    /* Contratação 073→076 */
+    .ctr-wrap {
+      height: 100vh;
+      padding: 12px 14px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+    .ctr-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: clamp(8px, 1vw, 14px);
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .ctr-layout [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
+    .ctr-layout [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
+    .ctr-layout [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
+    .ctr-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .ctr-mix {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+      align-content: center;
+      height: 100%;
+      min-height: 0;
+    }
+    .ctr-mix .mix-card {
+      background: linear-gradient(180deg, #15233c, #0d1728);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 14px;
+      padding: 18px 14px;
+      text-align: center;
+    }
+    .ctr-mix .mix-card .n {
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .ctr-mix .mix-card .l {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .ctr-mix .mix-card.frota .n { color: #38bdf8; }
+    .ctr-mix .mix-card.agregado .n { color: #fbbf24; }
+    .ctr-mix .mix-card.terceiro .n { color: #fb923c; }
+    body.tv-mode .ctr-wrap {
+      max-width: none !important;
+      width: 100% !important;
+      margin: 0 !important;
+      height: 100% !important;
+      padding: clamp(8px, 1.2vmin, 16px) !important;
+    }
+    body.tv-mode .ctr-layout {
+      height: 100% !important;
+      gap: clamp(8px, 1.1vmin, 14px) !important;
+    }
+    body.tv-mode .ctr-layout [data-block="kpis"] {
+      container-type: normal !important;
+      grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    }
+    body.tv-mode.tv-no-margins #panel-contratacao,
+    body.tv-mode:not(.tv-no-margins) #panel-contratacao {
+      width: 100vw !important;
+      max-width: none !important;
+      height: 100dvh !important;
+    }
+    @media (max-width: 1100px) {
+      .ctr-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto minmax(280px, 1fr);
+      }
+      .ctr-layout [data-block="kpis"] { grid-column: 1; grid-row: 1; }
+      .ctr-layout [data-block="chart"] { grid-column: 1; grid-row: 2; }
+      .ctr-layout [data-block="tabela"] { grid-column: 1; grid-row: 3; }
+      .ctr-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .ctr-wrap { height: auto; min-height: 100vh; }
+    }
 
     /* Pendência 031 — KPIs + torres em tela cheia (sem tabela CTRCs) */
     .pen-wrap {
@@ -3495,10 +3584,10 @@
           <span class="name">Armazém</span>
           <span class="desc">Descarga · pátio · status</span>
         </button>
-        <button type="button" class="sector-card soon" data-sector="contratacao" data-soon="1">
-          <span class="tag">Em breve</span>
+        <button type="button" class="sector-card" data-sector="contratacao">
+          <span class="tag">073 · 076</span>
           <span class="name">Contratação</span>
-          <span class="desc">Em desenvolvimento</span>
+          <span class="desc">Veículos · custo · frete · peso</span>
         </button>
         <button type="button" class="sector-card" data-sector="pendencia">
           <span class="tag">031</span>
@@ -3972,12 +4061,72 @@
   </div>
 
   <div id="panel-contratacao" class="sector-root" hidden>
-    <div class="sector-soon-panel"><div class="box">
-      <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
-      <div class="tag">Em breve</div>
-      <h1>CONTRATAÇÃO</h1>
-      <p>Tela reservada para a parede TV. Já pode fixar neste slot pelo CRT · aba TV (#tv/slot/N).</p>
-    </div></div>
+    <div class="ctr-wrap">
+      <div class="arm-top ctr-top">
+        <div class="arm-brand">
+          <img
+            class="js-sector-menu"
+            src="logo-binho.png"
+            alt="BINHO Transportes"
+            title="Trocar setor"
+            role="button"
+            tabindex="0"
+          />
+          <div class="arm-titles">
+            <div class="kicker" id="ctrKicker">BINHO · OPERACIONAL · 073→076</div>
+            <h1 id="ctrTitle">CONTRATAÇÃO</h1>
+          </div>
+        </div>
+        <nav class="nav">
+          <button type="button" class="nav-btn tv-btn" id="btnTvContratacao" title="Modo TV / tela inteira (F)">TV</button>
+        </nav>
+        <div class="clock-box">
+          <div class="lbl">Tempo real</div>
+          <div class="time" id="ctrClock">--:--:--</div>
+          <div class="date" id="ctrDate">—</div>
+        </div>
+      </div>
+      <div class="ctr-layout" id="ctrLayout">
+        <div class="arm-kpis ctr-kpis dash-block" data-block="kpis">
+          <div class="arm-kpi"><div class="lbl">Veículos</div><div class="val" id="ctrVeic">0</div></div>
+          <div class="arm-kpi atrasado"><div class="lbl">Custo</div><div class="val" id="ctrCusto">0</div></div>
+          <div class="arm-kpi finalizado"><div class="lbl">Frete</div><div class="val" id="ctrFrete">0</div></div>
+          <div class="arm-kpi peso"><div class="lbl">Peso</div><div class="val" id="ctrPeso">0</div></div>
+          <div class="arm-kpi chegou"><div class="lbl">Período</div><div class="val" id="ctrPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
+        </div>
+        <section class="arm-hero-card dash-block" data-block="chart">
+          <header>
+            <h2>Frota · Agregado · Terceiro</h2>
+            <div class="meta" id="ctrMeta">base 073 · frete 076 (R)</div>
+            <div class="meta" id="ctrAtualizado">atualizado —</div>
+          </header>
+          <div class="ctr-mix" id="ctrMix" aria-label="Mix propriedade"></div>
+        </section>
+        <section class="arm-panel dash-block" data-block="tabela">
+          <header>
+            <h2>Veículos (placa · carreta · CTRB)</h2>
+            <div class="meta" id="ctrTabMeta">SPO</div>
+          </header>
+          <div class="arm-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Placa</th>
+                  <th>Carreta</th>
+                  <th>Grupo</th>
+                  <th>CTRBs</th>
+                  <th>Custo</th>
+                  <th>Frete</th>
+                  <th>Peso</th>
+                </tr>
+              </thead>
+              <tbody id="ctrTbody"></tbody>
+            </table>
+            <div class="arm-err" id="ctrErr" hidden></div>
+          </div>
+        </section>
+      </div>
+    </div>
   </div>
   <div id="panel-pendencia" class="sector-root" hidden>
     <div class="pen-wrap">
@@ -4061,6 +4210,11 @@
     const ARMA_CSV = (window.ACE_CONFIG && window.ACE_CONFIG.armazemCsv) || {};
     const PEN_CSV = (window.ACE_CONFIG && window.ACE_CONFIG.pendenciaCsv) || {};
     let lastPenDataVersion = null;
+    const CTR_CSV = (window.ACE_CONFIG && window.ACE_CONFIG.contratacaoCsv) || {};
+    let lastCtrDataVersion = null;
+    let ctrRefreshTimer = null;
+    let lastGoodCtrResumo = null;
+    let lastGoodCtrVeics = [];
     let lastGoodPenResumo = null;
     let lastGoodPenOfens = [];
     let lastGoodPenRows = [];
@@ -4081,7 +4235,7 @@
     const SECTORS = {
       distribuicao: { id: 'distribuicao', label: 'Distribuição', ready: true, panel: 'operacao' },
       armazem: { id: 'armazem', label: 'Armazém', ready: true, panel: 'armazem' },
-      contratacao: { id: 'contratacao', label: 'Contratação', ready: false, panel: 'contratacao' },
+      contratacao: { id: 'contratacao', label: 'Contratação', ready: true, panel: 'contratacao' },
       pendencia: { id: 'pendencia', label: 'Pendência', ready: true, panel: 'pendencia' },
       rastreamento: { id: 'rastreamento', label: 'Rastreamento', ready: false, panel: 'rastreamento' },
       emissao: { id: 'emissao', label: 'Emissão', ready: false, panel: 'emissao' },
@@ -4178,6 +4332,14 @@
       if (penClock) penClock.textContent = time;
       if (penDate) {
         penDate.textContent = now.toLocaleDateString('pt-BR', {
+          weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+        });
+      }
+      const ctrClock = document.getElementById('ctrClock');
+      const ctrDate = document.getElementById('ctrDate');
+      if (ctrClock) ctrClock.textContent = time;
+      if (ctrDate) {
+        ctrDate.textContent = now.toLocaleDateString('pt-BR', {
           weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
         });
       }
@@ -4608,6 +4770,7 @@
         document.getElementById('btnTv'),
         document.getElementById('btnTvArmazem'),
         document.getElementById('btnTvPendencia'),
+        document.getElementById('btnTvContratacao'),
       ];
       btns.forEach((btn) => {
         if (btn) btn.textContent = TV_MODE ? 'Sair TV' : 'TV';
@@ -5212,6 +5375,14 @@
       } else if (penRefreshTimer) {
         clearInterval(penRefreshTimer);
         penRefreshTimer = null;
+      }
+
+      if (CURRENT_SECTOR === 'contratacao') {
+        refreshContratacao();
+        if (!ctrRefreshTimer) ctrRefreshTimer = setInterval(refreshContratacao, 15000);
+      } else if (ctrRefreshTimer) {
+        clearInterval(ctrRefreshTimer);
+        ctrRefreshTimer = null;
       }
 
       if (isOpsSector(CURRENT_SECTOR)) {
@@ -5831,6 +6002,105 @@
         if (err) {
           err.hidden = false;
           err.textContent = 'Sem dados da Pendência (Sheets/CSV). ' + e.message;
+        }
+      }
+    }
+
+    function setCtrText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text == null || text === '' ? '—' : String(text);
+    }
+
+    function fmtCtrMoney(v) {
+      const n = Number(String(v ?? '').replace(/\./g, '').replace(',', '.')) || Number(v) || 0;
+      if (!Number.isFinite(n)) return String(v || '0');
+      return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtCtrPeso(v) {
+      const n = Number(String(v ?? '').replace(/\./g, '').replace(',', '.')) || Number(v) || 0;
+      if (!Number.isFinite(n)) return String(v || '0');
+      return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' kg';
+    }
+
+    async function refreshContratacao() {
+      if (CURRENT_SECTOR !== 'contratacao') return;
+      const err = document.getElementById('ctrErr');
+      try {
+        let remoteVer = null;
+        try {
+          remoteVer = await fetchDataVersion();
+          if (remoteVer != null && lastCtrDataVersion != null && remoteVer === lastCtrDataVersion) {
+            return;
+          }
+        } catch (_) { /* segue */ }
+
+        let resumo = {};
+        let veics = [];
+        try {
+          const rCsv = await loadCsvLocal(CTR_CSV.resumo || 'data/contratacao/resumo_073.csv');
+          resumo = rCsv[0] || {};
+          veics = await loadCsvLocal(CTR_CSV.veiculos || 'data/contratacao/veiculos_073.csv');
+          if (resumo && Object.keys(resumo).length) lastGoodCtrResumo = { ...resumo };
+          if (veics.length) lastGoodCtrVeics = veics.slice();
+        } catch (_) {
+          resumo = lastGoodCtrResumo ? { ...lastGoodCtrResumo } : {};
+          veics = lastGoodCtrVeics.slice();
+        }
+        if (!Object.keys(resumo).length && lastGoodCtrResumo) resumo = { ...lastGoodCtrResumo };
+        if (!veics.length && lastGoodCtrVeics.length) veics = lastGoodCtrVeics.slice();
+
+        if (err) err.hidden = true;
+        setCtrText('ctrVeic', resumo.total_veiculos || veics.length || '0');
+        setCtrText('ctrCusto', 'R$ ' + (resumo.custo_fmt || fmtCtrMoney(resumo.custo || 0)));
+        setCtrText('ctrFrete', 'R$ ' + (resumo.frete_fmt || fmtCtrMoney(resumo.frete || 0)));
+        setCtrText('ctrPeso', resumo.peso_fmt ? (String(resumo.peso_fmt).includes('kg') ? resumo.peso_fmt : resumo.peso_fmt + ' kg') : fmtCtrPeso(resumo.peso || 0));
+        setCtrText('ctrPeriodo', resumo.periodo || '—');
+        setCtrText('ctrAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
+        setCtrText('ctrTabMeta', resumo.unidade || 'SPO');
+        const meta = document.getElementById('ctrMeta');
+        if (meta) {
+          meta.textContent = [
+            resumo.total_ctrbs ? `${resumo.total_ctrbs} CTRB/OS` : '',
+            '073 base · 076 frete (R)',
+          ].filter(Boolean).join(' · ');
+        }
+
+        const mix = document.getElementById('ctrMix');
+        if (mix) {
+          const frota = Number(resumo.frota) || 0;
+          const agreg = Number(resumo.agregado) || 0;
+          const terc = Number(resumo.terceiro) || 0;
+          mix.innerHTML = `
+            <div class="mix-card frota"><div class="n">${frota}</div><div class="l">Frota (C)</div></div>
+            <div class="mix-card agregado"><div class="n">${agreg}</div><div class="l">Agregado (O)</div></div>
+            <div class="mix-card terceiro"><div class="n">${terc}</div><div class="l">Terceiro (O)</div></div>
+          `;
+        }
+
+        const tb = document.getElementById('ctrTbody');
+        if (tb) {
+          const sorted = veics.slice().sort((a, b) => Number(b.custo || 0) - Number(a.custo || 0));
+          tb.innerHTML = sorted.slice(0, 120).map((v) => `
+            <tr>
+              <td class="mono">${esc(v.placa || '—')}</td>
+              <td class="mono">${esc(v.carreta || '—')}</td>
+              <td>${esc(v.grupo || v.propriedade || '—')}</td>
+              <td class="mono right">${esc(v.qtd_ctrb || '0')}</td>
+              <td class="mono right">${esc(fmtCtrMoney(v.custo))}</td>
+              <td class="mono right">${esc(fmtCtrMoney(v.frete))}</td>
+              <td class="mono right">${esc(fmtCtrPeso(v.peso))}</td>
+            </tr>
+          `).join('') || `<tr><td colspan="7" class="muted">Sem veículos — rode \`73\` no ACE</td></tr>`;
+        }
+        if (remoteVer != null) lastCtrDataVersion = remoteVer;
+        else {
+          try { lastCtrDataVersion = await fetchDataVersion(); } catch (_) {}
+        }
+      } catch (e) {
+        if (err) {
+          err.hidden = false;
+          err.textContent = 'Sem dados da Contratação (CSV). ' + e.message;
         }
       }
     }
@@ -7569,6 +7839,7 @@
     document.getElementById('btnTv')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvArmazem')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvPendencia')?.addEventListener('click', () => toggleTvMode());
+    document.getElementById('btnTvContratacao')?.addEventListener('click', () => toggleTvMode());
     document.querySelectorAll('.js-sector-menu').forEach((logo) => {
       logo.addEventListener('click', (e) => {
         e.preventDefault();

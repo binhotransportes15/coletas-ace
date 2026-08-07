@@ -97,6 +97,8 @@ def ensure_dirs() -> None:
     SECRETS_DIR.mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data").mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data" / "armazem").mkdir(parents=True, exist_ok=True)
+    (DASHBOARD_DIR / "data" / "pendencia").mkdir(parents=True, exist_ok=True)
+    (DASHBOARD_DIR / "data" / "contratacao").mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 

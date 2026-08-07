@@ -995,3 +995,97 @@ def run_pipeline_31(
         "publish": pub,
         **analysis,
     }
+
+
+def run_pipeline_contratacao(
+    *,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    headless: bool | None = None,
+    skip_076: bool = False,
+    local_073: list[str] | Path | str | None = None,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    """
+    Contratação: 073 (base placas/custo/peso) → 076 (frete por carro, op=R).
+    Se `local_073` for passado, analisa arquivos locais sem baixar o 073.
+    """
+    status = on_status or _noop
+    ensure_dirs()
+    creds = credentials or load_credentials()
+    cfg = settings or load_settings()
+    from dates import format_period, periodo_mes_ate_hoje
+    from parser_ssw073 import analyze_reports_073
+    from parser_ssw076 import analyze_reports_076
+    from publish_dashboard import publish_contratacao_local
+    from ssw_073 import download_reports_073
+    from ssw_076 import download_reports_076
+
+    status(f"ACE CONTRATACAO · 73→76 | {datetime.now():%d/%m %H:%M:%S}")
+    use_headless = cfg.headless if headless is None else headless
+    ini, fim = periodo_mes_ate_hoje()
+    periodo_fmt = format_period(ini, fim)
+
+    dl73: dict[str, Any] = {}
+    if local_073:
+        files = local_073 if isinstance(local_073, (list, tuple)) else [local_073]
+        status(f"073 local: {len(files)} arquivo(s)")
+        analysis73 = analyze_reports_073(
+            list(files), periodo=periodo_fmt, unidade="SPO", on_status=status
+        )
+    else:
+        dl73 = download_reports_073(
+            period=(ini, fim),
+            tipos=("O", "C"),
+            unidade_emissora="SPO",
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=status,
+        )
+        periodo_fmt = str(dl73.get("periodo_fmt") or periodo_fmt)
+        analysis73 = analyze_reports_073(
+            dl73.get("files") or [],
+            periodo=periodo_fmt,
+            unidade=str(dl73.get("unidade") or "SPO"),
+            on_status=status,
+        )
+
+    placas = list(analysis73.get("placas") or [])
+    analysis76: dict[str, Any] = {"ok": False, "skipped": True}
+    dl76: dict[str, Any] = {}
+    if not skip_076:
+        try:
+            dl76 = download_reports_076(
+                placas=placas,
+                period=(ini, fim),
+                operacao="R",
+                credentials=creds,
+                settings=cfg,
+                headless=use_headless,
+                on_status=status,
+            )
+            analysis76 = analyze_reports_076(
+                dl76.get("files") or [],
+                placas=placas,
+                on_status=status,
+            )
+        except Exception as err:  # noqa: BLE001
+            status(f"076 avisou: {err} (mantendo frete do 073)")
+            analysis76 = {"ok": False, "error": str(err)}
+
+    pub = publish_contratacao_local(on_status=status)
+    resumo = analysis76.get("resumo") if analysis76.get("resumo") else analysis73.get("resumo")
+    status(
+        f"OK · veículos={(resumo or {}).get('total_veiculos')} "
+        f"custo={(resumo or {}).get('custo_fmt')} "
+        f"frete={(resumo or {}).get('frete_fmt')}"
+    )
+    return {
+        "ok": True,
+        "073": {"download": dl73, **analysis73},
+        "076": {"download": dl76, **analysis76},
+        "publish": pub,
+        "resumo": resumo,
+        "placas": placas,
+    }

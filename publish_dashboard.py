@@ -183,6 +183,48 @@ def publish_armazem_local(*, on_status: StatusCallback | None = None) -> dict[st
     return {"ok": True, "local": paths}
 
 
+def _copy_contratacao_to_dashboard() -> dict[str, str]:
+    from parser_ssw073 import CTRBS_073_CSV, RESUMO_073_CSV, VEICULOS_073_CSV
+
+    data_dir = DASHBOARD_DIR / "data" / "contratacao"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    out: dict[str, str] = {}
+    for src, name, empty in (
+        (
+            VEICULOS_073_CSV,
+            "veiculos_073.csv",
+            "placa,carreta,propriedade,grupo,qtd_ctrb,custo,custo_av,valor_pagar,peso,frete,ctrbs\n",
+        ),
+        (
+            RESUMO_073_CSV,
+            "resumo_073.csv",
+            "periodo,atualizado,unidade,total_veiculos,total_ctrbs,custo,custo_fmt,"
+            "frete,frete_fmt,peso,peso_fmt,agregado,frota,terceiro\n",
+        ),
+        (
+            CTRBS_073_CSV,
+            "ctrbs_073.csv",
+            "ctrb,tipo,situacao,placa,carreta,propriedade,grupo,custo,custo_av,"
+            "valor_pagar,total_ctrb,peso,frete,origem,fonte\n",
+        ),
+    ):
+        dest = data_dir / name
+        if src.exists():
+            shutil.copy2(src, dest)
+            out[f"contratacao/{name}"] = str(dest)
+        elif not dest.exists():
+            dest.write_text(empty, encoding="utf-8-sig")
+            out[f"contratacao/{name}"] = str(dest)
+    return out
+
+
+def publish_contratacao_local(*, on_status: StatusCallback | None = None) -> dict[str, Any]:
+    status = on_status or _noop
+    paths = _copy_contratacao_to_dashboard()
+    status(f"Dashboard Contratação local: {len(paths)} arquivo(s).")
+    return {"ok": True, "local": paths}
+
+
 def ensure_dashboard_files() -> None:
     """Garante HTML/JS do dashboard e CSVs locais (nao sobrescreve index real)."""
     DASHBOARD_DIR.mkdir(parents=True, exist_ok=True)

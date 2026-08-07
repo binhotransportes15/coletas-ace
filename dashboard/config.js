@@ -22,4 +22,9 @@ window.ACE_CONFIG = {
     ofensores: "data/pendencia/ofensores_31.csv",
     pendencias: "data/pendencia/pendencias_31.csv",
   },
+  contratacaoCsv: {
+    resumo: "data/contratacao/resumo_073.csv",
+    veiculos: "data/contratacao/veiculos_073.csv",
+    ctrbs: "data/contratacao/ctrbs_073.csv",
+  },
 };

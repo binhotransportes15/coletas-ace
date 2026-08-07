@@ -328,6 +328,8 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "pendência": "31",
     "pendencias": "31",
     "pendências": "31",
+    "contratacao": "73",
+    "contratação": "73",
     "atualizar tudo": "sync",
     "sincronizar": "sync",
     "planilha": "sync",
@@ -868,6 +870,15 @@ class AceCrtConsole(QWidget):
         for label, cmd in (
             ("Puxar pendência (10 códigos · SLA)", "31"),
             ("Enviar só a pendência", "sync31"),
+        ):
+            b = QPushButton(label)
+            b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
+            lay.addWidget(b)
+
+        lay.addWidget(self._section("Contratação"))
+        for label, cmd in (
+            ("Puxar contratação 073→076", "73"),
+            ("Só 073 (sem frete 076)", "73 so73"),
         ):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))

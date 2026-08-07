@@ -77,6 +77,7 @@ MENU_PROGRAM = {
     "36": "/bin/ssw0146",  # 36 - Relacao de romaneios e CTRCs de entrega
     "225": "/bin/ssw2862",  # 225 - Acompanhamento dos agendamentos de entrega
     "31": "/bin/ssw0495",  # 031 - CTRCs com determinada ocorrência
+    "73": "/bin/ssw0332",  # 073 - Consulta de CTRBs e OSs (CSVssw0332)
 }
 
 _PATCH_CREATE_NEW_DOC = """

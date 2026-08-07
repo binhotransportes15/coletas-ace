@@ -306,7 +306,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
 def cmd_help() -> str:
     keys = ", ".join(sorted(EDITABLE.keys()))
     return (
-        "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | 31 | sync | sync78 | sync31 | dash | gui | "
+        "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | 31 | 73 | sync | sync78 | sync31 | dash | gui | "
         "brand | crt | /automatica | /status | /push | /pull | show | help | sair\n"
         f"  Campos: {keys}\n"
         "  Bool: true/false | sim/nao | 1/0\n"
@@ -317,6 +317,8 @@ def cmd_help() -> str:
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
         "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos (reabre a 31 cada um)\n"
         "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
+        "  Contratação: `73` / `contratacao` = 073(O+C,SPO) → 076(R, placas do 73)\n"
+        "             `73 so73` = só 073 · `73 caminho\\arquivo.sswweb` = analisa local\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
@@ -573,6 +575,39 @@ def run_pipeline_31_cmd(extra: list[str] | None = None) -> str:
     )
 
 
+def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
+    """`73` / `contratacao` · `73 local` usa CSV já baixado · `73 so73` pula o 076."""
+    from pipeline import run_pipeline_contratacao
+
+    extra = extra or []
+    skip_076 = any(str(x).lower() in {"so73", "só73", "skip76", "sem76"} for x in extra)
+    local_files: list[str] = []
+    for x in extra:
+        xl = str(x).lower()
+        if xl in {"local", "so73", "só73", "skip76", "sem76"}:
+            continue
+        p = Path(x)
+        if p.exists():
+            local_files.append(str(p))
+    print("\n=== Pipeline Contratação (073 → 076) ===")
+    if local_files:
+        print(f"  local: {', '.join(local_files)}")
+    if skip_076:
+        print("  modo: só 073 (sem 076)")
+    result = run_pipeline_contratacao(
+        on_status=_on_status,
+        headless=_cfg_headless(),
+        skip_076=skip_076,
+        local_073=local_files or None,
+    )
+    resumo = result.get("resumo") or {}
+    return (
+        f"073/076 OK · veículos={resumo.get('total_veiculos')} "
+        f"custo=R${resumo.get('custo_fmt')} frete=R${resumo.get('frete_fmt')} "
+        f"peso={resumo.get('peso_fmt')}kg · placas={len(result.get('placas') or [])}"
+    )
+
+
 def run_sync_31() -> str:
     from publish_dashboard import publish_pendencia_local
     from sheets_sync_31 import sync_sheets_31
@@ -770,6 +805,8 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
         return (run_pipeline_78_cmd(), _load_payload())
     if cmd in {"31", "/31", "pendencia", "/pendencia", "pendencias"}:
         return (run_pipeline_31_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
+    if cmd in {"73", "/73", "76", "/76", "contratacao", "/contratacao", "contratação"}:
+        return (run_pipeline_contratacao_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
     if cmd in {"sync31", "/sync31", "sheets31"}:
         return (run_sync_31(), payload)
     if cmd in {"177", "/177", "conferentes", "/conferentes"}:
@@ -1013,6 +1050,9 @@ def main(argv: list[str] | None = None) -> int:
                 payload = _load_payload()
             elif cmd in {"31", "/31", "pendencia", "/pendencia", "pendencias"}:
                 message = run_pipeline_31_cmd(parts[1:] if len(parts) > 1 else None)
+                payload = _load_payload()
+            elif cmd in {"73", "/73", "76", "/76", "contratacao", "/contratacao", "contratação"}:
+                message = run_pipeline_contratacao_cmd(parts[1:] if len(parts) > 1 else None)
                 payload = _load_payload()
             elif cmd in {"177", "/177", "conferentes", "/conferentes"}:
                 message = run_pipeline_177_cmd()
