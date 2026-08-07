@@ -1,20 +1,22 @@
-"""Códigos de ocorrência · Pendência (SSW 31)."""
+"""Códigos de ocorrência · Pendência (SSW 31) · SLA do setor."""
 from __future__ import annotations
 
 # Consultas no SSW 31 (Código de ocorrência) + rótulo TV
 OCORR_PENDENCIA: dict[str, str] = {
-    "13": "ENTREGA PREJUDICADA PELO HORARIO",
-    "14": "PERDA DE AGENDAMENTO RESP. BINHO",
     "19": "MERCADORIA EM INDENIZACAO",
     "22": "EXTRAVIO DE MERCADORIA",
     "29": "SOBRA DE VOLUME/MERCADORIA",
     "32": "INVERSAO",
     "33": "MERCADORIA AVARIADA",
-    "44": "PERDA DE AGENDAMENTO RESP. PARCEIRO",
-    "57": "FALTA DE DOCUMENTACAO",
+    "50": "NOTA FISCAL DE DEVOLUCAO",
     "60": "FALTA COM BUSCA / RECONFERENCIA",
-    "91": "VEICULO QUEBRADO - EM REPARO E /OU TRANS",
+    "61": "LJJR",
+    "63": "PENDENCIA SOLUCIONADA",
+    "80": "PENDENCIA EM TRATATIVA",
 }
+
+# 63 conta como positivo no SLA; demais códigos = negativo (abre/mantém pendência)
+CODIGO_SLA_POSITIVO = "63"
 
 OCORR_PENDENCIA_CODES: tuple[str, ...] = tuple(OCORR_PENDENCIA.keys())
 
@@ -22,6 +24,15 @@ OCORR_PENDENCIA_CODES: tuple[str, ...] = tuple(OCORR_PENDENCIA.keys())
 def label_ocorrencia(code: str) -> str:
     c = str(code or "").strip()
     return OCORR_PENDENCIA.get(c, c or "—")
+
+
+def is_positivo(code: str) -> bool:
+    return str(code or "").strip() == CODIGO_SLA_POSITIVO
+
+
+def polaridade(code: str) -> str:
+    """pos = contribui pro SLA · neg = ofensor."""
+    return "pos" if is_positivo(code) else "neg"
 
 
 def match_codigo_from_text(text: str) -> str:
@@ -32,7 +43,7 @@ def match_codigo_from_text(text: str) -> str:
     digits = "".join(ch for ch in raw if ch.isdigit())
     if digits in OCORR_PENDENCIA:
         return digits
-    # "13 - ENTREGA…" / "13 ENTREGA…"
+    # "13 - ENTREGA…" / "63 PENDENCIA…"
     head = raw.split("-", 1)[0].strip().split()[0] if raw else ""
     head_d = "".join(ch for ch in head if ch.isdigit())
     if head_d in OCORR_PENDENCIA:

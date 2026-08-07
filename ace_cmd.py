@@ -315,8 +315,8 @@ def cmd_help() -> str:
         "    /e intervalo 30s\n"
         "  Visualização SSW: /viz on|off  ou  /e visualizar sim|nao\n"
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
-        "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 11 códigos (reabre a 31 cada um)\n"
-        "             `31 13 14` ou `31 13,14` = só esses códigos\n"
+        "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos (reabre a 31 cada um)\n"
+        "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
@@ -566,7 +566,9 @@ def run_pipeline_31_cmd(extra: list[str] | None = None) -> str:
     resumo = result.get("resumo") or {}
     return (
         f"031 OK · CTRCs={result.get('total')} "
-        f"topo={resumo.get('topo_codigo')} ({resumo.get('topo_qtd')}) "
+        f"SLA={resumo.get('sla_pct')}% "
+        f"(+{resumo.get('solucionadas')} / −{resumo.get('abertas')}) "
+        f"ofensor={resumo.get('topo_codigo')} ({resumo.get('topo_qtd')}) "
         f"sheets={(result.get('sheets') or {}).get('ok')}"
     )
 

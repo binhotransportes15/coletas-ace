@@ -106,9 +106,10 @@ def _copy_pendencia_to_dashboard() -> dict[str, str]:
             "descricao_ocorrencia,complemento_ocorrencia,descricao_codigo\n"
         ),
         "resumo_31.csv": (
-            "periodo,atualizado,total_ctrcs,total_codigos,topo_codigo,topo_label,topo_qtd\n"
+            "periodo,atualizado,total_ctrcs,total_codigos,solucionadas,abertas,sla_pct,"
+            "topo_codigo,topo_label,topo_qtd\n"
         ),
-        "ofensores_31.csv": "codigo,label,qtd,pct\n",
+        "ofensores_31.csv": "codigo,label,qtd,pct,polaridade\n",
     }
     for src, name in (
         (PENDENCIAS_31_CSV, "pendencias_31.csv"),

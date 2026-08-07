@@ -2488,6 +2488,9 @@
     }
     .pen-torres .t-of .barra { background: linear-gradient(180deg, #f9a8d4, #db2777); }
     .pen-torres .t-of .pin { background: #ec4899; }
+    .pen-torres .t-pos .barra { background: linear-gradient(180deg, #4ade80, #15803d); }
+    .pen-torres .t-pos .pin { background: #22c55e; }
+    .pen-torres .t-pos .base .lbl { color: #4ade80; }
     .pen-torres .t-of2 .barra { background: linear-gradient(180deg, #fbbf24, #d97706); }
     .pen-torres .t-of2 .pin { background: #f59e0b; }
     .pen-torres .t-of3 .barra { background: linear-gradient(180deg, #38bdf8, #0284c7); }
@@ -2592,10 +2595,10 @@
     body.tv-mode #panel-pendencia .arm-kpi .val {
       font-size: clamp(22px, 2.8vmin, 40px) !important;
     }
-    body.tv-mode #penTopoCod,
-    body.tv-mode #penPeriodo {
-      font-size: clamp(14px, 1.7vmin, 22px) !important;
-      line-height: 1.2 !important;
+    body.tv-mode #penPeriodo,
+    body.tv-mode #penSla {
+      font-size: clamp(18px, 2.2vmin, 36px) !important;
+      line-height: 1.15 !important;
     }
     /* TV: esconde Histórico p/ caber CTRC + ocorrência */
     body.tv-mode #panel-pendencia table th:nth-child(6),
@@ -3864,17 +3867,17 @@
       </div>
       <div class="pen-layout" id="penLayout">
         <div class="arm-kpis pen-kpis dash-block" data-block="kpis">
+          <div class="arm-kpi finalizado"><div class="lbl">SLA</div><div class="val" id="penSla">0%</div></div>
+          <div class="arm-kpi"><div class="lbl">Solucionadas</div><div class="val" id="penSoluc">0</div></div>
+          <div class="arm-kpi atrasado"><div class="lbl">Em aberto</div><div class="val" id="penAbertas">0</div></div>
           <div class="arm-kpi"><div class="lbl">CTRCs</div><div class="val" id="penTotal">0</div></div>
-          <div class="arm-kpi"><div class="lbl">Códigos</div><div class="val" id="penCodigos">0</div></div>
-          <div class="arm-kpi atrasado"><div class="lbl">Topo</div><div class="val" id="penTopoCod" style="font-size:clamp(12px,1.4vw,18px);line-height:1.15">—</div></div>
-          <div class="arm-kpi peso"><div class="lbl">Topo qtd</div><div class="val" id="penTopoQtd">0</div></div>
           <div class="arm-kpi chegou"><div class="lbl">Período</div><div class="val" id="penPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
         </div>
         <div class="arm-hero arm-hero-solo dash-block" data-block="chart">
           <section class="arm-hero-card">
             <header>
-              <h2>Ofensores</h2>
-              <div class="meta" id="penOfMeta">códigos de ocorrência · mês</div>
+              <h2>SLA do setor</h2>
+              <div class="meta" id="penOfMeta">63 positiva · demais negativas</div>
             </header>
             <div class="arm-towers-wrap pen-towers-wrap">
               <div class="torres arm-torres pen-torres" id="penTorres" aria-label="Torres de ofensores"></div>
@@ -5544,23 +5547,25 @@
     function renderPenTorres(ofensores) {
       const host = document.getElementById('penTorres');
       if (!host) return;
-      const items = (ofensores || []).slice(0, 7);
+      const items = (ofensores || []).slice(0, 8);
       if (!items.length) {
-        host.innerHTML = '<div class="arm-rank-empty">Sem ofensores no período</div>';
+        host.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
         return;
       }
       const max = Math.max(...items.map((o) => Number(o.qtd) || 0), 1);
       const total = items.reduce((s, o) => s + (Number(o.qtd) || 0), 0) || 1;
-      const skins = ['t-of', 't-of2', 't-of3', 't-of4', 't-of5', 't-of6', 't-of7'];
+      const skinsNeg = ['t-of', 't-of2', 't-of3', 't-of4', 't-of5', 't-of6', 't-of7'];
       const tv = document.body.classList.contains('tv-mode');
-      host.innerHTML = items.map((o, i) => {
+      let negIdx = 0;
+      host.innerHTML = items.map((o) => {
         const qtd = Number(o.qtd) || 0;
         const pct = Math.round((qtd / total) * 100);
-        const skin = skins[i] || 't-of6';
+        const pol = String(o.polaridade || '').toLowerCase();
+        const isPos = pol === 'pos' || String(o.codigo || '') === '63';
+        const skin = isPos ? 't-pos' : (skinsNeg[negIdx++] || 't-of6');
         const cod = String(o.codigo || '').trim();
         const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
-        const labFull = esc(cod ? `${cod} · ${nome}` : nome);
-        // TV: nome completo (CSS faz line-clamp); desktop: encurta
+        const labFull = esc(cod ? `${cod} · ${nome}${isPos ? ' · SLA+' : ''}` : nome);
         const lab = esc(tv ? nome : shortPenLabel(nome, 24));
         const h = alturaTorrePen(qtd, max);
         return `<div class="torre ${skin}" title="${labFull}">
@@ -5615,20 +5620,24 @@
         if (!rows.length && lastGoodPenRows.length) rows = lastGoodPenRows.slice();
 
         if (err) err.hidden = true;
+        const slaRaw = String(resumo.sla_pct || '').trim();
+        const slaTxt = slaRaw
+          ? (slaRaw.includes('%') ? slaRaw : `${slaRaw}%`)
+          : '0%';
+        setPenText('penSla', slaTxt);
+        setPenText('penSoluc', resumo.solucionadas || '0');
+        setPenText('penAbertas', resumo.abertas || '0');
         setPenText('penTotal', resumo.total_ctrcs || rows.length || '0');
-        setPenText('penCodigos', resumo.total_codigos || ofens.length || '0');
-        setPenText(
-          'penTopoCod',
-          shortPenLabel(resumo.topo_label || resumo.topo_codigo || '—', 28)
-        );
-        setPenText('penTopoQtd', resumo.topo_qtd || '0');
         setPenText('penPeriodo', formatPeriodo31(resumo.periodo || ''));
         setPenText('penAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
-        const topoLab = resumo.topo_label || '';
         const meta = document.getElementById('penOfMeta');
-        if (meta) meta.textContent = topoLab
-          ? `topo · ${topoLab}`
-          : 'ocorrências · mês';
+        if (meta) {
+          const sla = slaTxt;
+          const topoLab = resumo.topo_label || '';
+          meta.textContent = topoLab
+            ? `SLA ${sla} · ofensor · ${topoLab}`
+            : `SLA ${sla} · 63 positiva · demais negativas`;
+        }
 
         renderPenTorres(ofens);
         const tb = document.getElementById('penTbody');

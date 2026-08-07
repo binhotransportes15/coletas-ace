@@ -866,7 +866,7 @@ class AceCrtConsole(QWidget):
 
         lay.addWidget(self._section("Pendência"))
         for label, cmd in (
-            ("Puxar pendência (11 códigos)", "31"),
+            ("Puxar pendência (10 códigos · SLA)", "31"),
             ("Enviar só a pendência", "sync31"),
         ):
             b = QPushButton(label)

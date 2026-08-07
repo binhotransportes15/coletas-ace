@@ -11,10 +11,11 @@ from typing import Any
 
 from config import BASE_DIR, ensure_dirs
 from ocorrencias_pendencia import (
+    CODIGO_SLA_POSITIVO,
     OCORR_PENDENCIA,
-    OCORR_PENDENCIA_CODES,
     label_ocorrencia,
     match_codigo_from_text,
+    polaridade,
 )
 
 CACHE_DIR = BASE_DIR / "data" / "cache"
@@ -48,12 +49,15 @@ RESUMO_FIELDS = [
     "atualizado",
     "total_ctrcs",
     "total_codigos",
+    "solucionadas",
+    "abertas",
+    "sla_pct",
     "topo_codigo",
     "topo_label",
     "topo_qtd",
 ]
 
-OFENSOR_FIELDS = ["codigo", "label", "qtd", "pct"]
+OFENSOR_FIELDS = ["codigo", "label", "qtd", "pct", "polaridade"]
 
 
 def _clean(value: Any) -> str:
@@ -242,23 +246,35 @@ def analyze_reports_31(
 
     counts = Counter(str(r.get("codigo") or "").strip() for r in uniq if r.get("codigo"))
     total = len(uniq)
+    solucionadas = int(counts.get(CODIGO_SLA_POSITIVO, 0))
+    abertas = max(0, total - solucionadas)
+    sla_pct_num = (100.0 * solucionadas / total) if total else 0.0
+    sla_pct = f"{sla_pct_num:.1f}".replace(".", ",")
+
     ofensores: list[dict[str, Any]] = []
     for code, qtd in counts.most_common():
-        if code not in OCORR_PENDENCIA and code not in set(OCORR_PENDENCIA_CODES):
-            # ainda mostra códigos “outros” com volume
-            lab = label_ocorrencia(code) if code else "OUTROS"
-        else:
-            lab = label_ocorrencia(code)
+        lab = label_ocorrencia(code) if code else "OUTROS"
+        pol = polaridade(code)
         ofensores.append(
             {
                 "codigo": code or "?",
                 "label": lab,
                 "qtd": qtd,
                 "pct": f"{(100.0 * qtd / total):.1f}".replace(".", ",") if total else "0,0",
+                "polaridade": pol,
             }
         )
+    # SLA: positivo (63) primeiro, depois ofensores por volume
+    ofensores.sort(
+        key=lambda o: (
+            0 if o.get("polaridade") == "pos" else 1,
+            -(int(o.get("qtd") or 0)),
+        )
+    )
 
-    topo = ofensores[0] if ofensores else {"codigo": "", "label": "—", "qtd": 0}
+    # Topo ofensor = maior negativo (não a solucionada)
+    ofens_neg = [o for o in ofensores if o.get("polaridade") != "pos"]
+    topo = ofens_neg[0] if ofens_neg else {"codigo": "", "label": "—", "qtd": 0}
     now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     resumo = [
         {
@@ -266,6 +282,9 @@ def analyze_reports_31(
             "atualizado": now,
             "total_ctrcs": total,
             "total_codigos": len(ofensores),
+            "solucionadas": solucionadas,
+            "abertas": abertas,
+            "sla_pct": sla_pct,
             "topo_codigo": topo.get("codigo") or "",
             "topo_label": topo.get("label") or "—",
             "topo_qtd": int(topo.get("qtd") or 0),
@@ -278,6 +297,9 @@ def analyze_reports_31(
     meta = {
         "ok": True,
         "total": total,
+        "solucionadas": solucionadas,
+        "abertas": abertas,
+        "sla_pct": sla_pct,
         "ofensores": ofensores[:12],
         "resumo": resumo[0],
         "periodo": periodo_fmt,
@@ -288,5 +310,8 @@ def analyze_reports_31(
         },
     }
     LAST_31_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
-    status(f"31 análise: {total} CTRC(s) · topo={topo.get('codigo')} ({topo.get('qtd')})")
+    status(
+        f"31 análise: {total} CTRC(s) · SLA {sla_pct}% "
+        f"(+{solucionadas} / −{abertas}) · ofensor={topo.get('codigo')}"
+    )
     return meta

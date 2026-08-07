@@ -83,7 +83,7 @@ class AceSettings:
     # Se true, /automatica também captura a tela 078 no fim do ciclo
     # (Sheets 078 usa a mesma enable_sheets / apps_script_url / token)
     armazem_in_loop: bool = True
-    # 031 tem 11 códigos × Excel — default off no ciclo; rode `31` sob demanda
+    # 031 tem 10 códigos × Excel (63=SLA+) — default off no ciclo; rode `31` sob demanda
     pendencia_in_loop: bool = False
     headless: bool = True
     # Tema visual do CRT (binho | painel | ops | claro)
