@@ -306,6 +306,7 @@ _FIELD_LABELS: dict[str, str] = {
     "github_token_env": "Nome da chave do site",
     "armazem_in_loop": "Incluir armazém no ciclo",
     "pendencia_in_loop": "Incluir pendência no ciclo",
+    "contratacao_in_loop": "Incluir contratação no ciclo",
     "headless": "Ocultar navegador",
 }
 
@@ -1044,13 +1045,14 @@ class AceCrtConsole(QWidget):
         viz = "navegador ligado" if not p.get("headless", True) else "navegador oculto"
         sheets = "planilha ligada" if p.get("enable_sheets") else "planilha desligada"
         arm = "armazém no ciclo" if p.get("armazem_in_loop", True) else "armazém fora do ciclo"
-        pend = "pendência no ciclo" if p.get("pendencia_in_loop") else "pendência fora do ciclo"
+        pend = "pendência no ciclo" if p.get("pendencia_in_loop", True) else "pendência fora do ciclo"
+        ctr = "contratação no ciclo" if p.get("contratacao_in_loop", True) else "contratação fora do ciclo"
         modo = str(p.get("periodo_modo") or "diario")
         modo_txt = "diário" if modo == "diario" else "a partir da sexta"
         self.meta.setText(
             f"usuário {p.get('user') or '—'}  ·  unidades {p.get('unit') or '—'}\n"
             f"{sheets}  ·  {viz}\n"
-            f"{arm}  ·  {pend}\n"
+            f"{arm}  ·  {pend}  ·  {ctr}\n"
             f"a cada {p.get('loop_intervalo') or '5m'}  ·  {modo_txt}"
         )
 

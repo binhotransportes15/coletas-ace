@@ -848,11 +848,27 @@ def run_dual_cycle(
             errors["31"] = str(err)
             emit(f"031 FALHOU: {err}")
 
-    if errors and not result_50 and not result_103 and not result_36 and not result_225 and not result_78 and not result_31:
+    result_73: dict[str, Any] = {}
+    if getattr(cfg, "contratacao_in_loop", False):
+        emit("073 / Contratacao sequencial (filiais 076+200)...")
+        try:
+            result_73 = run_pipeline_contratacao(
+                credentials=creds,
+                settings=cfg,
+                headless=use_headless,
+                on_status=lambda m: emit(f"[73] {m}"),
+            )
+            emit("073 concluido.")
+        except Exception as err:  # noqa: BLE001
+            errors["73"] = str(err)
+            emit(f"073 FALHOU: {err}")
+
+    if errors and not result_50 and not result_103 and not result_36 and not result_225 and not result_78 and not result_31 and not result_73:
         raise RuntimeError("; ".join(f"{k}: {v}" for k, v in errors.items()))
 
     return {
-        "ok": not errors or bool(result_50 or result_103 or result_36 or result_225 or result_78 or result_31),
+        "ok": not errors
+        or bool(result_50 or result_103 or result_36 or result_225 or result_78 or result_31 or result_73),
         "errors": errors,
         "period_50": format_period(ini50, fim50),
         "period_103": format_period(ini103, fim103),
@@ -864,6 +880,7 @@ def run_dual_cycle(
         "225": result_225,
         "78": result_78,
         "31": result_31,
+        "73": result_73,
         "sheets_50": sheets50,
         "sheets_103": sheets103,
         "sheets_36": sheets36,

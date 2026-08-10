@@ -70,6 +70,7 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     # Armazém 078 (mesmo Sheets da distribuição)
     "armazem_in_loop": ("armazem", "bool", False),
     "pendencia_in_loop": ("pendencia", "bool", False),
+    "contratacao_in_loop": ("contratacao", "bool", False),
     "headless": ("auto", "bool", False),
 }
 
@@ -131,7 +132,8 @@ def _save_payload(payload: dict[str, Any]) -> None:
         github_branch=str(payload.get("github_branch") or "main"),
         github_token_env=str(payload.get("github_token_env") or "GH_TOKEN"),
         armazem_in_loop=bool(payload.get("armazem_in_loop", True)),
-        pendencia_in_loop=bool(payload.get("pendencia_in_loop", False)),
+        pendencia_in_loop=bool(payload.get("pendencia_in_loop", True)),
+        contratacao_in_loop=bool(payload.get("contratacao_in_loop", True)),
         headless=bool(payload.get("headless", True)),
         crt_theme=str(payload.get("crt_theme") or "binho").strip() or "binho",
     )
@@ -203,14 +205,16 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     sheets_on = bool(payload.get("enable_sheets"))
     viz_on = not bool(payload.get("headless", True))
     arm_on = bool(payload.get("armazem_in_loop", True))
-    pend_on = bool(payload.get("pendencia_in_loop", False))
+    pend_on = bool(payload.get("pendencia_in_loop", True))
+    ctr_on = bool(payload.get("contratacao_in_loop", True))
 
     print_header_banner(subtitle="OPERACIONAL · Console CMD", payload=payload)
     print(
         f"  {status_online('SHEETS') if sheets_on else status_offline('SHEETS')}  "
         f"{status_work('SSW·VIZ') if viz_on else status_idle('SSW·HIDE')}  "
         f"{status_online('078') if arm_on else status_idle('078·OFF')}  "
-        f"{status_online('031') if pend_on else status_idle('031·OFF')}"
+        f"{status_online('031') if pend_on else status_idle('031·OFF')}  "
+        f"{status_online('073') if ctr_on else status_idle('073·OFF')}"
     )
     print(f"  {rule()}")
     print(f"  {muted('config')}  {CONFIG_PATH}")
@@ -267,6 +271,8 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print(f"    {muted('armazem_in_loop'.ljust(18))} {str(arm_on).lower()}")
     print(f"  {g('[PENDENCIA 031]', bold=True)}")
     print(f"    {muted('pendencia_in_loop'.ljust(18))} {str(pend_on).lower()}")
+    print(f"  {g('[CONTRATACAO 073]', bold=True)}")
+    print(f"    {muted('contratacao_in_loop'.ljust(18))} {str(ctr_on).lower()}")
     print(f"  {rule()}")
     print(f"  {w('COMMANDS', bold=True)}  {cubes_row()}")
     print(f"    {g('1/50')}  baixar 50     {g('2/103')} baixar 103    {g('3/sync')} sheets")
@@ -315,7 +321,8 @@ def cmd_help() -> str:
         "    /e intervalo 30s\n"
         "  Visualização SSW: /viz on|off  ou  /e visualizar sim|nao\n"
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
-        "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos (reabre a 31 cada um)\n"
+        "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos\n"
+        "  Contratação: /e contratacao_in_loop true|false · `73` sob demanda\n"
         "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
         "  Contratação: `73` = 073×3 (SPO) → por cada DESTINO: menu→076(E)+200(E)\n"
         "             F+Tipo A=frota · A+Tipo C=contratados · A+Tipo O=agregados · período=mês até hoje\n"
@@ -357,6 +364,9 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "pendencia_loop": "pendencia_in_loop",
         "pend_loop": "pendencia_in_loop",
         "31_loop": "pendencia_in_loop",
+        "contratacao_loop": "contratacao_in_loop",
+        "ctr_loop": "contratacao_in_loop",
+        "73_loop": "contratacao_in_loop",
         "visualizar": "visualizar",
         "viz": "visualizar",
         "mostrar": "visualizar",
@@ -760,7 +770,8 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
             "enable_sheets": cfg.enable_sheets,
             "headless": cfg.headless,
             "armazem_in_loop": cfg.armazem_in_loop,
-            "pendencia_in_loop": getattr(cfg, "pendencia_in_loop", False),
+            "pendencia_in_loop": getattr(cfg, "pendencia_in_loop", True),
+            "contratacao_in_loop": getattr(cfg, "contratacao_in_loop", True),
             "loop_intervalo": cfg.loop_intervalo,
             "unit": getattr(load_credentials(), "unit", ""),
             "user": getattr(load_credentials(), "user", ""),
@@ -777,6 +788,10 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
         print(f"  {status_online('031')} Pendência no loop")
     else:
         print(f"  {status_idle('031')} fora do loop (rode `31` sob demanda)")
+    if getattr(cfg, "contratacao_in_loop", False):
+        print(f"  {status_online('073')} Contratação no loop (filiais 076+200)")
+    else:
+        print(f"  {status_idle('073')} fora do loop (rode `73` sob demanda)")
     print(f"  {rule()}")
     print(f"  {muted('Ctrl+C → menu · /viz on|off · /e intervalo 30s|5m')}")
     print(f"  {rule()}\n")
