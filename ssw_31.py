@@ -1,4 +1,9 @@
-"""Download SSW 031 (ssw0495) — CTRCs por código de ocorrência → Excel."""
+"""Download SSW 031 (ssw0495) — CTRCs por código de ocorrência → Excel.
+
+Fluxo (estável):
+  1) Para cada código: abre 31 · preenche · ► (vai pra fila 156) — sem baixar
+  2) Abre opção 156 (ssw1440) uma vez e baixa todos os Excel 0495 concluídos
+"""
 from __future__ import annotations
 
 import os
@@ -15,6 +20,10 @@ from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
 
+# Opção 156 = Fila de processamento em lotes (programa ssw1440)
+SSW_FILA_URL = "https://sistema.ssw.inf.br/bin/ssw1440"
+SSW_FILA_MARKERS = ("fila", "processamento", "lote", "156", "atualizar", "sequ")
+
 
 def _noop(_: str) -> None:
     return None
@@ -28,6 +37,19 @@ def _ensure_playwright_path() -> None:
         os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(Path(local) / "ms-playwright")
 
 
+def _safe_wait(page_or_popup, ms: int) -> None:
+    try:
+        if page_or_popup is None:
+            time.sleep(ms / 1000.0)
+            return
+        if hasattr(page_or_popup, "is_closed") and page_or_popup.is_closed():
+            time.sleep(ms / 1000.0)
+            return
+        page_or_popup.wait_for_timeout(ms)
+    except Exception:
+        time.sleep(ms / 1000.0)
+
+
 def download_reports_31(
     *,
     codes: tuple[str, ...] | list[str] | None = None,
@@ -38,8 +60,7 @@ def download_reports_31(
     settings: AceSettings | None = None,
 ) -> dict[str, Any]:
     """
-    Abre opção 31 e, para cada código, gera Excel (Arquivo excel=S)
-    com Data da ocorrência = mês corrente (ou período informado).
+    Gera 1 relatório por código (Excel=S) na fila 156; depois baixa todos.
     """
     status = on_status or _noop
     ensure_dirs()
@@ -73,8 +94,9 @@ def download_reports_31(
 
     paths: dict[str, str] = {}
     errors: dict[str, str] = {}
+    queued: list[dict[str, Any]] = []
     status(
-        f"SSW 31 | {len(code_list)} código(s) um a um | ocorrência {ini}-{fim} | excel=S"
+        f"SSW 31 | {len(code_list)} código(s) → fila 156 | ocorrência {ini}-{fim} | excel=S"
     )
     status("códigos: " + ", ".join(code_list))
 
@@ -86,42 +108,76 @@ def download_reports_31(
         page.on("dialog", lambda d: d.accept())
         context.on("page", lambda pg: pg.on("dialog", lambda d: d.accept()))
         popup = None
+        fila = None
         try:
             client._login(page)
             client._ensure_unit(page)
-            client._patch_blank_popup_fix(page)
+            client._patch_blank_popup_form(page)
 
-            # SSW 0495: cada código precisa de uma entrada nova na opção 31
-            # (reaproveitar o mesmo popup falha / mistura relatório).
+            # ── Fase 1: enfileirar todos ─────────────────────────────
+            status(f"[31] fase 1/2 · enfileirando {len(code_list)} relatório(s)…")
+            known_seqs = _snapshot_fila_seqs(client, context, page, status)
+            status(f"[31] fila 156: {len(known_seqs)} job(s) já existentes (ignorados)")
+
             for idx, code in enumerate(code_list, start=1):
                 try:
                     status(f"[31/{code}] ({idx}/{len(code_list)}) abrindo opção 31…")
                     popup = _reopen_31(client, page, popup)
                     status(f"[31/{code}] preenchendo…")
-                    _preencher_31(
-                        popup, ini=ini, fim=fim, codigo=code, on_status=status
-                    )
-                    status(f"[31/{code}] gerando Excel…")
-                    dest_name = f"pendencia_31_{code}_{ts}.xlsx"
-                    path = _gerar_download_31(
-                        client, context, page, popup, dest_name, code, status
-                    )
-                    paths[code] = str(path)
-                    status(f"[31/{code}] OK {path.name} ({path.stat().st_size} bytes)")
-                    page.wait_for_timeout(400)
+                    _preencher_31(popup, ini=ini, fim=fim, codigo=code, on_status=status)
+                    status(f"[31/{code}] enviando pra fila 156…")
+                    t0 = time.time()
+                    _enviar_fila_31(popup, status, code)
+                    _safe_wait(popup, 1200)
+                    queued.append({"code": code, "seq": "", "t": t0, "idx": idx})
+                    status(f"[31/{code}] enviado à fila 156")
                 except Exception as err:  # noqa: BLE001
                     errors[code] = str(err)
-                    status(f"[31/{code}] FALHOU: {err}")
+                    status(f"[31/{code}] FALHOU ao enfileirar: {err}")
                     try:
                         popup = _reopen_31(client, page, popup)
                     except Exception:
                         popup = None
+
             try:
                 if popup is not None and not popup.is_closed():
                     popup.close()
             except Exception:
                 pass
+            popup = None
+
+            if not queued:
+                raise RuntimeError(
+                    "31: nenhum relatório enfileirado. "
+                    + "; ".join(f"{k}:{v}" for k, v in errors.items())
+                )
+
+            # pequena pausa pra fila registrar os jobs
+            status("[31] aguardando fila registrar os jobs…")
+            time.sleep(3)
+
+            # ── Fase 2: baixar na 156 ────────────────────────────────
+            status(
+                f"[31] fase 2/2 · baixando {len(queued)} Excel na fila 156…"
+            )
+            fila = _abrir_fila_156(client, context, page, status)
+            paths = _baixar_todos_da_fila(
+                client,
+                context,
+                page,
+                fila,
+                queued=queued,
+                known_before=known_seqs,
+                ts=ts,
+                status=status,
+            )
         finally:
+            for pg in (fila, popup):
+                try:
+                    if pg is not None and not pg.is_closed():
+                        pg.close()
+                except Exception:
+                    pass
             try:
                 context.close()
             except Exception:
@@ -139,6 +195,7 @@ def download_reports_31(
         "ok": True,
         "paths": paths,
         "errors": errors,
+        "queued": queued,
         "period": f"{ini}-{fim}",
         "codes": code_list,
         "download_dir": str(DOWNLOAD_DIR),
@@ -161,10 +218,7 @@ def _reopen_31(client: AceSswClient, page, popup=None):
                 popup.close()
         except Exception:
             pass
-        try:
-            page.wait_for_timeout(350)
-        except Exception:
-            pass
+        _safe_wait(page, 350)
     fresh = _open_31(client, page)
     try:
         fresh.on("dialog", lambda d: d.accept())
@@ -185,9 +239,6 @@ def _preencher_31(
     ssw0495:
       #1/#2 emissão (vazio) · #3/#4 data ocorrência · #6 código (2 dígitos)
       #11 situação=T · #12 excel=S
-
-    Importante: NÃO usar evaluate+change no #6 — o alert/lookup do SSW
-    trava o evaluate. Playwright fill/Tab trata o dialog normalmente.
     """
     status = on_status or _noop
     cod = str(codigo or "").strip()[:2]
@@ -219,28 +270,30 @@ def _preencher_31(
     except Exception:
         pass
 
-    # espera a descrição preencher (lookup AJAX); se não vier, usa rótulo local
     label = label_ocorrencia(cod)
     desc_ok = False
     for _ in range(40):
         try:
+            if popup.is_closed():
+                raise RuntimeError("31: popup fechou no lookup")
             desc = (popup.locator("#ocor_descr").input_value(timeout=1000) or "").strip()
-        except Exception:
+        except Exception as err:
+            if "closed" in str(err).lower() or "Target page" in str(err):
+                raise
             desc = ""
         low = desc.lower()
         if desc and len(desc) > 2 and "aguarde" not in low and "..." not in desc:
             desc_ok = True
             status(f"[31/{cod}] descrição: {desc[:60]}")
             break
-        popup.wait_for_timeout(300)
+        _safe_wait(popup, 300)
     if not desc_ok:
         try:
             popup.locator("#ocor_descr").fill(label)
             status(f"[31/{cod}] descrição local: {label[:60]}")
         except Exception:
             pass
-        # dá mais um tempo pro lookup terminar antes do ►
-        popup.wait_for_timeout(800)
+        _safe_wait(popup, 800)
 
     popup.locator('[id="11"]').fill("T")
     popup.locator('[id="12"]').fill("S")
@@ -260,11 +313,11 @@ def _preencher_31(
         f"[31/{cod}] OK form · oc={values.get('ini')}-{values.get('fim')} "
         f"cod={values.get('codigo')} excel={values.get('excel')}"
     )
-    popup.wait_for_timeout(200)
+    _safe_wait(popup, 200)
 
 
-def _clicar_gerar_31(popup) -> None:
-    """Play ► → ajaxEnvia('ENV', 0) (id=13)."""
+def _enviar_fila_31(popup, status, code: str) -> None:
+    """Clica ► e aceita o envio à fila (sem esperar download)."""
     clicked = popup.evaluate(
         """() => {
           if (typeof ajaxEnvia === 'function') { ajaxEnvia('ENV', 0); return 'ajax'; }
@@ -275,23 +328,8 @@ def _clicar_gerar_31(popup) -> None:
     )
     if not clicked:
         raise RuntimeError("31: botão gerar (►) não encontrado")
-
-
-def _gerar_download_31(client, context, page, popup, dest_name: str, code: str, status) -> Path:
-    """Tenta download direto (curto); se for pra fila, baixa via ssw1440."""
-    try:
-        with context.expect_event("download", timeout=20000) as di:
-            _clicar_gerar_31(popup)
-        download = di.value
-        return _save_named(client, download, dest_name)
-    except Exception as direct_err:  # noqa: BLE001
-        status(f"[31/{code}] sem download imediato; abrindo Ver fila…")
-        # dialog “enviado à fila” costuma aparecer aqui
-        try:
-            popup.wait_for_timeout(800)
-        except Exception:
-            pass
-        return _baixar_via_fila_31(client, context, page, popup, dest_name, code, status)
+    status(f"[31/{code}] ► {clicked}")
+    _safe_wait(popup, 1200)
 
 
 def _save_named(client, download, dest_name: str) -> Path:
@@ -306,198 +344,343 @@ def _save_named(client, download, dest_name: str) -> Path:
     return client._save_download(download, name)
 
 
-def _abrir_ver_fila_31(client, context, page, popup, status):
-    """Abre ssw1440 (Ver fila) a partir do popup 31 ou do menu."""
+def _abrir_fila_156(client, context, page, status):
+    """Abre opção 156 (ssw1440) — Fila de processamento em lotes."""
+    status("[31] abrindo fila 156…")
     fila = None
-    # 1) botão Ver fila no próprio 0495 (id=15 / ajaxEnvia)
+    # 1) menu 156
     try:
-        with context.expect_page(timeout=12000) as pi:
-            opened = popup.evaluate(
-                """() => {
-                  const a = document.getElementById('15');
-                  if (a) { a.click(); return '15'; }
-                  if (typeof ajaxEnvia === 'function') {
-                    ajaxEnvia('', 1, 'ssw1440');
-                    return 'ajax';
-                  }
-                  return '';
-                }"""
-            )
-            if not opened:
-                raise RuntimeError("sem botão Ver fila")
-        fila = pi.value
-        status("[31] Ver fila aberta (popup)")
+        fila = client._open_menu_option(page, "156", markers=SSW_FILA_MARKERS)
+        status("[31] fila 156 via menu")
     except Exception as err:
-        status(f"[31] Ver fila popup: {err}")
+        status(f"[31] menu 156: {err}")
         fila = None
 
-    if fila is None:
-        try:
-            if "ssw1440" in (popup.url or ""):
-                fila = popup
-        except Exception:
-            pass
-
+    # 2) goto direto
     if fila is None:
         try:
             with context.expect_page(timeout=12000) as pi:
-                page.bring_to_front()
                 page.evaluate(
                     """() => {
                       if (typeof ajaxEnvia === 'function') ajaxEnvia('', 1, 'ssw1440');
                     }"""
                 )
             fila = pi.value
+            status("[31] fila 156 via ajaxEnvia ssw1440")
         except Exception:
-            for pg in context.pages:
-                try:
-                    if "ssw1440" in (pg.url or ""):
-                        fila = pg
-                        break
-                except Exception:
-                    continue
+            fila = context.new_page()
+            fila.goto(SSW_FILA_URL, wait_until="domcontentloaded", timeout=30000)
+            status("[31] fila 156 via goto")
 
-    if fila is None:
-        raise RuntimeError("31: não abriu Ver fila (ssw1440)")
+    try:
+        fila.on("dialog", lambda d: d.accept())
+    except Exception:
+        pass
 
-    # blank.html → forçar programa da fila (mesmo padrão das outras telas)
+    # blank → forçar URL
     try:
         url = (fila.url or "").lower()
     except Exception:
         url = ""
-    if "blank.html" in url or url.startswith("about:blank") or "ssw1440" not in url:
+    if "blank" in url or "ssw1440" not in url:
         status("[31] recuperando ssw1440…")
         try:
-            fila.goto(
-                "https://sistema.ssw.inf.br/bin/ssw1440",
-                wait_until="domcontentloaded",
-                timeout=30000,
-            )
-            fila.wait_for_timeout(1000)
+            fila.goto(SSW_FILA_URL, wait_until="domcontentloaded", timeout=30000)
+            _safe_wait(fila, 800)
         except Exception as err:
             status(f"[31] goto ssw1440: {err}")
             try:
-                if client._recuperar_blank(page, fila, "1440", ("fila", "dow", "relat", "1440")):
-                    status("[31] ssw1440 via blank patch")
+                client._recuperar_blank(page, fila, "1440", ("fila", "dow", "156", "1440"))
             except Exception:
                 pass
     return fila
 
 
-def _baixar_via_fila_31(client, context, page, popup, dest_name: str, code: str, status) -> Path:
-    """Abre Ver fila (ssw1440) e baixa o relatório 0495 mais recente."""
-    fila = _abrir_ver_fila_31(client, context, page, popup, status)
-    try:
-        fila.wait_for_load_state("domcontentloaded", timeout=30000)
-    except Exception:
-        pass
-    try:
-        fila.on("dialog", lambda d: d.accept())
-    except Exception:
-        pass
-    try:
-        fila.bring_to_front()
-    except Exception:
-        pass
+def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
+    """Lê linhas da fila 156 (seq, opção, situação, tem download)."""
+    return fila.evaluate(
+        """() => {
+          const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
+          const jobs = [];
+          // tenta tabela
+          const rows = Array.from(document.querySelectorAll('tr'));
+          for (const tr of rows) {
+            const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
+            if (cells.length < 4) continue;
+            const seq = (cells[0] || '').replace(/\\D/g, '');
+            if (!seq || seq.length < 4) continue;
+            const opcao = cells[1] || '';
+            const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || cells[6] || '';
+            const links = Array.from(tr.querySelectorAll('a[onclick], a[href], img[onclick]')).map(a => {
+              const text = norm(a.textContent || a.alt || a.title || '');
+              const onclick = String(a.getAttribute('onclick') || '');
+              const href = String(a.getAttribute('href') || '');
+              const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
+              return { text, onclick, href, blob };
+            });
+            const dows = links.filter(x => {
+              if (/imprimir|correio|e-mails|emails|retaguarda|voltar|fechar|sair|atualizar/i.test(x.text)) return false;
+              return /\\bdow\\b|download\\(|ssw0495|\\.xlsx|\\.xls|\\.csv|baixar|arquivo/.test(x.blob)
+                || (/0495|031/.test(x.blob) && /dow|href=|http/.test(x.blob));
+            });
+            jobs.push({
+              seq,
+              opcao,
+              situacao: sit,
+              concluido: /conclu/i.test(sit),
+              is0495: /0495|031\\s*-|ocorr/i.test(opcao + ' ' + links.map(l => l.blob).join(' ')),
+              hasDow: dows.length > 0,
+              dows,
+            });
+          }
+          // fallback: varrer links DOW globais com contexto
+          if (!jobs.length) {
+            const all = Array.from(document.querySelectorAll('a[onclick], a[href], img[onclick]'));
+            all.forEach((a, i) => {
+              const text = norm(a.textContent || a.alt || a.title || '');
+              const onclick = String(a.getAttribute('onclick') || '');
+              const href = String(a.getAttribute('href') || '');
+              const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
+              if (/imprimir|correio|atualizar/i.test(text)) return;
+              if (!(/\\bdow\\b|download\\(|ssw0495|\\.xlsx|baixar/.test(blob))) return;
+              jobs.push({
+                seq: 'L' + i,
+                opcao: text || 'download',
+                situacao: 'Concluído',
+                concluido: true,
+                is0495: /0495|031|ocorr|xlsx|csv|sswweb/.test(blob),
+                hasDow: true,
+                dows: [{ text, onclick, href, blob }],
+                linkIndex: i,
+              });
+            });
+          }
+          return jobs;
+        }"""
+    )
 
-    deadline = time.time() + 150
-    last_hint = ""
-    while time.time() < deadline:
-        info = fila.evaluate(
+
+def _atualizar_fila(fila) -> None:
+    try:
+        fila.evaluate(
             """() => {
-              const text = (document.body && document.body.innerText || '').slice(0, 3500);
-              const links = Array.from(document.querySelectorAll('a[onclick], a[href], img[onclick]'));
-              const mapped = links.map((a, i) => {
-                const text = ((a.textContent || a.alt || a.title || '') + '').trim().slice(0, 80);
-                const onclick = String(a.getAttribute('onclick') || '').slice(0, 220);
-                const href = String(a.getAttribute('href') || '').slice(0, 160);
-                const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
-                return { i, text, onclick, href, blob };
-              });
-              // Só links reais de download da fila — nunca Imprimir/Correio/menu
-              const hits = mapped.filter(x => {
-                if (/imprimir|correio|e-mails|emails|retaguarda|voltar|fechar|sair/i.test(x.text)) {
-                  return false;
-                }
-                return /\\bdow\\b|download\\(|ssw0495|\\.xlsx|\\.xls|\\.csv|baixar/.test(x.blob)
-                  || (/0495/.test(x.blob) && /dow|href=|http/.test(x.blob));
-              });
-              return {
-                text,
-                url: location.href,
-                hits: hits.slice(0, 15),
-                sample: mapped.slice(0, 20),
-              };
+              if (typeof ajaxEnvia === 'function') {
+                try { ajaxEnvia('', 0); return 'atu'; } catch (e) {}
+                try { ajaxEnvia('ATU', 0); return 'ATU'; } catch (e) {}
+              }
+              const a = document.getElementById('2');
+              if (a) { a.click(); return '2'; }
+              return '';
             }"""
         )
-        last_hint = f"url={info.get('url')} | " + str(info.get("text") or "")[:220]
-        hits = info.get("hits") or []
-        if "ssw1440" not in str(info.get("url") or ""):
-            status(f"[31/{code}] fila ainda não é ssw1440 ({info.get('url')}); retry…")
-            fila.wait_for_timeout(2000)
-            continue
+    except Exception:
+        pass
 
-        pick = None
-        for h in hits:
-            blob = h.get("blob") or ""
-            if re.search(r"\bdow\b|download\(|ssw0495", blob, re.I):
-                pick = h
-                break
-        if not pick and hits:
-            pick = hits[0]
 
-        if pick is not None:
-            status(
-                f"[31/{code}] fila: baixando · {pick.get('text') or pick.get('onclick')}"
-            )
-            try:
-                with context.expect_event("download", timeout=60000) as di:
-                    fila.evaluate(
-                        """(idx) => {
-                          const links = Array.from(document.querySelectorAll('a[onclick], a[href], img[onclick]'));
-                          const mapped = links.map((a) => {
-                            const text = ((a.textContent || a.alt || a.title || '') + '').trim();
-                            const onclick = String(a.getAttribute('onclick') || '');
-                            const href = String(a.getAttribute('href') || '');
-                            const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
-                            return { a, text, blob };
-                          }).filter(x => {
-                            if (/imprimir|correio|e-mails|emails|retaguarda|voltar|fechar|sair/i.test(x.text)) {
-                              return false;
-                            }
-                            return /\\bdow\\b|download\\(|ssw0495|\\.xlsx|\\.xls|\\.csv|baixar/.test(x.blob)
-                              || (/0495/.test(x.blob) && /dow|href=|http/.test(x.blob));
-                          });
-                          const item = mapped[idx];
-                          if (!item) return false;
-                          item.a.click();
-                          return true;
-                        }""",
-                        hits.index(pick) if pick in hits else 0,
-                    )
-                download = di.value
-                path = _save_named(client, download, dest_name)
-                try:
-                    if fila != popup and not fila.is_closed():
-                        fila.close()
-                except Exception:
-                    pass
-                return path
-            except Exception as err:  # noqa: BLE001
-                status(f"[31/{code}] clique fila falhou: {err}")
-        else:
-            # ainda processando na fila
-            if int(time.time()) % 8 < 3:
-                status(f"[31/{code}] aguardando DOW na fila…")
+def _snapshot_fila_seqs(client, context, page, status) -> set[str]:
+    """Abre 156 rapidinho, lê seqs atuais, fecha."""
+    fila = None
+    try:
+        fila = _abrir_fila_156(client, context, page, status)
+        _safe_wait(fila, 600)
+        jobs = _ler_jobs_fila(fila)
+        return {str(j.get("seq") or "") for j in jobs if j.get("seq")}
+    except Exception as err:
+        status(f"[31] snapshot fila: {err}")
+        return set()
+    finally:
         try:
-            # refresh leve
-            fila.evaluate(
-                """() => {
-                  if (typeof ajaxEnvia === 'function') { try { ajaxEnvia('ATU', 0); } catch (e) {} }
-                }"""
-            )
+            if fila is not None and not fila.is_closed():
+                fila.close()
         except Exception:
             pass
-        fila.wait_for_timeout(2500)
 
-    raise RuntimeError(f"31: Ver fila sem download em 150s. Hint: {last_hint}")
+
+def _baixar_todos_da_fila(
+    client,
+    context,
+    page,
+    fila,
+    *,
+    queued: list[dict[str, Any]],
+    known_before: set[str],
+    ts: str,
+    status,
+) -> dict[str, str]:
+    """
+    Espera jobs concluídos na 156 e baixa Excel na ordem dos códigos enfileirados.
+    """
+    paths: dict[str, str] = {}
+    want = len(queued)
+    codes_order = [q["code"] for q in queued]
+    seq_by_code = {q["code"]: q.get("seq") or "" for q in queued}
+    deadline = time.time() + max(180, 45 * want)
+    downloaded_seqs: set[str] = set()
+
+    while time.time() < deadline and len(paths) < want:
+        try:
+            if fila is None or fila.is_closed():
+                fila = _abrir_fila_156(client, context, page, status)
+            try:
+                fila.bring_to_front()
+            except Exception:
+                pass
+            _atualizar_fila(fila)
+            _safe_wait(fila, 1000)
+            jobs = _ler_jobs_fila(fila)
+
+            # candidatos: 0495/031 concluídos com DOW, não baixados ainda
+            ours = [
+                j
+                for j in jobs
+                if j.get("concluido")
+                and j.get("hasDow")
+                and str(j.get("seq") or "") not in downloaded_seqs
+                and j.get("is0495")
+                and (
+                    str(j.get("seq") or "") not in known_before
+                    or str(j.get("seq") or "")
+                    in {seq_by_code[c] for c in codes_order if seq_by_code.get(c)}
+                )
+            ]
+            # fallback: qualquer job novo na fila (caso is0495 falhe no parse)
+            if len(ours) < (want - len(paths)):
+                extras = [
+                    j
+                    for j in jobs
+                    if j.get("concluido")
+                    and j.get("hasDow")
+                    and str(j.get("seq") or "") not in downloaded_seqs
+                    and str(j.get("seq") or "") not in known_before
+                    and j not in ours
+                ]
+                ours = ours + extras
+            cands = ours
+            # FIFO: seq conhecida → código; senão seq asc (mais antigo = 1º enfileirado)
+            def sort_key(j: dict[str, Any]) -> tuple:
+                seq = str(j.get("seq") or "")
+                mapped = 0 if seq and seq in seq_by_code.values() else 1
+                try:
+                    num = int(re.sub(r"\D", "", seq) or 0)
+                except Exception:
+                    num = 0
+                return (mapped, num)
+
+            cands.sort(key=sort_key)
+
+            if not cands:
+                if int(time.time()) % 10 < 3:
+                    status(
+                        f"[31] fila 156: aguardando conclusão "
+                        f"({len(paths)}/{want} baixados)…"
+                    )
+                _safe_wait(fila, 2500)
+                continue
+
+            for job in cands:
+                if len(paths) >= want:
+                    break
+                seq = str(job.get("seq") or "")
+                code = None
+                for c in codes_order:
+                    if c in paths:
+                        continue
+                    if seq and seq_by_code.get(c) == seq:
+                        code = c
+                        break
+                if code is None:
+                    # próximo código sem arquivo (ordem de enfileiramento = FIFO)
+                    for c in codes_order:
+                        if c not in paths:
+                            code = c
+                            break
+                if not code:
+                    break
+
+                dest_name = f"pendencia_31_{code}_{ts}.xlsx"
+                status(
+                    f"[31/{code}] baixando da fila 156"
+                    + (f" · seq={seq}" if seq else "")
+                    + f" · {job.get('opcao') or ''}"
+                )
+                try:
+                    path = _clicar_dow_job(client, context, fila, job, dest_name, status, code)
+                    paths[code] = str(path)
+                    if seq:
+                        downloaded_seqs.add(seq)
+                        seq_by_code[code] = seq
+                    status(f"[31/{code}] OK {path.name} ({path.stat().st_size} bytes)")
+                except Exception as err:  # noqa: BLE001
+                    status(f"[31/{code}] download falhou: {err}")
+                    _safe_wait(fila, 1500)
+        except Exception as err:  # noqa: BLE001
+            status(f"[31] fila 156 loop: {err}")
+            try:
+                fila = _abrir_fila_156(client, context, page, status)
+            except Exception:
+                pass
+            time.sleep(2)
+
+    missing = [c for c in codes_order if c not in paths]
+    if missing:
+        status(f"[31] sem download para: {', '.join(missing)}")
+    return paths
+
+
+def _clicar_dow_job(client, context, fila, job: dict, dest_name: str, status, code: str) -> Path:
+    """Clica o link DOW do job na fila e salva o arquivo."""
+    dows = job.get("dows") or []
+    link_index = job.get("linkIndex")
+    with context.expect_event("download", timeout=90000) as di:
+        ok = fila.evaluate(
+            """({ seq, linkIndex }) => {
+              const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
+              // por índice global (fallback)
+              if (linkIndex != null) {
+                const all = Array.from(document.querySelectorAll('a[onclick], a[href], img[onclick]'));
+                const a = all[linkIndex];
+                if (a) { a.click(); return 'idx'; }
+              }
+              // por linha da seq
+              const rows = Array.from(document.querySelectorAll('tr'));
+              for (const tr of rows) {
+                const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
+                if (!cells.length) continue;
+                const s = (cells[0] || '').replace(/\\D/g, '');
+                if (seq && s !== String(seq).replace(/\\D/g, '')) continue;
+                const links = Array.from(tr.querySelectorAll('a[onclick], a[href], img[onclick]'));
+                for (const a of links) {
+                  const text = norm(a.textContent || a.alt || a.title || '');
+                  const onclick = String(a.getAttribute('onclick') || '');
+                  const href = String(a.getAttribute('href') || '');
+                  const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
+                  if (/imprimir|correio|atualizar|voltar|fechar/i.test(text)) continue;
+                  if (/\\bdow\\b|download\\(|ssw0495|\\.xlsx|\\.xls|\\.csv|baixar|arquivo/.test(blob)
+                      || (/0495|031/.test(blob) && /dow|href=|http/.test(blob))) {
+                    a.click();
+                    return 'row';
+                  }
+                }
+              }
+              // último recurso: primeiro DOW da página
+              const all = Array.from(document.querySelectorAll('a[onclick], a[href], img[onclick]'));
+              for (const a of all) {
+                const text = norm(a.textContent || a.alt || a.title || '');
+                const onclick = String(a.getAttribute('onclick') || '');
+                const href = String(a.getAttribute('href') || '');
+                const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
+                if (/imprimir|correio|atualizar/i.test(text)) continue;
+                if (/\\bdow\\b|download\\(|ssw0495|\\.xlsx|baixar/.test(blob)) {
+                  a.click();
+                  return 'first';
+                }
+              }
+              return '';
+            }""",
+            {"seq": job.get("seq") or "", "linkIndex": link_index},
+        )
+        if not ok:
+            raise RuntimeError(f"31/{code}: DOW não encontrado na linha")
+        status(f"[31/{code}] clique DOW={ok}")
+    download = di.value
+    return _save_named(client, download, dest_name)
