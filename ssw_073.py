@@ -1,16 +1,14 @@
 """Download SSW 073 (ssw0332) — Consulta de CTRBs e OSs → Arquivo Excel/CSV.
 
-Fluxo Contratação:
+Fluxo Contratação (mín. 3 relatórios por Propriedade):
   · Unidade emissora = SPO
-  · Tipo O = OS (agregados / terceiros)
-  · Tipo C = CTRB (frota)
-  · Propriedade T · Operação T · Considerar T
+  · Propriedade F = frota · A = agregado · C = carreteiro
+  · Tipo A (ambos CTRB+OS) · Operação T · Considerar T
   · Placas do resultado alimentam o 076
 """
 from __future__ import annotations
 
 import os
-import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -21,6 +19,10 @@ from dates import periodo_mes_ate_hoje, to_ssw_ddmmyy
 from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
+
+# F-frota, A-agregado, C-carreteiro — Contratação puxa os 3
+PROPRIEDADES_073 = ("F", "A", "C")
+PROPRIEDADE_LABEL = {"F": "frota", "A": "agregado", "C": "carreteiro"}
 
 # Programa do Excel CSVssw0332…
 SSW_073_MARKERS = (
@@ -50,19 +52,22 @@ def _ensure_playwright_path() -> None:
 def download_reports_073(
     *,
     period: tuple[str, str] | None = None,
-    tipos: tuple[str, ...] = ("O", "C"),
+    propriedades: tuple[str, ...] | list[str] | None = None,
+    tipo: str = "A",
     unidade_emissora: str = "SPO",
-    propriedade: str = "T",
     operacao: str = "T",
     considerar: str = "T",
     headless: bool | None = None,
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
+    # legado
+    tipos: tuple[str, ...] | None = None,
+    propriedade: str | None = None,
 ) -> dict[str, Any]:
     """
-    Abre opção 73 e gera Arquivo Excel para cada Tipo (O / C).
-    Retorna paths por tipo + lista consolidada.
+    Abre opção 73 e gera Arquivo Excel para cada Propriedade (F / A / C).
+    Retorna paths por chave (F|A|C) + lista consolidada.
     """
     status = on_status or _noop
     ensure_dirs()
@@ -70,9 +75,19 @@ def download_reports_073(
     creds = credentials or load_credentials()
     cfg = settings or load_settings()
     use_headless = cfg.headless if headless is None else bool(headless)
-    tipo_list = [str(t).strip().upper()[:1] for t in tipos if str(t).strip()]
-    if not tipo_list:
-        tipo_list = ["O", "C"]
+
+    if propriedades is None and propriedade and str(propriedade).strip().upper()[:1] not in {"", "T"}:
+        prop_list = [str(propriedade).strip().upper()[:1]]
+    elif propriedades is None:
+        prop_list = list(PROPRIEDADES_073)
+    else:
+        prop_list = [str(p).strip().upper()[:1] for p in propriedades if str(p).strip()]
+    prop_list = [p for p in prop_list if p in {"F", "A", "C"}]
+    if not prop_list:
+        prop_list = list(PROPRIEDADES_073)
+
+    tipo_doc = str(tipo or "A").strip().upper()[:1] or "A"
+    _ = tipos  # legado ignorado — fluxo oficial é por propriedade
 
     ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
     ini = to_ssw_ddmmyy(ini_ddmm)
@@ -97,8 +112,9 @@ def download_reports_073(
     paths: dict[str, str] = {}
     errors: dict[str, str] = {}
     status(
-        f"SSW 73 | tipos={','.join(tipo_list)} | {ini}-{fim} | "
-        f"emissora={unidade_emissora} | prop={propriedade} op={operacao}"
+        f"SSW 73 | {len(prop_list)} relatório(s) · prop={','.join(prop_list)} "
+        f"(F=frota A=agregado C=carreteiro) | tipo={tipo_doc} | {ini}-{fim} | "
+        f"emissora={unidade_emissora} | op={operacao}"
     )
 
     with sync_playwright() as p:
@@ -112,35 +128,37 @@ def download_reports_073(
         try:
             client._login(page)
             client._ensure_unit(page)
-            client._patch_blank_popup_fix(page)
+            client._patch_blank_popup_form(page)
 
-            for idx, tipo in enumerate(tipo_list, start=1):
+            for idx, prop in enumerate(prop_list, start=1):
+                lab = PROPRIEDADE_LABEL.get(prop, prop)
+                key = prop
                 try:
-                    status(f"[73/{tipo}] ({idx}/{len(tipo_list)}) abrindo opção 73…")
+                    status(f"[73/{prop}·{lab}] ({idx}/{len(prop_list)}) abrindo opção 73…")
                     popup = _reopen_73(client, page, popup)
-                    status(f"[73/{tipo}] preenchendo formulário…")
+                    status(f"[73/{prop}·{lab}] preenchendo formulário…")
                     _preencher_73(
                         popup,
                         ini=ini,
                         fim=fim,
-                        tipo=tipo,
+                        tipo=tipo_doc,
                         unidade=unidade_emissora,
-                        propriedade=propriedade,
+                        propriedade=prop,
                         operacao=operacao,
                         considerar=considerar,
                         on_status=status,
                     )
-                    status(f"[73/{tipo}] gerando Arquivo Excel…")
-                    dest_name = f"contratacao_073_{tipo}_{ts}.sswweb"
+                    status(f"[73/{prop}·{lab}] gerando Arquivo Excel…")
+                    dest_name = f"contratacao_073_{prop}_{ts}.sswweb"
                     path = _gerar_download_73(
-                        client, context, page, popup, dest_name, tipo, status
+                        client, context, page, popup, dest_name, key, status
                     )
-                    paths[tipo] = str(path)
-                    status(f"[73/{tipo}] OK {path.name} ({path.stat().st_size} bytes)")
+                    paths[key] = str(path)
+                    status(f"[73/{prop}·{lab}] OK {path.name} ({path.stat().st_size} bytes)")
                     page.wait_for_timeout(400)
                 except Exception as err:  # noqa: BLE001
-                    errors[tipo] = str(err)
-                    status(f"[73/{tipo}] FALHOU: {err}")
+                    errors[key] = str(err)
+                    status(f"[73/{prop}·{lab}] FALHOU: {err}")
                     try:
                         popup = _reopen_73(client, page, popup)
                     except Exception:
@@ -161,6 +179,7 @@ def download_reports_073(
         "paths": paths,
         "files": list(paths.values()),
         "errors": errors,
+        "propriedades": prop_list,
         "period": (ini_ddmm, fim_ddmm),
         "periodo_fmt": f"{ini_ddmm} – {fim_ddmm}",
         "unidade": unidade_emissora,
@@ -190,6 +209,7 @@ def _preencher_73(
 ) -> None:
     """Preenche 073 por rótulo (ids SSW variam)."""
     status = on_status
+    lab = PROPRIEDADE_LABEL.get(propriedade, propriedade)
     popup.wait_for_timeout(400)
     filled = popup.evaluate(
         """({ ini, fim, tipo, unidade, propriedade, operacao, considerar }) => {
@@ -201,14 +221,12 @@ def _preencher_73(
             let p = el.previousElementSibling;
             if (p) t = (p.innerText || p.textContent || '');
             if (!t && el.parentElement) t = el.parentElement.innerText || '';
-            // div.texto absoluto no SSW
             const id = el.id;
             if (id) {
               const labs = Array.from(document.querySelectorAll('.texto, label, td'));
               for (const lab of labs) {
                 const lt = (lab.innerText || '').trim();
                 if (!lt || lt.length > 80) continue;
-                // heurística: label à esquerda do input
                 try {
                   const er = el.getBoundingClientRect();
                   const lr = lab.getBoundingClientRect();
@@ -237,12 +255,10 @@ def _preencher_73(
             return true;
           };
 
-          // Período: dois campos com "periodo" / datas
           const periodInputs = inputs.filter((el) => {
             const lab = norm(near(el));
             return lab.includes('periodo') || lab.includes('data');
           });
-          // fallback: maxlength 6 (ddmmyy)
           const ddmmyy = inputs.filter((el) => Number(el.maxLength) === 6 || Number(el.size) === 6);
           let okIni = false, okFim = false;
           if (periodInputs.length >= 2) {
@@ -274,11 +290,13 @@ def _preencher_73(
             "considerar": considerar,
         },
     )
-    status(f"[73/{tipo}] form {filled}")
+    status(f"[73/{propriedade}·{lab}] form {filled}")
+    if not filled.get("okProp"):
+        raise RuntimeError(f"073: não achei campo Propriedade ({filled})")
     if not filled.get("okTipo"):
-        raise RuntimeError(f"073: não achei campo Tipo ({filled})")
+        status(f"[73/{propriedade}·{lab}] aviso: Tipo pode não ter preenchido")
     if not (filled.get("okIni") and filled.get("okFim")):
-        status(f"[73/{tipo}] aviso: período pode não ter preenchido ({filled})")
+        status(f"[73/{propriedade}·{lab}] aviso: período pode não ter preenchido ({filled})")
     popup.wait_for_timeout(200)
 
 
@@ -305,22 +323,22 @@ def _clicar_excel_73(popup) -> str:
     )
 
 
-def _gerar_download_73(client, context, page, popup, dest_name: str, tipo: str, status) -> Path:
+def _gerar_download_73(client, context, page, popup, dest_name: str, key: str, status) -> Path:
     try:
         with context.expect_event("download", timeout=25000) as di:
             clicked = _clicar_excel_73(popup)
             if not clicked:
                 raise RuntimeError("073: botão Arquivo Excel / ► não encontrado")
-            status(f"[73/{tipo}] clique={clicked}")
+            status(f"[73/{key}] clique={clicked}")
         download = di.value
         return _save_named(client, download, dest_name)
     except Exception as direct_err:  # noqa: BLE001
-        status(f"[73/{tipo}] sem download imediato ({direct_err}); Ver fila…")
+        status(f"[73/{key}] sem download imediato ({direct_err}); Ver fila…")
         try:
             popup.wait_for_timeout(800)
         except Exception:
             pass
-        return _baixar_via_fila_73(client, context, page, popup, dest_name, tipo, status)
+        return _baixar_via_fila_73(client, context, page, popup, dest_name, key, status)
 
 
 def _save_named(client, download, dest_name: str) -> Path:
@@ -367,16 +385,14 @@ def _abrir_ver_fila(client, context, page, popup, status):
     return fila
 
 
-def _baixar_via_fila_73(client, context, page, popup, dest_name: str, tipo: str, status) -> Path:
+def _baixar_via_fila_73(client, context, page, popup, dest_name: str, key: str, status) -> Path:
     fila = _abrir_ver_fila(client, context, page, popup, status)
     deadline = time.time() + 150
     last_err = ""
     while time.time() < deadline:
         try:
-            # evita blank.html
             if "blank" in (fila.url or "").lower():
                 fila.goto("https://sistema.ssw.inf.br/bin/ssw1440", wait_until="domcontentloaded")
-            # refresh
             try:
                 fila.evaluate(
                     """() => {
@@ -387,7 +403,6 @@ def _baixar_via_fila_73(client, context, page, popup, dest_name: str, tipo: str,
             except Exception:
                 pass
             fila.wait_for_timeout(1200)
-            # procura link de download recente
             href = fila.evaluate(
                 """() => {
                   const as = Array.from(document.querySelectorAll('a[href], a'));
@@ -417,4 +432,4 @@ def _baixar_via_fila_73(client, context, page, popup, dest_name: str, tipo: str,
         except Exception as err:  # noqa: BLE001
             last_err = str(err)
         fila.wait_for_timeout(2000)
-    raise RuntimeError(f"073/{tipo}: timeout na fila ({last_err})")
+    raise RuntimeError(f"073/{key}: timeout na fila ({last_err})")
