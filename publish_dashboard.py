@@ -184,7 +184,7 @@ def publish_armazem_local(*, on_status: StatusCallback | None = None) -> dict[st
 
 
 def _copy_contratacao_to_dashboard() -> dict[str, str]:
-    from parser_ssw073 import CTRBS_073_CSV, RESUMO_073_CSV, VEICULOS_073_CSV
+    from parser_ssw073 import CTRBS_073_CSV, DESTINOS_073_CSV, RESUMO_073_CSV, VEICULOS_073_CSV
 
     data_dir = DASHBOARD_DIR / "data" / "contratacao"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -205,7 +205,12 @@ def _copy_contratacao_to_dashboard() -> dict[str, str]:
             CTRBS_073_CSV,
             "ctrbs_073.csv",
             "ctrb,tipo,situacao,placa,carreta,propriedade,grupo,custo,custo_av,"
-            "valor_pagar,total_ctrb,peso,frete,origem,fonte\n",
+            "valor_pagar,total_ctrb,peso,frete,origem,destino,cidade_destino,fonte\n",
+        ),
+        (
+            DESTINOS_073_CSV,
+            "destinos_073.csv",
+            "destino,qtd,custo,frete,peso\n",
         ),
     ):
         dest = data_dir / name

@@ -26,5 +26,6 @@ window.ACE_CONFIG = {
     resumo: "data/contratacao/resumo_073.csv",
     veiculos: "data/contratacao/veiculos_073.csv",
     ctrbs: "data/contratacao/ctrbs_073.csv",
+    destinos: "data/contratacao/destinos_073.csv",
   },
 };

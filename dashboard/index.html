@@ -2490,37 +2490,80 @@
     .ctr-layout [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
     .ctr-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .ctr-mix {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      padding: 16px;
-      align-content: center;
-      height: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 12px 0;
+      align-items: center;
+      justify-content: flex-start;
       min-height: 0;
+      height: auto;
     }
     .ctr-mix .mix-card {
       background: linear-gradient(180deg, #15233c, #0d1728);
       border: 1px solid rgba(148, 163, 184, 0.16);
-      border-radius: 14px;
-      padding: 18px 14px;
+      border-radius: 10px;
+      padding: 6px 12px;
       text-align: center;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
     }
     .ctr-mix .mix-card .n {
-      font-size: clamp(28px, 4vw, 48px);
+      font-size: clamp(16px, 1.8vw, 22px);
       font-weight: 800;
       font-variant-numeric: tabular-nums;
     }
     .ctr-mix .mix-card .l {
-      margin-top: 6px;
+      margin-top: 0;
       color: var(--muted);
-      font-size: 12px;
-      letter-spacing: 0.1em;
+      font-size: 11px;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       font-weight: 700;
     }
     .ctr-mix .mix-card.frota .n { color: #38bdf8; }
     .ctr-mix .mix-card.agregado .n { color: #fbbf24; }
     .ctr-mix .mix-card.terceiro .n { color: #fb923c; }
+    .ctr-towers-wrap {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: flex-end;
+      padding: 8px 10px 12px;
+      overflow-x: auto;
+    }
+    .torres.ctr-torres {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: clamp(8px, 1.2vw, 16px);
+      width: 100%;
+      min-height: 220px;
+    }
+    .torres.ctr-torres .torre { width: min(92px, 11vw); }
+    .torres.ctr-torres .t-d0 .barra { background: linear-gradient(180deg, #fb923c, #c2410c); }
+    .torres.ctr-torres .t-d0 .pin { background: #f97316; }
+    .torres.ctr-torres .t-d1 .barra { background: linear-gradient(180deg, #38bdf8, #0284c7); }
+    .torres.ctr-torres .t-d1 .pin { background: #0ea5e9; }
+    .torres.ctr-torres .t-d2 .barra { background: linear-gradient(180deg, #4ade80, #15803d); }
+    .torres.ctr-torres .t-d2 .pin { background: #22c55e; }
+    .torres.ctr-torres .t-d3 .barra { background: linear-gradient(180deg, #fbbf24, #d97706); }
+    .torres.ctr-torres .t-d3 .pin { background: #f59e0b; }
+    .torres.ctr-torres .t-d4 .barra { background: linear-gradient(180deg, #a78bfa, #6d28d9); }
+    .torres.ctr-torres .t-d4 .pin { background: #8b5cf6; }
+    .torres.ctr-torres .t-d5 .barra { background: linear-gradient(180deg, #f472b6, #be185d); }
+    .torres.ctr-torres .t-d5 .pin { background: #ec4899; }
+    .torres.ctr-torres .t-d6 .barra { background: linear-gradient(180deg, #94a3b8, #475569); }
+    .torres.ctr-torres .t-d6 .pin { background: #64748b; }
+    .torres.ctr-torres .t-d7 .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
+    .torres.ctr-torres .t-d7 .pin { background: #ef4444; }
+    .arm-hero-card:has(.ctr-towers-wrap) {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .arm-hero-card:has(.ctr-towers-wrap) > header { flex: 0 0 auto; }
     body.tv-mode .ctr-wrap {
       max-width: none !important;
       width: 100% !important;
@@ -4096,11 +4139,14 @@
         </div>
         <section class="arm-hero-card dash-block" data-block="chart">
           <header>
-            <h2>Frota · Agregado · Terceiro</h2>
-            <div class="meta" id="ctrMeta">base 073 · frete 076 (R)</div>
+            <h2>Destinos (unidade)</h2>
+            <div class="meta" id="ctrMeta">base 073 · UNIDADE DESTINO</div>
             <div class="meta" id="ctrAtualizado">atualizado —</div>
           </header>
           <div class="ctr-mix" id="ctrMix" aria-label="Mix propriedade"></div>
+          <div class="ctr-towers-wrap">
+            <div class="torres arm-torres ctr-torres" id="ctrTorres" aria-label="Torres por unidade destino"></div>
+          </div>
         </section>
         <section class="arm-panel dash-block" data-block="tabela">
           <header>
@@ -4215,6 +4261,7 @@
     let ctrRefreshTimer = null;
     let lastGoodCtrResumo = null;
     let lastGoodCtrVeics = [];
+    let lastGoodCtrDestinos = [];
     let lastGoodPenResumo = null;
     let lastGoodPenOfens = [];
     let lastGoodPenRows = [];
@@ -6024,6 +6071,41 @@
       return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' kg';
     }
 
+    function alturaTorreCtr(valor, max) {
+      const minH = 36;
+      const maxH = document.body.classList.contains('tv-mode') ? 280 : 200;
+      if (!max || max <= 0) return minH;
+      const t = Math.max(0, Number(valor) || 0) / max;
+      return Math.round(minH + t * (maxH - minH));
+    }
+
+    function renderCtrTorres(destinos) {
+      const host = document.getElementById('ctrTorres');
+      if (!host) return;
+      const items = (destinos || []).slice(0, 10);
+      if (!items.length) {
+        host.innerHTML = '<div class="arm-rank-empty">Sem destinos — rode `73`</div>';
+        return;
+      }
+      const max = Math.max(...items.map((d) => Number(d.qtd) || 0), 1);
+      const total = items.reduce((s, d) => s + (Number(d.qtd) || 0), 0) || 1;
+      host.innerHTML = items.map((d, i) => {
+        const qtd = Number(d.qtd) || 0;
+        const pct = Math.round((qtd / total) * 100);
+        const skin = 't-d' + (i % 8);
+        const lab = esc(String(d.destino || '—').trim() || '—');
+        const tip = esc(
+          `${d.destino || '—'} · ${qtd} CTRB · custo R$ ${fmtCtrMoney(d.custo)} · frete R$ ${fmtCtrMoney(d.frete)}`
+        );
+        const h = alturaTorreCtr(qtd, max);
+        return `<div class="torre ${skin}" title="${tip}">
+          <div class="pin"><span class="${qtd >= 100 ? 'pin-lg' : ''}">${qtd}</span></div>
+          <div class="barra" style="height:${h}px"><strong>${pct}<span class="pct-sign">%</span></strong></div>
+          <div class="base"><div class="lbl">${lab}</div></div>
+        </div>`;
+      }).join('');
+    }
+
     async function refreshContratacao() {
       if (CURRENT_SECTOR !== 'contratacao') return;
       const err = document.getElementById('ctrErr');
@@ -6043,18 +6125,27 @@
 
         let resumo = {};
         let veics = [];
+        let destinos = [];
         try {
           const rCsv = await loadCsvLocal(CTR_CSV.resumo || 'data/contratacao/resumo_073.csv');
           resumo = rCsv[0] || {};
           veics = await loadCsvLocal(CTR_CSV.veiculos || 'data/contratacao/veiculos_073.csv');
+          try {
+            destinos = await loadCsvLocal(CTR_CSV.destinos || 'data/contratacao/destinos_073.csv');
+          } catch (_) {
+            destinos = [];
+          }
           if (resumo && Object.keys(resumo).length) lastGoodCtrResumo = { ...resumo };
           if (veics.length) lastGoodCtrVeics = veics.slice();
+          if (destinos.length) lastGoodCtrDestinos = destinos.slice();
         } catch (_) {
           resumo = lastGoodCtrResumo ? { ...lastGoodCtrResumo } : {};
           veics = lastGoodCtrVeics.slice();
+          destinos = lastGoodCtrDestinos.slice();
         }
         if (!Object.keys(resumo).length && lastGoodCtrResumo) resumo = { ...lastGoodCtrResumo };
         if (!veics.length && lastGoodCtrVeics.length) veics = lastGoodCtrVeics.slice();
+        if (!destinos.length && lastGoodCtrDestinos.length) destinos = lastGoodCtrDestinos.slice();
 
         if (err) err.hidden = true;
         setCtrText('ctrVeic', resumo.total_veiculos || veics.length || '0');
@@ -6068,7 +6159,8 @@
         if (meta) {
           meta.textContent = [
             resumo.total_ctrbs ? `${resumo.total_ctrbs} CTRB/OS` : '',
-            '073 base · 076 frete (R)',
+            destinos.length ? `${destinos.length} destinos` : '',
+            '073 · unidade destino',
           ].filter(Boolean).join(' · ');
         }
 
@@ -6079,10 +6171,12 @@
           const contrat = Number(resumo.contratados) || Number(resumo.terceiro) || 0;
           mix.innerHTML = `
             <div class="mix-card frota"><div class="n">${frota}</div><div class="l">Frota</div></div>
-            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">Contratados (C)</div></div>
-            <div class="mix-card agregado"><div class="n">${agreg}</div><div class="l">Agregados (O)</div></div>
+            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">Contrat. (C)</div></div>
+            <div class="mix-card agregado"><div class="n">${agreg}</div><div class="l">Agreg. (O)</div></div>
           `;
         }
+
+        renderCtrTorres(destinos);
 
         const tb = document.getElementById('ctrTbody');
         if (tb) {

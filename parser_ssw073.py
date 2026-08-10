@@ -23,6 +23,7 @@ from config import CACHE_DIR, DASHBOARD_DIR, ensure_dirs
 VEICULOS_073_CSV = CACHE_DIR / "veiculos_073.csv"
 RESUMO_073_CSV = CACHE_DIR / "resumo_073.csv"
 CTRBS_073_CSV = CACHE_DIR / "ctrbs_073.csv"
+DESTINOS_073_CSV = CACHE_DIR / "destinos_073.csv"
 
 DASH_CONTRATACAO = DASHBOARD_DIR / "data" / "contratacao"
 
@@ -36,6 +37,9 @@ COL_CARRETA = 11      # L
 COL_VALOR_PAGAR = 35  # AJ
 COL_TOTAL_CTRB = 40   # AO
 COL_CUSTO_AV = 47     # AV — ADIANTAMENTO
+COL_ORIGEM_CID = 17   # CIDADE/UF ORIGEM
+COL_DESTINO = 18      # UNIDADE DESTINO (sigla — torres)
+COL_DESTINO_CID = 19  # CIDADE/UF DESTINO
 COL_PESO = 68         # BQ
 COL_FRETE = 70        # BS
 
@@ -54,6 +58,8 @@ CTRBS_FIELDS = [
     "peso",
     "frete",
     "origem",
+    "destino",
+    "cidade_destino",
     "fonte",
 ]
 
@@ -69,6 +75,14 @@ VEICULO_FIELDS = [
     "peso",
     "frete",
     "ctrbs",
+]
+
+DESTINO_FIELDS = [
+    "destino",
+    "qtd",
+    "custo",
+    "frete",
+    "peso",
 ]
 
 RESUMO_FIELDS = [
@@ -167,11 +181,65 @@ def _cell(cols: list[str], idx: int) -> str:
     return _clean(cols[idx]) if idx < len(cols) else ""
 
 
+def _header_map(text: str) -> dict[str, int]:
+    """Mapeia nome de coluna (upper) → índice a partir da linha tipo 1."""
+    for line in text.splitlines()[:12]:
+        if not (line.startswith("1;") or line.startswith("1,")):
+            continue
+        sep = ";" if line.count(";") >= line.count(",") else ","
+        headers = [_clean(h).upper() for h in line.split(sep)]
+        out: dict[str, int] = {}
+        for i, h in enumerate(headers):
+            if h and h not in out:
+                out[h] = i
+        return out
+    return {}
+
+
+def _idx_from_header(hmap: dict[str, int], *names: str, default: int = -1) -> int:
+    for n in names:
+        nu = n.upper()
+        if nu in hmap:
+            return hmap[nu]
+        for key, idx in hmap.items():
+            if nu in key:
+                return idx
+    return default
+
+
 def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
     """Lê CSV/sswweb do 073 (ssw0332). Linhas tipo 2 = dados."""
     text = _read_text(Path(path))
     rows: list[dict[str, Any]] = []
     src = fonte or Path(path).name
+    hmap = _header_map(text)
+
+    i_ctrb = _idx_from_header(hmap, "CTRB", default=COL_CTRB)
+    i_tipo = _idx_from_header(hmap, "TIPO", default=COL_TIPO)
+    i_sit = _idx_from_header(hmap, "SITUACAO", "SITUAÇÃO", default=COL_SITUACAO)
+    i_placa = _idx_from_header(hmap, "PLACA CAVALO", "PLACA", default=COL_PLACA)
+    i_prop = _idx_from_header(hmap, "PROPRIEDADE", default=COL_PROPRIEDADE)
+    i_carreta = _idx_from_header(hmap, "PLACA CARRETA 1", "PLACA CARRETA", default=COL_CARRETA)
+    i_pagar = _idx_from_header(hmap, "VALOR A PAGAR", default=COL_VALOR_PAGAR)
+    i_total = _idx_from_header(hmap, "TOTAL CTRB", default=COL_TOTAL_CTRB)
+    i_av = _idx_from_header(hmap, "ADIANTAMENTO", default=COL_CUSTO_AV)
+    # prefer ADIANTAMENTO puro (não CCF/FORNECEDOR) se existir
+    for key, idx in hmap.items():
+        if key == "ADIANTAMENTO":
+            i_av = idx
+            break
+    i_peso = _idx_from_header(
+        hmap, "PESO CTRCs(CTRB COLETA/ENTREGA)", "PESO CTRCS", "PESO", default=COL_PESO
+    )
+    i_frete = _idx_from_header(
+        hmap, "FRETE CTRCs(CTRB COLETA/ENTREGA)", "FRETE CTRCS", "FRETE", default=COL_FRETE
+    )
+    i_origem = _idx_from_header(hmap, "CIDADE/UF ORIGEM", "ORIGEM", default=COL_ORIGEM_CID)
+    i_destino = _idx_from_header(hmap, "UNIDADE DESTINO", default=COL_DESTINO)
+    i_cid_dest = _idx_from_header(
+        hmap, "CIDADE/UF DESTINO", "CIDADE DESTINO", default=COL_DESTINO_CID
+    )
+
     for line in text.splitlines():
         if not line.startswith("2;") and not line.startswith("2,"):
             # alguns exports usam só dados sem prefixo após header
@@ -183,35 +251,41 @@ def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
             cols = ["2"] + line.split(";")
         else:
             cols = line.split(";")
-        ctrb = _cell(cols, COL_CTRB)
-        placa = _cell(cols, COL_PLACA).upper()
+        ctrb = _cell(cols, i_ctrb)
+        placa = _cell(cols, i_placa).upper()
         if not ctrb and not placa:
             continue
         if ctrb.upper() in {"CTRB", "TIPO"}:
             continue
-        custo_av = _parse_money(_cell(cols, COL_CUSTO_AV))
-        valor_pagar = _parse_money(_cell(cols, COL_VALOR_PAGAR))
-        total_ctrb = _parse_money(_cell(cols, COL_TOTAL_CTRB))
+        custo_av = _parse_money(_cell(cols, i_av))
+        valor_pagar = _parse_money(_cell(cols, i_pagar))
+        total_ctrb = _parse_money(_cell(cols, i_total))
         # Custo do painel: AV (pedido); se zerado, cai no valor a pagar / total CTRB
         custo = custo_av if custo_av > 0 else (valor_pagar or total_ctrb)
-        prop = _cell(cols, COL_PROPRIEDADE)
-        tipo_doc = _cell(cols, COL_TIPO)
+        prop = _cell(cols, i_prop)
+        tipo_doc = _cell(cols, i_tipo)
+        destino = _cell(cols, i_destino).upper()
+        # evita pegar valor monetário por layout errado
+        if destino and ("," in destino or destino.replace(".", "", 1).isdigit()):
+            destino = ""
         rows.append(
             {
                 "ctrb": ctrb,
                 "tipo": tipo_doc,
-                "situacao": _cell(cols, COL_SITUACAO),
+                "situacao": _cell(cols, i_sit),
                 "placa": placa,
-                "carreta": _cell(cols, COL_CARRETA).upper(),
+                "carreta": _cell(cols, i_carreta).upper(),
                 "propriedade": prop,
                 "grupo": _grupo_propriedade(prop, tipo_doc, src),
                 "custo": round(custo, 2),
                 "custo_av": round(custo_av, 2),
                 "valor_pagar": round(valor_pagar, 2),
                 "total_ctrb": round(total_ctrb, 2),
-                "peso": round(_parse_money(_cell(cols, COL_PESO)), 3),
-                "frete": round(_parse_money(_cell(cols, COL_FRETE)), 2),
-                "origem": _cell(cols, 17),
+                "peso": round(_parse_money(_cell(cols, i_peso)), 3),
+                "frete": round(_parse_money(_cell(cols, i_frete)), 2),
+                "origem": _cell(cols, i_origem),
+                "destino": destino,
+                "cidade_destino": _cell(cols, i_cid_dest),
                 "fonte": src,
             }
         )
@@ -233,6 +307,7 @@ def _publish_local() -> None:
         (VEICULOS_073_CSV, "veiculos_073.csv"),
         (RESUMO_073_CSV, "resumo_073.csv"),
         (CTRBS_073_CSV, "ctrbs_073.csv"),
+        (DESTINOS_073_CSV, "destinos_073.csv"),
     ):
         if src.exists():
             shutil.copy2(src, DASH_CONTRATACAO / name)
@@ -322,6 +397,28 @@ def analyze_reports_073(
         veiculos.append(slot)
     veiculos.sort(key=lambda v: (-float(v["custo"]), v["placa"]))
 
+    # Torres: agrega por UNIDADE DESTINO (sigla 2–4 letras)
+    by_dest: dict[str, dict[str, Any]] = {}
+    for r in ctrbs:
+        dest = (r.get("destino") or "").strip().upper()
+        if not dest or not re.fullmatch(r"[A-Z]{2,4}", dest):
+            continue
+        slot = by_dest.get(dest)
+        if not slot:
+            slot = {"destino": dest, "qtd": 0, "custo": 0.0, "frete": 0.0, "peso": 0.0}
+            by_dest[dest] = slot
+        slot["qtd"] += 1
+        slot["custo"] += float(r.get("custo") or 0)
+        slot["frete"] += float(r.get("frete") or 0)
+        slot["peso"] += float(r.get("peso") or 0)
+    destinos = []
+    for slot in by_dest.values():
+        slot["custo"] = round(slot["custo"], 2)
+        slot["frete"] = round(slot["frete"], 2)
+        slot["peso"] = round(slot["peso"], 3)
+        destinos.append(slot)
+    destinos.sort(key=lambda d: (-int(d["qtd"]), d["destino"]))
+
     total_custo = sum(float(v["custo"]) for v in veiculos)
     total_frete = sum(float(v["frete"]) for v in veiculos)
     total_peso = sum(float(v["peso"]) for v in veiculos)
@@ -350,10 +447,12 @@ def analyze_reports_073(
 
     _write_csv(CTRBS_073_CSV, CTRBS_FIELDS, ctrbs)
     _write_csv(VEICULOS_073_CSV, VEICULO_FIELDS, veiculos)
+    _write_csv(DESTINOS_073_CSV, DESTINO_FIELDS, destinos)
     _write_csv(RESUMO_073_CSV, RESUMO_FIELDS, [resumo])
     _publish_local()
     status(
         f"073 análise: {resumo['total_veiculos']} veículo(s) · "
+        f"{len(destinos)} destino(s) · "
         f"custo R$ {resumo['custo_fmt']} · frete R$ {resumo['frete_fmt']} · "
         f"peso {resumo['peso_fmt']} kg"
     )
@@ -362,10 +461,12 @@ def analyze_reports_073(
         "resumo": resumo,
         "veiculos": veiculos,
         "ctrbs": ctrbs,
+        "destinos": destinos,
         "placas": [v["placa"] for v in veiculos],
         "files": {
             "veiculos": str(VEICULOS_073_CSV),
             "resumo": str(RESUMO_073_CSV),
             "ctrbs": str(CTRBS_073_CSV),
+            "destinos": str(DESTINOS_073_CSV),
         },
     }

@@ -317,9 +317,9 @@ def cmd_help() -> str:
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
         "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos (reabre a 31 cada um)\n"
         "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
-        "  Contratação: `73` / `contratacao` = 073×3 (mês · F+A · A+C · A+O · SPO) → 076(R)\n"
+        "  Contratação: `73` / `contratacao` = 073×3 (mês · F+A · A+C · A+O · SPO) → 076(E) → 200(E)\n"
         "             F+Tipo A=frota · A+Tipo C=contratados · A+Tipo O=agregados · período=mês até hoje\n"
-        "             `73 so73` = só 073 · `73 caminho\\arquivo.sswweb` = local\n"
+        "             `73 so73` = só 073 · CSV ssw0644 local = frete manifesto · `73 sem200`\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
@@ -577,35 +577,49 @@ def run_pipeline_31_cmd(extra: list[str] | None = None) -> str:
 
 
 def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
-    """`73` / `contratacao` · `73 local` usa CSV já baixado · `73 so73` pula o 076."""
+    """`73` / `contratacao` · `73 so73` só 073 · arquivos locais 073/0644."""
     from pipeline import run_pipeline_contratacao
 
     extra = extra or []
     skip_076 = any(str(x).lower() in {"so73", "só73", "skip76", "sem76"} for x in extra)
-    local_files: list[str] = []
+    skip_200 = any(str(x).lower() in {"sem200", "skip200"} for x in extra)
+    local_073: list[str] = []
+    local_200: list[str] = []
     for x in extra:
         xl = str(x).lower()
-        if xl in {"local", "so73", "só73", "skip76", "sem76"}:
+        if xl in {"local", "so73", "só73", "skip76", "sem76", "sem200", "skip200"}:
             continue
         p = Path(x)
-        if p.exists():
-            local_files.append(str(p))
-    print("\n=== Pipeline Contratação (mês · 073: F+A · A+C · A+O → 076) ===")
-    if local_files:
-        print(f"  local: {', '.join(local_files)}")
+        if not p.exists():
+            continue
+        name = p.name.lower()
+        if "0644" in name or "manifesto" in name:
+            local_200.append(str(p))
+        else:
+            local_073.append(str(p))
+    print("\n=== Pipeline Contratação (mês · 073 → 076 → 200) ===")
+    if local_073 or local_200:
+        if local_073:
+            print(f"  073 local: {', '.join(local_073)}")
+        if local_200:
+            print(f"  200 local: {', '.join(local_200)}")
     else:
-        print("  073: mês até hoje · F+Tipo A (frota) · A+Tipo C (contratados) · A+Tipo O (agregados) · SPO")
+        print("  073: mês · F+A · A+C · A+O · SPO → 076(E) → 200(E frete manifesto)")
     if skip_076:
-        print("  modo: só 073 (sem 076)")
+        print("  modo: sem 076")
+    if skip_200:
+        print("  modo: sem 200")
     result = run_pipeline_contratacao(
         on_status=_on_status,
         headless=_cfg_headless(),
         skip_076=skip_076,
-        local_073=local_files or None,
+        skip_200=skip_200,
+        local_073=local_073 or None,
+        local_200=local_200 or None,
     )
     resumo = result.get("resumo") or {}
     return (
-        f"073/076 OK · veículos={resumo.get('total_veiculos')} "
+        f"073/076/200 OK · veículos={resumo.get('total_veiculos')} "
         f"custo=R${resumo.get('custo_fmt')} frete=R${resumo.get('frete_fmt')} "
         f"peso={resumo.get('peso_fmt')}kg · placas={len(result.get('placas') or [])}"
     )

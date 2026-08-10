@@ -1,9 +1,9 @@
 """Download SSW 073 (ssw0332) — Consulta de CTRBs e OSs → Arquivo Excel/CSV.
 
-Fluxo Contratação (3 relatórios · Unidade emissora = SPO · período = mês até hoje):
-  1) 1 login · abre N telas 073 (F+A · A+C · A+O)
-  2) Arquivo Excel → download direto (073 não usa fila 156)
-  3) Mesma sessão segue pro 076
+Fluxo Contratação (Unidade = SPO · período = mês até hoje):
+  1) 1 login · N telas 073 (F+A · A+C · A+O) · Excel direto
+  2) 076 Arquivo=E → fila 156 (remuneração)
+  3) 200/ssw0644 Tipo=E → fila 156 (FRETE-R$ por placa)
 """
 from __future__ import annotations
 
@@ -218,13 +218,14 @@ def download_contratacao_ssw(
     *,
     period: tuple[str, str] | None = None,
     skip_076: bool = False,
+    skip_200: bool = False,
     unidade_emissora: str = "SPO",
     headless: bool | None = None,
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
 ) -> dict[str, Any]:
-    """1 login: 073 em N telas paralelas + 076 na mesma sessão."""
+    """1 login: 073 em N telas paralelas + 076 + 200 (frete manifesto) na mesma sessão."""
     status = on_status or _noop
     ensure_dirs()
     _ensure_playwright_path()
@@ -242,7 +243,9 @@ def download_contratacao_ssw(
 
     from parser_ssw073 import analyze_reports_073
     from parser_ssw076 import analyze_reports_076
+    from parser_ssw0644 import analyze_reports_200
     from ssw_076 import download_reports_076
+    from ssw_200 import download_reports_200
 
     client = AceSswClient(
         ini_ddmm,
@@ -257,16 +260,23 @@ def download_contratacao_ssw(
 
     from playwright.sync_api import sync_playwright
 
+    extras = []
+    if not skip_076:
+        extras.append("076")
+    if not skip_200:
+        extras.append("200")
     status(
         f"SSW contratação | 1 login · {len(jobs)} telas 073"
-        + (" + 076" if not skip_076 else "")
+        + (f" + {'+'.join(extras)}" if extras else "")
         + f" | {ini}-{fim} | {unidade}"
     )
 
     dl73: dict[str, Any] = {}
     dl76: dict[str, Any] = {}
+    dl200: dict[str, Any] = {}
     analysis73: dict[str, Any] = {}
     analysis76: dict[str, Any] = {"ok": False, "skipped": True}
+    analysis200: dict[str, Any] = {"ok": False, "skipped": True}
     periodo_fmt = f"{ini_ddmm} – {fim_ddmm}"
 
     with sync_playwright() as p:
@@ -344,14 +354,47 @@ def download_contratacao_ssw(
                 except Exception as err:  # noqa: BLE001
                     status(f"076 avisou: {err} (mantendo frete do 073)")
                     analysis76 = {"ok": False, "error": str(err)}
+
+            if not skip_200:
+                try:
+                    status("[200] mesma sessão — manifestos (frete)…")
+                    try:
+                        page.bring_to_front()
+                        client._ensure_unit(page)
+                        client._patch_blank_popup_form(page)
+                    except Exception as stab_err:  # noqa: BLE001
+                        status(f"[200] estabilizando menu: {stab_err}")
+                    dl200 = download_reports_200(
+                        period=(ini_ddmm, fim_ddmm),
+                        unidade_origem="",
+                        tipo_arquivo="E",
+                        on_status=status,
+                        client=client,
+                        context=context,
+                        page=page,
+                    )
+                    analysis200 = analyze_reports_200(
+                        dl200.get("files") or [],
+                        placas=list(analysis73.get("placas") or []),
+                        on_status=status,
+                    )
+                except Exception as err:  # noqa: BLE001
+                    status(f"200 avisou: {err} (mantendo frete anterior)")
+                    analysis200 = {"ok": False, "error": str(err)}
         finally:
             browser.close()
 
+    resumo = (
+        analysis200.get("resumo")
+        or analysis76.get("resumo")
+        or analysis73.get("resumo")
+    )
     return {
         "ok": True,
         "073": {"download": dl73, **analysis73},
         "076": {"download": dl76, **analysis76},
-        "resumo": analysis76.get("resumo") or analysis73.get("resumo"),
+        "200": {"download": dl200, **analysis200},
+        "resumo": resumo,
         "placas": list(analysis73.get("placas") or []),
         "periodo_fmt": periodo_fmt,
     }

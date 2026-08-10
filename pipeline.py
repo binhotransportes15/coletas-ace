@@ -1003,12 +1003,13 @@ def run_pipeline_contratacao(
     settings: AceSettings | None = None,
     headless: bool | None = None,
     skip_076: bool = False,
+    skip_200: bool = False,
     local_073: list[str] | Path | str | None = None,
+    local_200: list[str] | Path | str | None = None,
     on_status: StatusCallback | None = None,
 ) -> dict[str, Any]:
     """
-    Contratação: 073 (base placas/custo/peso) → 076 (frete por carro, op=R).
-    Se `local_073` for passado, analisa arquivos locais sem baixar o 073.
+    Contratação: 073 (placas/custo) → 076 (remuneração) → 200/ssw0644 (frete manifesto).
     """
     status = on_status or _noop
     ensure_dirs()
@@ -1017,16 +1018,46 @@ def run_pipeline_contratacao(
     from dates import format_period, periodo_mes_ate_hoje
     from parser_ssw073 import analyze_reports_073
     from parser_ssw076 import analyze_reports_076
+    from parser_ssw0644 import analyze_reports_200
     from publish_dashboard import publish_contratacao_local
     from ssw_076 import download_reports_076
+    from ssw_200 import download_reports_200
 
-    status(f"ACE CONTRATACAO · 73→76 | {datetime.now():%d/%m %H:%M:%S}")
+    status(f"ACE CONTRATACAO · 73→76→200 | {datetime.now():%d/%m %H:%M:%S}")
     use_headless = cfg.headless if headless is None else headless
     ini, fim = periodo_mes_ate_hoje()
     periodo_fmt = format_period(ini, fim)
 
     dl73: dict[str, Any] = {}
     dl76: dict[str, Any] = {}
+    dl200: dict[str, Any] = {}
+
+    # Só CSV 200 local: aplica frete no 073 já em cache
+    if local_200 and not local_073:
+        from parser_ssw073 import VEICULOS_073_CSV
+
+        if not VEICULOS_073_CSV.exists():
+            raise RuntimeError("200 local: rode o 073 antes (sem veiculos_073.csv)")
+        files200 = local_200 if isinstance(local_200, (list, tuple)) else [local_200]
+        status(f"200 local (merge no 073 em cache): {len(files200)} arquivo(s)")
+        analysis200 = analyze_reports_200(list(files200), on_status=status)
+        pub = publish_contratacao_local(on_status=status)
+        resumo = analysis200.get("resumo") or {}
+        status(
+            f"OK · veículos={(resumo or {}).get('total_veiculos')} "
+            f"custo={(resumo or {}).get('custo_fmt')} "
+            f"frete={(resumo or {}).get('frete_fmt')}"
+        )
+        return {
+            "ok": True,
+            "073": {},
+            "076": {},
+            "200": {"download": {}, **analysis200},
+            "publish": pub,
+            "resumo": resumo,
+            "placas": [],
+        }
+
     if local_073:
         files = local_073 if isinstance(local_073, (list, tuple)) else [local_073]
         status(f"073 local: {len(files)} arquivo(s)")
@@ -1034,9 +1065,10 @@ def run_pipeline_contratacao(
             list(files), periodo=periodo_fmt, unidade="SPO", on_status=status
         )
         analysis76: dict[str, Any] = {"ok": False, "skipped": True}
+        analysis200: dict[str, Any] = {"ok": False, "skipped": True}
+        placas = list(analysis73.get("placas") or [])
         if not skip_076:
             try:
-                placas = list(analysis73.get("placas") or [])
                 dl76 = download_reports_076(
                     placas=placas,
                     period=(ini, fim),
@@ -1055,8 +1087,40 @@ def run_pipeline_contratacao(
             except Exception as err:  # noqa: BLE001
                 status(f"076 avisou: {err} (mantendo frete do 073)")
                 analysis76 = {"ok": False, "error": str(err)}
+        if local_200 and not skip_200:
+            files200 = local_200 if isinstance(local_200, (list, tuple)) else [local_200]
+            try:
+                analysis200 = analyze_reports_200(
+                    list(files200), placas=placas, on_status=status
+                )
+            except Exception as err:  # noqa: BLE001
+                status(f"200 local avisou: {err}")
+                analysis200 = {"ok": False, "error": str(err)}
+        elif not skip_200:
+            try:
+                dl200 = download_reports_200(
+                    period=(ini, fim),
+                    unidade_origem="",
+                    tipo_arquivo="E",
+                    credentials=creds,
+                    settings=cfg,
+                    headless=use_headless,
+                    on_status=status,
+                )
+                analysis200 = analyze_reports_200(
+                    dl200.get("files") or [],
+                    placas=placas,
+                    on_status=status,
+                )
+            except Exception as err:  # noqa: BLE001
+                status(f"200 avisou: {err} (mantendo frete anterior)")
+                analysis200 = {"ok": False, "error": str(err)}
         pub = publish_contratacao_local(on_status=status)
-        resumo = analysis76.get("resumo") if analysis76.get("resumo") else analysis73.get("resumo")
+        resumo = (
+            analysis200.get("resumo")
+            or analysis76.get("resumo")
+            or analysis73.get("resumo")
+        )
         status(
             f"OK · veículos={(resumo or {}).get('total_veiculos')} "
             f"custo={(resumo or {}).get('custo_fmt')} "
@@ -1066,17 +1130,19 @@ def run_pipeline_contratacao(
             "ok": True,
             "073": {"download": dl73, **analysis73},
             "076": {"download": dl76, **analysis76},
+            "200": {"download": dl200, **analysis200},
             "publish": pub,
             "resumo": resumo,
-            "placas": list(analysis73.get("placas") or []),
+            "placas": placas,
         }
 
-    # Live SSW: 1 login · 3 telas 073 paralelas · 076 na mesma sessão
+    # Live SSW: 1 login · 073 + 076 + 200
     from ssw_073 import download_contratacao_ssw
 
     bundle = download_contratacao_ssw(
         period=(ini, fim),
         skip_076=skip_076,
+        skip_200=skip_200,
         unidade_emissora="SPO",
         credentials=creds,
         settings=cfg,
@@ -1094,6 +1160,7 @@ def run_pipeline_contratacao(
         "ok": True,
         "073": bundle.get("073") or {},
         "076": bundle.get("076") or {},
+        "200": bundle.get("200") or {},
         "publish": pub,
         "resumo": resumo,
         "placas": list(bundle.get("placas") or []),

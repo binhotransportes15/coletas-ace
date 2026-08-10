@@ -78,6 +78,7 @@ MENU_PROGRAM = {
     "225": "/bin/ssw2862",  # 225 - Acompanhamento dos agendamentos de entrega
     "31": "/bin/ssw0495",  # 031 - CTRCs com determinada ocorrência
     "73": "/bin/ssw0332",  # 073 - Consulta de CTRBs e OSs (CSVssw0332)
+    "200": "/bin/ssw0644",  # 200 - Relação de Manifestos Operacionais
     "156": "/bin/ssw1440",  # 156 - Fila de processamento em lotes
 }
 
