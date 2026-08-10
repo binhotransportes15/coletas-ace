@@ -454,6 +454,8 @@ class AceCrtConsole(QWidget):
 
         self.payload: dict = {}
         self._worker: CmdWorker | None = None
+        self._worker_cmd: str = ""
+        self._pending_cmd: str | None = None
         self._auto_worker: AutoLoopWorker | None = None
         self._fields: dict[str, QWidget] = {}
         self._log_offset = 0
@@ -1098,9 +1100,6 @@ class AceCrtConsole(QWidget):
         publish(online=False, label="ERR", pct=0, detail=msg[:100], mode="ERR")
 
     def run_command(self, raw: str) -> None:
-        if self._worker and self._worker.isRunning():
-            self._append_log("sistema", "Aguarde o comando atual terminar…")
-            return
         raw = _resolve_friendly_cmd(raw)
         if not raw:
             return
@@ -1109,8 +1108,18 @@ class AceCrtConsole(QWidget):
             self.log.clear()
             return
         if low in {"parar", "stop", "halt"}:
+            self._pending_cmd = None
             self._stop_auto()
             return
+
+        if self._worker and self._worker.isRunning():
+            self._pending_cmd = raw
+            self._append_log(
+                "sistema",
+                f"Fila: `{raw}` depois de `{self._worker_cmd or 'comando atual'}`.",
+            )
+            return
+
         # /automatica e atalhos → loop interno (sem janela CMD)
         parts = raw.split()
         head = parts[0].lower().lstrip("/")
@@ -1132,12 +1141,11 @@ class AceCrtConsole(QWidget):
         if self._auto_worker and self._auto_worker.isRunning():
             self._append_log(
                 "sistema",
-                "Loop contínuo ativo — comando único aguarda o ciclo. Ou digite “parar”.",
+                "Loop contínuo ativo — digite “parar” antes de puxar 73/31/etc.",
             )
-            # ainda permite comandos leves? safer to block pipelines
-            # allow status/help via execute if not pipeline - keep simple: block all
             return
 
+        self._worker_cmd = raw
         self._append_log("cmd", raw)
         self.btn_run.setEnabled(False)
         self.mode.setText("RUN")
@@ -1149,6 +1157,13 @@ class AceCrtConsole(QWidget):
         self._worker.failed.connect(self._on_cmd_fail)
         self._worker.start()
 
+    def _drain_pending(self) -> None:
+        nxt = self._pending_cmd
+        self._pending_cmd = None
+        if nxt:
+            self._append_log("sistema", f"Iniciando da fila: `{nxt}`")
+            QTimer.singleShot(200, lambda: self.run_command(nxt))
+
     def _on_worker_status(self, msg: str) -> None:
         publish(online=True, label="RUN", pct=20, detail=(msg or "")[:80], mode="RUN")
         # espelha progresso no CMD do CRT (ex.: [31/13] abrindo…)
@@ -1157,6 +1172,7 @@ class AceCrtConsole(QWidget):
 
     def _on_cmd_ok(self, msg: str, payload: object) -> None:
         self.btn_run.setEnabled(True)
+        self._worker_cmd = ""
         if isinstance(payload, dict):
             self.payload = payload
             # sync form if config changed via /e
@@ -1177,12 +1193,15 @@ class AceCrtConsole(QWidget):
             mode="OK" if online else "ERR",
         )
         self.mode.setText("OK" if online else "ERR")
+        self._drain_pending()
 
     def _on_cmd_fail(self, msg: str) -> None:
         self.btn_run.setEnabled(True)
+        self._worker_cmd = ""
         self._append_log("erro", msg)
         publish(online=False, label="ERR", pct=0, detail=msg[:100], mode="ERR")
         self.mode.setText("ERR")
+        self._drain_pending()
 
     def _reload_payload_silent(self) -> None:
         """Atualiza campos sem spam no log."""

@@ -6028,13 +6028,18 @@
       if (CURRENT_SECTOR !== 'contratacao') return;
       const err = document.getElementById('ctrErr');
       try {
-        let remoteVer = null;
+        // Contratação é CSV local — usa stamp.json (não a version Sheets)
+        let stamp = null;
         try {
-          remoteVer = await fetchDataVersion();
-          if (remoteVer != null && lastCtrDataVersion != null && remoteVer === lastCtrDataVersion) {
-            return;
+          const res = await fetch('data/contratacao/stamp.json?t=' + Date.now(), { cache: 'no-store' });
+          if (res.ok) {
+            const j = await res.json();
+            stamp = String(j.ts || j.atualizado || '');
           }
         } catch (_) { /* segue */ }
+        if (stamp && lastCtrDataVersion != null && stamp === lastCtrDataVersion) {
+          return;
+        }
 
         let resumo = {};
         let veics = [];
@@ -6094,10 +6099,8 @@
             </tr>
           `).join('') || `<tr><td colspan="7" class="muted">Sem veículos — rode \`73\` no ACE</td></tr>`;
         }
-        if (remoteVer != null) lastCtrDataVersion = remoteVer;
-        else {
-          try { lastCtrDataVersion = await fetchDataVersion(); } catch (_) {}
-        }
+        if (stamp) lastCtrDataVersion = stamp;
+        else if (resumo.atualizado) lastCtrDataVersion = String(resumo.atualizado);
       } catch (e) {
         if (err) {
           err.hidden = false;

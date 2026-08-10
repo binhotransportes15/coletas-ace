@@ -199,7 +199,7 @@ def _copy_contratacao_to_dashboard() -> dict[str, str]:
             RESUMO_073_CSV,
             "resumo_073.csv",
             "periodo,atualizado,unidade,total_veiculos,total_ctrbs,custo,custo_fmt,"
-            "frete,frete_fmt,peso,peso_fmt,agregado,frota,terceiro\n",
+            "frete,frete_fmt,peso,peso_fmt,agregado,frota,contratados,terceiro\n",
         ),
         (
             CTRBS_073_CSV,
@@ -215,6 +215,29 @@ def _copy_contratacao_to_dashboard() -> dict[str, str]:
         elif not dest.exists():
             dest.write_text(empty, encoding="utf-8-sig")
             out[f"contratacao/{name}"] = str(dest)
+
+    # stamp local — painel Contratação não depende da version Sheets
+    import json
+    from datetime import datetime
+
+    atualizado = ""
+    resumo_dest = data_dir / "resumo_073.csv"
+    if resumo_dest.exists():
+        try:
+            import csv
+
+            with resumo_dest.open(encoding="utf-8-sig", newline="") as fh:
+                row = next(csv.DictReader(fh), {}) or {}
+                atualizado = str(row.get("atualizado") or "")
+        except Exception:
+            atualizado = ""
+    stamp = {
+        "ts": datetime.now().timestamp(),
+        "atualizado": atualizado or datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+    }
+    stamp_path = data_dir / "stamp.json"
+    stamp_path.write_text(json.dumps(stamp, ensure_ascii=False), encoding="utf-8")
+    out["contratacao/stamp.json"] = str(stamp_path)
     return out
 
 
