@@ -1023,7 +1023,7 @@ def run_pipeline_contratacao(
     from ssw_076 import download_reports_076
     from ssw_200 import download_reports_200
 
-    status(f"ACE CONTRATACAO · 73→76→200 | {datetime.now():%d/%m %H:%M:%S}")
+    status(f"ACE CONTRATACAO · 73→filiais(76+200) | {datetime.now():%d/%m %H:%M:%S}")
     use_headless = cfg.headless if headless is None else headless
     ini, fim = periodo_mes_ate_hoje()
     periodo_fmt = format_period(ini, fim)
@@ -1161,6 +1161,8 @@ def run_pipeline_contratacao(
         "073": bundle.get("073") or {},
         "076": bundle.get("076") or {},
         "200": bundle.get("200") or {},
+        "filiais": list(bundle.get("filiais") or []),
+        "filial_errors": bundle.get("filial_errors") or {},
         "publish": pub,
         "resumo": resumo,
         "placas": list(bundle.get("placas") or []),

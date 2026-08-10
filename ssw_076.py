@@ -47,8 +47,10 @@ def download_reports_076(
     placas: list[str] | tuple[str, ...] | None = None,
     period: tuple[str, str] | None = None,
     arquivo: str = "E",
-    unidade: str = "SPO",
+    unidade: str = "",
     email: str = "N",
+    # tag no nome do arquivo (ex.: filial GYN)
+    tag: str = "",
     # compat: callers antigos passavam operacao="R"
     operacao: str | None = None,
     headless: bool | None = None,
@@ -62,7 +64,7 @@ def download_reports_076(
 ) -> dict[str, Any]:
     """
     Gera 076 com Arquivo=E (excel) → fila 156 → DOW.
-    Se `page`/`client` forem passados, reusa a sessão (sem novo login).
+    `unidade` vazia = não mexer na Sigla (herda do menu).
     """
     status = on_status or _noop
     ensure_dirs()
@@ -79,7 +81,8 @@ def download_reports_076(
         op_legacy = str(operacao).strip().upper()[:1]
         if op_legacy in {"E", "X"}:
             arq = op_legacy
-    unidade_sigla = (unidade or "SPO").strip().upper() or "SPO"
+    unidade_sigla = (unidade or "").strip().upper()
+    file_tag = (tag or unidade_sigla or "ALL").strip().upper() or "ALL"
     envia_email = (email or "N").strip().upper()[:1] or "N"
 
     ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
@@ -105,7 +108,7 @@ def download_reports_076(
     paths: list[str] = []
     errors: dict[str, str] = {}
     status(
-        f"SSW 76 | arquivo={arq} | {unidade_sigla} | {ini}-{fim} | "
+        f"SSW 76 | arquivo={arq} | sigla={unidade_sigla or '(menu)'} | {ini}-{fim} | "
         f"{len(plate_list) or 'todas'} placa(s)"
         + (" · sessão reusada" if reuse else "")
     )
@@ -114,7 +117,7 @@ def download_reports_076(
         nonlocal paths, errors
         popup = None
         try:
-            status("[76] abrindo opção 76 (lote)…")
+            status(f"[76/{file_tag}] abrindo opção 76…")
             popup = _reopen_76(sess_client, sess_page, popup)
             _preencher_76(
                 popup,
@@ -126,14 +129,16 @@ def download_reports_076(
                 placa="",
                 on_status=status,
             )
-            dest = f"contratacao_076_ALL_{ts}.sswweb"
-            path = _gerar_download_76(sess_client, sess_context, sess_page, popup, dest, "ALL", status)
+            dest = f"contratacao_076_{file_tag}_{ts}.sswweb"
+            path = _gerar_download_76(
+                sess_client, sess_context, sess_page, popup, dest, file_tag, status
+            )
             paths.append(str(path))
-            status(f"[76/ALL] OK {path.name}")
+            status(f"[76/{file_tag}] OK {path.name}")
         except Exception as batch_err:  # noqa: BLE001
-            status(f"[76] lote falhou ({batch_err}); tentando por placa…")
+            status(f"[76/{file_tag}] lote falhou ({batch_err}); tentando por placa…")
             for idx, placa in enumerate(runs[:40], start=1):
-                key = placa or "ALL"
+                key = placa or file_tag
                 try:
                     status(f"[76/{key}] ({idx}) abrindo…")
                     popup = _reopen_76(sess_client, sess_page, popup)
@@ -147,7 +152,7 @@ def download_reports_076(
                         placa=placa,
                         on_status=status,
                     )
-                    dest = f"contratacao_076_{key or 'ALL'}_{ts}.sswweb"
+                    dest = f"contratacao_076_{file_tag}_{key or 'ALL'}_{ts}.sswweb"
                     path = _gerar_download_76(
                         sess_client, sess_context, sess_page, popup, dest, key, status
                     )
@@ -191,6 +196,7 @@ def download_reports_076(
         "arquivo": arq,
         "operacao": arq,  # compat
         "unidade": unidade_sigla,
+        "tag": file_tag,
         "placas": plate_list,
     }
 
@@ -245,7 +251,8 @@ def _preencher_76(
             return true;
           };
 
-          const okUnid = set(byHint(['sigla', 'unidade']), unidade);
+          // Sigla vazia = herda do menu (não sobrescreve)
+          const okUnid = unidade ? set(byHint(['sigla', 'unidade']), unidade) : true;
 
           const ddmmyy = inputs.filter((el) => Number(el.maxLength) === 6 || Number(el.size) === 6);
           let okIni = false, okFim = false;

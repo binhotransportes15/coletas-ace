@@ -2,8 +2,8 @@
 
 Fluxo Contratação (Unidade = SPO · período = mês até hoje):
   1) 1 login · N telas 073 (F+A · A+C · A+O) · Excel direto
-  2) 076 Arquivo=E → fila 156 (remuneração)
-  3) 200/ssw0644 Tipo=E → fila 156 (FRETE-R$ por placa)
+  2) Para cada unidade DESTINO do 073: troca menu → 076(E) + 200(E)
+  3) Merge frete por placa (076 depois 200)
 """
 from __future__ import annotations
 
@@ -225,7 +225,7 @@ def download_contratacao_ssw(
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
 ) -> dict[str, Any]:
-    """1 login: 073 em N telas paralelas + 076 + 200 (frete manifesto) na mesma sessão."""
+    """1 login: 073 (SPO) → por cada destino: menu → 076 + 200 (frete)."""
     status = on_status or _noop
     ensure_dirs()
     _ensure_playwright_path()
@@ -267,17 +267,19 @@ def download_contratacao_ssw(
         extras.append("200")
     status(
         f"SSW contratação | 1 login · {len(jobs)} telas 073"
-        + (f" + {'+'.join(extras)}" if extras else "")
-        + f" | {ini}-{fim} | {unidade}"
+        + (f" + filiais({'/'.join(extras)})" if extras else "")
+        + f" | {ini}-{fim} | menu={unidade}"
     )
 
     dl73: dict[str, Any] = {}
-    dl76: dict[str, Any] = {}
-    dl200: dict[str, Any] = {}
+    dl76: dict[str, Any] = {"ok": False, "files": [], "by_filial": {}}
+    dl200: dict[str, Any] = {"ok": False, "files": [], "by_filial": {}}
     analysis73: dict[str, Any] = {}
     analysis76: dict[str, Any] = {"ok": False, "skipped": True}
     analysis200: dict[str, Any] = {"ok": False, "skipped": True}
     periodo_fmt = f"{ini_ddmm} – {fim_ddmm}"
+    filial_errors: dict[str, str] = {}
+    destinos: list[str] = []
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
@@ -288,7 +290,7 @@ def download_contratacao_ssw(
         context.on("page", lambda pg: pg.on("dialog", lambda d: d.accept()))
         try:
             client._login(page)
-            client._ensure_unit(page)
+            client._set_menu_unit(page, unidade)
             client._patch_blank_popup_form(page)
 
             phase = _run_073_phases(
@@ -327,60 +329,115 @@ def download_contratacao_ssw(
                 on_status=status,
             )
 
-            if not skip_076:
-                try:
-                    status("[76] mesma sessão — abrindo demonstrativo…")
-                    try:
-                        page.bring_to_front()
-                        client._ensure_unit(page)
-                        client._patch_blank_popup_form(page)
-                    except Exception as stab_err:  # noqa: BLE001
-                        status(f"[76] estabilizando menu: {stab_err}")
-                    dl76 = download_reports_076(
-                        placas=list(analysis73.get("placas") or []),
-                        period=(ini_ddmm, fim_ddmm),
-                        arquivo="E",
-                        unidade=unidade,
-                        on_status=status,
-                        client=client,
-                        context=context,
-                        page=page,
-                    )
-                    analysis76 = analyze_reports_076(
-                        dl76.get("files") or [],
-                        placas=list(analysis73.get("placas") or []),
-                        on_status=status,
-                    )
-                except Exception as err:  # noqa: BLE001
-                    status(f"076 avisou: {err} (mantendo frete do 073)")
-                    analysis76 = {"ok": False, "error": str(err)}
+            # Destinos do 073 (siglas) — inclui SPO
+            destinos = []
+            for d in analysis73.get("destinos") or []:
+                sig = str((d.get("destino") if isinstance(d, dict) else d) or "").strip().upper()
+                if sig and sig not in destinos and len(sig) <= 4 and sig.isalpha():
+                    destinos.append(sig)
+            if not destinos:
+                destinos = [unidade]
+            status(f"Frete por filial: {', '.join(destinos)}")
 
-            if not skip_200:
-                try:
-                    status("[200] mesma sessão — manifestos (frete)…")
+            files76: list[str] = []
+            files200: list[str] = []
+            by76: dict[str, Any] = {}
+            by200: dict[str, Any] = {}
+
+            if not skip_076 or not skip_200:
+                for dest in destinos:
                     try:
                         page.bring_to_front()
-                        client._ensure_unit(page)
+                        client._set_menu_unit(page, dest)
                         client._patch_blank_popup_form(page)
                     except Exception as stab_err:  # noqa: BLE001
-                        status(f"[200] estabilizando menu: {stab_err}")
-                    dl200 = download_reports_200(
-                        period=(ini_ddmm, fim_ddmm),
-                        unidade_origem="",
-                        tipo_arquivo="E",
-                        on_status=status,
-                        client=client,
-                        context=context,
-                        page=page,
-                    )
-                    analysis200 = analyze_reports_200(
-                        dl200.get("files") or [],
-                        placas=list(analysis73.get("placas") or []),
-                        on_status=status,
-                    )
-                except Exception as err:  # noqa: BLE001
-                    status(f"200 avisou: {err} (mantendo frete anterior)")
-                    analysis200 = {"ok": False, "error": str(err)}
+                        status(f"[{dest}] menu: {stab_err}")
+
+                    if not skip_076:
+                        try:
+                            status(f"[{dest}] 076…")
+                            one76 = download_reports_076(
+                                placas=list(analysis73.get("placas") or []),
+                                period=(ini_ddmm, fim_ddmm),
+                                arquivo="E",
+                                unidade="",  # herda menu
+                                tag=dest,
+                                on_status=status,
+                                client=client,
+                                context=context,
+                                page=page,
+                            )
+                            got = list(one76.get("files") or [])
+                            files76.extend(got)
+                            by76[dest] = one76
+                            status(f"[{dest}] 076 OK · {len(got)} arquivo(s)")
+                        except Exception as err:  # noqa: BLE001
+                            filial_errors[f"{dest}/076"] = str(err)
+                            status(f"[{dest}] 076 avisou: {err}")
+
+                    if not skip_200:
+                        try:
+                            status(f"[{dest}] 200…")
+                            one200 = download_reports_200(
+                                period=(ini_ddmm, fim_ddmm),
+                                unidade_origem="",  # tudo que a filial enxerga
+                                tipo_arquivo="E",
+                                tag=dest,
+                                on_status=status,
+                                client=client,
+                                context=context,
+                                page=page,
+                            )
+                            got = list(one200.get("files") or [])
+                            files200.extend(got)
+                            by200[dest] = one200
+                            status(f"[{dest}] 200 OK · {len(got)} arquivo(s)")
+                        except Exception as err:  # noqa: BLE001
+                            filial_errors[f"{dest}/200"] = str(err)
+                            status(f"[{dest}] 200 avisou: {err}")
+
+                # Merge frete: 076 depois 200 (200 sobrescreve quando > 0)
+                placas = list(analysis73.get("placas") or [])
+                if files76 and not skip_076:
+                    try:
+                        analysis76 = analyze_reports_076(
+                            files76, placas=placas, on_status=status
+                        )
+                    except Exception as err:  # noqa: BLE001
+                        status(f"076 merge avisou: {err}")
+                        analysis76 = {"ok": False, "error": str(err)}
+                elif skip_076:
+                    analysis76 = {"ok": False, "skipped": True}
+
+                if files200 and not skip_200:
+                    try:
+                        analysis200 = analyze_reports_200(
+                            files200, placas=placas, on_status=status
+                        )
+                    except Exception as err:  # noqa: BLE001
+                        status(f"200 merge avisou: {err}")
+                        analysis200 = {"ok": False, "error": str(err)}
+                elif skip_200:
+                    analysis200 = {"ok": False, "skipped": True}
+
+                dl76 = {
+                    "ok": bool(files76),
+                    "files": files76,
+                    "by_filial": by76,
+                    "errors": {k: v for k, v in filial_errors.items() if k.endswith("/076")},
+                }
+                dl200 = {
+                    "ok": bool(files200),
+                    "files": files200,
+                    "by_filial": by200,
+                    "errors": {k: v for k, v in filial_errors.items() if k.endswith("/200")},
+                }
+
+            # volta menu para unidade base
+            try:
+                client._set_menu_unit(page, unidade)
+            except Exception:
+                pass
         finally:
             browser.close()
 
@@ -394,6 +451,8 @@ def download_contratacao_ssw(
         "073": {"download": dl73, **analysis73},
         "076": {"download": dl76, **analysis76},
         "200": {"download": dl200, **analysis200},
+        "filiais": destinos,
+        "filial_errors": filial_errors,
         "resumo": resumo,
         "placas": list(analysis73.get("placas") or []),
         "periodo_fmt": periodo_fmt,

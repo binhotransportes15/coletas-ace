@@ -57,6 +57,7 @@ def download_reports_200(
     period: tuple[str, str] | None = None,
     unidade_origem: str = "",
     tipo_arquivo: str = "E",
+    tag: str = "",
     headless: bool | None = None,
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
@@ -65,7 +66,7 @@ def download_reports_200(
     context=None,
     page=None,
 ) -> dict[str, Any]:
-    """Gera 200 com Tipo=E → fila 156 → CSV. Reusa sessão se page/client passados."""
+    """Gera 200 com Tipo=E → CSV/fila. Origem vazia = tudo que a filial enxerga."""
     status = on_status or _noop
     ensure_dirs()
     _ensure_playwright_path()
@@ -75,6 +76,7 @@ def download_reports_200(
 
     unid = (unidade_origem or "").strip().upper()
     tipo = (tipo_arquivo or "E").strip().upper()[:1] or "E"
+    file_tag = (tag or unid or "ALL").strip().upper() or "ALL"
 
     ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
     ini = to_ssw_ddmmyy(ini_ddmm)
@@ -98,7 +100,7 @@ def download_reports_200(
 
     paths: list[str] = []
     status(
-        f"SSW 200 | tipo={tipo} | origem={unid} | {ini}-{fim}"
+        f"SSW 200 | tipo={tipo} | origem={unid or '(tudo)'} | tag={file_tag} | {ini}-{fim}"
         + (" · sessão reusada" if reuse else "")
     )
 
@@ -106,17 +108,17 @@ def download_reports_200(
         nonlocal paths
         popup = None
         try:
-            status("[200] abrindo opção 200 (ssw0644)…")
+            status(f"[200/{file_tag}] abrindo opção 200…")
             popup = sess_client._open_menu_option(sess_page, "200", markers=SSW_200_MARKERS)
             _preencher_200(
                 popup, ini=ini, fim=fim, unidade=unid, tipo=tipo, on_status=status
             )
-            dest = f"contratacao_200_{ts}.csv"
+            dest = f"contratacao_200_{file_tag}_{ts}.csv"
             path = _gerar_download_200(
                 sess_client, sess_context, sess_page, popup, dest, status
             )
             paths.append(str(path))
-            status(f"[200] OK {path.name}")
+            status(f"[200/{file_tag}] OK {path.name}")
         finally:
             try:
                 if popup is not None and not popup.is_closed():
@@ -152,6 +154,7 @@ def download_reports_200(
         "periodo_fmt": f"{ini_ddmm} – {fim_ddmm}",
         "unidade_origem": unid,
         "tipo_arquivo": tipo,
+        "tag": file_tag,
     }
 
 

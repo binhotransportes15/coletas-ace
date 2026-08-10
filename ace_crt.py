@@ -886,7 +886,7 @@ class AceCrtConsole(QWidget):
 
         lay.addWidget(self._section("Contratação (mês)"))
         for label, cmd in (
-            ("Puxar 073→076→200 (mês · frete manifesto)", "73"),
+            ("Puxar 073→filiais 076+200 (frete)", "73"),
             ("Só 073 mês (sem frete 076)", "73 so73"),
         ):
             b = QPushButton(label)

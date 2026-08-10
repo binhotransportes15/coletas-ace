@@ -317,9 +317,9 @@ def cmd_help() -> str:
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
         "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos (reabre a 31 cada um)\n"
         "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
-        "  Contratação: `73` / `contratacao` = 073×3 (mês · F+A · A+C · A+O · SPO) → 076(E) → 200(E)\n"
+        "  Contratação: `73` = 073×3 (SPO) → por cada DESTINO: menu→076(E)+200(E)\n"
         "             F+Tipo A=frota · A+Tipo C=contratados · A+Tipo O=agregados · período=mês até hoje\n"
-        "             `73 so73` = só 073 · CSV ssw0644 local = frete manifesto · `73 sem200`\n"
+        "             `73 so73` = só 073 · `73 sem200` = sem manifesto · CSV ssw0644 local = frete\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
     )
@@ -597,14 +597,14 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
             local_200.append(str(p))
         else:
             local_073.append(str(p))
-    print("\n=== Pipeline Contratação (mês · 073 → 076 → 200) ===")
+    print("\n=== Pipeline Contratação (073 → filiais: 076+200) ===")
     if local_073 or local_200:
         if local_073:
             print(f"  073 local: {', '.join(local_073)}")
         if local_200:
             print(f"  200 local: {', '.join(local_200)}")
     else:
-        print("  073: mês · F+A · A+C · A+O · SPO → 076(E) → 200(E frete manifesto)")
+        print("  073: mês · F+A · A+C · A+O · SPO → por destino: menu + 076(E) + 200(E)")
     if skip_076:
         print("  modo: sem 076")
     if skip_200:
@@ -618,10 +618,12 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
         local_200=local_200 or None,
     )
     resumo = result.get("resumo") or {}
+    filiais = result.get("filiais") or []
+    extra = f" · filiais={','.join(filiais)}" if filiais else ""
     return (
         f"073/076/200 OK · veículos={resumo.get('total_veiculos')} "
         f"custo=R${resumo.get('custo_fmt')} frete=R${resumo.get('frete_fmt')} "
-        f"peso={resumo.get('peso_fmt')}kg · placas={len(result.get('placas') or [])}"
+        f"peso={resumo.get('peso_fmt')}kg · placas={len(result.get('placas') or [])}{extra}"
     )
 
 

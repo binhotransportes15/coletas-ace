@@ -398,22 +398,36 @@ class AceSswClient:
     def _coleta_units(self) -> list[str]:
         return parse_coleta_units(getattr(self.credentials, "unit", "") or "")
 
+    def _set_menu_unit(self, page, unit: str) -> None:
+        """Troca a unidade no menu inicial (campo f2 / #2)."""
+        sigla = (unit or "").strip().upper()
+        if not sigla:
+            return
+        try:
+            page.bring_to_front()
+        except Exception:
+            pass
+        campo = page.locator('input[name="f2"][id="2"]')
+        if campo.count() <= 0:
+            # fallback genérico
+            campo = page.locator('input[name="f2"], input[id="2"]')
+        if campo.count() <= 0:
+            self.on_status(f"Menu: campo unidade ausente (queria {sigla})")
+            return
+        atual = (campo.first.input_value() or "").strip().upper()
+        if atual == sigla:
+            return
+        self.on_status(f"Menu unidade → {sigla}")
+        campo.first.fill(sigla)
+        campo.first.press("Tab")
+        page.wait_for_timeout(600)
+
     def _ensure_unit(self, page) -> None:
         # Menu pos-login: usa so a 1ª sigla (contexto do operador).
-        # Relatorios 50/103 iteram SPO/LEO/RIS conforme config.
         unit = login_unit(getattr(self.credentials, "unit", "") or "")
         if not unit:
             return
-        campo = page.locator('input[name="f2"][id="2"]')
-        if campo.count() <= 0:
-            return
-        atual = (campo.first.input_value() or "").strip().upper()
-        if atual == unit:
-            return
-        self.on_status(f"Ajustando unidade do menu para {unit}...")
-        campo.first.fill(unit)
-        campo.first.press("Tab")
-        page.wait_for_timeout(500)
+        self._set_menu_unit(page, unit)
 
     def _merge_downloaded_files(self, paths: list[Path], dest_name: str) -> Path:
         """Concatena varios downloads (texto/CSV). Pula cabecalho repetido em CSV."""
