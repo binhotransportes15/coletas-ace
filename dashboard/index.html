@@ -1107,7 +1107,7 @@
     body.tv-mode .agenda-layout:not(.has-blocks) {
       display: grid !important;
       grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr) !important;
-      grid-template-rows: auto minmax(0, 1fr) minmax(110px, 0.32fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) minmax(160px, 0.4fr) !important;
       gap: clamp(8px, 1.1vmin, 14px) !important;
       height: 100% !important;
     }
@@ -1602,13 +1602,17 @@
     /* fallback TV fixo — agendamento */
     .agenda-layout:not(.has-blocks) {
       grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr);
-      grid-template-rows: auto minmax(0, 1fr) minmax(120px, 0.35fr);
+      grid-template-rows: auto minmax(0, 1fr) minmax(150px, 0.42fr);
       gap: clamp(8px, 1vw, 14px);
     }
     .agenda-layout:not(.has-blocks) [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
     .agenda-layout:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; }
     .agenda-layout:not(.has-blocks) [data-block="status"] { grid-column: 2; grid-row: 2; }
     .agenda-layout:not(.has-blocks) [data-block="amanha"] { grid-column: 1 / -1; grid-row: 3; }
+    .agenda-layout .dash-block[data-block="amanha"] {
+      container-type: normal !important;
+      overflow: hidden;
+    }
 
     /* Blocos posicionados: tipografia acompanha a altura do bloco (sem cortar) */
     .agenda-layout.has-blocks [data-block="kpis"] {
@@ -1804,10 +1808,12 @@
     .agenda-amanha-wrap {
       display: none;
       flex-direction: column;
-      gap: 8px;
-      flex: 0 0 auto;
-      max-height: 38%;
+      gap: 0;
+      flex: 1 1 auto;
+      /* max-height:38% cortava os cards (só o topo aparecia) */
+      max-height: none;
       min-height: 0;
+      height: 100%;
       border: 1px solid #1e293b;
       border-radius: 14px;
       background: rgba(2,6,23,.55);
@@ -1820,7 +1826,9 @@
       gap: 8px;
       padding: 10px 12px 12px;
       overflow: auto;
+      flex: 1 1 auto;
       min-height: 0;
+      align-content: start;
     }
     .agenda-card {
       border-radius: 12px;
@@ -4717,6 +4725,10 @@
           weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
         });
       }
+      // A cada minuto: tempo de descarga em andamento acompanha o relógio
+      if (now.getSeconds() === 0 && typeof paintArmazemLiveFromCache === 'function') {
+        try { paintArmazemLiveFromCache(); } catch (_) { /* ignore */ }
+      }
     }
 
     async function chamarPlanilha(action, params = {}) {
@@ -5857,24 +5869,72 @@
       return new Date(y, mo, d, +m[4], +m[5]);
     }
 
+    /** Remove operador no fim: "HOJE 13:07 aliny" → "HOJE 13:07" */
+    function armStripOperador(raw) {
+      return String(raw || '').trim().replace(/\s+[a-zA-Z_.À-ú]{2,}$/i, '').trim();
+    }
+
+    /** Exibe data/hora alinhada ao relógio (HOJE → dd/mm). */
+    function armFmtMomento(raw) {
+      const clean = armStripOperador(raw);
+      if (!clean) return '—';
+      const dt = parseArmDt(clean);
+      if (!dt || Number.isNaN(dt.getTime())) return clean;
+      return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+    }
+
+    function armFmtDuracao(mins) {
+      if (mins == null || !Number.isFinite(mins) || mins < 0) return '';
+      const m = Math.floor(mins);
+      const h = Math.floor(m / 60);
+      const r = m % 60;
+      if (h && r) return `${h}h ${pad(r)}min`;
+      if (h) return `${h}h`;
+      return `${r}min`;
+    }
+
+    /**
+     * Tempo de descarga ao vivo: fim−início, ou agora−início se ainda em andamento.
+     * Evita o CSV “congelar” (ex.: 1h47) enquanto o relógio da tela avança.
+     */
+    function armTempoDescargaLive(v) {
+      const ini = armStripOperador(v.inicio_descarga);
+      const fim = armStripOperador(v.final_descarga);
+      const iniDt = parseArmDt(ini);
+      const fimDt = parseArmDt(fim);
+      if (iniDt && fimDt && fimDt >= iniDt) {
+        return armFmtDuracao((fimDt - iniDt) / 60000) || (v.tempo_descarga || '—');
+      }
+      if (iniDt && !fim) {
+        const mins = Math.max(0, Math.floor((Date.now() - iniDt.getTime()) / 60000));
+        const txt = armFmtDuracao(mins);
+        return txt ? `${txt} (andamento)` : '—';
+      }
+      return (v.tempo_descarga || '').trim() || '—';
+    }
+
     /** Descarga iniciada, sem fim, passando de 3h → atrasado (vermelho). */
     function armDescargaAtrasada(v) {
-      const fim = (v.final_descarga || '').trim();
+      const fim = armStripOperador(v.final_descarga);
       if (fim) return false;
-      const ini = (v.inicio_descarga || '').trim();
+      const ini = armStripOperador(v.inicio_descarga);
       if (!ini) return false;
-      const minsCsv = Number(v.tempo_descarga_min);
-      if (Number.isFinite(minsCsv) && minsCsv > 180) return true;
       const dt = parseArmDt(ini);
-      return !!(dt && (Date.now() - dt.getTime()) > ARM_DESC_ATR_MS);
+      if (dt && (Date.now() - dt.getTime()) > ARM_DESC_ATR_MS) return true;
+      // fallback se data inválida: usa minutos do CSV (só na falta do parse)
+      if (!dt) {
+        const minsCsv = Number(v.tempo_descarga_min);
+        if (Number.isFinite(minsCsv) && minsCsv > 180) return true;
+      }
+      return false;
     }
 
     function armStatusEfetivo(v) {
-      const fim = (v.final_descarga || '').trim();
+      const fim = armStripOperador(v.final_descarga);
       if (fim) return 'finalizado';
       if (armDescargaAtrasada(v)) return 'atrasado';
       const st = String(v.status || '').toLowerCase();
-      if ((v.inicio_descarga || '').trim()) {
+      if (armStripOperador(v.inicio_descarga)) {
         return st === 'atrasado' ? 'atrasado' : 'descarregando';
       }
       return st || 'aguardando';
@@ -5882,11 +5942,11 @@
 
     /** Tabela: só pátio + descarregando + descarga >3h. Finalizado só no contador. */
     function armShowInTabela(v) {
-      const st = String(v.status || '').toLowerCase();
+      const st = armStatusEfetivo(v);
       if (st === 'finalizado' || st === 'aguardando') return false;
       if (st === 'chegou' || st === 'descarregando') return true;
       // atrasado por descarga longa (não por previsão de chegada)
-      if (st === 'atrasado' && (v.inicio_descarga || '').trim()) return true;
+      if (st === 'atrasado' && armStripOperador(v.inicio_descarga)) return true;
       return false;
     }
 
@@ -6013,6 +6073,85 @@
     function setArmText(id, v) {
       const el = document.getElementById(id);
       if (el) el.textContent = v;
+    }
+
+    /** Reaplica KPIs/tabela com tempo de descarga ao vivo (sem novo fetch). */
+    function paintArmazemLiveFromCache() {
+      if (CURRENT_SECTOR !== 'armazem') return;
+      if (!lastGoodArmVeic.length && !lastGoodArmResumo) return;
+      paintArmazemDashboard({
+        resumo: lastGoodArmResumo || {},
+        veicRows: lastGoodArmVeic.slice(),
+        confRows: lastGoodArmConf.slice(),
+        resumo177: lastGoodArmResumo177 || {},
+      });
+    }
+
+    function paintArmazemDashboard({ resumo, veicRows, confRows, resumo177 }) {
+      const r = resumo || {};
+      const veics = aggVeiculosArm(veicRows || []);
+      const live = { atrasado: 0, descarregando: 0, chegou: 0, aguardando: 0, finalizado: 0 };
+      for (const v of veics) {
+        const st = armStatusEfetivo(v);
+        if (st in live) live[st] += 1;
+      }
+      const useLive = veics.length > 0;
+      const atr = useLive ? live.atrasado : (r.atrasado || '0');
+      const des = useLive ? live.descarregando : (r.descarregando || '0');
+      const che = useLive ? live.chegou : (r.chegou || '0');
+      const agu = useLive ? live.aguardando : (r.aguardando || '0');
+      const fin = useLive ? live.finalizado : (r.finalizado || '0');
+      setArmText('kVeic', useLive ? String(veics.length) : (r.total_veiculos || '0'));
+      setArmText('kPeso', (r.peso_total || '0') + ' kg');
+      setArmText('kAtr', atr);
+      setArmText('kDes', des);
+      setArmText('kChe', che);
+      setArmText('kAgu', agu);
+      setArmText('kFin', fin);
+      setArmText('armAtualizado',
+        `pátio · descarregando · +3h · atualizado ${r.atualizado || '—'}`
+      );
+
+      renderArmTorres({
+        atrasado: atr,
+        descarregando: des,
+        chegou: che,
+        aguardando: agu,
+        finalizado: fin,
+      });
+      renderArmRanking(confRows || [], resumo177 || {});
+
+      const tb = document.getElementById('armTbody');
+      if (tb) {
+        const naTabela = veics.filter(armShowInTabela);
+        tb.innerHTML = naTabela.map((v) => {
+          const chegou = (v.chegada || '').trim();
+          const prev = (v.prev_chegada || '').trim();
+          const chegCell = chegou
+            ? `<span class="mono">${armFmtMomento(chegou)}</span>`
+            : `<span class="muted">—</span>`;
+          const prevCell = !chegou && prev
+            ? `<span class="mono">${armFmtMomento(prev)}</span>`
+            : (chegou ? `<span class="muted">—</span>` : `<span class="mono">${prev ? armFmtMomento(prev) : '—'}</span>`);
+          const ini = (v.inicio_descarga || '').trim();
+          const fim = (v.final_descarga || '').trim();
+          const stEff = armStatusEfetivo(v);
+          const atrRow = stEff === 'atrasado' && !!armStripOperador(ini);
+          const tempoLive = armTempoDescargaLive(v);
+          return `<tr class="${atrRow ? 'arm-row-atr' : ''}">
+            <td>${armBadge(stEff)}</td>
+            <td>${v.origem || '—'}</td>
+            <td class="mono">${v.cavalo || '—'}</td>
+            <td class="mono">${v.carreta || '—'}</td>
+            <td class="right mono">${v.peso_veiculo || '—'}</td>
+            <td>${chegCell}</td>
+            <td>${prevCell}</td>
+            <td class="mono arm-tempo-live">${tempoLive}</td>
+            <td class="mono">${ini ? armFmtMomento(ini) : '—'}</td>
+            <td class="mono">${fim ? armFmtMomento(fim) : '—'}</td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="10" class="muted">Nenhum veículo no pátio / descarregando agora</td></tr>`;
+      }
     }
 
     let lastArmTorreCounts = null;
@@ -6179,7 +6318,9 @@
         const changed = remoteVer == null
           || lastArmDataVersion == null
           || lastArmDataVersion !== remoteVer;
+        // Mesmo sem CSV novo, reaplica status/tempo ao vivo (relógio vs início descarga)
         if (!changed && (lastGoodArmVeic.length || lastGoodArmConf.length)) {
+          paintArmazemLiveFromCache();
           return;
         }
         let resumoRows = [];
@@ -6202,6 +6343,8 @@
           veicRows = await loadCsvLocal(ARMA_CSV.veiculos || 'data/armazem/veiculos_78.csv');
           if (!resumoRows.length && lastGoodArmResumo) resumoRows = [lastGoodArmResumo];
           if (!veicRows.length && lastGoodArmVeic.length) veicRows = lastGoodArmVeic.slice();
+          if (resumoRows[0]) lastGoodArmResumo = { ...resumoRows[0] };
+          if (veicRows.length) lastGoodArmVeic = veicRows.slice();
         }
         try {
           const [rConf, rSum177] = await Promise.all([
@@ -6227,74 +6370,22 @@
             if (!Object.keys(resumo177).length && lastGoodArmResumo177) {
               resumo177 = { ...lastGoodArmResumo177 };
             }
+            if (confRows.length) lastGoodArmConf = confRows.slice();
+            if (resumo177 && Object.keys(resumo177).length) {
+              lastGoodArmResumo177 = { ...resumo177 };
+            }
           } catch (__ ) {
             confRows = lastGoodArmConf.length ? lastGoodArmConf.slice() : [];
             resumo177 = lastGoodArmResumo177 ? { ...lastGoodArmResumo177 } : {};
           }
         }
         if (err) err.hidden = true;
-        const r = resumoRows[0] || {};
-        const veics = aggVeiculosArm(veicRows);
-        const live = { atrasado: 0, descarregando: 0, chegou: 0, aguardando: 0, finalizado: 0 };
-        for (const v of veics) {
-          const st = String(v.status || '').toLowerCase();
-          if (st in live) live[st] += 1;
-        }
-        const useLive = veics.length > 0;
-        const atr = useLive ? live.atrasado : (r.atrasado || '0');
-        const des = useLive ? live.descarregando : (r.descarregando || '0');
-        const che = useLive ? live.chegou : (r.chegou || '0');
-        const agu = useLive ? live.aguardando : (r.aguardando || '0');
-        const fin = useLive ? live.finalizado : (r.finalizado || '0');
-        setArmText('kVeic', useLive ? String(veics.length) : (r.total_veiculos || '0'));
-        setArmText('kPeso', (r.peso_total || '0') + ' kg');
-        setArmText('kAtr', atr);
-        setArmText('kDes', des);
-        setArmText('kChe', che);
-        setArmText('kAgu', agu);
-        setArmText('kFin', fin);
-        setArmText('armAtualizado',
-          `pátio · descarregando · +3h · atualizado ${r.atualizado || '—'}`
-        );
-
-        renderArmTorres({
-          atrasado: atr,
-          descarregando: des,
-          chegou: che,
-          aguardando: agu,
-          finalizado: fin,
+        paintArmazemDashboard({
+          resumo: resumoRows[0] || {},
+          veicRows,
+          confRows,
+          resumo177,
         });
-        renderArmRanking(confRows, resumo177);
-
-        const tb = document.getElementById('armTbody');
-        if (tb) {
-          const naTabela = veics.filter(armShowInTabela);
-          tb.innerHTML = naTabela.map((v) => {
-            const chegou = (v.chegada || '').trim();
-            const prev = (v.prev_chegada || '').trim();
-            const chegCell = chegou
-              ? `<span class="mono">${chegou}</span>`
-              : `<span class="muted">—</span>`;
-            const prevCell = !chegou && prev
-              ? `<span class="mono">${prev}</span>`
-              : (chegou ? `<span class="muted">—</span>` : `<span class="mono">${prev || '—'}</span>`);
-            const ini = (v.inicio_descarga || '').trim();
-            const fim = (v.final_descarga || '').trim();
-            const atrRow = String(v.status || '').toLowerCase() === 'atrasado' && !!ini;
-            return `<tr class="${atrRow ? 'arm-row-atr' : ''}">
-            <td>${armBadge(v.status)}</td>
-            <td>${v.origem || '—'}</td>
-            <td class="mono">${v.cavalo || '—'}</td>
-            <td class="mono">${v.carreta || '—'}</td>
-            <td class="right mono">${v.peso_veiculo || '—'}</td>
-            <td>${chegCell}</td>
-            <td>${prevCell}</td>
-            <td class="mono">${v.tempo_descarga || '—'}</td>
-            <td class="mono">${ini || '—'}</td>
-            <td class="mono">${fim || '—'}</td>
-          </tr>`;
-          }).join('') || `<tr><td colspan="10" class="muted">Nenhum veículo no pátio / descarregando agora</td></tr>`;
-        }
         if (remoteVer != null) commitArmVersion(remoteVer);
         else commitArmVersion(await fetchDataVersion());
       } catch (e) {

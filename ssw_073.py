@@ -578,34 +578,42 @@ def _download_frete_filial_paralelo(
                 errors76[tag] = str(empty_err)
                 status(f"[{tag}] 076 sem base — próxima filial ({empty_err})")
             except Exception as batch_err:  # noqa: BLE001
-                status(f"[{tag}] 076 lote falhou ({batch_err}); por placa…")
-                plate_list = [str(p).strip().upper() for p in (placas or []) if str(p).strip()]
-                runs = plate_list[:40] or [""]
-                for idx, placa in enumerate(runs, start=1):
-                    key = placa or tag
-                    try:
-                        popup76 = _reopen_76(client, page, popup76)
-                        _preencher_76(
-                            popup76,
-                            ini=ini,
-                            fim=fim,
-                            unidade="",
-                            arquivo="E",
-                            email="N",
-                            placa=placa,
-                            on_status=status,
-                        )
-                        dest76 = f"contratacao_076_{tag}_{key or 'ALL'}_{ts}.sswweb"
-                        path76 = _gerar_download_76(
-                            client, context, page, popup76, dest76, key, status
-                        )
-                        files76.append(str(path76))
-                    except FilaSemDados as empty_err:
-                        errors76[key] = str(empty_err)
-                        status(f"[{tag}/76/{key}] sem base — pula")
-                    except Exception as err:  # noqa: BLE001
-                        errors76[key] = str(err)
-                        status(f"[{tag}/76/{key}] FALHOU: {err}")
+                msg = str(batch_err)
+                # Timeout na 156: não queima 40 placas (piora a fila). Próxima filial.
+                if "timeout" in msg.lower():
+                    errors76[tag] = msg
+                    status(f"[{tag}] 076 timeout na fila — segue próxima filial")
+                else:
+                    status(f"[{tag}] 076 lote falhou ({batch_err}); por placa…")
+                    plate_list = [
+                        str(p).strip().upper() for p in (placas or []) if str(p).strip()
+                    ]
+                    runs = plate_list[:12] or [""]
+                    for idx, placa in enumerate(runs, start=1):
+                        key = placa or tag
+                        try:
+                            popup76 = _reopen_76(client, page, popup76)
+                            _preencher_76(
+                                popup76,
+                                ini=ini,
+                                fim=fim,
+                                unidade="",
+                                arquivo="E",
+                                email="N",
+                                placa=placa,
+                                on_status=status,
+                            )
+                            dest76 = f"contratacao_076_{tag}_{key or 'ALL'}_{ts}.sswweb"
+                            path76 = _gerar_download_76(
+                                client, context, page, popup76, dest76, key, status
+                            )
+                            files76.append(str(path76))
+                        except FilaSemDados as empty_err:
+                            errors76[key] = str(empty_err)
+                            status(f"[{tag}/76/{key}] sem base — pula")
+                        except Exception as err:  # noqa: BLE001
+                            errors76[key] = str(err)
+                            status(f"[{tag}/76/{key}] FALHOU: {err}")
 
         if popup200 is not None:
             try:

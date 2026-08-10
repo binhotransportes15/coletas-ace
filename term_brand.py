@@ -460,11 +460,31 @@ def build_info_lines(payload: dict[str, Any] | None = None) -> list[str]:
     unit = str(payload.get("unit") or "—")
     user = str(payload.get("user") or "—")
 
+    cpu_s = mem_s = gpu_s = "—"
+    try:
+        from sys_monitor import sample_usage, warmup, host_info
+
+        warmup()
+        u = sample_usage()
+        hi = host_info()
+        if u.get("cpu") is not None:
+            cpu_s = f"{float(u['cpu']):.0f}%"
+        if u.get("mem") is not None:
+            ram = str(hi.get("ram_total_gb") or "")
+            mem_s = f"{float(u['mem']):.0f}% ({ram})" if ram else f"{float(u['mem']):.0f}%"
+        if u.get("gpu") is not None:
+            gpu_s = f"{float(u['gpu']):.0f}%"
+    except Exception:
+        pass
+
     lines = [
         w(f"{user}@{host}", bold=True),
         muted("────────────────────"),
         _info_kv("OS", f"{platform.system()} {platform.release()}"),
         _info_kv("Host", host),
+        _info_kv("CPU", cpu_s),
+        _info_kv("Mem", mem_s),
+        _info_kv("GPU", gpu_s),
         _info_kv("Shell", f"python {py}"),
         _info_kv("Term", "ACE Console"),
         _info_kv("Uptime", now.strftime("%H:%M:%S")),

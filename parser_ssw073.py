@@ -311,6 +311,96 @@ def _publish_local() -> None:
     ):
         if src.exists():
             shutil.copy2(src, DASH_CONTRATACAO / name)
+    # stamp — sem isso o painel Contratação fica com CSV novo e versão antiga
+    try:
+        import json
+
+        atualizado = ""
+        if RESUMO_073_CSV.exists():
+            with RESUMO_073_CSV.open(encoding="utf-8-sig", newline="") as fh:
+                row = next(csv.DictReader(fh), {}) or {}
+                atualizado = str(row.get("atualizado") or "")
+        stamp = {
+            "ts": datetime.now().timestamp(),
+            "atualizado": atualizado or datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        }
+        (DASH_CONTRATACAO / "stamp.json").write_text(
+            json.dumps(stamp, ensure_ascii=False), encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+
+def refresh_destinos_frete_from_veiculos() -> None:
+    """
+    Após merge 076/200: redistribui frete das placas nos destinos (proporcional ao custo CTRB).
+    Sem isso as torres ficam com frete zerado / só residual do 073.
+    """
+    if not VEICULOS_073_CSV.exists() or not CTRBS_073_CSV.exists():
+        return
+    with VEICULOS_073_CSV.open(encoding="utf-8-sig", newline="") as fh:
+        veiculos = list(csv.DictReader(fh))
+    with CTRBS_073_CSV.open(encoding="utf-8-sig", newline="") as fh:
+        ctrbs = list(csv.DictReader(fh))
+    if not veiculos or not ctrbs:
+        return
+
+    frete_placa = {
+        str(v.get("placa") or "").strip().upper(): float(v.get("frete") or 0)
+        for v in veiculos
+        if str(v.get("placa") or "").strip()
+    }
+    # custo por (placa, destino) e por placa
+    custo_pd: dict[tuple[str, str], float] = defaultdict(float)
+    custo_p: dict[str, float] = defaultdict(float)
+    qtd_d: dict[str, int] = defaultdict(int)
+    custo_d: dict[str, float] = defaultdict(float)
+    peso_d: dict[str, float] = defaultdict(float)
+
+    for r in ctrbs:
+        placa = str(r.get("placa") or "").strip().upper()
+        dest = str(r.get("destino") or "").strip().upper()
+        if not placa or not dest or not re.fullmatch(r"[A-Z]{2,4}", dest):
+            continue
+        c = float(r.get("custo") or 0)
+        custo_pd[(placa, dest)] += c
+        custo_p[placa] += c
+        qtd_d[dest] += 1
+        custo_d[dest] += c
+        peso_d[dest] += float(r.get("peso") or 0)
+
+    frete_d: dict[str, float] = defaultdict(float)
+    for placa, frete in frete_placa.items():
+        if frete <= 0:
+            continue
+        total_c = custo_p.get(placa) or 0.0
+        if total_c <= 0:
+            # sem custo: divide igual entre destinos da placa
+            dests = [d for (p, d) in custo_pd if p == placa]
+            if not dests:
+                continue
+            share = frete / len(dests)
+            for d in dests:
+                frete_d[d] += share
+            continue
+        for (p, d), c in custo_pd.items():
+            if p != placa or c <= 0:
+                continue
+            frete_d[d] += frete * (c / total_c)
+
+    destinos = []
+    for dest in sorted(set(qtd_d) | set(frete_d), key=lambda d: (-qtd_d.get(d, 0), d)):
+        destinos.append(
+            {
+                "destino": dest,
+                "qtd": int(qtd_d.get(dest, 0)),
+                "custo": round(custo_d.get(dest, 0.0), 2),
+                "frete": round(frete_d.get(dest, 0.0), 2),
+                "peso": round(peso_d.get(dest, 0.0), 3),
+            }
+        )
+    destinos.sort(key=lambda d: (-int(d["qtd"]), d["destino"]))
+    _write_csv(DESTINOS_073_CSV, DESTINO_FIELDS, destinos)
 
 
 def analyze_reports_073(

@@ -170,6 +170,12 @@ def merge_frete_200_into_073(
     resumo["peso_fmt"] = _fmt_peso(total_peso)
     resumo["total_veiculos"] = len(veiculos)
     _write_csv(RESUMO_073_CSV, RESUMO_FIELDS, [resumo])
+    try:
+        from parser_ssw073 import refresh_destinos_frete_from_veiculos
+
+        refresh_destinos_frete_from_veiculos()
+    except Exception:
+        pass
     _publish_local()
     status(f"200 merge: {updated} placa(s) com frete · total R$ {_fmt_money(total_frete)}")
     return {

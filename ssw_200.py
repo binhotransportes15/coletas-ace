@@ -296,7 +296,11 @@ def _clicar_gerar_200(popup) -> str:
 
 
 def _gerar_download_200(client, context, page, popup, dest_name: str, status) -> Path:
-    """Tipo=E + ► → (download direto raro) ou fila 156."""
+    """Tipo=E + ► → (download direto raro) ou fila 156.
+
+    Snapshot da fila ANTES do clique (mesmo race do 076).
+    """
+    known_done, min_seq = _snapshot_fila_200_before(client, context, page, status)
     clicked = ""
     try:
         with context.expect_event("download", timeout=10000) as di:
@@ -318,7 +322,49 @@ def _gerar_download_200(client, context, page, popup, dest_name: str, status) ->
             popup.wait_for_timeout(800)
         except Exception:
             pass
-        return _baixar_via_fila_200(client, context, page, popup, dest_name, status)
+        return _baixar_via_fila_200(
+            client,
+            context,
+            page,
+            popup,
+            dest_name,
+            status,
+            known_done=known_done,
+            min_seq=min_seq,
+        )
+
+
+def _snapshot_fila_200_before(client, context, page, status) -> tuple[set[str], int]:
+    known_done: set[str] = set()
+    min_seq = 0
+    fila = None
+    try:
+        fila = _abrir_fila_156_200(client, context, page, status)
+        _safe_wait(fila, 400)
+        for j in _ler_jobs_fila_200(fila):
+            if not j.get("is200"):
+                continue
+            seq = str(j.get("seq") or "")
+            if not seq:
+                continue
+            try:
+                num = int("".join(ch for ch in seq if ch.isdigit()) or 0)
+            except Exception:
+                num = 0
+            if num > min_seq:
+                min_seq = num
+            if j.get("concluido"):
+                known_done.add(seq)
+        status(f"[200] pré-fila · {len(known_done)} concluído(s) · max_seq={min_seq}")
+    except Exception as err:
+        status(f"[200] pré-fila: {err}")
+    finally:
+        try:
+            if fila is not None and not fila.is_closed():
+                fila.close()
+        except Exception:
+            pass
+    return known_done, min_seq
 
 
 def _abrir_fila_156_200(client, context, page, status):
@@ -428,23 +474,65 @@ def _atualizar_fila_200(fila) -> None:
         pass
 
 
-def _baixar_via_fila_200(client, context, page, popup, dest_name: str, status) -> Path:
+def _baixar_via_fila_200(
+    client,
+    context,
+    page,
+    popup,
+    dest_name: str,
+    status,
+    *,
+    known_done: set[str] | None = None,
+    min_seq: int = 0,
+) -> Path:
     _ = popup
-    known_done: set[str] = set()
+    done = set(known_done or ())
+    floor = int(min_seq or 0)
     fila = None
-    try:
-        fila = _abrir_fila_156_200(client, context, page, status)
-        _safe_wait(fila, 500)
-        for j in _ler_jobs_fila_200(fila):
-            seq = str(j.get("seq") or "")
-            if seq and j.get("is200") and j.get("concluido"):
-                known_done.add(seq)
-        status(f"[200] fila aberta · {len(known_done)} 200 já concluído(s)")
-    except Exception as err:
-        status(f"[200] snapshot fila: {err}")
+    if not done and floor <= 0:
+        try:
+            fila = _abrir_fila_156_200(client, context, page, status)
+            _safe_wait(fila, 500)
+            for j in _ler_jobs_fila_200(fila):
+                if not j.get("is200"):
+                    continue
+                seq = str(j.get("seq") or "")
+                if not seq:
+                    continue
+                try:
+                    num = int("".join(ch for ch in seq if ch.isdigit()) or 0)
+                except Exception:
+                    num = 0
+                if num > floor:
+                    floor = num
+                if j.get("concluido"):
+                    done.add(seq)
+            status(f"[200] fila aberta · {len(done)} 200 já concluído(s) · floor={floor}")
+        except Exception as err:
+            status(f"[200] snapshot fila: {err}")
+    else:
+        status(f"[200] fila wait · known={len(done)} · floor={floor}")
 
     if fila is None or fila.is_closed():
         fila = _abrir_fila_156_200(client, context, page, status)
+
+    def _seq_num(j: dict) -> int:
+        seq = str(j.get("seq") or "")
+        try:
+            return int("".join(ch for ch in seq if ch.isdigit()) or 0)
+        except Exception:
+            return 0
+
+    def _is_nosso(j: dict) -> bool:
+        seq = str(j.get("seq") or "")
+        if not seq or not j.get("is200"):
+            return False
+        num = _seq_num(j)
+        if floor > 0 and num <= floor:
+            return False
+        if seq in done:
+            return False
+        return True
 
     deadline = time.time() + 240
     last_err = ""
@@ -460,20 +548,9 @@ def _baixar_via_fila_200(client, context, page, popup, dest_name: str, status) -
             _safe_wait(fila, 1200)
             jobs = _ler_jobs_fila_200(fila)
 
-            vazios = [
-                j
-                for j in jobs
-                if j.get("is200")
-                and str(j.get("seq") or "") not in known_done
-                and _job_200_sem_dados(j)
-            ]
+            vazios = [j for j in jobs if _is_nosso(j) and _job_200_sem_dados(j)]
             if vazios:
-                vazios.sort(
-                    key=lambda j: int(
-                        "".join(ch for ch in str(j.get("seq") or "") if ch.isdigit()) or 0
-                    ),
-                    reverse=True,
-                )
+                vazios.sort(key=_seq_num, reverse=True)
                 job = vazios[0]
                 msg = str(job.get("mensagem") or "sem DOW")
                 try:
@@ -486,29 +563,11 @@ def _baixar_via_fila_200(client, context, page, popup, dest_name: str, status) -
             cands = [
                 j
                 for j in jobs
-                if j.get("concluido")
-                and j.get("hasDow")
-                and j.get("is200")
-                and str(j.get("seq") or "") not in known_done
+                if _is_nosso(j) and j.get("concluido") and j.get("hasDow")
             ]
-
-            def sk(j: dict) -> tuple:
-                seq = str(j.get("seq") or "")
-                try:
-                    num = int("".join(ch for ch in seq if ch.isdigit()) or 0)
-                except Exception:
-                    num = 0
-                return (-num,)
-
-            cands.sort(key=sk)
+            cands.sort(key=_seq_num, reverse=True)
             if not cands:
-                proc = [
-                    j
-                    for j in jobs
-                    if j.get("is200")
-                    and str(j.get("seq") or "") not in known_done
-                    and not j.get("concluido")
-                ]
+                proc = [j for j in jobs if _is_nosso(j) and not j.get("concluido")]
                 if int(time.time()) % 8 < 2:
                     status(
                         f"[200] aguardando Concluído+DOW na 156 "

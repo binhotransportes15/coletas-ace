@@ -79,8 +79,8 @@ def _parse_dt(value: str, *, hoje: date | None = None) -> datetime | None:
     if not raw:
         return None
     ref = hoje or date.today()
-    # remove operador no fim
-    raw = re.sub(r"\s+[a-zA-Z_.]{2,}$", "", raw).strip()
+    # remove operador no fim (aliny, a.dias, hernande…)
+    raw = re.sub(r"\s+[A-Za-zÀ-ÿ_.]{2,}$", "", raw).strip()
 
     m = re.match(r"^HOJE\s+(\d{1,2}):(\d{2})$", raw, flags=re.I)
     if m:

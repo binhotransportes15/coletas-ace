@@ -239,6 +239,12 @@ def merge_frete_076_into_073(
     resumo["peso_fmt"] = _fmt_peso(total_peso)
     resumo["total_veiculos"] = len(veiculos)
     _write_csv(RESUMO_073_CSV, RESUMO_FIELDS, [resumo])
+    try:
+        from parser_ssw073 import refresh_destinos_frete_from_veiculos
+
+        refresh_destinos_frete_from_veiculos()
+    except Exception:
+        pass
     _publish_local()
     status(f"076 merge: {updated} placa(s) com frete · total R$ {_fmt_money(total_frete)}")
     return {"ok": True, "updated": updated, "resumo": resumo, "frete_rows": len(frete_rows)}
@@ -253,7 +259,8 @@ def analyze_reports_076(
     status = on_status or (lambda _m: None)
     path_list = paths if isinstance(paths, (list, tuple)) else [paths]
     placas_ok = {p.upper() for p in (placas or []) if p} or None
-    all_rows: list[dict[str, Any]] = []
+    # Por arquivo → total por placa; entre arquivos → MAX (evita dobrar dump completo repetido)
+    by_placa: dict[str, dict[str, Any]] = {}
     for p in path_list:
         path = Path(p)
         if not path.exists():
@@ -261,5 +268,31 @@ def analyze_reports_076(
             continue
         chunk = parse_ssw076(path, placas_ok=placas_ok)
         status(f"076: {len(chunk)} linha(s) em {path.name}")
-        all_rows.extend(chunk)
+        file_tot: dict[str, dict[str, float]] = {}
+        for r in chunk:
+            placa = (r.get("placa") or "").upper()
+            if not placa:
+                continue
+            slot = file_tot.setdefault(placa, {"frete": 0.0, "peso": 0.0, "custo": 0.0, "carreta": "", "ctrb": ""})
+            slot["frete"] += float(r.get("frete") or 0)
+            slot["peso"] += float(r.get("peso") or 0)
+            slot["custo"] += float(r.get("custo") or 0)
+            if r.get("carreta") and not slot["carreta"]:
+                slot["carreta"] = r.get("carreta") or ""
+            if r.get("ctrb") and not slot["ctrb"]:
+                slot["ctrb"] = r.get("ctrb") or ""
+        for placa, slot in file_tot.items():
+            cur = by_placa.get(placa)
+            if not cur or float(slot["frete"]) >= float(cur.get("frete") or 0):
+                by_placa[placa] = {
+                    "placa": placa,
+                    "carreta": slot["carreta"],
+                    "ctrb": slot["ctrb"],
+                    "custo": round(slot["custo"], 2),
+                    "frete": round(slot["frete"], 2),
+                    "peso": round(slot["peso"], 3),
+                    "fonte": path.name,
+                }
+    all_rows = list(by_placa.values())
+    all_rows.sort(key=lambda r: r["placa"])
     return merge_frete_076_into_073(all_rows, on_status=status)

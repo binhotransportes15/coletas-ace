@@ -2,7 +2,7 @@
 BINHO · ACE CRT — painel de gestão widescreen (cara de CMD).
 
 Layout:
-  esq  → logo + status + progresso
+  esq  → cubos animados + CPU/MEM/GPU + status
   centro → atalhos + log + prompt de comandos
   dir  → abas Configuração | Gestão
 
@@ -11,14 +11,24 @@ Layout:
 """
 from __future__ import annotations
 
+import math
 import os
 import sys
 import traceback
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QColor, QPainter, QPen, QPixmap, QLinearGradient, QBrush, QTextCursor
+from PySide6.QtCore import Qt, QThread, QTimer, Signal, QPointF
+from PySide6.QtGui import (
+    QColor,
+    QPainter,
+    QPen,
+    QPixmap,
+    QLinearGradient,
+    QBrush,
+    QTextCursor,
+    QPolygonF,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -46,6 +56,14 @@ from crt_bridge import append_log, publish, read_log_since, read_status, STATUS_
 _ROOT = Path(__file__).resolve().parent
 _CUBES = _ROOT / "assets" / "cubes-binho.png"
 _LOGO = _ROOT / "assets" / "logo-binho.png"
+
+# Cubos oficiais (fallback animado se PNG sumir)
+_CUBE_COLORS = (
+    QColor("#8cc63f"),
+    QColor("#fff200"),
+    QColor("#ed1c24"),
+    QColor("#29abe2"),
+)
 
 # Temas do CRT (fundo + texto + accentos)
 CRT_THEMES: dict[str, dict[str, object]] = {
@@ -138,6 +156,182 @@ CRT_THEMES: dict[str, dict[str, object]] = {
 DEFAULT_CRT_THEME = "binho"
 
 
+class BinhoCubesWidget(QWidget):
+    """Cubos Binho com animação contínua (flutuação + pulse + scan)."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setMinimumHeight(132)
+        self.setMaximumHeight(168)
+        self._t = 0.0
+        self._pm = QPixmap(str(_CUBES)) if _CUBES.is_file() else QPixmap()
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start(33)  # ~30 fps
+
+    def _tick(self) -> None:
+        self._t += 0.033
+        self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+        p.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        w, h = self.width(), self.height()
+        bg = QColor("#050505")
+        p.fillRect(0, 0, w, h, bg)
+
+        t = self._t
+        bob = math.sin(t * 1.35) * 4.0
+        sway = math.sin(t * 0.85) * 3.0
+        pulse = 0.92 + 0.08 * (0.5 + 0.5 * math.sin(t * 2.2))
+        angle = math.sin(t * 0.55) * 2.4
+
+        if not self._pm.isNull():
+            target_h = int(min(h - 12, 128) * pulse)
+            scaled = self._pm.scaledToHeight(target_h, Qt.SmoothTransformation)
+            x = (w - scaled.width()) / 2.0 + sway
+            y = (h - scaled.height()) / 2.0 + bob - 2
+            p.save()
+            p.translate(x + scaled.width() / 2.0, y + scaled.height() / 2.0)
+            p.rotate(angle)
+            p.translate(-scaled.width() / 2.0, -scaled.height() / 2.0)
+            p.setOpacity(0.88 + 0.12 * (0.5 + 0.5 * math.sin(t * 1.7)))
+            p.drawPixmap(0, 0, scaled)
+            p.restore()
+        else:
+            self._paint_fallback_cubes(p, w, h, t, bob, sway, pulse)
+
+        # scanline CRT suave
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(0, 0, 0, 28))
+        step = 3
+        y0 = int((t * 18) % step)
+        for yy in range(y0, h, step):
+            p.drawRect(0, yy, w, 1)
+
+        # brilho inferior
+        glow = QLinearGradient(0, h * 0.55, 0, h)
+        glow.setColorAt(0.0, QColor(0, 0, 0, 0))
+        glow.setColorAt(1.0, QColor(140, 198, 63, 35))
+        p.fillRect(0, int(h * 0.55), w, int(h * 0.45), glow)
+        p.end()
+
+    def _paint_fallback_cubes(
+        self,
+        p: QPainter,
+        w: int,
+        h: int,
+        t: float,
+        bob: float,
+        sway: float,
+        pulse: float,
+    ) -> None:
+        cx, cy = w / 2.0 + sway, h / 2.0 + bob
+        size = 28.0 * pulse
+        offsets = ((-38, -18), (22, -28), (-30, 22), (26, 18))
+        for i, (ox, oy) in enumerate(offsets):
+            phase = t * (1.1 + i * 0.17) + i
+            dx = ox + math.sin(phase) * 5
+            dy = oy + math.cos(phase * 0.9) * 4
+            s = size * (0.85 + 0.15 * math.sin(phase * 1.3))
+            self._draw_iso_cube(p, cx + dx, cy + dy, s, _CUBE_COLORS[i % 4])
+
+    @staticmethod
+    def _draw_iso_cube(p: QPainter, x: float, y: float, s: float, color: QColor) -> None:
+        top = QColor(color)
+        top = top.lighter(130)
+        left = QColor(color)
+        right = QColor(color).darker(125)
+        hx, hy = s * 0.55, s * 0.32
+        pts_top = [
+            QPointF(x, y - hy),
+            QPointF(x + hx, y),
+            QPointF(x, y + hy),
+            QPointF(x - hx, y),
+        ]
+        pts_left = [
+            QPointF(x - hx, y),
+            QPointF(x, y + hy),
+            QPointF(x, y + hy + s * 0.55),
+            QPointF(x - hx, y + s * 0.55),
+        ]
+        pts_right = [
+            QPointF(x + hx, y),
+            QPointF(x, y + hy),
+            QPointF(x, y + hy + s * 0.55),
+            QPointF(x + hx, y + s * 0.55),
+        ]
+        p.setPen(QPen(QColor(0, 0, 0, 90), 1))
+        for pts, col in ((pts_top, top), (pts_left, left), (pts_right, right)):
+            p.setBrush(QBrush(col))
+            p.drawPolygon(QPolygonF(pts))
+
+
+class SysMeterRow(QWidget):
+    """Barra CPU / MEM / GPU estilo gerenciador de tarefas."""
+
+    def __init__(self, title: str, accent: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(8)
+        self._title = QLabel(title)
+        self._title.setObjectName("sysMeterTitle")
+        self._title.setFixedWidth(54)
+        self._bar = QProgressBar()
+        self._bar.setObjectName("sysMeter")
+        self._bar.setRange(0, 1000)
+        self._bar.setValue(0)
+        self._bar.setTextVisible(True)
+        self._bar.setFormat("—")
+        self._bar.setFixedHeight(14)
+        self._val = QLabel("—")
+        self._val.setObjectName("sysMeterVal")
+        self._val.setFixedWidth(42)
+        self._val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        lay.addWidget(self._title)
+        lay.addWidget(self._bar, 1)
+        lay.addWidget(self._val)
+        self._accent = accent
+        self._apply_chunk(accent)
+
+    def _apply_chunk(self, accent: str) -> None:
+        self._bar.setStyleSheet(
+            f"""
+            QProgressBar#sysMeter {{
+                background: #0a0a0a;
+                border: 1px solid #222;
+                border-radius: 2px;
+                text-align: center;
+                color: #bbb;
+                font-size: 9px;
+            }}
+            QProgressBar#sysMeter::chunk {{
+                background: {accent};
+            }}
+            """
+        )
+
+    def set_pct(self, pct: float | None, warn: float = 75.0, crit: float = 90.0) -> None:
+        if pct is None:
+            self._bar.setValue(0)
+            self._bar.setFormat("—")
+            self._val.setText("—")
+            self._apply_chunk(self._accent)
+            return
+        v = max(0.0, min(100.0, float(pct)))
+        self._bar.setValue(int(round(v * 10)))
+        self._bar.setFormat(f"{v:.0f}%")
+        self._val.setText(f"{v:.0f}%")
+        color = self._accent
+        if v >= crit:
+            color = "#ef4444"
+        elif v >= warn:
+            color = "#f59e0b"
+        self._apply_chunk(color)
+
+
 def build_crt_stylesheet(theme_id: str = DEFAULT_CRT_THEME) -> str:
     t = CRT_THEMES.get(theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
     return f"""
@@ -181,6 +375,27 @@ QLabel#section {{
 QLabel#foot {{
     color: {t['muted']};
     font-size: 10px;
+}}
+QLabel#sysHost {{
+    color: {t['text']};
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}}
+QLabel#sysHostSub {{
+    color: {t['dim']};
+    font-size: 10px;
+}}
+QLabel#sysMeterTitle {{
+    color: {t['dim']};
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}}
+QLabel#sysMeterVal {{
+    color: {t['text']};
+    font-size: 10px;
+    font-weight: 700;
 }}
 QProgressBar {{
     background: {t['prog_bg']};
@@ -546,11 +761,52 @@ class AceCrtConsole(QWidget):
         lay.setContentsMargins(10, 10, 10, 10)
         lay.setSpacing(8)
 
-        self.logo = QLabel()
-        self.logo.setAlignment(Qt.AlignCenter)
-        self.logo.setMinimumHeight(180)
-        self._load_logo()
-        lay.addWidget(self.logo)
+        # Cubos animados + identidade da máquina + medidores
+        self.cubes = BinhoCubesWidget()
+        lay.addWidget(self.cubes)
+
+        try:
+            from sys_monitor import host_info, gpu_name, warmup
+
+            warmup()
+            hi = host_info()
+        except Exception:
+            hi = {"host": "—", "cpu_name": "—", "cores": "—", "ram_total_gb": "—", "os": "—"}
+            gpu_name = lambda: None  # noqa: E731
+
+        self.sys_host = QLabel(str(hi.get("host") or "—"))
+        self.sys_host.setObjectName("sysHost")
+        self.sys_host.setAlignment(Qt.AlignCenter)
+        self.sys_host.setWordWrap(True)
+        lay.addWidget(self.sys_host)
+
+        cpu_line = str(hi.get("cpu_name") or "CPU")
+        cores = str(hi.get("cores") or "—")
+        ram = str(hi.get("ram_total_gb") or "—")
+        gname = None
+        try:
+            gname = gpu_name()
+        except Exception:
+            gname = None
+        sub = f"{cpu_line}\n{cores}  ·  RAM {ram}"
+        if gname:
+            sub += f"\nGPU {gname}"
+        else:
+            sub += f"\n{hi.get('os') or ''}"
+        self.sys_host_sub = QLabel(sub.strip())
+        self.sys_host_sub.setObjectName("sysHostSub")
+        self.sys_host_sub.setAlignment(Qt.AlignCenter)
+        self.sys_host_sub.setWordWrap(True)
+        lay.addWidget(self.sys_host_sub)
+
+        lay.addWidget(self._section("RECURSOS"))
+        self.meter_cpu = SysMeterRow("CPU", "#8cc63f")
+        self.meter_mem = SysMeterRow("MEM", "#29abe2")
+        self.meter_gpu = SysMeterRow("GPU", "#fff200")
+        lay.addWidget(self.meter_cpu)
+        lay.addWidget(self.meter_mem)
+        lay.addWidget(self.meter_gpu)
+        self._sys_tick = 0
 
         self.status = QLabel("ONLINE")
         self.status.setObjectName("status")
@@ -940,15 +1196,19 @@ class AceCrtConsole(QWidget):
         self._scan.setGeometry(self.rect())
 
     def _load_logo(self) -> None:
-        path = _CUBES if _CUBES.is_file() else _LOGO
-        if not path.is_file():
-            self.logo.setText("BINHO")
+        # Mantido por compatibilidade; painel esquerdo usa BinhoCubesWidget.
+        return
+
+    def _refresh_sys_meters(self) -> None:
+        try:
+            from sys_monitor import sample_usage
+
+            u = sample_usage()
+        except Exception:
             return
-        pm = QPixmap(str(path))
-        if pm.isNull():
-            self.logo.setText("BINHO")
-            return
-        self.logo.setPixmap(pm.scaled(240, 220, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.meter_cpu.set_pct(u.get("cpu"))
+        self.meter_mem.set_pct(u.get("mem"))
+        self.meter_gpu.set_pct(u.get("gpu"))
 
     def _reload_payload(self) -> None:
         from ace_cmd import EDITABLE, _load_payload
@@ -1321,6 +1581,10 @@ class AceCrtConsole(QWidget):
 
     def _refresh_status(self) -> None:
         self._pull_mirrored_log()
+        self._sys_tick = getattr(self, "_sys_tick", 0) + 1
+        # ~2 Hz para CPU/RAM (timer 250ms); GPU já é cacheado em sys_monitor
+        if self._sys_tick % 2 == 0:
+            self._refresh_sys_meters()
         st = read_status()
         online = bool(st.get("online", True))
         label = str(st.get("label") or ("ONLINE" if online else "OFFLINE")).upper()
