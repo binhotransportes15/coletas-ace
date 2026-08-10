@@ -1,9 +1,9 @@
 """Download SSW 073 (ssw0332) — Consulta de CTRBs e OSs → Arquivo Excel/CSV.
 
 Fluxo Contratação (3 relatórios · Unidade emissora = SPO · período = mês até hoje):
-  1) Enfileira F+A · A+C · A+O (Arquivo Excel → fila 156)
-  2) Baixa na 156 (ssw1440) os jobs 0332/073 concluídos
-  · Operação T · Considerar T · Placas alimentam o 076
+  1) 1 login · abre N telas 073 (F+A · A+C · A+O)
+  2) Arquivo Excel → download direto (073 não usa fila 156)
+  3) Mesma sessão segue pro 076
 """
 from __future__ import annotations
 
@@ -119,9 +119,7 @@ def download_reports_073(
     tipos: tuple[str, ...] | None = None,
     propriedade: str | None = None,
 ) -> dict[str, Any]:
-    """
-    1 login · N telas 073 abertas juntas (F/AC/AO) · Excel em paralelo → fila 156.
-    """
+    """1 login · N telas 073 em paralelo · Excel com download direto."""
     status = on_status or _noop
     ensure_dirs()
     _ensure_playwright_path()
@@ -198,7 +196,7 @@ def download_reports_073(
 
     missing = [q["key"] for q in queued if q["key"] not in paths]
     for k in missing:
-        errors.setdefault(k, "sem download na fila 156")
+        errors.setdefault(k, "sem download do Excel")
 
     if not paths and errors:
         raise RuntimeError("073 falhou: " + "; ".join(f"{k}: {v}" for k, v in errors.items()))
@@ -322,6 +320,12 @@ def download_contratacao_ssw(
             if not skip_076:
                 try:
                     status("[76] mesma sessão — abrindo demonstrativo…")
+                    try:
+                        page.bring_to_front()
+                        client._ensure_unit(page)
+                        client._patch_blank_popup_form(page)
+                    except Exception as stab_err:  # noqa: BLE001
+                        status(f"[76] estabilizando menu: {stab_err}")
                     dl76 = download_reports_076(
                         placas=list(analysis73.get("placas") or []),
                         period=(ini_ddmm, fim_ddmm),
@@ -366,15 +370,13 @@ def _run_073_phases(
     ts: str,
     status: StatusCallback,
 ) -> dict[str, Any]:
-    """Abre N telas 073, preenche, Excel em paralelo, baixa na 156."""
+    """Abre N telas 073, preenche e baixa Excel direto (073 não usa fila 156)."""
     paths: dict[str, str] = {}
     errors: dict[str, str] = {}
     queued: list[dict[str, Any]] = []
     screens: list[tuple[dict[str, str], Any]] = []
 
-    status(f"[73] fase 1/2 · abrindo {len(jobs)} tela(s) 073…")
-    known_seqs = _snapshot_fila_seqs(client, context, page, status)
-    status(f"[73] fila 156: {len(known_seqs)} job(s) já existentes")
+    status(f"[73] abrindo {len(jobs)} tela(s) 073…")
 
     for idx, job in enumerate(jobs, start=1):
         key = job["key"]
@@ -416,24 +418,29 @@ def _run_073_phases(
             errors[key] = str(err)
             status(f"[73/{key}·{lab}] FALHOU no form: {err}")
 
-    status(f"[73] enviando {len(screens)} Arquivo Excel → fila 156…")
-    t0 = time.time()
+    # 073: Arquivo Excel já dispara download direto (não vai pra 156)
+    status(f"[73] baixando Excel direto em {len(screens)} tela(s)…")
     for job, popup in screens:
         key = job["key"]
         lab = job["label"]
         if key in errors:
             continue
+        dest_name = f"contratacao_073_{key}_{ts}.sswweb"
         try:
             try:
                 popup.bring_to_front()
             except Exception:
                 pass
-            _enviar_fila_73(popup, status, key)
-            queued.append({"key": key, "label": lab, "t": t0, "idx": len(queued) + 1})
-            status(f"[73/{key}·{lab}] Excel enviado")
+            status(f"[73/{key}·{lab}] Arquivo Excel…")
+            path = _download_excel_direto_73(
+                client, context, popup, dest_name, key, status
+            )
+            paths[key] = str(path)
+            queued.append({"key": key, "label": lab, "t": time.time(), "idx": len(queued) + 1})
+            status(f"[73/{key}·{lab}] OK {path.name} ({path.stat().st_size} bytes)")
         except Exception as err:  # noqa: BLE001
             errors[key] = str(err)
-            status(f"[73/{key}·{lab}] FALHOU no Excel: {err}")
+            status(f"[73/{key}·{lab}] FALHOU download: {err}")
 
     for _job, popup in screens:
         try:
@@ -442,27 +449,6 @@ def _run_073_phases(
         except Exception:
             pass
 
-    if not queued:
-        return {"paths": paths, "errors": errors, "queued": queued}
-
-    status("[73] aguardando fila registrar os jobs…")
-    time.sleep(3)
-
-    status(f"[73] fase 2/2 · baixando {len(queued)} Excel na fila 156…")
-    fila = _abrir_fila_156(client, context, page, status)
-    paths = _baixar_todos_da_fila(
-        client,
-        context,
-        page,
-        fila,
-        queued=queued,
-        known_before=known_seqs,
-        ts=ts,
-        status=status,
-    )
-    missing = [q["key"] for q in queued if q["key"] not in paths]
-    for k in missing:
-        errors.setdefault(k, "sem download na fila 156")
     return {"paths": paths, "errors": errors, "queued": queued}
 
 
@@ -591,36 +577,58 @@ def _preencher_73(
 
 
 def _clicar_excel_73(popup) -> str:
-    """Clica 'Arquivo Excel' (preferência) ou ► / ajaxEnvia."""
+    """Clica somente o link 'Arquivo Excel' (barra do SSW)."""
+    # 1) Playwright por texto exato (mais confiável que evaluate genérico)
+    try:
+        loc = popup.get_by_text("Arquivo Excel", exact=True)
+        if loc.count() > 0:
+            loc.first.click(timeout=5000)
+            return "Arquivo Excel"
+    except Exception:
+        pass
+    try:
+        loc = popup.locator("a", has_text="Arquivo Excel")
+        if loc.count() > 0:
+            loc.first.click(timeout=5000)
+            return "a:Arquivo Excel"
+    except Exception:
+        pass
+    # 2) evaluate: só o link cujo texto é exatamente Arquivo Excel
     return popup.evaluate(
         """() => {
-          const links = Array.from(document.querySelectorAll('a, button, input, img, span'));
+          const links = Array.from(document.querySelectorAll('a, span, button'));
           for (const a of links) {
-            const t = ((a.innerText || a.textContent || a.alt || a.title || '') + '').toLowerCase();
-            if (t.includes('arquivo excel') || t.includes('excel')) {
+            const t = ((a.innerText || a.textContent || '') + '').replace(/\\s+/g, ' ').trim();
+            if (/^Arquivo Excel$/i.test(t)) {
               a.click();
-              return 'excel';
+              return 'excel-exact';
             }
           }
-          if (typeof ajaxEnvia === 'function') {
-            try { ajaxEnvia('EXC', 0); return 'ajax-EXC'; } catch (_) {}
-            try { ajaxEnvia('ENV', 0); return 'ajax-ENV'; } catch (_) {}
-          }
-          const play = document.getElementById('13') || document.querySelector('[id=\"13\"]');
-          if (play) { play.click(); return '13'; }
           return '';
         }"""
     )
 
 
+def _download_excel_direto_73(
+    client, context, popup, dest_name: str, key: str, status
+) -> Path:
+    """073: Arquivo Excel gera download imediato (não usa fila 156)."""
+    with context.expect_event("download", timeout=120000) as di:
+        clicked = _clicar_excel_73(popup)
+        if not clicked:
+            raise RuntimeError(f"073/{key}: botão Arquivo Excel / ► não encontrado")
+        status(f"[73/{key}] clique={clicked}")
+    download = di.value
+    return _save_named(client, download, dest_name)
+
+
 def _enviar_fila_73(popup, status, key: str) -> None:
-    """Clica Arquivo Excel e aceita o envio à fila (sem esperar download)."""
+    """Legado: só clica Excel (sem esperar). Preferir `_download_excel_direto_73`."""
     clicked = _clicar_excel_73(popup)
     if not clicked:
         raise RuntimeError(f"073/{key}: botão Arquivo Excel / ► não encontrado")
     status(f"[73/{key}] clique={clicked}")
     _safe_wait(popup, 800)
-    # dialogs já são aceitos pelo page.on('dialog')
 
 
 def _save_named(client, download, dest_name: str) -> Path:
@@ -972,14 +980,6 @@ def _baixar_via_fila_73(client, context, page, popup, dest_name: str, key: str, 
 
 
 def _gerar_download_73(client, context, page, popup, dest_name: str, key: str, status) -> Path:
-    """Legado: tenta download direto curto; senão fila."""
-    try:
-        with context.expect_event("download", timeout=8000) as di:
-            clicked = _clicar_excel_73(popup)
-            if not clicked:
-                raise RuntimeError("073: botão Arquivo Excel / ► não encontrado")
-            status(f"[73/{key}] clique={clicked}")
-        return _save_named(client, di.value, dest_name)
-    except Exception as direct_err:  # noqa: BLE001
-        status(f"[73/{key}] sem download imediato ({direct_err}); fila 156…")
-        return _baixar_via_fila_73(client, context, page, popup, dest_name, key, status)
+    """Download direto do Excel 073 (sem fila 156)."""
+    _ = page
+    return _download_excel_direto_73(client, context, popup, dest_name, key, status)

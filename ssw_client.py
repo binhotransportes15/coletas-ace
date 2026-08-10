@@ -281,6 +281,10 @@ class AceSswClient:
     def _login(self, page) -> None:
         creds = self.credentials
         self.on_status("Efetuando login no SSW...")
+        try:
+            page.on("dialog", lambda d: d.accept())
+        except Exception:
+            pass
         page.goto(creds.url, wait_until="domcontentloaded")
         page.locator('[id="1"]').wait_for()
         page.locator('[id="1"]').fill(creds.domain)
@@ -288,12 +292,107 @@ class AceSswClient:
         page.locator('[id="3"]').fill(creds.user)
         page.locator('[id="3"]').press("Tab")
         page.locator('[id="4"]').fill(creds.password)
-        page.locator("a").first.click()
-        page.wait_for_timeout(6000)
-        body_text = page.locator("body").inner_text(timeout=5000)
-        if "Menu Principal" not in body_text and "menu01" not in page.url:
-            raise RuntimeError("Falha no login: menu principal do SSW nao foi carregado.")
-        self.on_status("Login concluido.")
+
+        # Confirma que os campos ficaram preenchidos (SSW às vezes limpa)
+        try:
+            got = {
+                "1": (page.locator('[id="1"]').input_value() or "").strip(),
+                "2": (page.locator('[id="2"]').input_value() or "").strip(),
+                "3": (page.locator('[id="3"]').input_value() or "").strip(),
+                "4": (page.locator('[id="4"]').input_value() or "").strip(),
+            }
+            if not got["1"] or not got["2"] or not got["3"] or not got["4"]:
+                page.locator('[id="1"]').fill(creds.domain)
+                page.locator('[id="2"]').fill(creds.document)
+                page.locator('[id="3"]').fill(creds.user)
+                page.locator('[id="4"]').fill(creds.password)
+        except Exception:
+            pass
+
+        # Submit: o botão da tela de login é o ► (Enter sozinho não entra)
+        submitted = False
+        for attempt in (
+            lambda: page.get_by_text("►", exact=True).first.click(timeout=3000),
+            lambda: page.locator("a", has_text="►").first.click(timeout=3000),
+            lambda: page.locator("a").first.click(timeout=3000),
+            lambda: page.locator('[id="4"]').press("Enter"),
+        ):
+            try:
+                attempt()
+                submitted = True
+                break
+            except Exception:
+                continue
+        if not submitted:
+            raise RuntimeError("Falha no login: botão ► / Enter nao encontrado.")
+
+        deadline = time.time() + 25
+        body_text = ""
+        while time.time() < deadline:
+            try:
+                url = (page.url or "").lower()
+            except Exception:
+                url = ""
+            try:
+                body_text = page.locator("body").inner_text(timeout=3000) or ""
+            except Exception:
+                body_text = ""
+            if "Menu Principal" in body_text or "menu01" in url:
+                self.on_status("Login concluido.")
+                return
+
+            low = body_text.lower()
+            # Sessão presa (crash anterior / Chrome aberto): tenta forçar entrada
+            if any(
+                t in low
+                for t in (
+                    "ja conectado",
+                    "já conectado",
+                    "usuario conectado",
+                    "usuário conectado",
+                    "sessao ativa",
+                    "sessão ativa",
+                    "em uso",
+                )
+            ):
+                self.on_status("SSW: sessão já conectada — tentando forçar…")
+                clicked = False
+                for label in ("Sim", "OK", "Continuar", "Forçar", "Forcar", "Entrar"):
+                    try:
+                        loc = page.get_by_text(label, exact=True)
+                        if loc.count() > 0:
+                            loc.first.click(timeout=2000)
+                            clicked = True
+                            break
+                    except Exception:
+                        continue
+                if not clicked:
+                    try:
+                        page.evaluate(
+                            """() => {
+                              const els = Array.from(document.querySelectorAll('a, button, input[type=button], input[type=submit]'));
+                              for (const el of els) {
+                                const t = ((el.value || el.innerText || el.textContent || '') + '').trim();
+                                if (/^(sim|ok|continuar|for[cç]ar|entrar)$/i.test(t)) { el.click(); return t; }
+                              }
+                              return '';
+                            }"""
+                        )
+                    except Exception:
+                        pass
+                page.wait_for_timeout(1500)
+                continue
+
+            page.wait_for_timeout(800)
+
+        snippet = " ".join((body_text or "").split())
+        if len(snippet) > 220:
+            snippet = snippet[:220] + "…"
+        hint = snippet or "(página sem texto)"
+        raise RuntimeError(
+            "Falha no login: menu principal do SSW nao foi carregado. "
+            f"Tela: {hint}"
+        )
 
     def _coleta_units(self) -> list[str]:
         return parse_coleta_units(getattr(self.credentials, "unit", "") or "")
