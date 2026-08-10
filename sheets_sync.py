@@ -466,7 +466,7 @@ def sync_cycle_sheets(
     do_103: bool = False,
     do_36: bool = False,
     do_225: bool = False,
-    include_historico: bool = False,
+    include_historico: bool = True,
     on_status: StatusCallback | None = None,
 ) -> dict[str, Any]:
     """Um lote só após o ciclo dual — bem mais rápido que 4 syncs separados."""

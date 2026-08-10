@@ -11,6 +11,11 @@ window.ACE_CONFIG = {
   scriptUrl:
     "https://script.google.com/macros/s/AKfycbxse6pGIoSJ8CQAZNuRhNsk_xYY-bqY34HtYxAczx3XQz97fjlEIYFISGiGCGHGjUI6/exec",
   /** fallback local / Pages se Sheets falhar */
+  distribuicaoCsv: {
+    coletas: "data/coletas.csv",
+    historico: "data/historico.csv",
+    coletas103: "data/coletas_103.csv",
+  },
   armazemCsv: {
     resumo: "data/armazem/resumo_78.csv",
     veiculos: "data/armazem/veiculos_78.csv",

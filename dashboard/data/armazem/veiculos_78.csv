@@ -1,6 +1,6 @@
 ﻿origem,origem_sigla,cavalo,carreta,manifesto,peso,peso_num,saida,prev_chegada,chegada,inicio_descarga,final_descarga,status,atrasado,tempo_descarga_min,tempo_descarga,peso_veiculo
-GOIANIA,GYN,FNZ1D73,GJX6G16,016085-7,6.653,6653,08/08 14:39,11/08 02:39,HOJE 11:54,HOJE 13:07 aliny,,descarregando,0,31,31min (andamento),37.372
-GOIANIA,GYN,FNZ1D73,GJX6G16,016086-5,30.719,30719,08/08 14:39,11/08 02:39,HOJE 11:54,HOJE 13:07 aliny,,descarregando,0,31,31min (andamento),37.372
+GOIANIA,GYN,FNZ1D73,GJX6G16,016085-7,6.653,6653,08/08 14:39,11/08 02:39,HOJE 11:54,HOJE 13:07 aliny,,descarregando,0,73,1h 13min (andamento),37.372
+GOIANIA,GYN,FNZ1D73,GJX6G16,016086-5,30.719,30719,08/08 14:39,11/08 02:39,HOJE 11:54,HOJE 13:07 aliny,,descarregando,0,73,1h 13min (andamento),37.372
 GOIANIA,GYN,EMU7J31,EZP3E25,016032-6,29.796,29796,04/08 09:16,05/08 23:00,05/08 07:09,,,chegou,0,,,29.796
 SERRA,VIX,FNZ1D73,GJA0172,002445-7,15.962,15962,04/08 06:26,05/08 18:25,05/08 07:43,05/08 14:39 alejand,06/08 09:01 heldson,finalizado,0,1102,18h 22min,18.962
 SERRA,VIX,FNZ1D73,GJA0172,002446-5,3.000,3000,04/08 06:26,05/08 18:25,05/08 07:43,05/08 14:39 alejand,06/08 09:01 heldson,finalizado,0,1102,18h 22min,18.962

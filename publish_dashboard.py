@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from config import DASHBOARD_DIR, BASE_DIR, AceSettings, load_settings
-from parser_ssw0157 import COLETAS_CSV, RESUMO_CSV
+from parser_ssw0157 import COLETAS_CSV, RESUMO_CSV, HISTORICO_CSV
 from parser_ssw103 import COLETAS_103_CSV, RESUMO_103_CSV
 from parser_ssw0146 import ENTREGAS_36_CSV, ROMANEIOS_36_CSV, RESUMO_36_CSV
 from parser_ssw225 import AGENDAMENTOS_225_CSV, RESUMO_225_CSV, ALERTAS_225_CSV
@@ -35,6 +35,7 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
     paths: dict[str, str] = {}
     for src, name in (
         (COLETAS_CSV, "coletas.csv"),
+        (HISTORICO_CSV, "historico.csv"),
         (RESUMO_CSV, "resumo_diario.csv"),
         (COLETAS_103_CSV, "coletas_103.csv"),
         (RESUMO_103_CSV, "resumo_103.csv"),
@@ -80,6 +81,11 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
                     fh.write("periodo,total,em_rota,parado,concluido,alerta\n")
                 elif name == "alertas_225.csv":
                     fh.write("ctrc,destinatario,destino,agendado_para,status_raw\n")
+                elif name == "historico.csv":
+                    fh.write(
+                        "event_key,coleta_id,coleta,seq_evento,dominio,unidade_evento,"
+                        "usuario,data,hora,observacao\n"
+                    )
                 else:
                     fh.write("coleta_id,coleta,situacao_atual\n")
             paths[name] = str(dest)

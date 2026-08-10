@@ -543,7 +543,9 @@ def save_cache(
                 cid = row.get("coleta_id") or ""
                 if cid and cid not in new_coleta_rows:
                     new_coleta_rows[cid] = row
-    if merge and HISTORICO_CSV.exists():
+    # Histórico SEMPRE acumula: o 103 (Gestão) lista coletas de outros dias
+    # e o Histórico do 50 sumia a cada ciclo com merge=False.
+    if HISTORICO_CSV.exists():
         with HISTORICO_CSV.open("r", encoding="utf-8-sig", newline="") as fh:
             for row in csv.DictReader(fh):
                 key = row.get("event_key") or ""
@@ -555,6 +557,23 @@ def save_cache(
         new_hist_rows.values(),
         key=lambda r: (r.get("coleta_id") or "", r.get("data") or "", r.get("hora") or ""),
     )
+    # Evita crescimento infinito: prioriza IDs do lote atual, depois os mais recentes
+    if len(hist_list) > 12000:
+        keep_ids = {c.coleta_id for c in coletas}
+        pinned = [r for r in hist_list if (r.get("coleta_id") or "") in keep_ids]
+        others = [r for r in hist_list if (r.get("coleta_id") or "") not in keep_ids]
+        others.sort(
+            key=lambda r: (
+                str(r.get("data") or ""),
+                str(r.get("hora") or ""),
+            ),
+            reverse=True,
+        )
+        budget = max(0, 12000 - len(pinned))
+        hist_list = pinned + others[:budget]
+        hist_list.sort(
+            key=lambda r: (r.get("coleta_id") or "", r.get("data") or "", r.get("hora") or "")
+        )
 
     resumo = build_resumo(coletas)
     if merge and RESUMO_CSV.exists():
@@ -595,7 +614,8 @@ def save_cache(
         "modelo": (
             "1 coleta = cabecalho SPO+numero. "
             "Soma = somente SITUACAO ATUAL. "
-            "Historico SIT/INSTR nao conta. Cache/planilha = replace do periodo."
+            "Historico SIT/INSTR nao conta. Coletas = replace do periodo; "
+            "Historico acumula entre ciclos (consulta Gestão 103)."
         ),
         "paths": {
             "coletas": str(COLETAS_CSV),

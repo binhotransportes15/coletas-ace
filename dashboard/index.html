@@ -39,15 +39,17 @@
     body.live-mode { overflow: hidden; height: 100vh; }
 
     .board {
-      width: min(1500px, 100%);
+      width: min(1680px, 100%);
       margin: 0 auto;
-      padding: 12px 14px 16px;
+      padding: 10px 14px 12px;
       display: grid;
       gap: 10px;
     }
     body.live-mode .board {
-      height: 100vh;
-      grid-template-rows: auto auto 1fr auto;
+      height: 100dvh;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+      box-sizing: border-box;
     }
 
     .topbar {
@@ -1109,12 +1111,49 @@
       gap: clamp(8px, 1.1vmin, 14px) !important;
       height: 100% !important;
     }
+    /* TV: painéis de setor — coluna flex estável (evita layout bugado) */
+    body.tv-mode #panel-armazem:not([hidden]),
+    body.tv-mode #panel-pendencia:not([hidden]),
+    body.tv-mode #panel-contratacao:not([hidden]) {
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+      box-sizing: border-box !important;
+      width: 100vw !important;
+      max-width: none !important;
+      height: 100dvh !important;
+      margin: 0 !important;
+    }
+    body.tv-mode #panel-armazem .arm-wrap,
+    body.tv-mode #panel-pendencia .pen-wrap,
+    body.tv-mode #panel-contratacao .ctr-wrap {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      height: auto !important;
+      max-width: none !important;
+      width: 100% !important;
+      margin: 0 !important;
+      overflow: hidden !important;
+      display: grid !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+    }
+    /* Regra genérica .torre .barra { max-height:38vh } não vale pro armazém */
+    body.tv-mode .torres.arm-torres .barra,
+    body.tv-mode .torres.arm-torres .torre .barra,
+    body.tv-mode .torres.pen-torres .barra,
+    body.tv-mode .torres.ctr-torres .barra {
+      max-height: none !important;
+    }
+
     body.tv-mode #armLayoutPatio:not(.has-blocks) {
       display: grid !important;
       grid-template-columns: 1fr !important;
-      grid-template-rows: max-content minmax(140px, 0.75fr) minmax(160px, 1.25fr) !important;
+      /* minmax(0, fr) — minpx alto estoura 100dvh na TV */
+      grid-template-rows: auto minmax(0, 1.55fr) minmax(0, 0.7fr) !important;
       height: 100% !important;
-      gap: clamp(8px, 1.1vmin, 14px) !important;
+      min-height: 0 !important;
+      gap: clamp(6px, 0.9vmin, 12px) !important;
+      overflow: hidden !important;
     }
     body.tv-mode #armLayoutPatio:not(.has-blocks) [data-block="kpis"] {
       grid-column: 1 !important;
@@ -1125,21 +1164,37 @@
       overflow: visible !important;
       display: grid !important;
       grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
-      gap: clamp(8px, 1.1vmin, 12px) !important;
+      gap: clamp(6px, 0.8vmin, 10px) !important;
       align-self: start !important;
+      flex-shrink: 0 !important;
     }
     body.tv-mode #armLayoutPatio:not(.has-blocks) [data-block="chart"] {
       grid-column: 1 !important;
       grid-row: 2 !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
     }
     body.tv-mode #armLayoutPatio:not(.has-blocks) [data-block="tabela"] {
       grid-column: 1 !important;
       grid-row: 3 !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-kpi {
+      padding: clamp(6px, 0.8vmin, 10px) clamp(8px, 1vmin, 12px) !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-hero-card > header {
+      padding: 6px 12px !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-hero-card > header .meta {
+      display: none !important;
     }
     body.tv-mode .arm-layout:not(.has-blocks) {
       display: grid !important;
       height: 100% !important;
-      gap: clamp(8px, 1.1vmin, 14px) !important;
+      min-height: 0 !important;
+      gap: clamp(6px, 0.9vmin, 12px) !important;
+      overflow: hidden !important;
     }
     body.tv-mode #armLayoutConferentes:not(.has-blocks) {
       grid-template-columns: 1fr !important;
@@ -1151,17 +1206,19 @@
     body.tv-mode #armLayoutConferentes:not(.has-blocks) [data-block="chart"] {
       grid-column: 1 !important;
       grid-row: 1 !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
     }
     body.tv-mode .arm-wrap {
       max-width: none !important;
       width: 100% !important;
       margin: 0 !important;
-      height: 100% !important;
       min-height: 0 !important;
     }
     body.tv-mode .arm-view.active {
       height: 100% !important;
       min-height: 0 !important;
+      overflow: hidden !important;
     }
     body.tv-mode #armLayoutPatio [data-block="chart"],
     body.tv-mode #armLayoutPatio .arm-hero,
@@ -1169,9 +1226,7 @@
       height: 100% !important;
       min-height: 0 !important;
       max-height: none !important;
-    }
-    body.tv-mode #armLayoutPatio:not(.has-blocks) {
-      grid-template-rows: max-content minmax(140px, 0.75fr) minmax(140px, 1.25fr) !important;
+      overflow: hidden !important;
     }
     body.tv-mode #armLayoutPatio .arm-hero-card {
       display: grid !important;
@@ -1180,7 +1235,7 @@
     body.tv-mode #armLayoutPatio .arm-towers-wrap {
       height: 100% !important;
       min-height: 0 !important;
-      padding: clamp(8px, 1.2vmin, 16px) clamp(10px, 1.4vmin, 20px) !important;
+      padding: clamp(4px, 0.8vmin, 12px) clamp(8px, 1.2vmin, 16px) !important;
     }
     body.tv-mode #armLayoutPatio .torres.arm-torres {
       height: 100% !important;
@@ -1191,35 +1246,48 @@
     }
     body.tv-mode #armLayoutPatio .torres.arm-torres .torre {
       flex: 0 0 auto !important;
-      width: clamp(96px, 11.5vmin, 176px) !important;
+      width: clamp(100px, 12vmin, 180px) !important;
       max-width: none !important;
     }
     body.tv-mode #armLayoutPatio .torres.arm-torres .pin {
-      width: clamp(36px, 4.2vmin, 52px) !important;
-      height: clamp(36px, 4.2vmin, 52px) !important;
-      margin-bottom: clamp(8px, 1vmin, 12px) !important;
+      width: clamp(40px, 4.6vmin, 56px) !important;
+      height: clamp(40px, 4.6vmin, 56px) !important;
+      margin-bottom: clamp(6px, 0.8vmin, 10px) !important;
     }
     body.tv-mode #armLayoutPatio .torres.arm-torres .pin span {
-      font-size: clamp(14px, 1.8vmin, 22px) !important;
+      font-size: clamp(15px, 1.9vmin, 24px) !important;
     }
     body.tv-mode #armLayoutPatio .torres.arm-torres .barra {
-      min-height: clamp(56px, 7vmin, 100px) !important;
+      min-height: clamp(64px, 8vmin, 120px) !important;
       max-height: none !important;
     }
     body.tv-mode #armLayoutPatio .torres.arm-torres .barra strong {
-      font-size: clamp(26px, 3.8vmin, 56px) !important;
+      font-size: clamp(28px, 4vmin, 58px) !important;
     }
     body.tv-mode #armLayoutPatio .torres.arm-torres .base {
-      padding: clamp(8px, 1vmin, 12px) 4px !important;
+      padding: clamp(6px, 0.9vmin, 10px) 4px !important;
     }
     body.tv-mode #armLayoutPatio .torres.arm-torres .base .lbl {
-      font-size: clamp(12px, 1.45vmin, 18px) !important;
+      font-size: clamp(12px, 1.5vmin, 18px) !important;
       letter-spacing: 0.04em;
     }
     body.tv-mode #armLayoutPatio .arm-panel {
       height: 100% !important;
       min-height: 0 !important;
+      overflow: hidden !important;
     }
+    body.tv-mode #armLayoutPatio .arm-table-wrap {
+      min-height: 0 !important;
+      overflow: auto !important;
+    }
+    body.tv-mode .swap-nav {
+      width: 40px;
+      height: 64px;
+      font-size: 24px;
+      opacity: 0.55;
+    }
+    body.tv-mode .swap-nav:hover { opacity: 1; }
+
     body.tv-mode .arm-table-wrap th,
     body.tv-mode .arm-table-wrap td {
       font-size: clamp(12px, 1.4vmin, 17px) !important;
@@ -1298,6 +1366,19 @@
       min-height: clamp(48px, 6vmin, 84px);
       max-height: 32vh;
       border-radius: clamp(8px, 1vmin, 14px) clamp(8px, 1vmin, 14px) 0 0;
+    }
+    /* Armazém / Pendência / Contratação: barras ocupam a coluna (não 32vh) */
+    body.tv-mode .torres.arm-torres .barra,
+    body.tv-mode .torres.arm-torres .torre .barra,
+    body.tv-mode .torres.pen-torres .barra,
+    body.tv-mode .torres.pen-torres .torre .barra,
+    body.tv-mode .torres.ctr-torres .barra,
+    body.tv-mode .torres.ctr-torres .torre .barra {
+      max-height: none !important;
+    }
+    body.tv-mode .torres.arm-torres.ctr-torres .barra {
+      min-height: clamp(40px, 5vmin, 72px) !important;
+      max-height: none !important;
     }
     body.tv-mode .torre .barra strong {
       font-size: clamp(28px, 4.4vmin, 64px);
@@ -2335,13 +2416,19 @@
       height: 100%;
       grid-template-rows: 1fr;
     }
-    .arena-single { height: 100%; }
+    .arena-single { height: 100%; min-height: 0; }
     .arena-single .arena-body {
       display: flex;
       flex-direction: column;
       gap: 12px;
       height: 100%;
       min-height: 0;
+    }
+    /* ops-layout/agenda-layout definem o grid; flex acima é só fallback */
+    .arena-single .arena-body.ops-layout:not(.has-blocks),
+    .arena-single .arena-body.agenda-layout:not(.has-blocks) {
+      display: grid;
+      gap: clamp(8px, 1vw, 14px);
     }
     .resumo-single {
       grid-template-columns: 1fr !important;
@@ -2413,11 +2500,11 @@
       container-type: normal;
     }
     .arm-layout .dash-block[hidden] { display: none !important; }
-    /* Pátio: KPIs · gráfico · tabela de descarga embaixo */
+    /* Pátio: KPIs · torres grandes · tabela embaixo */
     #armLayoutPatio:not(.has-blocks) {
       display: grid;
       grid-template-columns: 1fr;
-      grid-template-rows: max-content minmax(180px, 0.85fr) minmax(160px, 1.15fr);
+      grid-template-rows: max-content minmax(260px, 1.55fr) minmax(120px, 0.7fr);
       gap: clamp(8px, 1vw, 14px);
       height: 100%;
       min-height: 0;
@@ -2574,22 +2661,45 @@
     .ctr-mix .mix-card.agregado .n { color: #fbbf24; }
     .ctr-mix .mix-card.terceiro .n { color: #fb923c; }
     .ctr-towers-wrap {
-      flex: 1;
+      flex: 1 1 auto;
       min-height: 0;
+      height: 100%;
       display: flex;
-      align-items: flex-end;
-      padding: 8px 10px 12px;
-      overflow-x: auto;
+      align-items: stretch;
+      justify-content: center;
+      padding: 6px 10px 10px;
+      overflow: hidden;
     }
     .torres.ctr-torres {
+      flex: 1;
       display: flex;
       align-items: flex-end;
       justify-content: center;
       gap: clamp(8px, 1.2vw, 16px);
       width: 100%;
-      min-height: 220px;
+      height: 100%;
+      min-height: 0;
+      max-height: none;
+      overflow: hidden;
     }
-    .torres.ctr-torres .torre { width: min(92px, 11vw); }
+    .torres.ctr-torres .torre {
+      width: min(100px, 12vw);
+      max-width: none;
+      flex: 0 0 auto;
+    }
+    .torres.ctr-torres .barra {
+      min-height: 40px !important;
+      max-height: none !important;
+    }
+    .torres.ctr-torres .base .lbl {
+      font-size: clamp(11px, 1.2vw, 14px);
+      line-height: 1.15;
+      white-space: normal;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
     .torres.ctr-torres .t-d0 .barra { background: linear-gradient(180deg, #fb923c, #c2410c); }
     .torres.ctr-torres .t-d0 .pin { background: #f97316; }
     .torres.ctr-torres .t-d1 .barra { background: linear-gradient(180deg, #38bdf8, #0284c7); }
@@ -2609,23 +2719,69 @@
     .arm-hero-card:has(.ctr-towers-wrap) {
       display: flex;
       flex-direction: column;
+      height: 100%;
       min-height: 0;
+      overflow: hidden;
     }
     .arm-hero-card:has(.ctr-towers-wrap) > header { flex: 0 0 auto; }
+    .arm-hero-card:has(.ctr-towers-wrap) > .ctr-mix { flex: 0 0 auto; }
     body.tv-mode .ctr-wrap {
       max-width: none !important;
       width: 100% !important;
       margin: 0 !important;
-      height: 100% !important;
-      padding: clamp(8px, 1.2vmin, 16px) !important;
+      height: auto !important;
+      min-height: 0 !important;
+      padding: clamp(6px, 1vmin, 12px) !important;
+      gap: clamp(6px, 0.9vmin, 10px) !important;
     }
     body.tv-mode .ctr-layout {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.25fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
       height: 100% !important;
-      gap: clamp(8px, 1.1vmin, 14px) !important;
+      min-height: 0 !important;
+      gap: clamp(6px, 1vmin, 12px) !important;
+      overflow: hidden !important;
     }
     body.tv-mode .ctr-layout [data-block="kpis"] {
       container-type: normal !important;
       grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+      min-height: min-content !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+    body.tv-mode .ctr-layout [data-block="chart"] {
+      min-height: 0 !important;
+      height: 100% !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode .ctr-layout [data-block="tabela"] {
+      min-height: 0 !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode .ctr-towers-wrap {
+      height: 100% !important;
+      min-height: 0 !important;
+      padding: clamp(4px, 0.8vmin, 10px) !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode .torres.ctr-torres {
+      height: 100% !important;
+      max-height: none !important;
+      min-height: 0 !important;
+      gap: clamp(10px, 1.4vmin, 22px) !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode .torres.ctr-torres .torre {
+      width: clamp(78px, 9vmin, 140px) !important;
+    }
+    body.tv-mode .torres.ctr-torres .barra {
+      min-height: clamp(40px, 5vmin, 72px) !important;
+      max-height: none !important;
+    }
+    body.tv-mode .torres.ctr-torres .base .lbl {
+      font-size: clamp(12px, 1.4vmin, 16px) !important;
+      -webkit-line-clamp: 2;
     }
     body.tv-mode.tv-no-margins #panel-contratacao,
     body.tv-mode:not(.tv-no-margins) #panel-contratacao {
@@ -2636,13 +2792,19 @@
     @media (max-width: 1100px) {
       .ctr-layout {
         grid-template-columns: 1fr;
-        grid-template-rows: auto auto minmax(280px, 1fr);
+        grid-template-rows: auto minmax(0, 1.2fr) minmax(0, 0.9fr);
       }
       .ctr-layout [data-block="kpis"] { grid-column: 1; grid-row: 1; }
       .ctr-layout [data-block="chart"] { grid-column: 1; grid-row: 2; }
       .ctr-layout [data-block="tabela"] { grid-column: 1; grid-row: 3; }
       .ctr-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .ctr-wrap { height: auto; min-height: 100vh; }
+    }
+    @media (max-width: 1100px) {
+      body.tv-mode .ctr-layout {
+        grid-template-columns: 1fr !important;
+        grid-template-rows: auto minmax(0, 1.35fr) minmax(0, 0.75fr) !important;
+      }
     }
 
     /* Pendência 031 — KPIs + torres em tela cheia (sem tabela CTRCs) */
@@ -2876,10 +3038,12 @@
     }
     .ops-layout:not(.has-blocks) {
       display: grid;
-      grid-template-columns: minmax(160px, 0.9fr) minmax(280px, 1.6fr) minmax(160px, 0.9fr);
+      grid-template-columns: minmax(160px, 0.9fr) minmax(280px, 1.7fr) minmax(160px, 0.9fr);
       grid-template-rows: auto minmax(0, 1fr);
       gap: clamp(8px, 1vw, 14px);
       align-content: stretch;
+      height: 100%;
+      min-height: 0;
     }
     .ops-layout:not(.has-blocks) > [data-block="resumo"] {
       grid-column: 1 / -1;
@@ -2888,20 +3052,63 @@
     .ops-layout:not(.has-blocks) > [data-block="placas"] {
       grid-column: 1;
       grid-row: 2;
+      min-height: 0;
+      height: 100%;
     }
     .ops-layout:not(.has-blocks) > [data-block="torres"],
     .ops-layout:not(.has-blocks) > [data-block="banners"] {
       grid-column: 2;
       grid-row: 2;
+      min-height: 0;
+      height: 100%;
     }
     .ops-layout:not(.has-blocks) > [data-block="prazo"],
     .ops-layout:not(.has-blocks) > [data-block="pendencias"] {
       grid-column: 3;
       grid-row: 2;
+      min-height: 0;
+      height: 100%;
+    }
+    /* Desktop: torres/faixas preenchem a coluna (antes só o TV fazia isso) */
+    body.live-mode:not(.tv-mode) .ops-layout .ops-col-torres,
+    body.live-mode:not(.tv-mode) .ops-layout .ops-col-banners {
+      height: 100%;
+      min-height: 0;
+    }
+    body.live-mode:not(.tv-mode) .ops-layout .torres {
+      height: 100%;
+      max-height: none;
+      overflow: hidden;
+      gap: clamp(12px, 1.6vw, 28px);
+    }
+    body.live-mode:not(.tv-mode) .ops-layout .ops-col-torres .torre {
+      width: min(140px, 14vw);
+    }
+    body.live-mode:not(.tv-mode) .ops-layout .ops-col-torres .barra {
+      min-height: 56px;
+      max-height: none;
+    }
+    body.live-mode:not(.tv-mode) .ops-layout .ops-col-torres .barra strong {
+      font-size: clamp(28px, 3.6vw, 52px);
+    }
+    body.live-mode:not(.tv-mode) .ops-layout .ops-col-torres .pin {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 10px;
+    }
+    body.live-mode:not(.tv-mode) .ops-layout .cyl-wrap {
+      height: 100%;
+      min-height: 0;
+    }
+    body.live-mode:not(.tv-mode) .resumo-single .resumo-total strong {
+      font-size: clamp(52px, 6.2vw, 88px);
+    }
+    body.live-mode:not(.tv-mode) .resumo-single .resumo-stats b {
+      font-size: clamp(22px, 2.6vw, 36px);
     }
     /* Entrega sem blocos CRT: faixas ocupam 2 colunas */
     #opsLayoutEntrega:not(.has-blocks) {
-      grid-template-columns: minmax(280px, 1.5fr) minmax(180px, 0.85fr);
+      grid-template-columns: minmax(300px, 1.55fr) minmax(180px, 0.85fr);
     }
     #opsLayoutEntrega:not(.has-blocks) > [data-block="banners"] {
       grid-column: 1;
@@ -3157,12 +3364,15 @@
     }
     .torres.arm-torres .torre {
       flex: 0 0 auto;
-      width: min(120px, 14vw);
+      width: min(148px, 16vw);
       max-width: none;
     }
     .torres.arm-torres .barra {
-      min-height: 56px;
+      min-height: 88px;
       max-height: none;
+    }
+    .torres.arm-torres .barra strong {
+      font-size: clamp(22px, 2.8vw, 40px);
     }
     .torres.arm-torres .t-atr .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
     .torres.arm-torres .t-des .barra { background: linear-gradient(180deg, #fbbf24, #d97706); }
@@ -3174,6 +3384,19 @@
     .torres.arm-torres .t-che .pin { background: #0ea5e9; }
     .torres.arm-torres .t-agu .pin { background: #64748b; }
     .torres.arm-torres .t-fin .pin { background: #22c55e; }
+    /* Contratação: sobrescreve arm-torres (mesma div tem as duas classes) */
+    .torres.arm-torres.ctr-torres {
+      min-height: 0;
+      max-height: none;
+    }
+    .torres.arm-torres.ctr-torres .torre {
+      width: min(100px, 12vw);
+      max-width: none;
+    }
+    .torres.arm-torres.ctr-torres .barra {
+      min-height: 40px !important;
+      max-height: none !important;
+    }
     .arm-hero.arm-hero-solo {
       min-height: 0;
       height: 100%;
@@ -3634,7 +3857,7 @@
       .arm-wrap { height: auto; min-height: 100vh; }
       #armLayoutPatio:not(.has-blocks) {
         grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(220px, 0.75fr) minmax(280px, 1.25fr);
+        grid-template-rows: auto minmax(280px, 1.45fr) minmax(160px, 0.8fr);
       }
       #armLayoutPatio:not(.has-blocks) [data-block="kpis"] { grid-column: 1; grid-row: 1; }
       #armLayoutPatio:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; }
@@ -4355,6 +4578,9 @@
     const PEN_CSV = (window.ACE_CONFIG && window.ACE_CONFIG.pendenciaCsv) || {};
     let lastPenDataVersion = null;
     const CTR_CSV = (window.ACE_CONFIG && window.ACE_CONFIG.contratacaoCsv) || {};
+    const DIST_CSV = (window.ACE_CONFIG && window.ACE_CONFIG.distribuicaoCsv) || {};
+    const HISTORICO_CSV_PATH = DIST_CSV.historico || 'data/historico.csv';
+    const COLETAS_50_CSV_PATH = DIST_CSV.coletas || 'data/coletas.csv';
     let lastCtrDataVersion = null;
     let ctrRefreshTimer = null;
     let lastGoodCtrResumo = null;
@@ -4401,10 +4627,12 @@
     let tvIdleTimer = null;
     let lastCounts = null;
     let lastCountsEnt = null;
+    let lastAgendaTorreCounts = null;
     let FILTRO = 'TODAS';
     let BUSCA = '';
     let COLETAS = [];      // ao vivo (torres) — somente 103
     let COLETAS_50 = [];   // gestao / historico
+    let HISTORICO_50 = []; // eventos SIT/INSTR do relatório 50
     let COLETAS_103 = [];
     let ENTREGAS_36 = [];  // CTRCs ativos 36
     let ENTREGAS_ALL = []; // todos CTRCs 36 (modal)
@@ -4413,6 +4641,7 @@
     let lastGood103 = [];
     let lastGood36 = [];
     let lastGood50 = [];
+    let lastGoodHist50 = [];
     let lastGood225 = [];
     let lastGoodRom36 = [];
     let lastGoodArmResumo = null;
@@ -4748,11 +4977,31 @@
     }
 
     function alturaTorre(valor, max) {
-      const vh = window.innerHeight || 800;
       const tv = document.body.classList.contains('tv-mode');
-      // Layout empilhado: coleta usa ~55% da tela — limita altura para nao invadir Entrega
-      const minH = Math.round(vh * (tv ? 0.035 : 0.045));
-      const maxH = Math.round(vh * (tv ? 0.20 : 0.16));
+      const view = document.body.getAttribute('data-view') || '';
+      let wrap = null;
+      if (view === 'agendamento') {
+        wrap = document.querySelector('#agendaTowersWrap')
+          || document.querySelector('.agenda-towers-wrap');
+      } else {
+        wrap = document.querySelector('#opsLayoutColeta .ops-col-torres .torres')
+          || document.querySelector('#opsLayoutColeta [data-block="torres"] .torres')
+          || document.querySelector('.ops-col-torres .torres');
+      }
+      const pin = tv ? 72 : 62;
+      const base = tv ? 56 : 48;
+      const pad = tv ? 22 : 18;
+      let avail = wrap && wrap.clientHeight > 80 ? wrap.clientHeight : 0;
+      if (!avail) {
+        const col = view === 'agendamento'
+          ? document.querySelector('#viewAgendamento .agenda-chart-stage')
+          : document.querySelector('#opsLayoutColeta [data-block="torres"]');
+        avail = col && col.clientHeight > 100
+          ? Math.round(col.clientHeight - (view === 'agendamento' ? 8 : 28))
+          : Math.round((window.innerHeight || 800) * (tv ? 0.42 : 0.50));
+      }
+      const maxH = Math.max(tv ? 120 : 110, Math.round(avail - pin - base - pad));
+      const minH = Math.max(tv ? 48 : 44, Math.round(maxH * 0.18));
       if (!max || max <= 0) return minH;
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
@@ -4762,14 +5011,19 @@
       const wrap = document.querySelector('#armLayoutPatio .arm-towers-wrap')
         || document.querySelector('.arm-towers-wrap');
       const tv = document.body.classList.contains('tv-mode');
-      const pin = tv ? 64 : 52;
-      const base = tv ? 52 : 44;
-      const pad = tv ? 36 : 28;
-      const avail = wrap && wrap.clientHeight > 80
-        ? wrap.clientHeight
-        : Math.round((window.innerHeight || 800) * (tv ? 0.55 : 0.42));
-      const maxH = Math.max(tv ? 90 : 56, Math.round(avail - pin - base - pad));
-      const minH = Math.max(tv ? 48 : 28, Math.round(maxH * 0.16));
+      const pin = tv ? 72 : 58;
+      const base = tv ? 56 : 48;
+      const pad = tv ? 24 : 18;
+      let avail = wrap && wrap.clientHeight > 80 ? wrap.clientHeight : 0;
+      // Antes do layout assentar, clientHeight pode ser 0 — não usa 62vh (estoura TV)
+      if (!avail) {
+        const chart = document.querySelector('#armLayoutPatio [data-block="chart"]');
+        avail = chart && chart.clientHeight > 80
+          ? chart.clientHeight
+          : Math.round((window.innerHeight || 800) * (tv ? 0.38 : 0.52));
+      }
+      const maxH = Math.max(tv ? 96 : 96, Math.round(avail - pin - base - pad));
+      const minH = Math.max(tv ? 48 : 40, Math.round(maxH * 0.18));
       if (!max || max <= 0) return minH;
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
@@ -4853,6 +5107,20 @@
 
     function rerenderTorres() {
       if (lastCounts) renderTorres(lastCounts);
+      if (lastArmTorreCounts) renderArmTorres(lastArmTorreCounts);
+      if (lastAgendaTorreCounts) {
+        renderAgendaTorres(
+          lastAgendaTorreCounts.rota,
+          lastAgendaTorreCounts.parado,
+          lastAgendaTorreCounts.ok
+        );
+      }
+      if (lastGoodPenOfens.length && typeof renderPenTorres === 'function') {
+        renderPenTorres(lastGoodPenOfens);
+      }
+      if (lastGoodCtrDestinos.length && typeof renderCtrTorres === 'function') {
+        renderCtrTorres(lastGoodCtrDestinos);
+      }
     }
 
     async function requestWakeLock() {
@@ -4969,6 +5237,9 @@
       if (gen === tvModeGen) {
         requestAnimationFrame(rerenderTorres);
         setTimeout(rerenderTorres, 80);
+        // Fullscreen / CSS TV assentam a altura depois — recalcula torres
+        setTimeout(rerenderTorres, 280);
+        setTimeout(rerenderTorres, 600);
       }
     }
 
@@ -5431,6 +5702,13 @@
       if (live && CURRENT_VIEW === 'agendamento') renderAgendamento();
       document.body.setAttribute('data-view', CURRENT_VIEW);
       updateOpsBrandTitle();
+      // Recalcula torres depois do layout assentar (desktop + TV)
+      if (live) {
+        requestAnimationFrame(() => {
+          rerenderTorres();
+          setTimeout(rerenderTorres, 120);
+        });
+      }
     }
 
     function applyArmViews() {
@@ -5737,14 +6015,22 @@
       if (el) el.textContent = v;
     }
 
+    let lastArmTorreCounts = null;
     function renderArmTorres(counts) {
       const c = counts || {};
+      lastArmTorreCounts = {
+        atrasado: Number(c.atrasado) || 0,
+        descarregando: Number(c.descarregando) || 0,
+        chegou: Number(c.chegou) || 0,
+        aguardando: Number(c.aguardando) || 0,
+        finalizado: Number(c.finalizado) || 0,
+      };
       const items = [
-        { key: 'Atr', bar: 'armBarAtr', val: Number(c.atrasado) || 0 },
-        { key: 'Des', bar: 'armBarDes', val: Number(c.descarregando) || 0 },
-        { key: 'Che', bar: 'armBarChe', val: Number(c.chegou) || 0 },
-        { key: 'Agu', bar: 'armBarAgu', val: Number(c.aguardando) || 0 },
-        { key: 'Fin', bar: 'armBarFin', val: Number(c.finalizado) || 0 },
+        { key: 'Atr', bar: 'armBarAtr', val: lastArmTorreCounts.atrasado },
+        { key: 'Des', bar: 'armBarDes', val: lastArmTorreCounts.descarregando },
+        { key: 'Che', bar: 'armBarChe', val: lastArmTorreCounts.chegou },
+        { key: 'Agu', bar: 'armBarAgu', val: lastArmTorreCounts.aguardando },
+        { key: 'Fin', bar: 'armBarFin', val: lastArmTorreCounts.finalizado },
       ];
       const total = items.reduce((s, i) => s + i.val, 0);
       const max = Math.max(...items.map((i) => i.val), 1);
@@ -6193,8 +6479,21 @@
     }
 
     function alturaTorreCtr(valor, max) {
-      const minH = 36;
-      const maxH = document.body.classList.contains('tv-mode') ? 280 : 200;
+      const wrap = document.querySelector('#ctrLayout .ctr-towers-wrap')
+        || document.querySelector('.ctr-towers-wrap');
+      const tv = document.body.classList.contains('tv-mode');
+      const pin = tv ? 64 : 52;
+      const base = tv ? 52 : 44;
+      const pad = tv ? 20 : 16;
+      let avail = wrap && wrap.clientHeight > 60 ? wrap.clientHeight : 0;
+      if (!avail) {
+        const chart = document.querySelector('#ctrLayout [data-block="chart"]');
+        avail = chart && chart.clientHeight > 100
+          ? Math.round(chart.clientHeight * 0.72)
+          : Math.round((window.innerHeight || 800) * (tv ? 0.34 : 0.42));
+      }
+      const maxH = Math.max(tv ? 72 : 64, Math.round(avail - pin - base - pad));
+      const minH = Math.max(tv ? 36 : 32, Math.round(maxH * 0.16));
       if (!max || max <= 0) return minH;
       const t = Math.max(0, Number(valor) || 0) / max;
       return Math.round(minH + t * (maxH - minH));
@@ -6203,7 +6502,14 @@
     function renderCtrTorres(destinos) {
       const host = document.getElementById('ctrTorres');
       if (!host) return;
-      const items = (destinos || []).slice(0, 10);
+      if (Array.isArray(destinos) && destinos.length) {
+        lastGoodCtrDestinos = destinos.slice();
+      }
+      const items = (
+        Array.isArray(destinos) && destinos.length
+          ? destinos
+          : lastGoodCtrDestinos
+      ).slice(0, 10);
       if (!items.length) {
         host.innerHTML = '<div class="arm-rank-empty">Sem destinos — rode `73`</div>';
         return;
@@ -6922,6 +7228,59 @@
       return map;
     }
 
+    function histRowsForColeta(coletaId) {
+      const id = String(coletaId || '').toUpperCase().replace(/\s+/g, '').trim();
+      if (!id) return [];
+      return (HISTORICO_50 || []).filter((r) => {
+        const cid = String(r.coleta_id || r.coleta || '').toUpperCase().replace(/\s+/g, '').trim();
+        return cid === id;
+      });
+    }
+
+    /** Monta linha do tempo a partir dos campos laterais do 50 (fallback). */
+    function sintetizarHistorico50(coletaId) {
+      const id = String(coletaId || '').toUpperCase().replace(/\s+/g, '').trim();
+      const c = mapaColetas50().get(id);
+      if (!c) return [];
+      const stages = [
+        ['CADASTRADA', c.cadastrada_data, c.cadastrada_hora, c.cadastrada_usuario],
+        ['COMANDADA', c.comandada_data, c.comandada_hora, c.comandada_usuario],
+        ['COLETADA', c.coletada_data, c.coletada_hora, c.coletada_usuario],
+        ['CANCELADA', c.cancelada_data, c.cancelada_hora, c.cancelada_usuario],
+      ];
+      const rows = [];
+      stages.forEach(([label, data, hora, usuario], i) => {
+        if (!data && !hora && !usuario) return;
+        rows.push({
+          data: data || '',
+          hora: hora || '',
+          dominio: 'BIN',
+          unidade_evento: String(c.unidade || id.slice(0, 3) || ''),
+          usuario: usuario || '',
+          observacao: `${label}${c.situacao_atual === label ? ' (situação atual)' : ''}`,
+          seq_evento: i + 1,
+          coleta_id: id,
+        });
+      });
+      return rows;
+    }
+
+    async function ensureHistorico50Loaded() {
+      if (HISTORICO_50.length) return HISTORICO_50;
+      if (lastGoodHist50.length) {
+        HISTORICO_50 = lastGoodHist50.slice();
+        return HISTORICO_50;
+      }
+      try {
+        const rows = await loadCsvLocal(HISTORICO_CSV_PATH);
+        if (rows && rows.length) {
+          HISTORICO_50 = rows;
+          lastGoodHist50 = rows.slice();
+        }
+      } catch (_) { /* offline */ }
+      return HISTORICO_50;
+    }
+
     function renderFiltrosGestao() {
       const box = document.getElementById('filtrosGestao');
       const optsColeta = [
@@ -7193,11 +7552,23 @@
       modal.classList.add('open');
       if (btn) btn.disabled = true;
       try {
-        const resp = await chamarPlanilha('historico', { coleta_id: id });
-        const rows = resp.rows || [];
+        let rows = [];
+        try {
+          const resp = await chamarPlanilha('historico', { coleta_id: id });
+          rows = (resp && resp.rows) || [];
+        } catch (_) {
+          rows = [];
+        }
+        if (!rows.length) {
+          await ensureHistorico50Loaded();
+          rows = histRowsForColeta(id);
+        }
+        if (!rows.length) {
+          rows = sintetizarHistorico50(id);
+        }
         lista.innerHTML = rows.length
           ? renderHistoricoSsw(rows)
-          : '<p class="sub-hist">Sem histórico nesta coleta (relatório 50).</p>';
+          : '<p class="sub-hist">Sem histórico nesta coleta (relatório 50). Rode o ciclo 50 de novo ou abra uma coleta do período atual.</p>';
       } catch (err) {
         lista.innerHTML = `<p class="sub-hist">${esc(err.message)}</p>`;
       } finally {
@@ -7413,10 +7784,15 @@
     }
 
     function renderAgendaTorres(rota, parado, ok) {
+      lastAgendaTorreCounts = {
+        rota: Number(rota) || 0,
+        parado: Number(parado) || 0,
+        ok: Number(ok) || 0,
+      };
       const items = [
-        { pin: 'agRankOk', bar: 'agBarOk', n: 'agNOk', val: Number(ok) || 0 },
-        { pin: 'agRankRota', bar: 'agBarRota', n: 'agNRota', val: Number(rota) || 0 },
-        { pin: 'agRankPar', bar: 'agBarPar', n: 'agNPar', val: Number(parado) || 0 },
+        { pin: 'agRankOk', bar: 'agBarOk', n: 'agNOk', val: lastAgendaTorreCounts.ok },
+        { pin: 'agRankRota', bar: 'agBarRota', n: 'agNRota', val: lastAgendaTorreCounts.rota },
+        { pin: 'agRankPar', bar: 'agBarPar', n: 'agNPar', val: lastAgendaTorreCounts.parado },
       ];
       const total = items.reduce((s, i) => s + i.val, 0);
       const max = Math.max(...items.map((i) => i.val), 1);
@@ -7985,6 +8361,28 @@
           }
           return keepUnlessEmpty(incoming, lastGood50);
         })();
+        if (!COLETAS_50.length) {
+          try {
+            const local50 = await loadCsvLocal(COLETAS_50_CSV_PATH);
+            if (local50 && local50.length) {
+              COLETAS_50 = uniqueRows(local50);
+              lastGood50 = COLETAS_50.slice();
+            }
+          } catch (_) { /* offline */ }
+        }
+
+        // Histórico 50: tenta planilha (via coletas sync) + CSV local publicado
+        try {
+          const localHist = await loadCsvLocal(HISTORICO_CSV_PATH);
+          if (localHist && localHist.length) {
+            HISTORICO_50 = localHist;
+            lastGoodHist50 = localHist.slice();
+          } else if (lastGoodHist50.length) {
+            HISTORICO_50 = lastGoodHist50.slice();
+          }
+        } catch (_) {
+          if (lastGoodHist50.length) HISTORICO_50 = lastGoodHist50.slice();
+        }
 
         const incoming103 = uniqueRows((r103 && r103.rows) || []);
         if (incoming103.length > 0) {
