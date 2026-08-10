@@ -34,8 +34,8 @@ VEICULO_FIELDS = [
     "tempo_descarga",
 ]
 
-# Descarga em andamento há mais de 4h (sem fim) → status atrasado (vermelho na TV)
-LIMITE_DESCARGA_ATRASO_MIN = 4 * 60
+# Descarga em andamento há mais de 3h (sem fim) → status atrasado (vermelho na TV)
+LIMITE_DESCARGA_ATRASO_MIN = 3 * 60
 
 RESUMO_FIELDS = [
     "atualizado",
@@ -127,7 +127,7 @@ def mapear_status(
 ) -> tuple[str, bool]:
     """
     final_descarga → finalizado
-    inicio_descarga + >4h sem fim → atrasado (vermelho)
+    inicio_descarga + >3h sem fim → atrasado (vermelho)
     inicio_descarga → descarregando
     sem chegada + prev passada → atrasado
     com chegada → chegou

@@ -1111,12 +1111,14 @@
     }
     body.tv-mode #armLayoutPatio:not(.has-blocks) {
       display: grid !important;
-      grid-template-columns: minmax(0, 1.75fr) minmax(320px, 0.95fr) !important;
-      grid-template-rows: max-content minmax(0, 1fr) !important;
+      grid-template-columns: 1fr !important;
+      grid-template-rows: max-content minmax(140px, 0.75fr) minmax(160px, 1.25fr) !important;
       height: 100% !important;
       gap: clamp(8px, 1.1vmin, 14px) !important;
     }
     body.tv-mode #armLayoutPatio:not(.has-blocks) [data-block="kpis"] {
+      grid-column: 1 !important;
+      grid-row: 1 !important;
       container-type: normal !important;
       min-height: min-content !important;
       height: auto !important;
@@ -1126,6 +1128,14 @@
       gap: clamp(8px, 1.1vmin, 12px) !important;
       align-self: start !important;
     }
+    body.tv-mode #armLayoutPatio:not(.has-blocks) [data-block="chart"] {
+      grid-column: 1 !important;
+      grid-row: 2 !important;
+    }
+    body.tv-mode #armLayoutPatio:not(.has-blocks) [data-block="tabela"] {
+      grid-column: 1 !important;
+      grid-row: 3 !important;
+    }
     body.tv-mode .arm-layout:not(.has-blocks) {
       display: grid !important;
       height: 100% !important;
@@ -1133,7 +1143,14 @@
     }
     body.tv-mode #armLayoutConferentes:not(.has-blocks) {
       grid-template-columns: 1fr !important;
-      grid-template-rows: auto minmax(0, 1fr) !important;
+      grid-template-rows: minmax(0, 1fr) !important;
+    }
+    body.tv-mode #armLayoutConferentes:not(.has-blocks) [data-block="kpis"] {
+      display: none !important;
+    }
+    body.tv-mode #armLayoutConferentes:not(.has-blocks) [data-block="chart"] {
+      grid-column: 1 !important;
+      grid-row: 1 !important;
     }
     body.tv-mode .arm-wrap {
       max-width: none !important;
@@ -2428,13 +2445,17 @@
       height: 100%;
       min-height: 0;
     }
-    /* Conferentes: só KPIs + ranking (empilhado) */
+    /* Conferentes: ranking em tela cheia (KPIs só no meta do header) */
     #armLayoutConferentes:not(.has-blocks) {
       grid-template-columns: 1fr;
-      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
     }
-    #armLayoutConferentes:not(.has-blocks) [data-block="kpis"] { grid-column: 1; grid-row: 1; }
-    #armLayoutConferentes:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; }
+    #armLayoutConferentes:not(.has-blocks) [data-block="kpis"] { display: none !important; }
+    #armLayoutConferentes:not(.has-blocks) [data-block="chart"] {
+      grid-column: 1;
+      grid-row: 1;
+      min-height: 0;
+    }
     .arm-layout:not(.has-blocks) [data-block="kpis"] { flex-shrink: 0; }
     .arm-layout:not(.has-blocks) [data-block="chart"],
     .arm-layout:not(.has-blocks) [data-block="tabela"] {
@@ -2443,6 +2464,20 @@
       min-height: 0;
       overflow: hidden;
       height: 100%;
+    }
+    .arm-conf-head {
+      padding: 8px 14px !important;
+      gap: 12px;
+    }
+    .arm-conf-head h2 {
+      font-size: clamp(13px, 1.4vw, 16px) !important;
+      letter-spacing: 0.08em;
+    }
+    .arm-conf-head .meta {
+      font-size: clamp(11px, 1.15vw, 13px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .arm-layout.has-blocks [data-block="kpis"].arm-kpis {
       height: 100%;
@@ -3160,11 +3195,11 @@
     .agenda-pizza .callout-dot.s-des { fill: var(--cad-dark); }
     .agenda-pizza .callout-dot.s-pat { fill: #38bdf8; }
     .arm-rank-body {
-      padding: 14px 16px 16px;
+      padding: 10px 14px 14px;
       display: grid;
-      /* Pódio sobe e ganha destaque; lista embaixo com espaço próprio */
-      grid-template-rows: minmax(260px, 1.25fr) minmax(160px, 0.9fr);
-      gap: 16px;
+      /* Ranking em destaque: pódio grande + lista */
+      grid-template-rows: minmax(300px, 1.4fr) minmax(200px, 1fr);
+      gap: 14px;
       min-height: 0;
       flex: 1;
     }
@@ -3261,15 +3296,29 @@
     .arm-podium-slot .place {
       position: relative;
       z-index: 1;
-      font-size: clamp(12px, 1.15vw, 14px);
-      font-weight: 800;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      margin-bottom: 4px;
+      line-height: 1;
+    }
+    .arm-podium-slot .medal {
+      font-size: clamp(28px, 3.2vw, 42px);
+      line-height: 1;
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+    }
+    .arm-podium-slot .place-num {
+      font-size: clamp(28px, 3.4vw, 48px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
       color: var(--muted);
     }
-    .arm-podium-slot.p1 .place { color: #fbbf24; font-size: clamp(13px, 1.3vw, 16px); }
-    .arm-podium-slot.p2 .place { color: #cbd5e1; }
-    .arm-podium-slot.p3 .place { color: #d4a574; }
+    .arm-podium-slot.p1 .place-num { color: #fbbf24; font-size: clamp(34px, 4.2vw, 58px); }
+    .arm-podium-slot.p2 .place-num { color: #e2e8f0; }
+    .arm-podium-slot.p3 .place-num { color: #d4a574; }
+    .arm-podium-slot.p1 .medal { font-size: clamp(34px, 4vw, 52px); }
     .arm-podium-slot .name {
       position: relative;
       z-index: 1;
@@ -3330,7 +3379,7 @@
     .arm-rank-head,
     .arm-rank-row {
       display: grid;
-      grid-template-columns: 56px minmax(0, 1.6fr) minmax(88px, 0.85fr) minmax(110px, 0.85fr) 64px minmax(90px, 1.1fr);
+      grid-template-columns: 72px minmax(0, 1.6fr) minmax(88px, 0.85fr) minmax(110px, 0.85fr) 64px minmax(90px, 1.1fr);
       gap: 10px;
       align-items: center;
       padding: 11px 16px;
@@ -3357,10 +3406,18 @@
     .arm-rank-row:nth-child(even) { background: rgba(255, 255, 255, 0.025); }
     .arm-rank-row:hover { background: rgba(56, 189, 248, 0.06); }
     .arm-rank-row .rk {
-      color: #94a3b8;
-      font-weight: 800;
+      color: #e2e8f0;
+      font-weight: 900;
       font-variant-numeric: tabular-nums;
-      font-size: 13px;
+      font-size: clamp(22px, 2.4vw, 32px);
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .arm-rank-row .rk .rk-ord {
+      font-size: 0.55em;
+      font-weight: 800;
+      color: #94a3b8;
+      margin-left: 1px;
     }
     .arm-rank-row .nm {
       font-weight: 700;
@@ -3414,15 +3471,27 @@
       font-size: 14px;
     }
     body.tv-mode #viewArmConferentes .arm-rank-body {
-      grid-template-rows: minmax(320px, 1.35fr) minmax(180px, 0.85fr) !important;
+      grid-template-rows: minmax(340px, 1.45fr) minmax(200px, 0.9fr) !important;
       gap: clamp(14px, 1.6vmin, 22px) !important;
-      padding: clamp(12px, 1.4vmin, 20px) !important;
+      padding: clamp(10px, 1.2vmin, 16px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-podium {
       gap: clamp(12px, 1.8vmin, 28px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-podium-slot.p1 {
       transform: translateY(-14px);
+    }
+    body.tv-mode #viewArmConferentes .arm-podium-slot .medal {
+      font-size: clamp(36px, 4.5vmin, 58px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 .medal {
+      font-size: clamp(44px, 5.5vmin, 72px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-podium-slot .place-num {
+      font-size: clamp(36px, 4.6vmin, 64px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 .place-num {
+      font-size: clamp(44px, 5.6vmin, 78px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-podium-slot .avatar {
       width: clamp(60px, 6.5vmin, 92px) !important;
@@ -3451,7 +3520,7 @@
     }
     body.tv-mode #viewArmConferentes .arm-rank-head,
     body.tv-mode #viewArmConferentes .arm-rank-row {
-      grid-template-columns: 64px minmax(0, 1.7fr) minmax(100px, 0.9fr) minmax(120px, 0.9fr) 72px minmax(110px, 1.15fr) !important;
+      grid-template-columns: 88px minmax(0, 1.7fr) minmax(100px, 0.9fr) minmax(120px, 0.9fr) 72px minmax(110px, 1.15fr) !important;
       padding: clamp(12px, 1.4vmin, 18px) clamp(14px, 1.6vmin, 22px) !important;
       gap: clamp(10px, 1.2vmin, 16px) !important;
     }
@@ -3460,7 +3529,10 @@
     }
     body.tv-mode #viewArmConferentes .arm-rank-row {
       font-size: clamp(15px, 1.7vmin, 22px) !important;
-      min-height: clamp(48px, 5vmin, 64px) !important;
+      min-height: clamp(52px, 5.4vmin, 72px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-rank-row .rk {
+      font-size: clamp(28px, 3.4vmin, 44px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-rank-row .nm {
       font-size: clamp(15px, 1.7vmin, 22px) !important;
@@ -3512,8 +3584,18 @@
     .st-chegou { background: rgba(56,189,248,.15); color: #7dd3fc; }
     .st-aguardando { background: rgba(148,163,184,.12); color: #cbd5e1; }
     .st-finalizado { background: rgba(34,197,94,.15); color: #86efac; }
-    .arm-table-wrap tr.arm-row-atr td { background: rgba(239, 68, 68, 0.1); }
-    .arm-table-wrap tr.arm-row-atr td:first-child { box-shadow: inset 3px 0 0 #ef4444; }
+    .arm-table-wrap tr.arm-row-atr td {
+      color: #fecaca;
+      box-shadow: inset 3px 0 0 #ef4444;
+      animation: armBlinkAtrTd 1.1s ease-in-out infinite;
+    }
+    .arm-table-wrap tr.arm-row-atr td:not(:first-child) {
+      box-shadow: none;
+    }
+    @keyframes armBlinkAtrTd {
+      0%, 100% { background-color: rgba(127, 29, 29, 0.32); }
+      50% { background-color: rgba(239, 68, 68, 0.62); }
+    }
     .arm-err { padding: 24px; color: #fca5a5; }
     .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, Consolas, monospace; }
     .muted { color: var(--muted); }
@@ -4034,7 +4116,7 @@
           <section class="arm-hero-card">
             <header>
               <h2>Descarga</h2>
-              <div class="meta">atrasado · descarregando · pátio · aguardando · finalizado</div>
+              <div class="meta">atrasado (+3h) · descarregando · pátio · aguardando · finalizado</div>
             </header>
             <div class="arm-towers-wrap">
               <div class="torres arm-torres" id="armTorres" aria-label="Torres de status do pátio">
@@ -4098,15 +4180,15 @@
 
       <div class="arm-view" id="viewArmConferentes" hidden>
         <div class="arm-layout" id="armLayoutConferentes">
-        <div class="arm-kpis arm-kpis-conf dash-block" data-block="kpis">
+        <div class="arm-kpis arm-kpis-conf dash-block" data-block="kpis" hidden aria-hidden="true">
           <div class="arm-kpi"><div class="lbl">Conferentes</div><div class="val" id="kConfN">0</div></div>
           <div class="arm-kpi peso"><div class="lbl">Peso total</div><div class="val" id="kConfPeso">0</div></div>
           <div class="arm-kpi lider"><div class="lbl">Líder</div><div class="val" id="kConfLeader">—</div></div>
           <div class="arm-kpi finalizado"><div class="lbl">Mês</div><div class="val" id="kConfMes">—</div></div>
         </div>
         <section class="arm-hero-card arm-conf-card dash-block" data-block="chart">
-          <header>
-            <h2>Ranking conferentes · 177</h2>
+          <header class="arm-conf-head">
+            <h2>Ranking · 177</h2>
             <div class="meta" id="armRankMeta">peso lido no mês</div>
           </header>
           <div class="arm-rank-body arm-rank-body-full">
@@ -5477,7 +5559,7 @@
     }
 
     const ARM_STATUS_RANK = { atrasado: 0, descarregando: 1, chegou: 2, aguardando: 3, finalizado: 4 };
-    const ARM_DESC_ATR_MS = 4 * 60 * 60 * 1000; // >4h sem fim de descarga → vermelho
+    const ARM_DESC_ATR_MS = 3 * 60 * 60 * 1000; // >3h sem fim de descarga → vermelho
 
     function parseArmDt(raw) {
       const s = String(raw || '').trim().replace(/\s+[a-zA-Z_.À-ú]{2,}$/i, '').trim();
@@ -5497,14 +5579,14 @@
       return new Date(y, mo, d, +m[4], +m[5]);
     }
 
-    /** Descarga iniciada, sem fim, passando de 4h → atrasado (vermelho). */
+    /** Descarga iniciada, sem fim, passando de 3h → atrasado (vermelho). */
     function armDescargaAtrasada(v) {
       const fim = (v.final_descarga || '').trim();
       if (fim) return false;
       const ini = (v.inicio_descarga || '').trim();
       if (!ini) return false;
       const minsCsv = Number(v.tempo_descarga_min);
-      if (Number.isFinite(minsCsv) && minsCsv > 240) return true;
+      if (Number.isFinite(minsCsv) && minsCsv > 180) return true;
       const dt = parseArmDt(ini);
       return !!(dt && (Date.now() - dt.getTime()) > ARM_DESC_ATR_MS);
     }
@@ -5518,6 +5600,16 @@
         return st === 'atrasado' ? 'atrasado' : 'descarregando';
       }
       return st || 'aguardando';
+    }
+
+    /** Tabela: só pátio + descarregando + descarga >3h. Finalizado só no contador. */
+    function armShowInTabela(v) {
+      const st = String(v.status || '').toLowerCase();
+      if (st === 'finalizado' || st === 'aguardando') return false;
+      if (st === 'chegou' || st === 'descarregando') return true;
+      // atrasado por descarga longa (não por previsão de chegada)
+      if (st === 'atrasado' && (v.inicio_descarga || '').trim()) return true;
+      return false;
     }
 
     /** Sigla filial → cidade (mesma base do ACE / siglas_filiais.py) */
@@ -5737,11 +5829,13 @@
         });
         return;
       }
+      const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
       const top = ranked.slice(0, 3);
       const slot = (place, item) => {
+        const medal = medals[place] || '';
         if (!item) {
           return `<div class="arm-podium-slot p${place}" style="--bar-h:12%">
-            <div class="place">${place}º</div>
+            <div class="place"><span class="medal">${medal}</span><span class="place-num">${place}º</span></div>
             <div class="avatar">—</div>
             <div class="name muted">—</div>
           </div>`;
@@ -5749,7 +5843,7 @@
         const pct = sharePct(item.peso);
         const barH = Math.max(28, Math.round(40 + barVsLeader(item.peso) * 0.5));
         return `<div class="arm-podium-slot p${place}" style="--bar-h:${barH}%">
-          <div class="place">${place === 1 ? '★ 1º' : place + 'º'}</div>
+          <div class="place"><span class="medal" aria-hidden="true">${medal}</span><span class="place-num">${place}º</span></div>
           <div class="avatar" title="${item.login || item.nome}">${initials(item.nome)}</div>
           <div class="name" title="${item.login || item.nome}">${item.nome}</div>
           <div class="kg">${item.kg} kg</div>
@@ -5765,8 +5859,9 @@
       const body = ranked.slice(3).map((r, i) => {
         const pct = sharePct(r.peso);
         const w = barVsLeader(r.peso);
+        const n = r.rank || (i + 4);
         return `<div class="arm-rank-row">
-          <span class="rk">${r.rank || (i + 4)}º</span>
+          <span class="rk">${n}<span class="rk-ord">º</span></span>
           <span class="nm" title="${r.login || r.nome}">${r.nome}</span>
           <span class="un">${r.unidade || '—'}</span>
           <span class="kg">${r.kg} kg</span>
@@ -5872,7 +5967,9 @@
         setArmText('kChe', che);
         setArmText('kAgu', agu);
         setArmText('kFin', fin);
-        setArmText('armAtualizado', 'atualizado ' + (r.atualizado || '—'));
+        setArmText('armAtualizado',
+          `pátio · descarregando · +3h · atualizado ${r.atualizado || '—'}`
+        );
 
         renderArmTorres({
           atrasado: atr,
@@ -5885,7 +5982,8 @@
 
         const tb = document.getElementById('armTbody');
         if (tb) {
-          tb.innerHTML = veics.map((v) => {
+          const naTabela = veics.filter(armShowInTabela);
+          tb.innerHTML = naTabela.map((v) => {
             const chegou = (v.chegada || '').trim();
             const prev = (v.prev_chegada || '').trim();
             const chegCell = chegou
@@ -5896,7 +5994,8 @@
               : (chegou ? `<span class="muted">—</span>` : `<span class="mono">${prev || '—'}</span>`);
             const ini = (v.inicio_descarga || '').trim();
             const fim = (v.final_descarga || '').trim();
-            return `<tr>
+            const atrRow = String(v.status || '').toLowerCase() === 'atrasado' && !!ini;
+            return `<tr class="${atrRow ? 'arm-row-atr' : ''}">
             <td>${armBadge(v.status)}</td>
             <td>${v.origem || '—'}</td>
             <td class="mono">${v.cavalo || '—'}</td>
@@ -5908,7 +6007,7 @@
             <td class="mono">${ini || '—'}</td>
             <td class="mono">${fim || '—'}</td>
           </tr>`;
-          }).join('') || `<tr><td colspan="10" class="muted">Sem veículos</td></tr>`;
+          }).join('') || `<tr><td colspan="10" class="muted">Nenhum veículo no pátio / descarregando agora</td></tr>`;
         }
         if (remoteVer != null) commitArmVersion(remoteVer);
         else commitArmVersion(await fetchDataVersion());
