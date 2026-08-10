@@ -355,6 +355,10 @@ class AceSswClient:
         if ok:
             self.on_status("Correção blank.html ativa.")
 
+    # Alias: callers usam "_form" (histórico)
+    _patch_blank_popup_form = _patch_blank_popup_fix
+    _patch_blank_popup_forms = _patch_blank_popup_fix
+
     def _campo_opcao_menu(self, page):
         especifico = page.locator('input[name="f3"][id="3"]')
         if especifico.count() > 0:
