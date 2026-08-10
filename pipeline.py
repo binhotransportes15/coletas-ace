@@ -1040,7 +1040,8 @@ def run_pipeline_contratacao(
                 dl76 = download_reports_076(
                     placas=placas,
                     period=(ini, fim),
-                    operacao="R",
+                    arquivo="E",
+                    unidade="SPO",
                     credentials=creds,
                     settings=cfg,
                     headless=use_headless,

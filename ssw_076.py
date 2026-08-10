@@ -1,6 +1,8 @@
 """Download SSW 076 — Demonstrativo de remuneração (frete coleta/entrega por carro).
 
-Sempre gera com operação R. Usa placas vindas do 073.
+Formulário:
+  Sigla · Período · Veículo (opcional) · Arquivo=E (excel) · E-mail=N
+  ► gera e manda pra fila 156 → DOW.
 """
 from __future__ import annotations
 
@@ -20,10 +22,11 @@ SSW_076_MARKERS = (
     "076",
     "remuner",
     "demonstrativo",
-    "placa",
-    "frete",
-    "arquivo excel",
+    "veiculo",
+    "arquivo",
+    "sigla",
     "periodo",
+    "ver fila",
 )
 
 
@@ -43,7 +46,11 @@ def download_reports_076(
     *,
     placas: list[str] | tuple[str, ...] | None = None,
     period: tuple[str, str] | None = None,
-    operacao: str = "R",
+    arquivo: str = "E",
+    unidade: str = "SPO",
+    email: str = "N",
+    # compat: callers antigos passavam operacao="R"
+    operacao: str | None = None,
     headless: bool | None = None,
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
@@ -54,8 +61,8 @@ def download_reports_076(
     page=None,
 ) -> dict[str, Any]:
     """
-    Gera 076 (operação R). Se `page`/`client` forem passados, reusa a sessão
-    (sem novo login). Senão abre browser próprio.
+    Gera 076 com Arquivo=E (excel) → fila 156 → DOW.
+    Se `page`/`client` forem passados, reusa a sessão (sem novo login).
     """
     status = on_status or _noop
     ensure_dirs()
@@ -65,6 +72,15 @@ def download_reports_076(
     use_headless = cfg.headless if headless is None else bool(headless)
     plate_list = [str(p).strip().upper() for p in (placas or []) if str(p).strip()]
     runs = plate_list or [""]
+
+    # Arquivo: E-excel (R=relatório / X=resumo). Ignora operacao legado se for R.
+    arq = (arquivo or "E").strip().upper()[:1] or "E"
+    if operacao is not None and arq == "E":
+        op_legacy = str(operacao).strip().upper()[:1]
+        if op_legacy in {"E", "X"}:
+            arq = op_legacy
+    unidade_sigla = (unidade or "SPO").strip().upper() or "SPO"
+    envia_email = (email or "N").strip().upper()[:1] or "N"
 
     ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
     ini = to_ssw_ddmmyy(ini_ddmm)
@@ -89,7 +105,8 @@ def download_reports_076(
     paths: list[str] = []
     errors: dict[str, str] = {}
     status(
-        f"SSW 76 | op={operacao} | {ini}-{fim} | {len(plate_list) or 'todas'} placa(s)"
+        f"SSW 76 | arquivo={arq} | {unidade_sigla} | {ini}-{fim} | "
+        f"{len(plate_list) or 'todas'} placa(s)"
         + (" · sessão reusada" if reuse else "")
     )
 
@@ -99,7 +116,16 @@ def download_reports_076(
         try:
             status("[76] abrindo opção 76 (lote)…")
             popup = _reopen_76(sess_client, sess_page, popup)
-            _preencher_76(popup, ini=ini, fim=fim, operacao=operacao, placa="", on_status=status)
+            _preencher_76(
+                popup,
+                ini=ini,
+                fim=fim,
+                unidade=unidade_sigla,
+                arquivo=arq,
+                email=envia_email,
+                placa="",
+                on_status=status,
+            )
             dest = f"contratacao_076_ALL_{ts}.sswweb"
             path = _gerar_download_76(sess_client, sess_context, sess_page, popup, dest, "ALL", status)
             paths.append(str(path))
@@ -112,7 +138,14 @@ def download_reports_076(
                     status(f"[76/{key}] ({idx}) abrindo…")
                     popup = _reopen_76(sess_client, sess_page, popup)
                     _preencher_76(
-                        popup, ini=ini, fim=fim, operacao=operacao, placa=placa, on_status=status
+                        popup,
+                        ini=ini,
+                        fim=fim,
+                        unidade=unidade_sigla,
+                        arquivo=arq,
+                        email=envia_email,
+                        placa=placa,
+                        on_status=status,
                     )
                     dest = f"contratacao_076_{key or 'ALL'}_{ts}.sswweb"
                     path = _gerar_download_76(
@@ -155,7 +188,9 @@ def download_reports_076(
         "errors": errors,
         "period": (ini_ddmm, fim_ddmm),
         "periodo_fmt": f"{ini_ddmm} – {fim_ddmm}",
-        "operacao": operacao,
+        "arquivo": arq,
+        "operacao": arq,  # compat
+        "unidade": unidade_sigla,
         "placas": plate_list,
     }
 
@@ -169,11 +204,22 @@ def _reopen_76(client, page, popup):
     return client._open_menu_option(page, "76", markers=SSW_076_MARKERS)
 
 
-def _preencher_76(popup, *, ini: str, fim: str, operacao: str, placa: str, on_status) -> None:
+def _preencher_76(
+    popup,
+    *,
+    ini: str,
+    fim: str,
+    unidade: str,
+    arquivo: str,
+    email: str,
+    placa: str,
+    on_status,
+) -> None:
+    """Preenche 076: Sigla · Período · Veículo · Arquivo=E · E-mail=N."""
     status = on_status
     popup.wait_for_timeout(400)
     filled = popup.evaluate(
-        """({ ini, fim, operacao, placa }) => {
+        """({ ini, fim, unidade, arquivo, email, placa }) => {
           const norm = (s) => (s || '').toLowerCase().normalize('NFD')
             .replace(/[\\u0300-\\u036f]/g, '').replace(/\\s+/g, ' ').trim();
           const inputs = Array.from(document.querySelectorAll('input[type=text], input:not([type])'));
@@ -198,85 +244,123 @@ def _preencher_76(popup, *, ini: str, fim: str, operacao: str, placa: str, on_st
             el.dispatchEvent(new Event('change', { bubbles: true }));
             return true;
           };
+
+          const okUnid = set(byHint(['sigla', 'unidade']), unidade);
+
           const ddmmyy = inputs.filter((el) => Number(el.maxLength) === 6 || Number(el.size) === 6);
           let okIni = false, okFim = false;
           if (ddmmyy.length >= 2) {
             okIni = set(ddmmyy[0], ini);
             okFim = set(ddmmyy[1], fim);
           }
-          const okOp = set(byHint(['operacao', 'opera', 'tipo']), operacao);
-          const okPlaca = placa ? set(byHint(['placa', 'cavalo']), placa) : true;
-          return { okIni, okFim, okOp, okPlaca, n: inputs.length };
+
+          const okVeic = placa
+            ? set(byHint(['veiculo', 'placa', 'cavalo']), placa)
+            : true;
+
+          // Arquivo: R-relatório / E-excel / X-resumo  ← NÃO confundir com "operação"
+          let okArq = set(byHint(['arquivo']), arquivo);
+          if (!okArq) {
+            // fallback: input de 1 char com valor R/E/X
+            for (const el of inputs) {
+              const v = (el.value || '').toUpperCase();
+              if (v === 'R' || v === 'E' || v === 'X') {
+                okArq = set(el, arquivo);
+                break;
+              }
+            }
+          }
+
+          let okMail = set(byHint(['e-mail', 'email', 'envia']), email);
+          if (!okMail) {
+            for (const el of inputs) {
+              const v = (el.value || '').toUpperCase();
+              if (v === 'S' || v === 'N') {
+                const lab = norm(near(el));
+                if (lab.includes('mail') || lab.includes('envia')) {
+                  okMail = set(el, email);
+                  break;
+                }
+              }
+            }
+          }
+
+          return {
+            okUnid, okIni, okFim, okVeic, okArq, okMail,
+            n: inputs.length,
+            vals: inputs.slice(0, 8).map((el) => el.value || ''),
+          };
         }""",
-        {"ini": ini, "fim": fim, "operacao": operacao, "placa": placa},
+        {
+            "ini": ini,
+            "fim": fim,
+            "unidade": unidade,
+            "arquivo": arquivo,
+            "email": email,
+            "placa": placa or "",
+        },
     )
     status(f"[76] form {filled}")
-    if not filled.get("okOp"):
-        # ainda tenta ids comuns
-        for cand in ("5", "6", "7", "8"):
+
+    # Playwright fill se evaluate falhou no Arquivo
+    if not filled.get("okArq"):
+        for cand in ("4", "5", "6", "7", "8"):
             try:
                 loc = popup.locator(f'[id="{cand}"]')
-                if loc.count():
-                    loc.first.fill(operacao)
-                    status(f"[76] operação via #{cand}={operacao}")
+                if not loc.count():
+                    continue
+                cur = (loc.first.input_value() or "").strip().upper()
+                if cur in {"R", "E", "X", ""}:
+                    loc.first.fill(arquivo)
+                    status(f"[76] Arquivo via #{cand}={arquivo}")
                     break
             except Exception:
                 continue
     popup.wait_for_timeout(200)
 
 
-def _clicar_excel_76(popup) -> str:
-    """Clica somente o link 'Arquivo Excel'."""
+def _clicar_gerar_76(popup) -> str:
+    """Clica ► para gerar (manda pra fila 156)."""
     try:
-        loc = popup.get_by_text("Arquivo Excel", exact=True)
+        loc = popup.get_by_text("►", exact=True)
         if loc.count() > 0:
             loc.first.click(timeout=5000)
-            return "Arquivo Excel"
+            return "►"
     except Exception:
         pass
     try:
-        loc = popup.locator("a", has_text="Arquivo Excel")
+        loc = popup.locator("a", has_text="►")
         if loc.count() > 0:
             loc.first.click(timeout=5000)
-            return "a:Arquivo Excel"
+            return "a:►"
     except Exception:
         pass
     return popup.evaluate(
         """() => {
-          const links = Array.from(document.querySelectorAll('a, span, button'));
+          const links = Array.from(document.querySelectorAll('a, span, button, img'));
           for (const a of links) {
-            const t = ((a.innerText || a.textContent || '') + '').replace(/\\s+/g, ' ').trim();
-            if (/^Arquivo Excel$/i.test(t)) { a.click(); return 'excel-exact'; }
+            const t = ((a.innerText || a.textContent || a.alt || a.title || '') + '').trim();
+            if (t === '►' || t === '▶' || t === '>') { a.click(); return 'play'; }
           }
+          // fallback: 1º link após a linha (geralmente ►)
+          const as = Array.from(document.querySelectorAll('a'));
+          if (as.length) { as[0].click(); return 'a0'; }
           return '';
         }"""
     )
 
 
 def _gerar_download_76(client, context, page, popup, dest_name: str, key: str, status) -> Path:
-    """076: Arquivo Excel → fila 156 → DOW (download direto é raro)."""
-    clicked = ""
+    """076: Arquivo=E + ► → fila 156 → DOW."""
+    clicked = _clicar_gerar_76(popup)
+    if not clicked:
+        raise RuntimeError("076: botão ► não encontrado")
+    status(f"[76/{key}] gerou com ► → fila 156")
     try:
-        with context.expect_event("download", timeout=8000) as di:
-            clicked = _clicar_excel_76(popup)
-            if not clicked:
-                raise RuntimeError("076: link 'Arquivo Excel' não encontrado")
-            status(f"[76/{key}] clique={clicked} (aguardando…)")
-        return client._save_download(di.value, dest_name)
-    except RuntimeError:
-        raise
-    except Exception as direct_err:  # noqa: BLE001
-        if not clicked:
-            clicked = _clicar_excel_76(popup)
-            if not clicked:
-                raise RuntimeError("076: link 'Arquivo Excel' não encontrado") from direct_err
-            status(f"[76/{key}] clique={clicked}")
-        status(f"[76/{key}] foi pra fila 156 ({direct_err})")
-        try:
-            popup.wait_for_timeout(800)
-        except Exception:
-            pass
-        return _baixar_via_fila_76(client, context, page, popup, dest_name, key, status)
+        popup.wait_for_timeout(1000)
+    except Exception:
+        pass
+    return _baixar_via_fila_76(client, context, page, popup, dest_name, key, status)
 
 
 SSW_FILA_URL = "https://sistema.ssw.inf.br/bin/ssw1440"
@@ -291,17 +375,39 @@ def _safe_wait(page, ms: int) -> None:
         pass
 
 
-def _abrir_fila_156_76(client, context, page, status):
-    """Abre 156 de forma estável (preferir goto; menu pode crashar após vários popups)."""
+def _abrir_fila_156_76(client, context, page, status, popup=None):
+    """Abre 156: preferir link 'Ver fila' na tela 76; senão goto ssw1440."""
     status("[76] abrindo fila 156…")
-    fila = None
 
-    # 1) Ver fila a partir do popup 76, se ainda aberto
-    # (caller passa page = menu; popup separado)
+    # 1) Link "Ver fila" na própria tela 076
+    if popup is not None:
+        try:
+            if not popup.is_closed():
+                with context.expect_page(timeout=12000) as pi:
+                    clicked = popup.evaluate(
+                        """() => {
+                          const els = Array.from(document.querySelectorAll('a, span, button'));
+                          for (const a of els) {
+                            const t = ((a.innerText || a.textContent || '') + '').replace(/\\s+/g, ' ').trim();
+                            if (/^Ver fila$/i.test(t) || /ver\\s*fila/i.test(t)) {
+                              a.click(); return t;
+                            }
+                          }
+                          return '';
+                        }"""
+                    )
+                    if not clicked:
+                        raise RuntimeError("sem Ver fila")
+                fila = pi.value
+                fila.on("dialog", lambda d: d.accept())
+                status(f"[76] fila 156 via '{clicked}'")
+                _safe_wait(fila, 800)
+                return fila
+        except Exception as err:
+            status(f"[76] Ver fila: {err}")
 
-    # 2) goto direto — mais estável
+    # 2) goto direto — estável
     try:
-        # garante menu vivo
         try:
             page.bring_to_front()
         except Exception:
@@ -314,12 +420,6 @@ def _abrir_fila_156_76(client, context, page, status):
         return fila
     except Exception as err:
         status(f"[76] goto fila: {err}")
-        try:
-            if fila is not None and not fila.is_closed():
-                fila.close()
-        except Exception:
-            pass
-        fila = None
 
     # 3) menu 156
     try:
@@ -391,12 +491,11 @@ def _atualizar_fila_76(fila) -> None:
 
 def _baixar_via_fila_76(client, context, page, popup, dest_name: str, key: str, status) -> Path:
     """Espera job 076 concluído na 156 e clica DOW."""
-    _ = popup
     # só seqs já prontas (concluído+DOW) — jobs em processamento entram depois
     known_ready: set[str] = set()
     fila = None
     try:
-        fila = _abrir_fila_156_76(client, context, page, status)
+        fila = _abrir_fila_156_76(client, context, page, status, popup=popup)
         _safe_wait(fila, 500)
         for j in _ler_jobs_fila_76(fila):
             seq = str(j.get("seq") or "")
@@ -407,14 +506,14 @@ def _baixar_via_fila_76(client, context, page, popup, dest_name: str, key: str, 
         status(f"[76] snapshot fila: {err}")
 
     if fila is None or fila.is_closed():
-        fila = _abrir_fila_156_76(client, context, page, status)
+        fila = _abrir_fila_156_76(client, context, page, status, popup=popup)
 
     deadline = time.time() + 240
     last_err = ""
     while time.time() < deadline:
         try:
             if fila is None or fila.is_closed():
-                fila = _abrir_fila_156_76(client, context, page, status)
+                fila = _abrir_fila_156_76(client, context, page, status, popup=None)
             try:
                 fila.bring_to_front()
             except Exception:

@@ -329,7 +329,8 @@ def download_contratacao_ssw(
                     dl76 = download_reports_076(
                         placas=list(analysis73.get("placas") or []),
                         period=(ini_ddmm, fim_ddmm),
-                        operacao="R",
+                        arquivo="E",
+                        unidade=unidade,
                         on_status=status,
                         client=client,
                         context=context,
