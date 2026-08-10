@@ -324,7 +324,7 @@ def cmd_help() -> str:
         "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos\n"
         "  Contratação: /e contratacao_in_loop true|false · `73` sob demanda\n"
         "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
-        "  Contratação: `73` = 073×3 (SPO) → por cada DESTINO: menu→076(E)+200(E)\n"
+        "  Contratação: `73` = 073×3 (SPO) → por cada DESTINO: 076(E fila) + 200(E download direto, origem=destino)\n"
         "             F+Tipo C=frota (CTRB) · A+Tipo C=contratados (CTRB) · A+Tipo O=agregados (OS) · período=mês até hoje\n"
         "             `73 so73` = só 073 · `73 sem200` = sem manifesto · CSV ssw0644 local = frete\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"

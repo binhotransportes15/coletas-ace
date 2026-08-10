@@ -395,7 +395,17 @@ def download_contratacao_ssw(
                             status(f"[{dest}] 200 OK · {len(got200)} arquivo(s)")
                         elif not skip_200:
                             msg = str(dual.get("error200") or "sem arquivo")
-                            if "sem base" in msg.lower() or "não selecionou" in msg.lower() or "nao selecionou" in msg.lower():
+                            low = msg.lower()
+                            if any(
+                                s in low
+                                for s in (
+                                    "sem base",
+                                    "nenhum registro",
+                                    "não selecionou",
+                                    "nao selecionou",
+                                    "sem movimento",
+                                )
+                            ):
                                 status(f"[{dest}] 200 sem movimento — ok, segue")
                             else:
                                 filial_errors[f"{dest}/200"] = msg
@@ -556,7 +566,7 @@ def _download_frete_filial_paralelo(
                 popup200,
                 ini=ini,
                 fim=fim,
-                unidade="",
+                unidade=tag,  # Unidade origem = destino do 073
                 tipo="E",
                 on_status=status,
             )
@@ -626,7 +636,7 @@ def _download_frete_filial_paralelo(
                             popup200,
                             ini=ini,
                             fim=fim,
-                            unidade="",
+                            unidade=tag,
                             tipo="E",
                             on_status=status,
                         )

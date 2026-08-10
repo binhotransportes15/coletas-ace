@@ -1117,8 +1117,9 @@ def run_pipeline_contratacao(
             try:
                 dl200 = download_reports_200(
                     period=(ini, fim),
-                    unidade_origem="",
+                    unidade_origem="SPO",
                     tipo_arquivo="E",
+                    tag="SPO",
                     credentials=creds,
                     settings=cfg,
                     headless=use_headless,
