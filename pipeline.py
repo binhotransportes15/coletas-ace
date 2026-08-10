@@ -1014,7 +1014,7 @@ def run_pipeline_contratacao(
     ensure_dirs()
     creds = credentials or load_credentials()
     cfg = settings or load_settings()
-    from dates import format_period, periodo_hoje
+    from dates import format_period, periodo_mes_ate_hoje
     from parser_ssw073 import analyze_reports_073
     from parser_ssw076 import analyze_reports_076
     from publish_dashboard import publish_contratacao_local
@@ -1023,7 +1023,7 @@ def run_pipeline_contratacao(
 
     status(f"ACE CONTRATACAO · 73→76 | {datetime.now():%d/%m %H:%M:%S}")
     use_headless = cfg.headless if headless is None else headless
-    ini, fim = periodo_hoje()
+    ini, fim = periodo_mes_ate_hoje()
     periodo_fmt = format_period(ini, fim)
 
     dl73: dict[str, Any] = {}

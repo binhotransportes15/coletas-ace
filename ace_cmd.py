@@ -317,8 +317,8 @@ def cmd_help() -> str:
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
         "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos (reabre a 31 cada um)\n"
         "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
-        "  Contratação: `73` / `contratacao` = 073×3 (hoje · F+A · A+C · A+O · SPO) → 076(R)\n"
-        "             F+Tipo A=frota · A+Tipo C=contratados · A+Tipo O=agregados · período=HOJE\n"
+        "  Contratação: `73` / `contratacao` = 073×3 (mês · F+A · A+C · A+O · SPO) → 076(R)\n"
+        "             F+Tipo A=frota · A+Tipo C=contratados · A+Tipo O=agregados · período=mês até hoje\n"
         "             `73 so73` = só 073 · `73 caminho\\arquivo.sswweb` = local\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
@@ -590,11 +590,11 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
         p = Path(x)
         if p.exists():
             local_files.append(str(p))
-    print("\n=== Pipeline Contratação (hoje · 073: F+A · A+C · A+O → 076) ===")
+    print("\n=== Pipeline Contratação (mês · 073: F+A · A+C · A+O → 076) ===")
     if local_files:
         print(f"  local: {', '.join(local_files)}")
     else:
-        print("  073: HOJE · F+Tipo A (frota) · A+Tipo C (contratados) · A+Tipo O (agregados) · SPO")
+        print("  073: mês até hoje · F+Tipo A (frota) · A+Tipo C (contratados) · A+Tipo O (agregados) · SPO")
     if skip_076:
         print("  modo: só 073 (sem 076)")
     result = run_pipeline_contratacao(

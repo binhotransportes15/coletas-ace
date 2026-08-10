@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from config import load_credentials, load_settings
-from dates import periodo_hoje, to_ssw_ddmmyy
+from dates import periodo_mes_ate_hoje, to_ssw_ddmmyy
 from ssw_073 import JOBS_073, _preencher_73, _reopen_73
 from ssw_client import AceSswClient
 
@@ -30,11 +30,11 @@ def main() -> None:
     _ensure_playwright_path()
     creds = load_credentials()
     cfg = load_settings()
-    ini_ui, fim_ui = periodo_hoje()
+    ini_ui, fim_ui = periodo_mes_ate_hoje()
     ini, fim = to_ssw_ddmmyy(ini_ui), to_ssw_ddmmyy(fim_ui)
     job = JOBS_073[0]  # F + Tipo A
 
-    print(f"Abrindo SSW · 73 · período {ini}-{fim} · prop={job['propriedade']} tipo={job['tipo']} · SPO")
+    print(f"Abrindo SSW · 73 · período {ini}-{fim} (mês) · prop={job['propriedade']} tipo={job['tipo']} · SPO")
     print("Deixe esta janela aberta — vamos percorrer Excel / fila juntos.")
     print("Ctrl+C no terminal para fechar.\n")
 
@@ -80,7 +80,7 @@ def main() -> None:
         except Exception:
             pass
 
-        print("\n=== Pronto: tela 073 preenchida (F + Tipo A + SPO + hoje) ===")
+        print("\n=== Pronto: tela 073 preenchida (F + Tipo A + SPO + mês até hoje) ===")
         print("Passos sugeridos no SSW:")
         print("  1) Confira os campos")
         print("  2) Clique em Arquivo Excel")

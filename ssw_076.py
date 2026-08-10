@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import periodo_hoje, to_ssw_ddmmyy
+from dates import periodo_mes_ate_hoje, to_ssw_ddmmyy
 from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
@@ -63,7 +63,7 @@ def download_reports_076(
     # sem placas: um tiro geral (parser filtra depois se base 073 existir)
     runs = plate_list or [""]
 
-    ini_ddmm, fim_ddmm = period or periodo_hoje()
+    ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
     ini = to_ssw_ddmmyy(ini_ddmm)
     fim = to_ssw_ddmmyy(fim_ddmm)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")

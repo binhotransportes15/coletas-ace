@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from config import CACHE_DIR, load_credentials, load_settings
-from dates import periodo_hoje, to_ssw_ddmmyy
+from dates import periodo_mes_ate_hoje, to_ssw_ddmmyy
 from ssw_073 import JOBS_073, _clicar_excel_73, _preencher_73, _reopen_73
 from ssw_client import AceSswClient
 
@@ -60,7 +60,7 @@ def _ler_jobs(fila) -> list[dict]:
 def main() -> None:
     creds = load_credentials()
     cfg = load_settings()
-    ini_ui, fim_ui = periodo_hoje()
+    ini_ui, fim_ui = periodo_mes_ate_hoje()
     ini, fim = to_ssw_ddmmyy(ini_ui), to_ssw_ddmmyy(fim_ui)
     job = JOBS_073[0]  # F + A
     client = AceSswClient(
