@@ -1018,7 +1018,6 @@ def run_pipeline_contratacao(
     from parser_ssw073 import analyze_reports_073
     from parser_ssw076 import analyze_reports_076
     from publish_dashboard import publish_contratacao_local
-    from ssw_073 import download_reports_073
     from ssw_076 import download_reports_076
 
     status(f"ACE CONTRATACAO · 73→76 | {datetime.now():%d/%m %H:%M:%S}")
@@ -1027,54 +1026,64 @@ def run_pipeline_contratacao(
     periodo_fmt = format_period(ini, fim)
 
     dl73: dict[str, Any] = {}
+    dl76: dict[str, Any] = {}
     if local_073:
         files = local_073 if isinstance(local_073, (list, tuple)) else [local_073]
         status(f"073 local: {len(files)} arquivo(s)")
         analysis73 = analyze_reports_073(
             list(files), periodo=periodo_fmt, unidade="SPO", on_status=status
         )
-    else:
-        dl73 = download_reports_073(
-            period=(ini, fim),
-            unidade_emissora="SPO",
-            credentials=creds,
-            settings=cfg,
-            headless=use_headless,
-            on_status=status,
+        analysis76: dict[str, Any] = {"ok": False, "skipped": True}
+        if not skip_076:
+            try:
+                placas = list(analysis73.get("placas") or [])
+                dl76 = download_reports_076(
+                    placas=placas,
+                    period=(ini, fim),
+                    operacao="R",
+                    credentials=creds,
+                    settings=cfg,
+                    headless=use_headless,
+                    on_status=status,
+                )
+                analysis76 = analyze_reports_076(
+                    dl76.get("files") or [],
+                    placas=placas,
+                    on_status=status,
+                )
+            except Exception as err:  # noqa: BLE001
+                status(f"076 avisou: {err} (mantendo frete do 073)")
+                analysis76 = {"ok": False, "error": str(err)}
+        pub = publish_contratacao_local(on_status=status)
+        resumo = analysis76.get("resumo") if analysis76.get("resumo") else analysis73.get("resumo")
+        status(
+            f"OK · veículos={(resumo or {}).get('total_veiculos')} "
+            f"custo={(resumo or {}).get('custo_fmt')} "
+            f"frete={(resumo or {}).get('frete_fmt')}"
         )
-        periodo_fmt = str(dl73.get("periodo_fmt") or periodo_fmt)
-        analysis73 = analyze_reports_073(
-            dl73.get("files") or [],
-            periodo=periodo_fmt,
-            unidade=str(dl73.get("unidade") or "SPO"),
-            on_status=status,
-        )
+        return {
+            "ok": True,
+            "073": {"download": dl73, **analysis73},
+            "076": {"download": dl76, **analysis76},
+            "publish": pub,
+            "resumo": resumo,
+            "placas": list(analysis73.get("placas") or []),
+        }
 
-    placas = list(analysis73.get("placas") or [])
-    analysis76: dict[str, Any] = {"ok": False, "skipped": True}
-    dl76: dict[str, Any] = {}
-    if not skip_076:
-        try:
-            dl76 = download_reports_076(
-                placas=placas,
-                period=(ini, fim),
-                operacao="R",
-                credentials=creds,
-                settings=cfg,
-                headless=use_headless,
-                on_status=status,
-            )
-            analysis76 = analyze_reports_076(
-                dl76.get("files") or [],
-                placas=placas,
-                on_status=status,
-            )
-        except Exception as err:  # noqa: BLE001
-            status(f"076 avisou: {err} (mantendo frete do 073)")
-            analysis76 = {"ok": False, "error": str(err)}
+    # Live SSW: 1 login · 3 telas 073 paralelas · 076 na mesma sessão
+    from ssw_073 import download_contratacao_ssw
 
+    bundle = download_contratacao_ssw(
+        period=(ini, fim),
+        skip_076=skip_076,
+        unidade_emissora="SPO",
+        credentials=creds,
+        settings=cfg,
+        headless=use_headless,
+        on_status=status,
+    )
     pub = publish_contratacao_local(on_status=status)
-    resumo = analysis76.get("resumo") if analysis76.get("resumo") else analysis73.get("resumo")
+    resumo = bundle.get("resumo") or {}
     status(
         f"OK · veículos={(resumo or {}).get('total_veiculos')} "
         f"custo={(resumo or {}).get('custo_fmt')} "
@@ -1082,9 +1091,9 @@ def run_pipeline_contratacao(
     )
     return {
         "ok": True,
-        "073": {"download": dl73, **analysis73},
-        "076": {"download": dl76, **analysis76},
+        "073": bundle.get("073") or {},
+        "076": bundle.get("076") or {},
         "publish": pub,
         "resumo": resumo,
-        "placas": placas,
+        "placas": list(bundle.get("placas") or []),
     }

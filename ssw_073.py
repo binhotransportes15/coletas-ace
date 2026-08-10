@@ -119,7 +119,9 @@ def download_reports_073(
     tipos: tuple[str, ...] | None = None,
     propriedade: str | None = None,
 ) -> dict[str, Any]:
-    """Fase 1 enfileira Excel; fase 2 baixa na fila 156 (0332)."""
+    """
+    1 login · N telas 073 abertas juntas (F/AC/AO) · Excel em paralelo → fila 156.
+    """
     status = on_status or _noop
     ensure_dirs()
     _ensure_playwright_path()
@@ -160,7 +162,7 @@ def download_reports_073(
     queued: list[dict[str, Any]] = []
     desc = " · ".join(f"{j['key']}={j['propriedade']}+{j['tipo']}({j['label']})" for j in jobs)
     status(
-        f"SSW 73 | {len(jobs)} relatório(s) · {desc} | {ini}-{fim} | "
+        f"SSW 73 | {len(jobs)} tela(s) em paralelo · {desc} | {ini}-{fim} | "
         f"emissora={unidade} | op={operacao}"
     )
 
@@ -171,81 +173,26 @@ def download_reports_073(
         page.set_default_timeout(60000)
         page.on("dialog", lambda d: d.accept())
         context.on("page", lambda pg: pg.on("dialog", lambda d: d.accept()))
-        popup = None
         try:
             client._login(page)
             client._ensure_unit(page)
             client._patch_blank_popup_form(page)
-
-            status(f"[73] fase 1/2 · enfileirando {len(jobs)} relatório(s)…")
-            known_seqs = _snapshot_fila_seqs(client, context, page, status)
-            status(f"[73] fila 156: {len(known_seqs)} job(s) já existentes")
-
-            for idx, job in enumerate(jobs, start=1):
-                key = job["key"]
-                prop = job["propriedade"]
-                tipo_doc = job["tipo"]
-                lab = job["label"]
-                try:
-                    status(
-                        f"[73/{key}·{lab}] ({idx}/{len(jobs)}) "
-                        f"prop={prop} tipo={tipo_doc} · abrindo 73…"
-                    )
-                    popup = _reopen_73(client, page, popup)
-                    status(f"[73/{key}·{lab}] preenchendo formulário…")
-                    _preencher_73(
-                        popup,
-                        ini=ini,
-                        fim=fim,
-                        tipo=tipo_doc,
-                        unidade=unidade,
-                        propriedade=prop,
-                        operacao=operacao,
-                        considerar=considerar,
-                        on_status=status,
-                        job_key=key,
-                    )
-                    status(f"[73/{key}·{lab}] enviando Arquivo Excel → fila 156…")
-                    t0 = time.time()
-                    _enviar_fila_73(popup, status, key)
-                    _safe_wait(popup, 1200)
-                    queued.append({"key": key, "label": lab, "t": t0, "idx": idx})
-                    status(f"[73/{key}·{lab}] enviado à fila 156")
-                except Exception as err:  # noqa: BLE001
-                    errors[key] = str(err)
-                    status(f"[73/{key}·{lab}] FALHOU ao enfileirar: {err}")
-                    try:
-                        popup = _reopen_73(client, page, popup)
-                    except Exception:
-                        popup = None
-
-            try:
-                if popup is not None and not popup.is_closed():
-                    popup.close()
-            except Exception:
-                pass
-
-            if not queued:
-                raise RuntimeError(
-                    "073: nenhum relatório enfileirado. "
-                    + "; ".join(f"{k}:{v}" for k, v in errors.items())
-                )
-
-            status("[73] aguardando fila registrar os jobs…")
-            time.sleep(3)
-
-            status(f"[73] fase 2/2 · baixando {len(queued)} Excel na fila 156…")
-            fila = _abrir_fila_156(client, context, page, status)
-            paths = _baixar_todos_da_fila(
+            phase = _run_073_phases(
                 client,
                 context,
                 page,
-                fila,
-                queued=queued,
-                known_before=known_seqs,
+                jobs=jobs,
+                ini=ini,
+                fim=fim,
+                unidade=unidade,
+                operacao=operacao,
+                considerar=considerar,
                 ts=ts,
                 status=status,
             )
+            paths = phase["paths"]
+            errors = phase["errors"]
+            queued = phase["queued"]
         finally:
             browser.close()
 
@@ -269,13 +216,269 @@ def download_reports_073(
     }
 
 
+def download_contratacao_ssw(
+    *,
+    period: tuple[str, str] | None = None,
+    skip_076: bool = False,
+    unidade_emissora: str = "SPO",
+    headless: bool | None = None,
+    on_status: StatusCallback | None = None,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+) -> dict[str, Any]:
+    """1 login: 073 em N telas paralelas + 076 na mesma sessão."""
+    status = on_status or _noop
+    ensure_dirs()
+    _ensure_playwright_path()
+    creds = credentials or load_credentials()
+    cfg = settings or load_settings()
+    use_headless = cfg.headless if headless is None else bool(headless)
+    jobs = [dict(j) for j in JOBS_073]
+    unidade = (unidade_emissora or "SPO").strip().upper() or "SPO"
+    ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
+    ini = to_ssw_ddmmyy(ini_ddmm)
+    fim = to_ssw_ddmmyy(fim_ddmm)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    cleanup_downloads(DOWNLOAD_DIR, on_status=status)
+
+    from parser_ssw073 import analyze_reports_073
+    from parser_ssw076 import analyze_reports_076
+    from ssw_076 import download_reports_076
+
+    client = AceSswClient(
+        ini_ddmm,
+        fim_ddmm,
+        keep_open=False,
+        headless=use_headless,
+        on_status=status,
+        credentials=creds,
+        settings=cfg,
+        clean_downloads=False,
+    )
+
+    from playwright.sync_api import sync_playwright
+
+    status(
+        f"SSW contratação | 1 login · {len(jobs)} telas 073"
+        + (" + 076" if not skip_076 else "")
+        + f" | {ini}-{fim} | {unidade}"
+    )
+
+    dl73: dict[str, Any] = {}
+    dl76: dict[str, Any] = {}
+    analysis73: dict[str, Any] = {}
+    analysis76: dict[str, Any] = {"ok": False, "skipped": True}
+    periodo_fmt = f"{ini_ddmm} – {fim_ddmm}"
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
+        context = browser.new_context(accept_downloads=True)
+        page = context.new_page()
+        page.set_default_timeout(60000)
+        page.on("dialog", lambda d: d.accept())
+        context.on("page", lambda pg: pg.on("dialog", lambda d: d.accept()))
+        try:
+            client._login(page)
+            client._ensure_unit(page)
+            client._patch_blank_popup_form(page)
+
+            phase = _run_073_phases(
+                client,
+                context,
+                page,
+                jobs=jobs,
+                ini=ini,
+                fim=fim,
+                unidade=unidade,
+                operacao="T",
+                considerar="T",
+                ts=ts,
+                status=status,
+            )
+            dl73 = {
+                "ok": bool(phase["paths"]),
+                "paths": phase["paths"],
+                "files": list(phase["paths"].values()),
+                "errors": phase["errors"],
+                "jobs": jobs,
+                "period": (ini_ddmm, fim_ddmm),
+                "periodo_fmt": periodo_fmt,
+                "unidade": unidade,
+            }
+            if not phase["paths"]:
+                raise RuntimeError(
+                    "073 falhou: "
+                    + "; ".join(f"{k}:{v}" for k, v in phase["errors"].items())
+                )
+
+            analysis73 = analyze_reports_073(
+                dl73["files"],
+                periodo=periodo_fmt,
+                unidade=unidade,
+                on_status=status,
+            )
+
+            if not skip_076:
+                try:
+                    status("[76] mesma sessão — abrindo demonstrativo…")
+                    dl76 = download_reports_076(
+                        placas=list(analysis73.get("placas") or []),
+                        period=(ini_ddmm, fim_ddmm),
+                        operacao="R",
+                        on_status=status,
+                        client=client,
+                        context=context,
+                        page=page,
+                    )
+                    analysis76 = analyze_reports_076(
+                        dl76.get("files") or [],
+                        placas=list(analysis73.get("placas") or []),
+                        on_status=status,
+                    )
+                except Exception as err:  # noqa: BLE001
+                    status(f"076 avisou: {err} (mantendo frete do 073)")
+                    analysis76 = {"ok": False, "error": str(err)}
+        finally:
+            browser.close()
+
+    return {
+        "ok": True,
+        "073": {"download": dl73, **analysis73},
+        "076": {"download": dl76, **analysis76},
+        "resumo": analysis76.get("resumo") or analysis73.get("resumo"),
+        "placas": list(analysis73.get("placas") or []),
+        "periodo_fmt": periodo_fmt,
+    }
+
+
+def _run_073_phases(
+    client,
+    context,
+    page,
+    *,
+    jobs: list[dict[str, str]],
+    ini: str,
+    fim: str,
+    unidade: str,
+    operacao: str,
+    considerar: str,
+    ts: str,
+    status: StatusCallback,
+) -> dict[str, Any]:
+    """Abre N telas 073, preenche, Excel em paralelo, baixa na 156."""
+    paths: dict[str, str] = {}
+    errors: dict[str, str] = {}
+    queued: list[dict[str, Any]] = []
+    screens: list[tuple[dict[str, str], Any]] = []
+
+    status(f"[73] fase 1/2 · abrindo {len(jobs)} tela(s) 073…")
+    known_seqs = _snapshot_fila_seqs(client, context, page, status)
+    status(f"[73] fila 156: {len(known_seqs)} job(s) já existentes")
+
+    for idx, job in enumerate(jobs, start=1):
+        key = job["key"]
+        lab = job["label"]
+        try:
+            status(
+                f"[73/{key}·{lab}] ({idx}/{len(jobs)}) abrindo tela "
+                f"prop={job['propriedade']} tipo={job['tipo']}…"
+            )
+            popup = _open_73(client, page)
+            screens.append((job, popup))
+            status(f"[73/{key}·{lab}] tela aberta")
+        except Exception as err:  # noqa: BLE001
+            errors[key] = str(err)
+            status(f"[73/{key}·{lab}] FALHOU ao abrir: {err}")
+
+    for job, popup in screens:
+        key = job["key"]
+        lab = job["label"]
+        try:
+            try:
+                popup.bring_to_front()
+            except Exception:
+                pass
+            status(f"[73/{key}·{lab}] preenchendo…")
+            _preencher_73(
+                popup,
+                ini=ini,
+                fim=fim,
+                tipo=job["tipo"],
+                unidade=unidade,
+                propriedade=job["propriedade"],
+                operacao=operacao,
+                considerar=considerar,
+                on_status=status,
+                job_key=key,
+            )
+        except Exception as err:  # noqa: BLE001
+            errors[key] = str(err)
+            status(f"[73/{key}·{lab}] FALHOU no form: {err}")
+
+    status(f"[73] enviando {len(screens)} Arquivo Excel → fila 156…")
+    t0 = time.time()
+    for job, popup in screens:
+        key = job["key"]
+        lab = job["label"]
+        if key in errors:
+            continue
+        try:
+            try:
+                popup.bring_to_front()
+            except Exception:
+                pass
+            _enviar_fila_73(popup, status, key)
+            queued.append({"key": key, "label": lab, "t": t0, "idx": len(queued) + 1})
+            status(f"[73/{key}·{lab}] Excel enviado")
+        except Exception as err:  # noqa: BLE001
+            errors[key] = str(err)
+            status(f"[73/{key}·{lab}] FALHOU no Excel: {err}")
+
+    for _job, popup in screens:
+        try:
+            if popup is not None and not popup.is_closed():
+                popup.close()
+        except Exception:
+            pass
+
+    if not queued:
+        return {"paths": paths, "errors": errors, "queued": queued}
+
+    status("[73] aguardando fila registrar os jobs…")
+    time.sleep(3)
+
+    status(f"[73] fase 2/2 · baixando {len(queued)} Excel na fila 156…")
+    fila = _abrir_fila_156(client, context, page, status)
+    paths = _baixar_todos_da_fila(
+        client,
+        context,
+        page,
+        fila,
+        queued=queued,
+        known_before=known_seqs,
+        ts=ts,
+        status=status,
+    )
+    missing = [q["key"] for q in queued if q["key"] not in paths]
+    for k in missing:
+        errors.setdefault(k, "sem download na fila 156")
+    return {"paths": paths, "errors": errors, "queued": queued}
+
+
+def _open_73(client, page):
+    """Abre uma nova tela 073 sem fechar as outras (paralelo)."""
+    return client._open_menu_option(page, "73", markers=SSW_073_MARKERS)
+
+
 def _reopen_73(client, page, popup):
+    """Fecha a popup anterior (se houver) e abre 073 de novo."""
     try:
         if popup is not None and not popup.is_closed():
             popup.close()
     except Exception:
         pass
-    return client._open_menu_option(page, "73", markers=SSW_073_MARKERS)
+    return _open_73(client, page)
 
 
 def _preencher_73(

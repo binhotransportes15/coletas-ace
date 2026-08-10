@@ -48,10 +48,14 @@ def download_reports_076(
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
+    # sessão existente (1 login compartilhado com o 073)
+    client: AceSswClient | None = None,
+    context=None,
+    page=None,
 ) -> dict[str, Any]:
     """
-    Para cada placa do 073, tenta gerar o 076 (operação R).
-    Se o formulário aceitar lote sem placa, gera um único arquivo filtrado depois.
+    Gera 076 (operação R). Se `page`/`client` forem passados, reusa a sessão
+    (sem novo login). Senão abre browser próprio.
     """
     status = on_status or _noop
     ensure_dirs()
@@ -60,7 +64,6 @@ def download_reports_076(
     cfg = settings or load_settings()
     use_headless = cfg.headless if headless is None else bool(headless)
     plate_list = [str(p).strip().upper() for p in (placas or []) if str(p).strip()]
-    # sem placas: um tiro geral (parser filtra depois se base 073 existir)
     runs = plate_list or [""]
 
     ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
@@ -69,7 +72,8 @@ def download_reports_076(
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    client = AceSswClient(
+    reuse = page is not None and context is not None and client is not None
+    own_client = client or AceSswClient(
         ini_ddmm,
         fim_ddmm,
         keep_open=False,
@@ -84,55 +88,63 @@ def download_reports_076(
 
     paths: list[str] = []
     errors: dict[str, str] = {}
-    status(f"SSW 76 | op={operacao} | {ini}-{fim} | {len(plate_list) or 'todas'} placa(s)")
+    status(
+        f"SSW 76 | op={operacao} | {ini}-{fim} | {len(plate_list) or 'todas'} placa(s)"
+        + (" · sessão reusada" if reuse else "")
+    )
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
-        context = browser.new_context(accept_downloads=True)
-        page = context.new_page()
-        page.set_default_timeout(60000)
-        page.on("dialog", lambda d: d.accept())
-        context.on("page", lambda pg: pg.on("dialog", lambda d: d.accept()))
+    def _run(sess_client, sess_context, sess_page) -> None:
+        nonlocal paths, errors
         popup = None
         try:
-            client._login(page)
-            client._ensure_unit(page)
-            client._patch_blank_popup_form(page)
+            status("[76] abrindo opção 76 (lote)…")
+            popup = _reopen_76(sess_client, sess_page, popup)
+            _preencher_76(popup, ini=ini, fim=fim, operacao=operacao, placa="", on_status=status)
+            dest = f"contratacao_076_ALL_{ts}.sswweb"
+            path = _gerar_download_76(sess_client, sess_context, sess_page, popup, dest, "ALL", status)
+            paths.append(str(path))
+            status(f"[76/ALL] OK {path.name}")
+        except Exception as batch_err:  # noqa: BLE001
+            status(f"[76] lote falhou ({batch_err}); tentando por placa…")
+            for idx, placa in enumerate(runs[:40], start=1):
+                key = placa or "ALL"
+                try:
+                    status(f"[76/{key}] ({idx}) abrindo…")
+                    popup = _reopen_76(sess_client, sess_page, popup)
+                    _preencher_76(
+                        popup, ini=ini, fim=fim, operacao=operacao, placa=placa, on_status=status
+                    )
+                    dest = f"contratacao_076_{key or 'ALL'}_{ts}.sswweb"
+                    path = _gerar_download_76(
+                        sess_client, sess_context, sess_page, popup, dest, key, status
+                    )
+                    paths.append(str(path))
+                except Exception as err:  # noqa: BLE001
+                    errors[key] = str(err)
+                    status(f"[76/{key}] FALHOU: {err}")
+        try:
+            if popup is not None and not popup.is_closed():
+                popup.close()
+        except Exception:
+            pass
 
-            # Estratégia: 1 arquivo geral (mais rápido). Se falhar, tenta por placa.
+    if reuse:
+        _run(own_client, context, page)
+    else:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
+            ctx = browser.new_context(accept_downloads=True)
+            pg = ctx.new_page()
+            pg.set_default_timeout(60000)
+            pg.on("dialog", lambda d: d.accept())
+            ctx.on("page", lambda p2: p2.on("dialog", lambda d: d.accept()))
             try:
-                status("[76] abrindo opção 76 (lote)…")
-                popup = _reopen_76(client, page, popup)
-                _preencher_76(popup, ini=ini, fim=fim, operacao=operacao, placa="", on_status=status)
-                dest = f"contratacao_076_ALL_{ts}.sswweb"
-                path = _gerar_download_76(client, context, page, popup, dest, "ALL", status)
-                paths.append(str(path))
-                status(f"[76/ALL] OK {path.name}")
-            except Exception as batch_err:  # noqa: BLE001
-                status(f"[76] lote falhou ({batch_err}); tentando por placa…")
-                for idx, placa in enumerate(runs[:40], start=1):  # hard cap
-                    key = placa or "ALL"
-                    try:
-                        status(f"[76/{key}] ({idx}) abrindo…")
-                        popup = _reopen_76(client, page, popup)
-                        _preencher_76(
-                            popup, ini=ini, fim=fim, operacao=operacao, placa=placa, on_status=status
-                        )
-                        dest = f"contratacao_076_{key or 'ALL'}_{ts}.sswweb"
-                        path = _gerar_download_76(
-                            client, context, page, popup, dest, key, status
-                        )
-                        paths.append(str(path))
-                    except Exception as err:  # noqa: BLE001
-                        errors[key] = str(err)
-                        status(f"[76/{key}] FALHOU: {err}")
-            try:
-                if popup is not None and not popup.is_closed():
-                    popup.close()
-            except Exception:
-                pass
-        finally:
-            browser.close()
+                own_client._login(pg)
+                own_client._ensure_unit(pg)
+                own_client._patch_blank_popup_form(pg)
+                _run(own_client, ctx, pg)
+            finally:
+                browser.close()
 
     if not paths and errors:
         raise RuntimeError("076 falhou: " + "; ".join(f"{k}: {v}" for k, v in errors.items()))
