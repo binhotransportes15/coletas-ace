@@ -94,6 +94,12 @@ def periodo_50_cadastramento(hoje: date | datetime | None = None) -> tuple[str, 
     return to_ddmm(ini), to_ddmm(fim)
 
 
+def periodo_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
+    """Período de um único dia = hoje (ini=fim). Usado na Contratação 073/076."""
+    today = _as_date(hoje)
+    return to_ddmm(today), to_ddmm(today)
+
+
 def periodo_50_coleta_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
     """
     Relatorio 50 (ssw0157) · periodo = HOJE.
@@ -102,8 +108,7 @@ def periodo_50_coleta_hoje(hoje: date | datetime | None = None) -> tuple[str, st
     'Periodo de cadastramento' (#4/#5). O nome historico da funcao
     ficou 'coleta_hoje', mas o fill usa cadastramento.
     """
-    today = _as_date(hoje)
-    return to_ddmm(today), to_ddmm(today)
+    return periodo_hoje(hoje)
 
 
 def periodo_103_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:

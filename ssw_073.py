@@ -1,6 +1,6 @@
 """Download SSW 073 (ssw0332) — Consulta de CTRBs e OSs → Arquivo Excel/CSV.
 
-Fluxo Contratação (3 relatórios · Unidade emissora = SPO):
+Fluxo Contratação (3 relatórios · Unidade emissora = SPO · período = HOJE):
   · F + Tipo A  → frota normal (ambos CTRB+OS)
   · A + Tipo C  → contratados (CTRB)
   · A + Tipo O  → agregados (OS)
@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import periodo_mes_ate_hoje, to_ssw_ddmmyy
+from dates import periodo_hoje, to_ssw_ddmmyy
 from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
@@ -127,7 +127,7 @@ def download_reports_073(
     )
     unidade = (unidade_emissora or "SPO").strip().upper() or "SPO"
 
-    ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
+    ini_ddmm, fim_ddmm = period or periodo_hoje()
     ini = to_ssw_ddmmyy(ini_ddmm)
     fim = to_ssw_ddmmyy(fim_ddmm)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -591,6 +591,7 @@ class AceCrtConsole(QWidget):
             ("Agendamentos", "225"),
             ("Armazém", "78"),
             ("Pendência", "31"),
+            ("Contratação", "73"),
             ("Atualizar tudo", "sync"),
             ("Abrir painel", "dash"),
         ]
@@ -844,7 +845,13 @@ class AceCrtConsole(QWidget):
 
     def _build_gestao_tab(self) -> QWidget:
         wrap = QWidget()
-        lay = QVBoxLayout(wrap)
+        outer = QVBoxLayout(wrap)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        body = QWidget()
+        lay = QVBoxLayout(body)
         lay.setContentsMargins(10, 10, 10, 10)
         lay.setSpacing(8)
 
@@ -875,10 +882,10 @@ class AceCrtConsole(QWidget):
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
             lay.addWidget(b)
 
-        lay.addWidget(self._section("Contratação"))
+        lay.addWidget(self._section("Contratação (hoje)"))
         for label, cmd in (
-            ("Puxar contratação 073 (F+A · A+C · A+O) → 076", "73"),
-            ("Só 073 (sem frete 076)", "73 so73"),
+            ("Puxar 073→076 (hoje · F+A · A+C · A+O)", "73"),
+            ("Só 073 hoje (sem frete 076)", "73 so73"),
         ):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
@@ -915,6 +922,8 @@ class AceCrtConsole(QWidget):
         lay.addLayout(row)
 
         lay.addStretch(1)
+        scroll.setWidget(body)
+        outer.addWidget(scroll)
         return wrap
 
     def _section(self, text: str) -> QLabel:
