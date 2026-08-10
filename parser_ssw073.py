@@ -85,7 +85,8 @@ RESUMO_FIELDS = [
     "peso_fmt",
     "agregado",
     "frota",
-    "terceiro",
+    "contratados",
+    "terceiro",  # legado (= contratados)
 ]
 
 
@@ -129,21 +130,36 @@ def _read_text(path: Path) -> str:
     return raw.decode("latin-1", errors="replace")
 
 
-def _grupo_propriedade(prop: str) -> str:
-    """frota | agregado | terceiro (carreteiro e afins)."""
+def _grupo_from_fonte(name: str) -> str | None:
+    """Detecta grupo pela chave do arquivo (contratacao_073_F_|AC_|AO_)."""
+    n = (name or "").upper().replace("-", "_")
+    if "073_AC" in n or "_AC_" in n:
+        return "contratados"
+    if "073_AO" in n or "_AO_" in n:
+        return "agregado"
+    if "073_F_" in n or n.endswith("073_F") or "_073_F_" in n:
+        return "frota"
+    return None
+
+
+def _grupo_propriedade(prop: str, tipo: str = "", fonte: str = "") -> str:
+    """frota | contratados | agregado."""
+    from_file = _grupo_from_fonte(fonte)
+    if from_file:
+        return from_file
     p = _clean(prop).upper()
-    if p in {"FROTA", "F"}:
+    t = _clean(tipo).upper()
+    if p in {"FROTA", "F"} or "FROTA" in p:
         return "frota"
-    if p in {"AGREGADO", "A"}:
+    if p in {"AGREGADO", "A"} or "AGREG" in p:
+        # A + Tipo C = contratados · A + Tipo O = agregados
+        if t in {"C", "CTRB", "CTR"}:
+            return "contratados"
+        if t in {"O", "OS"}:
+            return "agregado"
         return "agregado"
-    if p in {"CARRETEIRO", "C", "TERCEIRO", "TERCEIROS"}:
-        return "terceiro"
-    if "FROTA" in p:
-        return "frota"
-    if "AGREG" in p:
-        return "agregado"
-    if "CARRET" in p or "TERC" in p:
-        return "terceiro"
+    if p in {"CARRETEIRO", "TERCEIRO", "TERCEIROS"} or "CARRET" in p or "TERC" in p:
+        return "contratados"
     return "outro"
 
 
@@ -179,15 +195,16 @@ def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
         # Custo do painel: AV (pedido); se zerado, cai no valor a pagar / total CTRB
         custo = custo_av if custo_av > 0 else (valor_pagar or total_ctrb)
         prop = _cell(cols, COL_PROPRIEDADE)
+        tipo_doc = _cell(cols, COL_TIPO)
         rows.append(
             {
                 "ctrb": ctrb,
-                "tipo": _cell(cols, COL_TIPO),
+                "tipo": tipo_doc,
                 "situacao": _cell(cols, COL_SITUACAO),
                 "placa": placa,
                 "carreta": _cell(cols, COL_CARRETA).upper(),
                 "propriedade": prop,
-                "grupo": _grupo_propriedade(prop),
+                "grupo": _grupo_propriedade(prop, tipo_doc, src),
                 "custo": round(custo, 2),
                 "custo_av": round(custo_av, 2),
                 "valor_pagar": round(valor_pagar, 2),
@@ -275,6 +292,16 @@ def analyze_reports_073(
             by_placa[placa] = slot
         if r.get("carreta") and not slot["carreta"]:
             slot["carreta"] = r["carreta"]
+        # preserva grupo mais específico quando a mesma placa aparece em vários jobs
+        g = r.get("grupo") or "outro"
+        if g != "outro" and (
+            slot["grupo"] in {"", "outro"}
+            or (g == "frota" and slot["grupo"] != "frota")
+        ):
+            if slot["grupo"] in {"", "outro"} or g == "frota":
+                slot["grupo"] = g
+            elif slot["grupo"] not in {"frota", "contratados", "agregado"}:
+                slot["grupo"] = g
         slot["qtd_ctrb"] += 1
         slot["custo"] += float(r.get("custo") or 0)
         slot["custo_av"] += float(r.get("custo_av") or 0)
@@ -317,7 +344,8 @@ def analyze_reports_073(
         "peso_fmt": _fmt_peso(total_peso),
         "agregado": grupos.get("agregado", 0),
         "frota": grupos.get("frota", 0),
-        "terceiro": grupos.get("terceiro", 0),
+        "contratados": grupos.get("contratados", 0) or grupos.get("terceiro", 0),
+        "terceiro": grupos.get("contratados", 0) or grupos.get("terceiro", 0),
     }
 
     _write_csv(CTRBS_073_CSV, CTRBS_FIELDS, ctrbs)

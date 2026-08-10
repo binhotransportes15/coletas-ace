@@ -1,9 +1,10 @@
 """Download SSW 073 (ssw0332) — Consulta de CTRBs e OSs → Arquivo Excel/CSV.
 
-Fluxo Contratação (mín. 3 relatórios por Propriedade):
-  · Unidade emissora = SPO
-  · Propriedade F = frota · A = agregado · C = carreteiro
-  · Tipo A (ambos CTRB+OS) · Operação T · Considerar T
+Fluxo Contratação (3 relatórios · Unidade emissora = SPO):
+  · F + Tipo A  → frota normal (ambos CTRB+OS)
+  · A + Tipo C  → contratados (CTRB)
+  · A + Tipo O  → agregados (OS)
+  · Operação T · Considerar T
   · Placas do resultado alimentam o 076
 """
 from __future__ import annotations
@@ -20,9 +21,21 @@ from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
 
-# F-frota, A-agregado, C-carreteiro — Contratação puxa os 3
+# Jobs oficiais da Contratação
+JOBS_073: tuple[dict[str, str], ...] = (
+    {"key": "F", "propriedade": "F", "tipo": "A", "label": "frota"},
+    {"key": "AC", "propriedade": "A", "tipo": "C", "label": "contratados"},
+    {"key": "AO", "propriedade": "A", "tipo": "O", "label": "agregados"},
+)
+PROPRIEDADE_LABEL = {
+    "F": "frota",
+    "A": "agregado",
+    "C": "carreteiro",
+    "AC": "contratados",
+    "AO": "agregados",
+}
+# legado
 PROPRIEDADES_073 = ("F", "A", "C")
-PROPRIEDADE_LABEL = {"F": "frota", "A": "agregado", "C": "carreteiro"}
 
 # Programa do Excel CSVssw0332…
 SSW_073_MARKERS = (
@@ -49,11 +62,41 @@ def _ensure_playwright_path() -> None:
         os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(Path(local) / "ms-playwright")
 
 
+def _resolve_jobs_073(
+    *,
+    propriedades: tuple[str, ...] | list[str] | None,
+    tipo: str | None,
+    tipos: tuple[str, ...] | None,
+    propriedade: str | None,
+) -> list[dict[str, str]]:
+    """Monta a lista de jobs (prop+tipo). Default = JOBS_073 oficiais."""
+    _ = tipos  # legado
+    # override legado: uma propriedade + um tipo
+    if propriedades is None and propriedade and str(propriedade).strip().upper()[:1] not in {"", "T"}:
+        prop = str(propriedade).strip().upper()[:1]
+        tipo_doc = str(tipo or "A").strip().upper()[:1] or "A"
+        return [
+            {
+                "key": prop,
+                "propriedade": prop,
+                "tipo": tipo_doc,
+                "label": PROPRIEDADE_LABEL.get(prop, prop),
+            }
+        ]
+    if propriedades is not None:
+        # se pediram só F/A (sem C legado), usa jobs oficiais filtrados
+        wanted = {str(p).strip().upper()[:1] for p in propriedades if str(p).strip()}
+        jobs = [j for j in JOBS_073 if j["propriedade"] in wanted]
+        if jobs:
+            return [dict(j) for j in jobs]
+    return [dict(j) for j in JOBS_073]
+
+
 def download_reports_073(
     *,
     period: tuple[str, str] | None = None,
     propriedades: tuple[str, ...] | list[str] | None = None,
-    tipo: str = "A",
+    tipo: str | None = None,
     unidade_emissora: str = "SPO",
     operacao: str = "T",
     considerar: str = "T",
@@ -66,8 +109,8 @@ def download_reports_073(
     propriedade: str | None = None,
 ) -> dict[str, Any]:
     """
-    Abre opção 73 e gera Arquivo Excel para cada Propriedade (F / A / C).
-    Retorna paths por chave (F|A|C) + lista consolidada.
+    Abre opção 73 e gera Arquivo Excel nos 3 combos Contratação:
+      F+A (frota) · A+C (contratados) · A+O (agregados). Unidade = SPO.
     """
     status = on_status or _noop
     ensure_dirs()
@@ -76,18 +119,13 @@ def download_reports_073(
     cfg = settings or load_settings()
     use_headless = cfg.headless if headless is None else bool(headless)
 
-    if propriedades is None and propriedade and str(propriedade).strip().upper()[:1] not in {"", "T"}:
-        prop_list = [str(propriedade).strip().upper()[:1]]
-    elif propriedades is None:
-        prop_list = list(PROPRIEDADES_073)
-    else:
-        prop_list = [str(p).strip().upper()[:1] for p in propriedades if str(p).strip()]
-    prop_list = [p for p in prop_list if p in {"F", "A", "C"}]
-    if not prop_list:
-        prop_list = list(PROPRIEDADES_073)
-
-    tipo_doc = str(tipo or "A").strip().upper()[:1] or "A"
-    _ = tipos  # legado ignorado — fluxo oficial é por propriedade
+    jobs = _resolve_jobs_073(
+        propriedades=propriedades,
+        tipo=tipo,
+        tipos=tipos,
+        propriedade=propriedade,
+    )
+    unidade = (unidade_emissora or "SPO").strip().upper() or "SPO"
 
     ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
     ini = to_ssw_ddmmyy(ini_ddmm)
@@ -111,10 +149,10 @@ def download_reports_073(
 
     paths: dict[str, str] = {}
     errors: dict[str, str] = {}
+    desc = " · ".join(f"{j['key']}={j['propriedade']}+{j['tipo']}({j['label']})" for j in jobs)
     status(
-        f"SSW 73 | {len(prop_list)} relatório(s) · prop={','.join(prop_list)} "
-        f"(F=frota A=agregado C=carreteiro) | tipo={tipo_doc} | {ini}-{fim} | "
-        f"emissora={unidade_emissora} | op={operacao}"
+        f"SSW 73 | {len(jobs)} relatório(s) · {desc} | {ini}-{fim} | "
+        f"emissora={unidade} | op={operacao}"
     )
 
     with sync_playwright() as p:
@@ -130,35 +168,41 @@ def download_reports_073(
             client._ensure_unit(page)
             client._patch_blank_popup_form(page)
 
-            for idx, prop in enumerate(prop_list, start=1):
-                lab = PROPRIEDADE_LABEL.get(prop, prop)
-                key = prop
+            for idx, job in enumerate(jobs, start=1):
+                key = job["key"]
+                prop = job["propriedade"]
+                tipo_doc = job["tipo"]
+                lab = job["label"]
                 try:
-                    status(f"[73/{prop}·{lab}] ({idx}/{len(prop_list)}) abrindo opção 73…")
+                    status(
+                        f"[73/{key}·{lab}] ({idx}/{len(jobs)}) "
+                        f"prop={prop} tipo={tipo_doc} · abrindo 73…"
+                    )
                     popup = _reopen_73(client, page, popup)
-                    status(f"[73/{prop}·{lab}] preenchendo formulário…")
+                    status(f"[73/{key}·{lab}] preenchendo formulário…")
                     _preencher_73(
                         popup,
                         ini=ini,
                         fim=fim,
                         tipo=tipo_doc,
-                        unidade=unidade_emissora,
+                        unidade=unidade,
                         propriedade=prop,
                         operacao=operacao,
                         considerar=considerar,
                         on_status=status,
+                        job_key=key,
                     )
-                    status(f"[73/{prop}·{lab}] gerando Arquivo Excel…")
-                    dest_name = f"contratacao_073_{prop}_{ts}.sswweb"
+                    status(f"[73/{key}·{lab}] gerando Arquivo Excel…")
+                    dest_name = f"contratacao_073_{key}_{ts}.sswweb"
                     path = _gerar_download_73(
                         client, context, page, popup, dest_name, key, status
                     )
                     paths[key] = str(path)
-                    status(f"[73/{prop}·{lab}] OK {path.name} ({path.stat().st_size} bytes)")
+                    status(f"[73/{key}·{lab}] OK {path.name} ({path.stat().st_size} bytes)")
                     page.wait_for_timeout(400)
                 except Exception as err:  # noqa: BLE001
                     errors[key] = str(err)
-                    status(f"[73/{prop}·{lab}] FALHOU: {err}")
+                    status(f"[73/{key}·{lab}] FALHOU: {err}")
                     try:
                         popup = _reopen_73(client, page, popup)
                     except Exception:
@@ -179,10 +223,11 @@ def download_reports_073(
         "paths": paths,
         "files": list(paths.values()),
         "errors": errors,
-        "propriedades": prop_list,
+        "jobs": jobs,
+        "propriedades": [j["propriedade"] for j in jobs],
         "period": (ini_ddmm, fim_ddmm),
         "periodo_fmt": f"{ini_ddmm} – {fim_ddmm}",
-        "unidade": unidade_emissora,
+        "unidade": unidade,
     }
 
 
@@ -206,10 +251,12 @@ def _preencher_73(
     operacao: str,
     considerar: str,
     on_status: StatusCallback,
+    job_key: str = "",
 ) -> None:
-    """Preenche 073 por rótulo (ids SSW variam)."""
+    """Preenche 073 por rótulo (ids SSW variam). Unidade emissora sempre SPO."""
     status = on_status
-    lab = PROPRIEDADE_LABEL.get(propriedade, propriedade)
+    key = job_key or propriedade
+    lab = PROPRIEDADE_LABEL.get(key, PROPRIEDADE_LABEL.get(propriedade, propriedade))
     popup.wait_for_timeout(400)
     filled = popup.evaluate(
         """({ ini, fim, tipo, unidade, propriedade, operacao, considerar }) => {
@@ -290,13 +337,15 @@ def _preencher_73(
             "considerar": considerar,
         },
     )
-    status(f"[73/{propriedade}·{lab}] form {filled}")
+    status(f"[73/{key}·{lab}] form {filled} · prop={propriedade} tipo={tipo} uni={unidade}")
     if not filled.get("okProp"):
         raise RuntimeError(f"073: não achei campo Propriedade ({filled})")
     if not filled.get("okTipo"):
-        status(f"[73/{propriedade}·{lab}] aviso: Tipo pode não ter preenchido")
+        status(f"[73/{key}·{lab}] aviso: Tipo pode não ter preenchido")
+    if not filled.get("okUni"):
+        status(f"[73/{key}·{lab}] aviso: Unidade emissora pode não ter preenchido (esperado SPO)")
     if not (filled.get("okIni") and filled.get("okFim")):
-        status(f"[73/{propriedade}·{lab}] aviso: período pode não ter preenchido ({filled})")
+        status(f"[73/{key}·{lab}] aviso: período pode não ter preenchido ({filled})")
     popup.wait_for_timeout(200)
 
 

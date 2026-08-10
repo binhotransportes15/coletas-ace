@@ -1036,8 +1036,6 @@ def run_pipeline_contratacao(
     else:
         dl73 = download_reports_073(
             period=(ini, fim),
-            propriedades=("F", "A", "C"),
-            tipo="A",
             unidade_emissora="SPO",
             credentials=creds,
             settings=cfg,

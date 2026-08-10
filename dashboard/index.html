@@ -6071,11 +6071,11 @@
         if (mix) {
           const frota = Number(resumo.frota) || 0;
           const agreg = Number(resumo.agregado) || 0;
-          const terc = Number(resumo.terceiro) || 0;
+          const contrat = Number(resumo.contratados) || Number(resumo.terceiro) || 0;
           mix.innerHTML = `
-            <div class="mix-card frota"><div class="n">${frota}</div><div class="l">Frota (C)</div></div>
-            <div class="mix-card agregado"><div class="n">${agreg}</div><div class="l">Agregado (O)</div></div>
-            <div class="mix-card terceiro"><div class="n">${terc}</div><div class="l">Terceiro (O)</div></div>
+            <div class="mix-card frota"><div class="n">${frota}</div><div class="l">Frota</div></div>
+            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">Contratados (C)</div></div>
+            <div class="mix-card agregado"><div class="n">${agreg}</div><div class="l">Agregados (O)</div></div>
           `;
         }
 
