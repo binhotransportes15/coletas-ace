@@ -1,7 +1,7 @@
 """Download SSW 073 (ssw0332) — Consulta de CTRBs e OSs → Arquivo Excel/CSV.
 
 Fluxo Contratação (Unidade = SPO · período = mês até hoje):
-  1) 1 login · N telas 073 (F+A · A+C · A+O) · Excel direto
+  1) 1 login · N telas 073 (F+C · A+C · A+O) · Excel direto
   2) Para cada DESTINO: troca menu → abre 076+200 juntos · gera ambos
   3) Merge frete por placa (076 depois 200)
 """
@@ -21,8 +21,10 @@ from ssw_client import AceSswClient, cleanup_downloads
 StatusCallback = Callable[[str], None]
 
 # Jobs oficiais da Contratação
+# Propriedade F = frota  → Tipo C (CTRB)
+# Propriedade A = agregado → Tipo C (CTRB) = contratados · Tipo O (OS) = agregados
 JOBS_073: tuple[dict[str, str], ...] = (
-    {"key": "F", "propriedade": "F", "tipo": "A", "label": "frota"},
+    {"key": "F", "propriedade": "F", "tipo": "C", "label": "frota"},
     {"key": "AC", "propriedade": "A", "tipo": "C", "label": "contratados"},
     {"key": "AO", "propriedade": "A", "tipo": "O", "label": "agregados"},
 )
@@ -85,7 +87,7 @@ def _resolve_jobs_073(
     # override legado: uma propriedade + um tipo
     if propriedades is None and propriedade and str(propriedade).strip().upper()[:1] not in {"", "T"}:
         prop = str(propriedade).strip().upper()[:1]
-        tipo_doc = str(tipo or "A").strip().upper()[:1] or "A"
+        tipo_doc = str(tipo or "C").strip().upper()[:1] or "C"
         return [
             {
                 "key": prop,
@@ -378,8 +380,11 @@ def download_contratacao_ssw(
                         elif not skip_076:
                             err76 = dual.get("errors76") or {}
                             msg = "; ".join(f"{k}:{v}" for k, v in err76.items()) or "sem arquivo"
-                            filial_errors[f"{dest}/076"] = msg
-                            status(f"[{dest}] 076 avisou: {msg}")
+                            if "sem base" in msg.lower() or "não selecionou" in msg.lower() or "nao selecionou" in msg.lower():
+                                status(f"[{dest}] 076 sem movimento — ok, segue")
+                            else:
+                                filial_errors[f"{dest}/076"] = msg
+                                status(f"[{dest}] 076 avisou: {msg}")
                         if got200:
                             files200.extend(got200)
                             by200[dest] = {
@@ -390,8 +395,11 @@ def download_contratacao_ssw(
                             status(f"[{dest}] 200 OK · {len(got200)} arquivo(s)")
                         elif not skip_200:
                             msg = str(dual.get("error200") or "sem arquivo")
-                            filial_errors[f"{dest}/200"] = msg
-                            status(f"[{dest}] 200 avisou: {msg}")
+                            if "sem base" in msg.lower() or "não selecionou" in msg.lower() or "nao selecionou" in msg.lower():
+                                status(f"[{dest}] 200 sem movimento — ok, segue")
+                            else:
+                                filial_errors[f"{dest}/200"] = msg
+                                status(f"[{dest}] 200 avisou: {msg}")
                     except Exception as err:  # noqa: BLE001
                         if not skip_076:
                             filial_errors[f"{dest}/076"] = str(err)
@@ -476,12 +484,14 @@ def _download_frete_filial_paralelo(
 ) -> dict[str, Any]:
     """Abre 076 e 200 na mesma sessão (2 guias), preenche e baixa."""
     from ssw_076 import (
+        FilaSemDados,
         _gerar_download_76,
         _preencher_76,
         _reopen_76,
     )
     from ssw_200 import (
         SSW_200_MARKERS,
+        FilaSemDados as FilaSemDados200,
         _gerar_download_200,
         _preencher_200,
     )
@@ -564,6 +574,9 @@ def _download_frete_filial_paralelo(
                     client, context, page, popup76, dest76, tag, status
                 )
                 files76.append(str(path76))
+            except FilaSemDados as empty_err:
+                errors76[tag] = str(empty_err)
+                status(f"[{tag}] 076 sem base — próxima filial ({empty_err})")
             except Exception as batch_err:  # noqa: BLE001
                 status(f"[{tag}] 076 lote falhou ({batch_err}); por placa…")
                 plate_list = [str(p).strip().upper() for p in (placas or []) if str(p).strip()]
@@ -587,6 +600,9 @@ def _download_frete_filial_paralelo(
                             client, context, page, popup76, dest76, key, status
                         )
                         files76.append(str(path76))
+                    except FilaSemDados as empty_err:
+                        errors76[key] = str(empty_err)
+                        status(f"[{tag}/76/{key}] sem base — pula")
                     except Exception as err:  # noqa: BLE001
                         errors76[key] = str(err)
                         status(f"[{tag}/76/{key}] FALHOU: {err}")
@@ -618,6 +634,9 @@ def _download_frete_filial_paralelo(
                     client, context, page, popup200, dest200, status
                 )
                 files200.append(str(path200))
+            except FilaSemDados200 as empty_err:
+                error200 = str(empty_err)
+                status(f"[{tag}] 200 sem base — próxima filial ({empty_err})")
             except Exception as err:  # noqa: BLE001
                 error200 = str(err)
                 status(f"[{tag}] 200 FALHOU: {err}")

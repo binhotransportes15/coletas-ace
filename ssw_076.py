@@ -7,6 +7,7 @@ Formulário:
 from __future__ import annotations
 
 import os
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -27,6 +28,17 @@ SSW_076_MARKERS = (
     "sigla",
     "periodo",
     "ver fila",
+)
+
+
+class FilaSemDados(RuntimeError):
+    """Job concluiu na 156 sem arquivo (ex.: NÃO SELECIONOU CTRCS)."""
+
+
+_EMPTY_FILA_RE = re.compile(
+    r"n[aã]o\s+selecionou|sem\s+ctrc|nenhum\s+ctrc|sem\s+dados|n[aã]o\s+h[aá]\s+regist|"
+    r"nada\s+a\s+(gerar|emitir)|sem\s+movimento|sem\s+demonstrativ",
+    re.IGNORECASE,
 )
 
 
@@ -135,7 +147,14 @@ def download_reports_076(
             )
             paths.append(str(path))
             status(f"[76/{file_tag}] OK {path.name}")
+        except FilaSemDados as empty_err:
+            errors[file_tag] = str(empty_err)
+            status(f"[76/{file_tag}] sem base — pula ({empty_err})")
         except Exception as batch_err:  # noqa: BLE001
+            if isinstance(batch_err, FilaSemDados):
+                errors[file_tag] = str(batch_err)
+                status(f"[76/{file_tag}] sem base — pula ({batch_err})")
+                return
             status(f"[76/{file_tag}] lote falhou ({batch_err}); tentando por placa…")
             for idx, placa in enumerate(runs[:40], start=1):
                 key = placa or file_tag
@@ -157,6 +176,9 @@ def download_reports_076(
                         sess_client, sess_context, sess_page, popup, dest, key, status
                     )
                     paths.append(str(path))
+                except FilaSemDados as empty_err:
+                    errors[key] = str(empty_err)
+                    status(f"[76/{key}] sem base — pula ({empty_err})")
                 except Exception as err:  # noqa: BLE001
                     errors[key] = str(err)
                     status(f"[76/{key}] FALHOU: {err}")
@@ -185,6 +207,27 @@ def download_reports_076(
                 browser.close()
 
     if not paths and errors:
+        # só "sem base" → ok parcial (filial sem movimento); não derruba o fluxo
+        only_empty = all(
+            "sem base" in str(v).lower() or "nāo selecionou" in str(v).lower()
+            or "não selecionou" in str(v).lower()
+            or "nao selecionou" in str(v).lower()
+            for v in errors.values()
+        )
+        if only_empty:
+            return {
+                "ok": True,
+                "files": [],
+                "errors": errors,
+                "empty": True,
+                "period": (ini_ddmm, fim_ddmm),
+                "periodo_fmt": f"{ini_ddmm} – {fim_ddmm}",
+                "arquivo": arq,
+                "operacao": arq,
+                "unidade": unidade_sigla,
+                "tag": file_tag,
+                "placas": plate_list,
+            }
         raise RuntimeError("076 falhou: " + "; ".join(f"{k}: {v}" for k, v in errors.items()))
 
     return {
@@ -451,7 +494,15 @@ def _ler_jobs_fila_76(fila) -> list[dict]:
             const seq = (cells[0] || '').replace(/\\D/g, '');
             if (!seq || seq.length < 4) continue;
             const opcao = cells[1] || '';
-            const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || cells[6] || '';
+            let sit = '';
+            for (const c of cells) {
+              if (/^(conclu[ií]d[oa]|processando|na fila|em fila|erro|abortad)/i.test(c)) {
+                sit = c; break;
+              }
+            }
+            if (!sit) {
+              sit = cells.find(c => /conclu|processando|na\\s*fila|erro|abort/i.test(c)) || cells[6] || '';
+            }
             const links = Array.from(tr.querySelectorAll('a[onclick], a[href], img[onclick]')).map(a => {
               const text = norm(a.textContent || a.alt || a.title || '');
               const onclick = String(a.getAttribute('onclick') || '');
@@ -463,13 +514,24 @@ def _ler_jobs_fila_76(fila) -> list[dict]:
               if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(x.text)) return false;
               return /\\bdow\\b|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob);
             });
+            // última coluna costuma ser a mensagem (ex.: NÃO SELECIONOU CTRCS…)
+            let mensagem = '';
+            for (let i = cells.length - 1; i >= 0; i--) {
+              const c = cells[i] || '';
+              if (!c) continue;
+              if (/^(conclu|process|fila|erro|abort|\\d)/i.test(c) && c.length < 20) continue;
+              if (/^\\d{1,2}\\/\\d{1,2}/.test(c)) continue;
+              if (c.length >= 8) { mensagem = c; break; }
+            }
             const blobAll = (opcao + ' ' + cells.join(' ') + ' ' + links.map(l => l.blob).join(' ')).toLowerCase();
+            const concluido = /conclu/i.test(sit);
             jobs.push({
               seq,
               opcao,
               situacao: sit,
-              concluido: /conclu/i.test(sit),
-              is076: /076|remuner|demonstrativo|ssw0?76/i.test(blobAll),
+              mensagem,
+              concluido,
+              is076: /076|remuner|demonstrativo|ssw0?76|coletas\\/entrega/i.test(blobAll),
               hasDow: dows.length > 0,
               dows,
             });
@@ -477,6 +539,17 @@ def _ler_jobs_fila_76(fila) -> list[dict]:
           return jobs;
         }"""
     )
+
+
+def _job_076_sem_dados(job: dict) -> bool:
+    """Concluído sem DOW (mensagem típica: NÃO SELECIONOU CTRCS…)."""
+    if not job.get("concluido") or job.get("hasDow"):
+        return False
+    msg = str(job.get("mensagem") or job.get("situacao") or "")
+    if _EMPTY_FILA_RE.search(msg):
+        return True
+    # Concluído 076 sem link DOW = sem base (não fica esperando eternamente)
+    return bool(job.get("is076"))
 
 
 def _atualizar_fila_76(fila) -> None:
@@ -497,18 +570,18 @@ def _atualizar_fila_76(fila) -> None:
 
 
 def _baixar_via_fila_76(client, context, page, popup, dest_name: str, key: str, status) -> Path:
-    """Espera job 076 concluído na 156 e clica DOW."""
-    # só seqs já prontas (concluído+DOW) — jobs em processamento entram depois
-    known_ready: set[str] = set()
+    """Espera job 076 concluído na 156 e clica DOW. Sem base → FilaSemDados."""
+    # seqs já concluídas (com ou sem DOW) — ignoradas
+    known_done: set[str] = set()
     fila = None
     try:
         fila = _abrir_fila_156_76(client, context, page, status, popup=popup)
         _safe_wait(fila, 500)
         for j in _ler_jobs_fila_76(fila):
             seq = str(j.get("seq") or "")
-            if seq and j.get("concluido") and j.get("hasDow"):
-                known_ready.add(seq)
-        status(f"[76] fila aberta · {len(known_ready)} pronto(s) antigo(s)")
+            if seq and j.get("is076") and j.get("concluido"):
+                known_done.add(seq)
+        status(f"[76] fila aberta · {len(known_done)} 076 já concluído(s)")
     except Exception as err:
         status(f"[76] snapshot fila: {err}")
 
@@ -528,29 +601,64 @@ def _baixar_via_fila_76(client, context, page, popup, dest_name: str, key: str, 
             _atualizar_fila_76(fila)
             _safe_wait(fila, 1200)
             jobs = _ler_jobs_fila_76(fila)
+
+            # nosso job concluiu sem arquivo → pula filial (não trava)
+            vazios = [
+                j
+                for j in jobs
+                if j.get("is076")
+                and str(j.get("seq") or "") not in known_done
+                and _job_076_sem_dados(j)
+            ]
+            if vazios:
+                vazios.sort(
+                    key=lambda j: int(
+                        "".join(ch for ch in str(j.get("seq") or "") if ch.isdigit()) or 0
+                    ),
+                    reverse=True,
+                )
+                job = vazios[0]
+                msg = str(job.get("mensagem") or "sem DOW")
+                try:
+                    if fila is not None and not fila.is_closed():
+                        fila.close()
+                except Exception:
+                    pass
+                raise FilaSemDados(
+                    f"sem base · seq={job.get('seq')} · {msg[:80]}"
+                )
+
             cands = [
                 j
                 for j in jobs
                 if j.get("concluido")
                 and j.get("hasDow")
-                and (
-                    j.get("is076")
-                    or str(j.get("seq") or "") not in known_ready
-                )
+                and j.get("is076")
+                and str(j.get("seq") or "") not in known_done
             ]
-            # prioriza is076; entre eles, seq mais nova
+
             def sk(j: dict) -> tuple:
                 seq = str(j.get("seq") or "")
                 try:
                     num = int("".join(ch for ch in seq if ch.isdigit()) or 0)
                 except Exception:
                     num = 0
-                return (0 if j.get("is076") else 1, -num)
+                return (-num,)
 
             cands.sort(key=sk)
             if not cands:
+                proc = [
+                    j
+                    for j in jobs
+                    if j.get("is076")
+                    and str(j.get("seq") or "") not in known_done
+                    and not j.get("concluido")
+                ]
                 if int(time.time()) % 8 < 2:
-                    status(f"[76/{key}] aguardando DOW na fila 156…")
+                    status(
+                        f"[76/{key}] aguardando Concluído+DOW na 156 "
+                        f"({len(proc)} processando)…"
+                    )
                 _safe_wait(fila, 2000)
                 continue
 
@@ -594,10 +702,11 @@ def _baixar_via_fila_76(client, context, page, popup, dest_name: str, key: str, 
             except Exception:
                 pass
             return client._save_download(download, dest_name)
+        except FilaSemDados:
+            raise
         except Exception as err:  # noqa: BLE001
             last_err = str(err)
             status(f"[76/{key}] fila loop: {err}")
-            # só reabre se a aba morreu — fechar sempre crashava o Chromium
             crashed = (
                 "crash" in last_err.lower()
                 or "closed" in last_err.lower()

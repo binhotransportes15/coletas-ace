@@ -7,6 +7,7 @@ Formulário:
 from __future__ import annotations
 
 import os
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -29,6 +30,17 @@ SSW_200_MARKERS = (
 )
 
 SSW_FILA_URL = "https://sistema.ssw.inf.br/bin/ssw1440"
+
+
+class FilaSemDados(RuntimeError):
+    """Job 200 concluiu na 156 sem arquivo para baixar."""
+
+
+_EMPTY_FILA_RE = re.compile(
+    r"n[aã]o\s+selecionou|sem\s+ctrc|nenhum|sem\s+dados|n[aã]o\s+h[aá]\s+regist|"
+    r"nada\s+a\s+(gerar|emitir)|sem\s+movimento|sem\s+manifesto",
+    re.IGNORECASE,
+)
 
 
 def _noop(_: str) -> None:
@@ -107,6 +119,7 @@ def download_reports_200(
     def _run(sess_client, sess_context, sess_page) -> None:
         nonlocal paths
         popup = None
+        empty_msg = ""
         try:
             status(f"[200/{file_tag}] abrindo opção 200…")
             popup = sess_client._open_menu_option(sess_page, "200", markers=SSW_200_MARKERS)
@@ -119,15 +132,20 @@ def download_reports_200(
             )
             paths.append(str(path))
             status(f"[200/{file_tag}] OK {path.name}")
+        except FilaSemDados as empty_err:
+            empty_msg = str(empty_err)
+            status(f"[200/{file_tag}] sem base — pula ({empty_err})")
         finally:
             try:
                 if popup is not None and not popup.is_closed():
                     popup.close()
             except Exception:
                 pass
+        return empty_msg
 
+    empty_note = ""
     if reuse:
-        _run(own_client, context, page)
+        empty_note = _run(own_client, context, page) or ""
     else:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
@@ -140,11 +158,23 @@ def download_reports_200(
                 own_client._login(pg)
                 own_client._ensure_unit(pg)
                 own_client._patch_blank_popup_form(pg)
-                _run(own_client, ctx, pg)
+                empty_note = _run(own_client, ctx, pg) or ""
             finally:
                 browser.close()
 
     if not paths:
+        if empty_note:
+            return {
+                "ok": True,
+                "files": [],
+                "empty": True,
+                "error": empty_note,
+                "period": (ini_ddmm, fim_ddmm),
+                "periodo_fmt": f"{ini_ddmm} – {fim_ddmm}",
+                "unidade_origem": unid,
+                "tipo_arquivo": tipo,
+                "tag": file_tag,
+            }
         raise RuntimeError("200: nenhum arquivo baixado")
 
     return {
@@ -327,7 +357,15 @@ def _ler_jobs_fila_200(fila) -> list[dict]:
             const seq = (cells[0] || '').replace(/\\D/g, '');
             if (!seq || seq.length < 4) continue;
             const opcao = cells[1] || '';
-            const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || cells[6] || '';
+            let sit = '';
+            for (const c of cells) {
+              if (/^(conclu[ií]d[oa]|processando|na fila|em fila|erro|abortad)/i.test(c)) {
+                sit = c; break;
+              }
+            }
+            if (!sit) {
+              sit = cells.find(c => /conclu|processando|na\\s*fila|erro|abort/i.test(c)) || cells[6] || '';
+            }
             const links = Array.from(tr.querySelectorAll('a[onclick], a[href], img[onclick]')).map(a => {
               const text = norm(a.textContent || a.alt || a.title || '');
               const onclick = String(a.getAttribute('onclick') || '');
@@ -339,11 +377,20 @@ def _ler_jobs_fila_200(fila) -> list[dict]:
               if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(x.text)) return false;
               return /\\bdow\\b|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob);
             });
+            let mensagem = '';
+            for (let i = cells.length - 1; i >= 0; i--) {
+              const c = cells[i] || '';
+              if (!c) continue;
+              if (/^(conclu|process|fila|erro|abort|\\d)/i.test(c) && c.length < 20) continue;
+              if (/^\\d{1,2}\\/\\d{1,2}/.test(c)) continue;
+              if (c.length >= 8) { mensagem = c; break; }
+            }
             const blobAll = (opcao + ' ' + cells.join(' ') + ' ' + links.map(l => l.blob).join(' ')).toLowerCase();
             jobs.push({
               seq,
               opcao,
               situacao: sit,
+              mensagem,
               concluido: /conclu/i.test(sit),
               is200: /200|0644|manifesto|ssw0?644/i.test(blobAll),
               hasDow: dows.length > 0,
@@ -353,6 +400,15 @@ def _ler_jobs_fila_200(fila) -> list[dict]:
           return jobs;
         }"""
     )
+
+
+def _job_200_sem_dados(job: dict) -> bool:
+    if not job.get("concluido") or job.get("hasDow"):
+        return False
+    msg = str(job.get("mensagem") or job.get("situacao") or "")
+    if _EMPTY_FILA_RE.search(msg):
+        return True
+    return bool(job.get("is200"))
 
 
 def _atualizar_fila_200(fila) -> None:
@@ -374,16 +430,16 @@ def _atualizar_fila_200(fila) -> None:
 
 def _baixar_via_fila_200(client, context, page, popup, dest_name: str, status) -> Path:
     _ = popup
-    known_ready: set[str] = set()
+    known_done: set[str] = set()
     fila = None
     try:
         fila = _abrir_fila_156_200(client, context, page, status)
         _safe_wait(fila, 500)
         for j in _ler_jobs_fila_200(fila):
             seq = str(j.get("seq") or "")
-            if seq and j.get("concluido") and j.get("hasDow"):
-                known_ready.add(seq)
-        status(f"[200] fila aberta · {len(known_ready)} pronto(s) antigo(s)")
+            if seq and j.get("is200") and j.get("concluido"):
+                known_done.add(seq)
+        status(f"[200] fila aberta · {len(known_done)} 200 já concluído(s)")
     except Exception as err:
         status(f"[200] snapshot fila: {err}")
 
@@ -403,12 +459,37 @@ def _baixar_via_fila_200(client, context, page, popup, dest_name: str, status) -
             _atualizar_fila_200(fila)
             _safe_wait(fila, 1200)
             jobs = _ler_jobs_fila_200(fila)
+
+            vazios = [
+                j
+                for j in jobs
+                if j.get("is200")
+                and str(j.get("seq") or "") not in known_done
+                and _job_200_sem_dados(j)
+            ]
+            if vazios:
+                vazios.sort(
+                    key=lambda j: int(
+                        "".join(ch for ch in str(j.get("seq") or "") if ch.isdigit()) or 0
+                    ),
+                    reverse=True,
+                )
+                job = vazios[0]
+                msg = str(job.get("mensagem") or "sem DOW")
+                try:
+                    if fila is not None and not fila.is_closed():
+                        fila.close()
+                except Exception:
+                    pass
+                raise FilaSemDados(f"sem base · seq={job.get('seq')} · {msg[:80]}")
+
             cands = [
                 j
                 for j in jobs
                 if j.get("concluido")
                 and j.get("hasDow")
-                and (j.get("is200") or str(j.get("seq") or "") not in known_ready)
+                and j.get("is200")
+                and str(j.get("seq") or "") not in known_done
             ]
 
             def sk(j: dict) -> tuple:
@@ -417,12 +498,22 @@ def _baixar_via_fila_200(client, context, page, popup, dest_name: str, status) -
                     num = int("".join(ch for ch in seq if ch.isdigit()) or 0)
                 except Exception:
                     num = 0
-                return (0 if j.get("is200") else 1, -num)
+                return (-num,)
 
             cands.sort(key=sk)
             if not cands:
+                proc = [
+                    j
+                    for j in jobs
+                    if j.get("is200")
+                    and str(j.get("seq") or "") not in known_done
+                    and not j.get("concluido")
+                ]
                 if int(time.time()) % 8 < 2:
-                    status("[200] aguardando DOW na fila 156…")
+                    status(
+                        f"[200] aguardando Concluído+DOW na 156 "
+                        f"({len(proc)} processando)…"
+                    )
                 _safe_wait(fila, 2000)
                 continue
 
@@ -466,6 +557,8 @@ def _baixar_via_fila_200(client, context, page, popup, dest_name: str, status) -
             except Exception:
                 pass
             return client._save_download(download, dest_name)
+        except FilaSemDados:
+            raise
         except Exception as err:  # noqa: BLE001
             last_err = str(err)
             status(f"[200] fila loop: {err}")

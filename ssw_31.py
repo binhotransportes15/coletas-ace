@@ -182,8 +182,8 @@ def download_reports_31(
                     + "; ".join(f"{k}:{v}" for k, v in errors.items())
                 )
 
-            status("[31] aguardando fila registrar os jobs…")
-            time.sleep(3)
+            status("[31] aguardando fila registrar os jobs (não baixa enquanto processa)…")
+            time.sleep(5)
 
             # ── Fase 2: baixar na 156 ────────────────────────────────
             status(
@@ -436,7 +436,6 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
         """() => {
           const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
           const jobs = [];
-          // tenta tabela
           const rows = Array.from(document.querySelectorAll('tr'));
           for (const tr of rows) {
             const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
@@ -444,7 +443,16 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
             const seq = (cells[0] || '').replace(/\\D/g, '');
             if (!seq || seq.length < 4) continue;
             const opcao = cells[1] || '';
-            const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || cells[6] || '';
+            // situação: prioriza célula que parece status (não pega 'fila' genérico)
+            let sit = '';
+            for (const c of cells) {
+              if (/^(conclu[ií]d[oa]|processando|na fila|em fila|erro|abortad)/i.test(c)) {
+                sit = c; break;
+              }
+            }
+            if (!sit) {
+              sit = cells.find(c => /conclu|processando|na\\s*fila|erro|abort/i.test(c)) || cells[6] || '';
+            }
             const links = Array.from(tr.querySelectorAll('a[onclick], a[href], img[onclick]')).map(a => {
               const text = norm(a.textContent || a.alt || a.title || '');
               const onclick = String(a.getAttribute('onclick') || '');
@@ -457,36 +465,20 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
               return /\\bdow\\b|download\\(|ssw0495|\\.xlsx|\\.xls|\\.csv|baixar|arquivo/.test(x.blob)
                 || (/0495|031/.test(x.blob) && /dow|href=|http/.test(x.blob));
             });
+            const blobAll = (opcao + ' ' + cells.join(' ') + ' ' + links.map(l => l.blob).join(' ')).toLowerCase();
+            const sitLow = sit.toLowerCase();
+            const concluido = /conclu/.test(sitLow) && !/n[aã]o\\s*conclu|inconclu/.test(sitLow);
+            const processando = /processando|na\\s*fila|em\\s*fila|aguard|gerando/.test(sitLow)
+              || (!concluido && !/erro|abort/.test(sitLow) && dows.length === 0);
             jobs.push({
               seq,
               opcao,
               situacao: sit,
-              concluido: /conclu/i.test(sit),
-              is0495: /0495|031\\s*-|ocorr/i.test(opcao + ' ' + links.map(l => l.blob).join(' ')),
+              concluido,
+              processando,
+              is0495: /0495|031\\s*-|ocorr|ssw0495/.test(blobAll),
               hasDow: dows.length > 0,
               dows,
-            });
-          }
-          // fallback: varrer links DOW globais com contexto
-          if (!jobs.length) {
-            const all = Array.from(document.querySelectorAll('a[onclick], a[href], img[onclick]'));
-            all.forEach((a, i) => {
-              const text = norm(a.textContent || a.alt || a.title || '');
-              const onclick = String(a.getAttribute('onclick') || '');
-              const href = String(a.getAttribute('href') || '');
-              const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
-              if (/imprimir|correio|atualizar/i.test(text)) return;
-              if (!(/\\bdow\\b|download\\(|ssw0495|\\.xlsx|baixar/.test(blob))) return;
-              jobs.push({
-                seq: 'L' + i,
-                opcao: text || 'download',
-                situacao: 'Concluído',
-                concluido: true,
-                is0495: /0495|031|ocorr|xlsx|csv|sswweb/.test(blob),
-                hasDow: true,
-                dows: [{ text, onclick, href, blob }],
-                linkIndex: i,
-              });
             });
           }
           return jobs;
@@ -542,111 +534,153 @@ def _baixar_todos_da_fila(
     status,
 ) -> dict[str, str]:
     """
-    Espera jobs concluídos na 156 e baixa Excel na ordem dos códigos enfileirados.
+    Espera os jobs NOVOS na 156 aparecerem e ficarem Concluído+DOW.
+    Não baixa job antigo, nem DOW de outra opção, nem linha ainda em processamento.
     """
     paths: dict[str, str] = {}
     want = len(queued)
     codes_order = [q["code"] for q in queued]
-    seq_by_code = {q["code"]: q.get("seq") or "" for q in queued}
-    deadline = time.time() + max(180, 45 * want)
+    deadline = time.time() + max(240, 60 * want)
     downloaded_seqs: set[str] = set()
+    our_seqs: set[str] = set()  # seqs novas vistas após o enqueue
+    last_log = 0.0
+
+    def _poll() -> list[dict[str, Any]]:
+        nonlocal fila
+        if fila is None or fila.is_closed():
+            fila = _abrir_fila_156(client, context, page, status)
+        try:
+            fila.bring_to_front()
+        except Exception:
+            pass
+        _atualizar_fila(fila)
+        _safe_wait(fila, 1200)
+        return _ler_jobs_fila(fila)
+
+    def _classify(jobs: list[dict[str, Any]]) -> tuple[list, list, list]:
+        """Retorna (pool_nosso, prontos, ainda_processando)."""
+        novos = [
+            j
+            for j in jobs
+            if str(j.get("seq") or "")
+            and str(j.get("seq") or "") not in known_before
+        ]
+        novos.sort(
+            key=lambda j: int(re.sub(r"\D", "", str(j.get("seq") or "")) or 0)
+        )
+        only0495 = [j for j in novos if j.get("is0495")]
+
+        # Trava as seqs "nossas" na 1ª vez que aparecerem o suficiente
+        if len(our_seqs) < want:
+            for j in only0495 if only0495 else novos:
+                seq = str(j.get("seq") or "")
+                if seq and seq not in our_seqs:
+                    our_seqs.add(seq)
+                if len(our_seqs) >= want:
+                    break
+
+        pool = [j for j in jobs if str(j.get("seq") or "") in our_seqs]
+        pool.sort(
+            key=lambda j: int(re.sub(r"\D", "", str(j.get("seq") or "")) or 0)
+        )
+        prontos = [
+            j
+            for j in pool
+            if j.get("concluido")
+            and j.get("hasDow")
+            and str(j.get("seq") or "") not in downloaded_seqs
+        ]
+        pendentes = [
+            j
+            for j in pool
+            if str(j.get("seq") or "") not in downloaded_seqs
+            and not (j.get("concluido") and j.get("hasDow"))
+        ]
+        # se ainda não travamos want seqs, pendentes = tudo novo sem DOW
+        if len(our_seqs) < want:
+            pendentes = [
+                j
+                for j in (only0495 or novos)
+                if str(j.get("seq") or "") not in downloaded_seqs
+                and not (j.get("concluido") and j.get("hasDow"))
+            ] or pendentes
+        return pool, prontos, pendentes
 
     while time.time() < deadline and len(paths) < want:
         try:
-            if fila is None or fila.is_closed():
-                fila = _abrir_fila_156(client, context, page, status)
-            try:
-                fila.bring_to_front()
-            except Exception:
-                pass
-            _atualizar_fila(fila)
-            _safe_wait(fila, 1000)
-            jobs = _ler_jobs_fila(fila)
+            jobs = _poll()
+            _pool, prontos, pendentes = _classify(jobs)
 
-            # candidatos: 0495/031 concluídos com DOW, não baixados ainda
-            ours = [
-                j
-                for j in jobs
-                if j.get("concluido")
-                and j.get("hasDow")
-                and str(j.get("seq") or "") not in downloaded_seqs
-                and j.get("is0495")
-                and (
-                    str(j.get("seq") or "") not in known_before
-                    or str(j.get("seq") or "")
-                    in {seq_by_code[c] for c in codes_order if seq_by_code.get(c)}
+            now = time.time()
+            if now - last_log >= 4:
+                last_log = now
+                status(
+                    f"[31] fila 156 · baixados {len(paths)}/{want} · "
+                    f"prontos {len(prontos)} · processando {len(pendentes)} · "
+                    f"seqs novas {len(our_seqs)}"
                 )
-            ]
-            # fallback: qualquer job novo na fila (caso is0495 falhe no parse)
-            if len(ours) < (want - len(paths)):
-                extras = [
-                    j
-                    for j in jobs
-                    if j.get("concluido")
-                    and j.get("hasDow")
-                    and str(j.get("seq") or "") not in downloaded_seqs
-                    and str(j.get("seq") or "") not in known_before
-                    and j not in ours
-                ]
-                ours = ours + extras
-            cands = ours
-            # FIFO: seq conhecida → código; senão seq asc (mais antigo = 1º enfileirado)
-            def sort_key(j: dict[str, Any]) -> tuple:
-                seq = str(j.get("seq") or "")
-                mapped = 0 if seq and seq in seq_by_code.values() else 1
-                try:
-                    num = int(re.sub(r"\D", "", seq) or 0)
-                except Exception:
-                    num = 0
-                return (mapped, num)
-
-            cands.sort(key=sort_key)
-
-            if not cands:
-                if int(time.time()) % 10 < 3:
+                for j in pendentes[:6]:
                     status(
-                        f"[31] fila 156: aguardando conclusão "
-                        f"({len(paths)}/{want} baixados)…"
+                        f"[31]   ⏳ seq={j.get('seq')} · {j.get('situacao') or '?'} · "
+                        f"{(j.get('opcao') or '')[:40]}"
                     )
+
+            # ainda não baixar: falta job aparecer OU ainda processando
+            if len(our_seqs) < want and not prontos:
                 _safe_wait(fila, 2500)
                 continue
 
-            for job in cands:
+            if not prontos:
+                # jobs já apareceram mas nenhum Concluído+DOW ainda — espera
+                _safe_wait(fila, 2500)
+                continue
+
+            # FIFO: baixa só prontos, do seq mais antigo
+            prontos.sort(
+                key=lambda j: int(re.sub(r"\D", "", str(j.get("seq") or "")) or 0)
+            )
+
+            for job in prontos:
                 if len(paths) >= want:
                     break
                 seq = str(job.get("seq") or "")
-                code = None
-                for c in codes_order:
-                    if c in paths:
-                        continue
-                    if seq and seq_by_code.get(c) == seq:
-                        code = c
-                        break
-                if code is None:
-                    # próximo código sem arquivo (ordem de enfileiramento = FIFO)
-                    for c in codes_order:
-                        if c not in paths:
-                            code = c
-                            break
+                if seq in downloaded_seqs:
+                    continue
+                # próximo código sem arquivo (ordem de enfileiramento)
+                code = next((c for c in codes_order if c not in paths), None)
                 if not code:
                     break
 
+                # segurança: não clicar se a linha voltou a processando no DOM
+                if not job.get("concluido") or not job.get("hasDow"):
+                    continue
+
                 dest_name = f"pendencia_31_{code}_{ts}.xlsx"
                 status(
-                    f"[31/{code}] baixando da fila 156"
-                    + (f" · seq={seq}" if seq else "")
-                    + f" · {job.get('opcao') or ''}"
+                    f"[31/{code}] DOW pronto · seq={seq} · "
+                    f"{job.get('situacao') or 'Concluído'} · "
+                    f"{(job.get('opcao') or '')[:50]}"
                 )
                 try:
-                    path = _clicar_dow_job(client, context, fila, job, dest_name, status, code)
+                    path = _clicar_dow_job(
+                        client, context, fila, job, dest_name, status, code
+                    )
+                    size = path.stat().st_size if path.exists() else 0
+                    if size < 64:
+                        status(f"[31/{code}] arquivo suspeito ({size} bytes) — ignorando, re-tenta")
+                        try:
+                            path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                        _safe_wait(fila, 2000)
+                        continue
                     paths[code] = str(path)
-                    if seq:
-                        downloaded_seqs.add(seq)
-                        seq_by_code[code] = seq
-                    status(f"[31/{code}] OK {path.name} ({path.stat().st_size} bytes)")
+                    downloaded_seqs.add(seq)
+                    status(f"[31/{code}] OK {path.name} ({size} bytes)")
                 except Exception as err:  # noqa: BLE001
                     status(f"[31/{code}] download falhou: {err}")
-                    _safe_wait(fila, 1500)
+                    _safe_wait(fila, 2000)
+                    break  # re-poll após falha
         except Exception as err:  # noqa: BLE001
             status(f"[31] fila 156 loop: {err}")
             try:
@@ -657,31 +691,32 @@ def _baixar_todos_da_fila(
 
     missing = [c for c in codes_order if c not in paths]
     if missing:
-        status(f"[31] sem download para: {', '.join(missing)}")
+        status(
+            f"[31] timeout/parcial na fila — faltou: {', '.join(missing)} "
+            f"(baixados {len(paths)}/{want}; não seguiu com DOW incompleto)"
+        )
     return paths
 
 
 def _clicar_dow_job(client, context, fila, job: dict, dest_name: str, status, code: str) -> Path:
-    """Clica o link DOW do job na fila e salva o arquivo."""
-    dows = job.get("dows") or []
-    link_index = job.get("linkIndex")
+    """Clica o link DOW **da linha da seq** (nunca o primeiro DOW da página)."""
     with context.expect_event("download", timeout=90000) as di:
         ok = fila.evaluate(
-            """({ seq, linkIndex }) => {
+            """({ seq }) => {
               const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
-              // por índice global (fallback)
-              if (linkIndex != null) {
-                const all = Array.from(document.querySelectorAll('a[onclick], a[href], img[onclick]'));
-                const a = all[linkIndex];
-                if (a) { a.click(); return 'idx'; }
-              }
-              // por linha da seq
+              const want = String(seq || '').replace(/\\D/g, '');
+              if (!want) return '';
               const rows = Array.from(document.querySelectorAll('tr'));
               for (const tr of rows) {
                 const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
                 if (!cells.length) continue;
                 const s = (cells[0] || '').replace(/\\D/g, '');
-                if (seq && s !== String(seq).replace(/\\D/g, '')) continue;
+                if (s !== want) continue;
+                // só baixa se a linha ainda parece concluída
+                const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || '';
+                if (sit && /processando|na\\s*fila|em\\s*fila/i.test(sit) && !/conclu/i.test(sit)) {
+                  return 'ainda_processando';
+                }
                 const links = Array.from(tr.querySelectorAll('a[onclick], a[href], img[onclick]'));
                 for (const a of links) {
                   const text = norm(a.textContent || a.alt || a.title || '');
@@ -695,26 +730,16 @@ def _clicar_dow_job(client, context, fila, job: dict, dest_name: str, status, co
                     return 'row';
                   }
                 }
+                return 'sem_dow';
               }
-              // último recurso: primeiro DOW da página
-              const all = Array.from(document.querySelectorAll('a[onclick], a[href], img[onclick]'));
-              for (const a of all) {
-                const text = norm(a.textContent || a.alt || a.title || '');
-                const onclick = String(a.getAttribute('onclick') || '');
-                const href = String(a.getAttribute('href') || '');
-                const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
-                if (/imprimir|correio|atualizar/i.test(text)) continue;
-                if (/\\bdow\\b|download\\(|ssw0495|\\.xlsx|baixar/.test(blob)) {
-                  a.click();
-                  return 'first';
-                }
-              }
-              return '';
+              return 'seq_sumiu';
             }""",
-            {"seq": job.get("seq") or "", "linkIndex": link_index},
+            {"seq": job.get("seq") or ""},
         )
-        if not ok:
-            raise RuntimeError(f"31/{code}: DOW não encontrado na linha")
+        if ok == "ainda_processando":
+            raise RuntimeError(f"31/{code}: seq ainda processando — não clicou DOW")
+        if ok != "row":
+            raise RuntimeError(f"31/{code}: DOW da seq não encontrado ({ok})")
         status(f"[31/{code}] clique DOW={ok}")
     download = di.value
     return _save_named(client, download, dest_name)

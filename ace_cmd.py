@@ -325,7 +325,7 @@ def cmd_help() -> str:
         "  Contratação: /e contratacao_in_loop true|false · `73` sob demanda\n"
         "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
         "  Contratação: `73` = 073×3 (SPO) → por cada DESTINO: menu→076(E)+200(E)\n"
-        "             F+Tipo A=frota · A+Tipo C=contratados · A+Tipo O=agregados · período=mês até hoje\n"
+        "             F+Tipo C=frota (CTRB) · A+Tipo C=contratados (CTRB) · A+Tipo O=agregados (OS) · período=mês até hoje\n"
         "             `73 so73` = só 073 · `73 sem200` = sem manifesto · CSV ssw0644 local = frete\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull"
@@ -614,7 +614,7 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
         if local_200:
             print(f"  200 local: {', '.join(local_200)}")
     else:
-        print("  073: mês · F+A · A+C · A+O · SPO → por destino: menu + 076(E) + 200(E)")
+        print("  073: mês · F+C · A+C · A+O · SPO → por destino: menu + 076(E) + 200(E)")
     if skip_076:
         print("  modo: sem 076")
     if skip_200:
