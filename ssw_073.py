@@ -2,7 +2,7 @@
 
 Fluxo Contratação (Unidade = SPO · período = mês até hoje):
   1) 1 login · N telas 073 (F+A · A+C · A+O) · Excel direto
-  2) Para cada unidade DESTINO do 073: troca menu → 076(E) + 200(E)
+  2) Para cada DESTINO: troca menu → abre 076+200 juntos · gera ambos
   3) Merge frete por placa (076 depois 200)
 """
 from __future__ import annotations
@@ -244,8 +244,6 @@ def download_contratacao_ssw(
     from parser_ssw073 import analyze_reports_073
     from parser_ssw076 import analyze_reports_076
     from parser_ssw0644 import analyze_reports_200
-    from ssw_076 import download_reports_076
-    from ssw_200 import download_reports_200
 
     client = AceSswClient(
         ini_ddmm,
@@ -353,48 +351,53 @@ def download_contratacao_ssw(
                     except Exception as stab_err:  # noqa: BLE001
                         status(f"[{dest}] menu: {stab_err}")
 
-                    if not skip_076:
-                        try:
-                            status(f"[{dest}] 076…")
-                            one76 = download_reports_076(
-                                placas=list(analysis73.get("placas") or []),
-                                period=(ini_ddmm, fim_ddmm),
-                                arquivo="E",
-                                unidade="",  # herda menu
-                                tag=dest,
-                                on_status=status,
-                                client=client,
-                                context=context,
-                                page=page,
-                            )
-                            got = list(one76.get("files") or [])
-                            files76.extend(got)
-                            by76[dest] = one76
-                            status(f"[{dest}] 076 OK · {len(got)} arquivo(s)")
-                        except Exception as err:  # noqa: BLE001
+                    try:
+                        status(f"[{dest}] abrindo 076+200 juntos…")
+                        dual = _download_frete_filial_paralelo(
+                            client,
+                            context,
+                            page,
+                            dest=dest,
+                            period=(ini_ddmm, fim_ddmm),
+                            placas=list(analysis73.get("placas") or []),
+                            skip_076=skip_076,
+                            skip_200=skip_200,
+                            status=status,
+                        )
+                        got76 = list(dual.get("files76") or [])
+                        got200 = list(dual.get("files200") or [])
+                        if got76:
+                            files76.extend(got76)
+                            by76[dest] = {
+                                "ok": True,
+                                "files": got76,
+                                "errors": dual.get("errors76") or {},
+                                "tag": dest,
+                            }
+                            status(f"[{dest}] 076 OK · {len(got76)} arquivo(s)")
+                        elif not skip_076:
+                            err76 = dual.get("errors76") or {}
+                            msg = "; ".join(f"{k}:{v}" for k, v in err76.items()) or "sem arquivo"
+                            filial_errors[f"{dest}/076"] = msg
+                            status(f"[{dest}] 076 avisou: {msg}")
+                        if got200:
+                            files200.extend(got200)
+                            by200[dest] = {
+                                "ok": True,
+                                "files": got200,
+                                "tag": dest,
+                            }
+                            status(f"[{dest}] 200 OK · {len(got200)} arquivo(s)")
+                        elif not skip_200:
+                            msg = str(dual.get("error200") or "sem arquivo")
+                            filial_errors[f"{dest}/200"] = msg
+                            status(f"[{dest}] 200 avisou: {msg}")
+                    except Exception as err:  # noqa: BLE001
+                        if not skip_076:
                             filial_errors[f"{dest}/076"] = str(err)
-                            status(f"[{dest}] 076 avisou: {err}")
-
-                    if not skip_200:
-                        try:
-                            status(f"[{dest}] 200…")
-                            one200 = download_reports_200(
-                                period=(ini_ddmm, fim_ddmm),
-                                unidade_origem="",  # tudo que a filial enxerga
-                                tipo_arquivo="E",
-                                tag=dest,
-                                on_status=status,
-                                client=client,
-                                context=context,
-                                page=page,
-                            )
-                            got = list(one200.get("files") or [])
-                            files200.extend(got)
-                            by200[dest] = one200
-                            status(f"[{dest}] 200 OK · {len(got)} arquivo(s)")
-                        except Exception as err:  # noqa: BLE001
+                        if not skip_200:
                             filial_errors[f"{dest}/200"] = str(err)
-                            status(f"[{dest}] 200 avisou: {err}")
+                        status(f"[{dest}] frete avisou: {err}")
 
                 # Merge frete: 076 depois 200 (200 sobrescreve quando > 0)
                 placas = list(analysis73.get("placas") or [])
@@ -456,6 +459,181 @@ def download_contratacao_ssw(
         "resumo": resumo,
         "placas": list(analysis73.get("placas") or []),
         "periodo_fmt": periodo_fmt,
+    }
+
+
+def _download_frete_filial_paralelo(
+    client,
+    context,
+    page,
+    *,
+    dest: str,
+    period: tuple[str, str],
+    placas: list[str],
+    skip_076: bool,
+    skip_200: bool,
+    status: StatusCallback,
+) -> dict[str, Any]:
+    """Abre 076 e 200 na mesma sessão (2 guias), preenche e baixa."""
+    from ssw_076 import (
+        _gerar_download_76,
+        _preencher_76,
+        _reopen_76,
+    )
+    from ssw_200 import (
+        SSW_200_MARKERS,
+        _gerar_download_200,
+        _preencher_200,
+    )
+    from dates import to_ssw_ddmmyy
+
+    ini_ddmm, fim_ddmm = period
+    ini = to_ssw_ddmmyy(ini_ddmm)
+    fim = to_ssw_ddmmyy(fim_ddmm)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    tag = (dest or "ALL").strip().upper() or "ALL"
+
+    popup76 = None
+    popup200 = None
+    files76: list[str] = []
+    files200: list[str] = []
+    errors76: dict[str, str] = {}
+    error200 = ""
+
+    try:
+        # Abrir as duas guias antes de gerar qualquer uma
+        if not skip_076:
+            status(f"[{tag}] abrindo tela 076…")
+            popup76 = _reopen_76(client, page, None)
+            try:
+                popup76.on("dialog", lambda d: d.accept())
+            except Exception:
+                pass
+            status(f"[{tag}] 076 aberta")
+        if not skip_200:
+            status(f"[{tag}] abrindo tela 200…")
+            popup200 = client._open_menu_option(page, "200", markers=SSW_200_MARKERS)
+            try:
+                popup200.on("dialog", lambda d: d.accept())
+            except Exception:
+                pass
+            status(f"[{tag}] 200 aberta")
+
+        if popup76 is not None:
+            try:
+                popup76.bring_to_front()
+            except Exception:
+                pass
+            status(f"[{tag}] preenchendo 076…")
+            _preencher_76(
+                popup76,
+                ini=ini,
+                fim=fim,
+                unidade="",  # herda menu da filial
+                arquivo="E",
+                email="N",
+                placa="",
+                on_status=status,
+            )
+
+        if popup200 is not None:
+            try:
+                popup200.bring_to_front()
+            except Exception:
+                pass
+            status(f"[{tag}] preenchendo 200…")
+            _preencher_200(
+                popup200,
+                ini=ini,
+                fim=fim,
+                unidade="",
+                tipo="E",
+                on_status=status,
+            )
+
+        # Gera/baixa (fila 156) — forms já prontos nas duas guias
+        if popup76 is not None:
+            try:
+                try:
+                    popup76.bring_to_front()
+                except Exception:
+                    pass
+                dest76 = f"contratacao_076_{tag}_{ts}.sswweb"
+                status(f"[{tag}] gerando 076…")
+                path76 = _gerar_download_76(
+                    client, context, page, popup76, dest76, tag, status
+                )
+                files76.append(str(path76))
+            except Exception as batch_err:  # noqa: BLE001
+                status(f"[{tag}] 076 lote falhou ({batch_err}); por placa…")
+                plate_list = [str(p).strip().upper() for p in (placas or []) if str(p).strip()]
+                runs = plate_list[:40] or [""]
+                for idx, placa in enumerate(runs, start=1):
+                    key = placa or tag
+                    try:
+                        popup76 = _reopen_76(client, page, popup76)
+                        _preencher_76(
+                            popup76,
+                            ini=ini,
+                            fim=fim,
+                            unidade="",
+                            arquivo="E",
+                            email="N",
+                            placa=placa,
+                            on_status=status,
+                        )
+                        dest76 = f"contratacao_076_{tag}_{key or 'ALL'}_{ts}.sswweb"
+                        path76 = _gerar_download_76(
+                            client, context, page, popup76, dest76, key, status
+                        )
+                        files76.append(str(path76))
+                    except Exception as err:  # noqa: BLE001
+                        errors76[key] = str(err)
+                        status(f"[{tag}/76/{key}] FALHOU: {err}")
+
+        if popup200 is not None:
+            try:
+                try:
+                    if popup200.is_closed():
+                        popup200 = client._open_menu_option(
+                            page, "200", markers=SSW_200_MARKERS
+                        )
+                        _preencher_200(
+                            popup200,
+                            ini=ini,
+                            fim=fim,
+                            unidade="",
+                            tipo="E",
+                            on_status=status,
+                        )
+                except Exception:
+                    pass
+                try:
+                    popup200.bring_to_front()
+                except Exception:
+                    pass
+                dest200 = f"contratacao_200_{tag}_{ts}.csv"
+                status(f"[{tag}] gerando 200…")
+                path200 = _gerar_download_200(
+                    client, context, page, popup200, dest200, status
+                )
+                files200.append(str(path200))
+            except Exception as err:  # noqa: BLE001
+                error200 = str(err)
+                status(f"[{tag}] 200 FALHOU: {err}")
+    finally:
+        for pg in (popup76, popup200):
+            try:
+                if pg is not None and not pg.is_closed():
+                    pg.close()
+            except Exception:
+                pass
+
+    return {
+        "files76": files76,
+        "files200": files200,
+        "errors76": errors76,
+        "error200": error200,
     }
 
 

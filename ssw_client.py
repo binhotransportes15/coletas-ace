@@ -1050,17 +1050,47 @@ class AceSswClient:
     def _download_report_50(self, page) -> Path:
         """050 - Relacao das Coletas (ssw0157) pelo Periodo de COLETA (hoje)."""
         units = self._coleta_units()
-        # [] = sem filtro (1 download); varias siglas = 1 download por unidade
+        # [] = sem filtro (1 download); varias siglas = N telas em paralelo
         passes = units if units else [""]
         label = ",".join(passes) if units else "TODAS"
         self.on_status(
             f"Gerando coleta (50) | periodo de cadastramento "
             f"{format_period(self.start_date_ui, self.end_date_ui)} "
-            f"({self.start_date_yy} a {self.end_date_yy}) | un={label}..."
+            f"({self.start_date_yy} a {self.end_date_yy}) | un={label} "
+            f"· {len(passes)} tela(s)…"
         )
+        if len(passes) == 1:
+            return self._download_report_50_once(page, passes[0])
+
+        screens: list[tuple[str, Any]] = []
         paths: list[Path] = []
-        for un in passes:
-            paths.append(self._download_report_50_once(page, un))
+        try:
+            for un in passes:
+                self.on_status(f"[50/{un or 'TODAS'}] abrindo…")
+                popup = self._open_menu_option(
+                    page,
+                    "50",
+                    markers=("coleta", "050", "periodo", "ssw0157", "relacao", "cadastr"),
+                )
+                try:
+                    popup.on("dialog", lambda d: d.accept())
+                except Exception:
+                    pass
+                screens.append((un, popup))
+            for un, popup in screens:
+                try:
+                    popup.bring_to_front()
+                except Exception:
+                    pass
+                self.on_status(f"[50/{un or 'TODAS'}] gerando…")
+                paths.append(self._gerar_download_50_popup(popup, un))
+        finally:
+            for _un, popup in screens:
+                try:
+                    if popup is not None and not popup.is_closed():
+                        popup.close()
+                except Exception:
+                    pass
         if len(paths) == 1:
             return paths[0]
         return self._merge_downloaded_files(
@@ -1251,19 +1281,57 @@ class AceSswClient:
           Por data de = L (limite)
           Mostrar em = E (excel)
           Unidade = cada sigla em config (SPO,LEO,RIS) ou vazio = todas
+          Multi-unidade: abre N telas juntas e gera em cada uma.
         """
         units = self._coleta_units()
         passes = units if units else [""]
         label = ",".join(passes) if units else "TODAS"
         self.on_status(
-            f"Gerando 103 Excel | limite {self.start_date_yy} a {self.end_date_yy} | un={label}..."
+            f"Gerando 103 Excel | limite {self.start_date_yy} a {self.end_date_yy} | "
+            f"un={label} · {len(passes)} tela(s)…"
         )
+        if len(passes) == 1:
+            return self._download_report_103_once(page, passes[0])
+
+        markers = (
+            "coleta",
+            "normal",
+            "pesquisa",
+            "limite",
+            "inclus",
+            "excel",
+            "periodo",
+            "unidade",
+            "103",
+        )
+        screens: list[tuple[str, Any]] = []
         paths: list[Path] = []
-        for un in passes:
-            paths.append(self._download_report_103_once(page, un))
+        try:
+            for un in passes:
+                self.on_status(f"[103/{un or 'TODAS'}] abrindo…")
+                popup = self._open_menu_option(page, "103", markers=markers)
+                try:
+                    popup.on("dialog", lambda d: d.accept())
+                except Exception:
+                    pass
+                screens.append((un, popup))
+            for un, popup in screens:
+                try:
+                    popup.bring_to_front()
+                except Exception:
+                    pass
+                self.on_status(f"[103/{un or 'TODAS'}] gerando…")
+                paths.append(self._gerar_download_103_popup(popup, un))
+        finally:
+            for _un, popup in screens:
+                try:
+                    if popup is not None and not popup.is_closed():
+                        popup.close()
+                except Exception:
+                    pass
+
         if len(paths) == 1:
             return paths[0]
-        # Mescla CSV/sswweb; xlsx multi nao mescla binario — usa o 1º e avisa se misturado
         exts = {p.suffix.lower() for p in paths}
         if exts & {".xlsx", ".xls"} and len(exts) > 1:
             self.on_status("103: formatos mistos no merge — usando concatenacao texto.")
@@ -1406,8 +1474,8 @@ class AceSswClient:
     ) -> dict[str, Any]:
         """
         1) Login 1x e MANTÉM o browser aberto (SSW exige a sessão viva).
-        2) Abre 50 / 103 / 36 / 225 em sequência (mesma sessão).
-        3) Preenche e baixa cada um; opcionalmente dispara callback após cada OK
+        2) Abre 50 / 103 / 36 / 225 juntos (várias guias, mesma sessão).
+        3) Gera/baixa em cada guia; opcionalmente dispara callback após cada OK
            (analisar + Sheets na hora, sem esperar o ciclo inteiro).
         """
         try:
@@ -1485,58 +1553,87 @@ class AceSswClient:
                 )
 
                 self.on_status(
-                    f"Baixando {len(open_plan)} relatório(s) em sequência "
-                    "(abre → baixa → fecha · login permanece)"
+                    f"Baixando {len(open_plan)} relatório(s) · "
+                    "abre todas as telas · gera · login permanece"
                 )
                 multi_50 = len(self._coleta_units() or []) > 1
                 multi_103 = len(self._coleta_units() or []) > 1
 
-                # Sequencial: abrir todos juntos mata popups ao baixar o primeiro.
+                # Fase A: abre todas as guias de uma vez (50/103 multi-unidade
+                # abrem as próprias telas no helper — não pré-abre aqui).
+                opened: list[tuple[str, str, tuple[str, str], Any | None]] = []
                 for label, path_key, period, markers in open_plan:
                     popup = None
                     try:
                         self.set_period(period[0], period[1])
+                        if (label == "50" and multi_50) or (label == "103" and multi_103):
+                            self.on_status(
+                                f"[{label}] multi-unidade · abre no gerar · "
+                                f"{format_period(self.start_date_ui, self.end_date_ui)}"
+                            )
+                            opened.append((label, path_key, period, None))
+                            continue
                         self.on_status(
-                            f"[{label}] abrindo · "
+                            f"[{label}] abrindo tela · "
                             f"{format_period(self.start_date_ui, self.end_date_ui)}"
                         )
                         page.bring_to_front()
-                        page.wait_for_timeout(200)
+                        page.wait_for_timeout(150)
                         popup = self._open_menu_option(page, label, markers=markers)
                         try:
                             popup.on("dialog", lambda d: d.accept())
                         except Exception:
                             pass
-                        self.on_status(f"[{label}] gerando…")
+                        opened.append((label, path_key, period, popup))
+                        self.on_status(f"[{label}] tela aberta")
+                    except Exception as err:  # noqa: BLE001
+                        errors[label] = str(err)
+                        self.on_status(f"[{label}] FALHOU ao abrir: {err}")
+                        if popup is not None:
+                            try:
+                                popup.close()
+                            except Exception:
+                                pass
 
+                # Fase B: gera/baixa em cada guia já aberta
+                for label, path_key, period, popup in opened:
+                    try:
+                        self.set_period(period[0], period[1])
+                        self.on_status(f"[{label}] gerando…")
                         if label == "50":
-                            if multi_50:
-                                try:
-                                    popup.close()
-                                except Exception:
-                                    pass
-                                popup = None
+                            if multi_50 or popup is None:
+                                if popup is not None:
+                                    try:
+                                        popup.close()
+                                    except Exception:
+                                        pass
+                                    popup = None
                                 path = self._download_report_50(page)
                             else:
                                 un = (self._coleta_units() or [""])[0]
                                 path = self._gerar_download_50_popup(popup, un)
-                                popup = None  # já fechado no helper
-                        elif label == "103":
-                            if multi_103:
-                                try:
-                                    popup.close()
-                                except Exception:
-                                    pass
                                 popup = None
+                        elif label == "103":
+                            if multi_103 or popup is None:
+                                if popup is not None:
+                                    try:
+                                        popup.close()
+                                    except Exception:
+                                        pass
+                                    popup = None
                                 path = self._download_report_103(page)
                             else:
                                 un = (self._coleta_units() or [""])[0]
                                 path = self._gerar_download_103_popup(popup, un)
                                 popup = None
                         elif label == "36":
+                            if popup is None:
+                                raise RuntimeError("36: tela não aberta")
                             path = self._gerar_download_36_popup(popup, "SPO")
                             popup = None
                         elif label == "225":
+                            if popup is None:
+                                raise RuntimeError("225: tela não aberta")
                             path = self._gerar_download_225_popup(popup, "SPO")
                             popup = None
                         else:
@@ -1596,8 +1693,8 @@ class AceSswClient:
                     "errors": errors,
                     "download_dir": str(self.download_dir),
                     "shared_session": True,
-                    "parallel_open": False,
-                    "sequential": True,
+                    "parallel_open": True,
+                    "sequential": False,
                     "headless": self.headless,
                 }
             finally:

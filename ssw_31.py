@@ -1,7 +1,7 @@
 """Download SSW 031 (ssw0495) — CTRCs por código de ocorrência → Excel.
 
-Fluxo (estável):
-  1) Para cada código: abre 31 · preenche · ► (vai pra fila 156) — sem baixar
+Fluxo (rápido):
+  1) 1 login · abre N telas 31 (1 por código) · preenche todas · ► em todas → fila 156
   2) Abre opção 156 (ssw1440) uma vez e baixa todos os Excel 0495 concluídos
 """
 from __future__ import annotations
@@ -60,7 +60,7 @@ def download_reports_31(
     settings: AceSettings | None = None,
 ) -> dict[str, Any]:
     """
-    Gera 1 relatório por código (Excel=S) na fila 156; depois baixa todos.
+    1 login · N telas 31 em paralelo · ► em todas → fila 156 · baixa todos.
     """
     status = on_status or _noop
     ensure_dirs()
@@ -96,7 +96,8 @@ def download_reports_31(
     errors: dict[str, str] = {}
     queued: list[dict[str, Any]] = []
     status(
-        f"SSW 31 | {len(code_list)} código(s) → fila 156 | ocorrência {ini}-{fim} | excel=S"
+        f"SSW 31 | {len(code_list)} tela(s) em paralelo → fila 156 | "
+        f"ocorrência {ini}-{fim} | excel=S"
     )
     status("códigos: " + ", ".join(code_list))
 
@@ -107,44 +108,73 @@ def download_reports_31(
         page.set_default_timeout(60000)
         page.on("dialog", lambda d: d.accept())
         context.on("page", lambda pg: pg.on("dialog", lambda d: d.accept()))
-        popup = None
+        screens: list[tuple[str, Any]] = []
         fila = None
         try:
             client._login(page)
             client._ensure_unit(page)
             client._patch_blank_popup_form(page)
 
-            # ── Fase 1: enfileirar todos ─────────────────────────────
-            status(f"[31] fase 1/2 · enfileirando {len(code_list)} relatório(s)…")
+            # ── Fase 1: abrir N telas · preencher · ► em todas ───────
+            status(f"[31] fase 1/2 · abrindo {len(code_list)} tela(s) 31…")
             known_seqs = _snapshot_fila_seqs(client, context, page, status)
             status(f"[31] fila 156: {len(known_seqs)} job(s) já existentes (ignorados)")
 
             for idx, code in enumerate(code_list, start=1):
                 try:
-                    status(f"[31/{code}] ({idx}/{len(code_list)}) abrindo opção 31…")
-                    popup = _reopen_31(client, page, popup)
+                    status(f"[31/{code}] ({idx}/{len(code_list)}) abrindo tela…")
+                    popup = _open_31(client, page)
+                    try:
+                        popup.on("dialog", lambda d: d.accept())
+                    except Exception:
+                        pass
+                    screens.append((code, popup))
+                    status(f"[31/{code}] tela aberta")
+                except Exception as err:  # noqa: BLE001
+                    errors[code] = str(err)
+                    status(f"[31/{code}] FALHOU ao abrir: {err}")
+
+            status(f"[31] preenchendo {len(screens)} tela(s)…")
+            for code, popup in screens:
+                if code in errors:
+                    continue
+                try:
+                    try:
+                        popup.bring_to_front()
+                    except Exception:
+                        pass
                     status(f"[31/{code}] preenchendo…")
                     _preencher_31(popup, ini=ini, fim=fim, codigo=code, on_status=status)
-                    status(f"[31/{code}] enviando pra fila 156…")
+                except Exception as err:  # noqa: BLE001
+                    errors[code] = str(err)
+                    status(f"[31/{code}] FALHOU no form: {err}")
+
+            status(f"[31] enviando {len(screens)} relatório(s) pra fila 156…")
+            for idx, (code, popup) in enumerate(screens, start=1):
+                if code in errors:
+                    continue
+                try:
+                    try:
+                        popup.bring_to_front()
+                    except Exception:
+                        pass
+                    status(f"[31/{code}] ► fila 156…")
                     t0 = time.time()
                     _enviar_fila_31(popup, status, code)
-                    _safe_wait(popup, 1200)
+                    _safe_wait(popup, 600)
                     queued.append({"code": code, "seq": "", "t": t0, "idx": idx})
                     status(f"[31/{code}] enviado à fila 156")
                 except Exception as err:  # noqa: BLE001
                     errors[code] = str(err)
                     status(f"[31/{code}] FALHOU ao enfileirar: {err}")
-                    try:
-                        popup = _reopen_31(client, page, popup)
-                    except Exception:
-                        popup = None
 
-            try:
-                if popup is not None and not popup.is_closed():
-                    popup.close()
-            except Exception:
-                pass
-            popup = None
+            for _code, popup in screens:
+                try:
+                    if popup is not None and not popup.is_closed():
+                        popup.close()
+                except Exception:
+                    pass
+            screens = []
 
             if not queued:
                 raise RuntimeError(
@@ -152,7 +182,6 @@ def download_reports_31(
                     + "; ".join(f"{k}:{v}" for k, v in errors.items())
                 )
 
-            # pequena pausa pra fila registrar os jobs
             status("[31] aguardando fila registrar os jobs…")
             time.sleep(3)
 
@@ -172,12 +201,17 @@ def download_reports_31(
                 status=status,
             )
         finally:
-            for pg in (fila, popup):
+            for _code, popup in screens:
                 try:
-                    if pg is not None and not pg.is_closed():
-                        pg.close()
+                    if popup is not None and not popup.is_closed():
+                        popup.close()
                 except Exception:
                     pass
+            try:
+                if fila is not None and not fila.is_closed():
+                    fila.close()
+            except Exception:
+                pass
             try:
                 context.close()
             except Exception:
