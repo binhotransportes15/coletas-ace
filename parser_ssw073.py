@@ -1,5 +1,11 @@
 """Parser SSW 073 (CSV ssw0332) — CTRBs/OSs · base do painel Contratação.
 
+Pull único: Propriedade=T · Tipo=A · Relatório.
+Mix do painel (coluna TIPO do CSV):
+  COLETA/ENTREGA → contratados
+  TRANSFERÊNCIA  → agregado
+  demais (REMUNERACAO, frota etc.) → ignorados
+
 Colunas Excel (com tipo de linha na col. A):
   B  CTRB
   G  PLACA CAVALO
@@ -144,49 +150,51 @@ def _read_text(path: Path) -> str:
     return raw.decode("latin-1", errors="replace")
 
 
+def _grupo_from_tipo_csv(tipo: str) -> str | None:
+    """Classifica pelo TIPO da linha CSV (não pela propriedade F/A).
+
+    COLETA/ENTREGA → contratados
+    TRANSFERÊNCIA / TRANSFERE → agregado
+    demais (ex.: REMUNERACAO) → None (ignorado no painel)
+    """
+    t = _clean(tipo).upper()
+    if not t:
+        return None
+    if "COLETA" in t or "ENTREGA" in t:
+        return "contratados"
+    if "TRANSFER" in t:
+        return "agregado"
+    return None
+
+
 def _grupo_from_fonte(name: str) -> str | None:
-    """Detecta grupo pela chave do arquivo (contratacao_073_F_|AC_|AO_)."""
+    """Legado: chave do arquivo AC/AO. Arquivo único TA não define grupo."""
     n = (name or "").upper().replace("-", "_")
-    # ordem importa: AC antes de A / F genérico
+    if "073_TA" in n or "_TA_" in n:
+        return None
     if "073_AC" in n or "_AC_" in n or n.startswith("AC_") or "/AC_" in n:
         return "contratados"
     if "073_AO" in n or "_AO_" in n or n.startswith("AO_"):
         return "agregado"
-    if "073_F_" in n or "_073_F_" in n or n.startswith("F_") or "/F_" in n:
-        return "frota"
-    # legado: contratacao_073_F.xxx
-    if "073_F." in n or n.endswith("073_F") or "_073_F." in n:
-        return "frota"
     return None
 
 
 _GRUPO_RANK = {
-    "frota": 0,
-    "contratados": 1,
-    "agregado": 2,
+    "contratados": 0,
+    "agregado": 1,
     "outro": 9,
 }
 
 
 def _grupo_propriedade(prop: str, tipo: str = "", fonte: str = "") -> str:
-    """frota | contratados | agregado."""
+    """contratados (COLETA/EN) | agregado (TRANSFERÊNCIA). Sem frota."""
+    _ = prop  # propriedade do formulário não define o mix do painel
+    from_tipo = _grupo_from_tipo_csv(tipo)
+    if from_tipo:
+        return from_tipo
     from_file = _grupo_from_fonte(fonte)
     if from_file:
         return from_file
-    p = _clean(prop).upper()
-    t = _clean(tipo).upper()
-    if p in {"FROTA", "F"} or "FROTA" in p:
-        return "frota"
-    if p in {"AGREGADO", "A"} or "AGREG" in p:
-        # A + Tipo C = contratados · A + Tipo O = agregados
-        # (tipo no CSV costuma ser TRANSFERENCIA/REMUNERACAO — aí a fonte manda)
-        if t in {"C", "CTRB", "CTR"}:
-            return "contratados"
-        if t in {"O", "OS"}:
-            return "agregado"
-        return "agregado"
-    if p in {"CARRETEIRO", "TERCEIRO", "TERCEIROS", "CONTRATADO", "CONTRATADOS"} or "CARRET" in p or "TERC" in p or "CONTRAT" in p:
-        return "contratados"
     return "outro"
 
 
@@ -444,7 +452,12 @@ def analyze_reports_073(
         prev = by_ctrb.get(key)
         if not prev or float(r.get("custo") or 0) >= float(prev.get("custo") or 0):
             by_ctrb[key] = r
-    ctrbs = list(by_ctrb.values())
+    # Painel: só COLETA/EN (contratados) e TRANSFERÊNCIA (agregado) — ignora frota/REMUNERACAO
+    ctrbs = [
+        r
+        for r in by_ctrb.values()
+        if (r.get("grupo") or "") in {"contratados", "agregado"}
+    ]
 
     # agrega por placa (cavalo)
     by_placa: dict[str, dict[str, Any]] = {}
@@ -470,7 +483,7 @@ def analyze_reports_073(
             by_placa[placa] = slot
         if r.get("carreta") and not slot["carreta"]:
             slot["carreta"] = r["carreta"]
-        # preserva o melhor grupo: frota > contratados > agregado
+        # preferência: contratados (COLETA/EN) > agregado (TRANSFERÊNCIA)
         g = r.get("grupo") or "outro"
         if _GRUPO_RANK.get(g, 9) < _GRUPO_RANK.get(slot.get("grupo") or "outro", 9):
             slot["grupo"] = g
@@ -539,7 +552,7 @@ def analyze_reports_073(
         "peso": round(total_peso, 3),
         "peso_fmt": _fmt_peso(total_peso),
         "agregado": grupos.get("agregado", 0),
-        "frota": grupos.get("frota", 0),
+        "frota": 0,  # painel Contratação não usa mais frota
         "contratados": grupos.get("contratados", 0) or grupos.get("terceiro", 0),
         "terceiro": grupos.get("contratados", 0) or grupos.get("terceiro", 0),
     }

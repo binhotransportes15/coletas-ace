@@ -6761,13 +6761,11 @@
 
         const mix = document.getElementById('ctrMix');
         if (mix) {
-          const frota = Number(resumo.frota) || 0;
           const agreg = Number(resumo.agregado) || 0;
           const contrat = Number(resumo.contratados) || Number(resumo.terceiro) || 0;
           mix.innerHTML = `
-            <div class="mix-card frota"><div class="n">${frota}</div><div class="l">Frota (F)</div></div>
-            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">A+C · CTRB</div></div>
-            <div class="mix-card agregado"><div class="n">${agreg}</div><div class="l">A+O · OS</div></div>
+            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">COLETA/EN · contratado</div></div>
+            <div class="mix-card agregado"><div class="n">${agreg}</div><div class="l">TRANSFERÊNCIA</div></div>
           `;
         }
 
@@ -6780,7 +6778,7 @@
             <tr>
               <td class="mono">${esc(v.placa || '—')}</td>
               <td class="mono">${esc(v.carreta || '—')}</td>
-              <td>${esc(v.grupo || v.propriedade || '—')}</td>
+              <td>${esc(({'contratados':'COLETA/EN','agregado':'TRANSFERÊNCIA'}[v.grupo] || v.grupo || v.propriedade || '—'))}</td>
               <td class="mono right">${esc(v.qtd_ctrb || '0')}</td>
               <td class="mono right">${esc(fmtCtrMoney(v.custo))}</td>
               <td class="mono right">${esc(fmtCtrMoney(v.frete))}</td>

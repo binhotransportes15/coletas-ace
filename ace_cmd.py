@@ -351,8 +351,8 @@ def cmd_help() -> str:
         "             /e dashboard_lan true → outros aparelhos na rede · /e dashboard_port 8787\n"
         "             `lan` lista URLs por setor · telas: coleta|entrega|agendamento|armazem|…\n"
         "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
-        "  Contratação: `73` = 073×3 (SPO) → por cada DESTINO: 076(E fila) + 200(E download direto, origem=destino)\n"
-        "             F+Tipo C=frota (CTRB) · A+Tipo C=contratados (CTRB) · A+Tipo O=agregados (OS) · período=mês até hoje\n"
+        "  Contratação: `73` = 073×1 Relatório (prop=T tipo=A SPO) → por DESTINO: 076(E) + 200(E)\n"
+        "             Mix: COLETA/EN=contratado · TRANSFERÊNCIA=agregado (sem frota) · período=mês até hoje\n"
         "             `73 so73` = só 073 · `73 sem200` = sem manifesto · CSV ssw0644 local = frete\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull\n"
@@ -657,7 +657,7 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
         if local_200:
             print(f"  200 local: {', '.join(local_200)}")
     else:
-        print("  073: mês · F+C · A+C · A+O · SPO → por destino: menu + 076(E) + 200(E)")
+        print("  073: mês · Relatório · prop=T tipo=A · SPO → por destino: menu + 076(E) + 200(E)")
     if skip_076:
         print("  modo: sem 076")
     if skip_200:

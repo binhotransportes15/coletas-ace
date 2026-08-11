@@ -1,9 +1,9 @@
-"""Download SSW 073 (ssw0332) — Consulta de CTRBs e OSs → Arquivo Excel/CSV.
+"""Download SSW 073 (ssw0332) — Consulta de CTRBs e OSs → Relatório.
 
 Fluxo Contratação (Unidade = SPO · período = mês até hoje):
-  1) 1 login · N telas 073 (F+C · A+C · A+O) · Excel direto
-  2) Para cada DESTINO: troca menu → abre 076+200 juntos · gera ambos
-  3) Merge frete por placa (076 depois 200)
+  1) 1 login · 1 tela 073 (Propriedade=T · Tipo=A) · Relatório (sem Excel)
+  2) Parser: COLETA/EN = contratado · TRANSFERÊNCIA = agregado (sem frota)
+  3) Para cada DESTINO: troca menu → 076+200 · merge frete
 """
 from __future__ import annotations
 
@@ -20,25 +20,23 @@ from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
 
-# Jobs oficiais da Contratação
-# Propriedade F = frota  → Tipo C (CTRB)
-# Propriedade A = agregado → Tipo C (CTRB) = contratados · Tipo O (OS) = agregados
+# Um único pull: Propriedade T (todas) · Tipo A (ambos) — sem frota F/AC/AO
 JOBS_073: tuple[dict[str, str], ...] = (
-    {"key": "F", "propriedade": "F", "tipo": "C", "label": "frota"},
-    {"key": "AC", "propriedade": "A", "tipo": "C", "label": "contratados"},
-    {"key": "AO", "propriedade": "A", "tipo": "O", "label": "agregados"},
+    {"key": "TA", "propriedade": "T", "tipo": "A", "label": "T+A"},
 )
 PROPRIEDADE_LABEL = {
-    "F": "frota",
+    "T": "todas",
+    "TA": "agregado",
     "A": "agregado",
+    "F": "frota",
     "C": "carreteiro",
     "AC": "contratados",
     "AO": "agregados",
 }
 # legado
-PROPRIEDADES_073 = ("F", "A", "C")
+PROPRIEDADES_073 = ("T", "A", "F", "C")
 
-# Programa do Excel CSVssw0332…
+# Programa 073
 SSW_073_MARKERS = (
     "ctrb",
     "os",
@@ -46,6 +44,8 @@ SSW_073_MARKERS = (
     "operacao",
     "unidade emissora",
     "073",
+    "relatorio",
+    "relatório",
     "arquivo excel",
     "consulta",
 )
@@ -82,22 +82,22 @@ def _resolve_jobs_073(
     tipos: tuple[str, ...] | None,
     propriedade: str | None,
 ) -> list[dict[str, str]]:
-    """Monta a lista de jobs (prop+tipo). Default = JOBS_073 oficiais."""
+    """Monta a lista de jobs. Default = 1x Propriedade T + Tipo A."""
     _ = tipos  # legado
-    # override legado: uma propriedade + um tipo
-    if propriedades is None and propriedade and str(propriedade).strip().upper()[:1] not in {"", "T"}:
-        prop = str(propriedade).strip().upper()[:1]
-        tipo_doc = str(tipo or "C").strip().upper()[:1] or "C"
+    # override: uma propriedade + um tipo (T = todas ainda é válido)
+    if propriedades is None and propriedade and str(propriedade).strip():
+        prop = str(propriedade).strip().upper()[:1] or "T"
+        tipo_doc = str(tipo or "A").strip().upper()[:1] or "A"
         return [
             {
-                "key": prop,
+                "key": f"{prop}{tipo_doc}",
                 "propriedade": prop,
                 "tipo": tipo_doc,
-                "label": PROPRIEDADE_LABEL.get(prop, prop),
+                "label": PROPRIEDADE_LABEL.get(f"{prop}{tipo_doc}")
+                or PROPRIEDADE_LABEL.get(prop, prop),
             }
         ]
     if propriedades is not None:
-        # se pediram só F/A (sem C legado), usa jobs oficiais filtrados
         wanted = {str(p).strip().upper()[:1] for p in propriedades if str(p).strip()}
         jobs = [j for j in JOBS_073 if j["propriedade"] in wanted]
         if jobs:
@@ -740,8 +740,8 @@ def _run_073_phases(
             errors[key] = str(err)
             status(f"[73/{key}·{lab}] FALHOU no form: {err}")
 
-    # 073: Arquivo Excel já dispara download direto (não vai pra 156)
-    status(f"[73] baixando Excel direto em {len(screens)} tela(s)…")
+    # 073: Relatório (não Excel) — 1 tela
+    status(f"[73] gerando Relatório em {len(screens)} tela(s)…")
     for job, popup in screens:
         key = job["key"]
         lab = job["label"]
@@ -753,8 +753,8 @@ def _run_073_phases(
                 popup.bring_to_front()
             except Exception:
                 pass
-            status(f"[73/{key}·{lab}] Arquivo Excel…")
-            path = _download_excel_direto_73(
+            status(f"[73/{key}·{lab}] Relatório…")
+            path = _download_relatorio_73(
                 client, context, popup, dest_name, key, status
             )
             paths[key] = str(path)
@@ -762,7 +762,7 @@ def _run_073_phases(
             status(f"[73/{key}·{lab}] OK {path.name} ({path.stat().st_size} bytes)")
         except Exception as err:  # noqa: BLE001
             errors[key] = str(err)
-            status(f"[73/{key}·{lab}] FALHOU download: {err}")
+            status(f"[73/{key}·{lab}] FALHOU relatório: {err}")
 
     for _job, popup in screens:
         try:
@@ -898,9 +898,56 @@ def _preencher_73(
     popup.wait_for_timeout(200)
 
 
+def _clicar_relatorio_73(popup) -> str:
+    """Clica 'Relatório' / 'Relatorio' na barra do SSW (não Excel)."""
+    for exact in ("Relatório", "Relatorio"):
+        try:
+            loc = popup.get_by_text(exact, exact=True)
+            if loc.count() > 0:
+                loc.first.click(timeout=5000)
+                return exact
+        except Exception:
+            pass
+    try:
+        loc = popup.locator("a", has_text=re.compile(r"Relat[oó]rio", re.I))
+        if loc.count() > 0:
+            loc.first.click(timeout=5000)
+            return "a:Relatorio"
+    except Exception:
+        pass
+    try:
+        loc = popup.locator("#act_rel, [id*='rel' i], [name*='rel' i]")
+        if loc.count() > 0:
+            loc.first.click(timeout=5000)
+            return "act_rel"
+    except Exception:
+        pass
+    return popup.evaluate(
+        """() => {
+          const links = Array.from(document.querySelectorAll('a, span, button, input[type=button]'));
+          for (const a of links) {
+            const t = ((a.innerText || a.textContent || a.value || '') + '')
+              .replace(/\\s+/g, ' ').trim();
+            if (/^Relat[oó]rio$/i.test(t)) {
+              a.click();
+              return 'relatorio-exact';
+            }
+          }
+          for (const a of links) {
+            const t = ((a.innerText || a.textContent || a.value || '') + '')
+              .replace(/\\s+/g, ' ').trim();
+            if (/relat[oó]rio/i.test(t) && !/excel/i.test(t)) {
+              a.click();
+              return 'relatorio-soft';
+            }
+          }
+          return '';
+        }"""
+    )
+
+
 def _clicar_excel_73(popup) -> str:
-    """Clica somente o link 'Arquivo Excel' (barra do SSW)."""
-    # 1) Playwright por texto exato (mais confiável que evaluate genérico)
+    """Legado: 'Arquivo Excel' (não usado no fluxo atual)."""
     try:
         loc = popup.get_by_text("Arquivo Excel", exact=True)
         if loc.count() > 0:
@@ -915,7 +962,6 @@ def _clicar_excel_73(popup) -> str:
             return "a:Arquivo Excel"
     except Exception:
         pass
-    # 2) evaluate: só o link cujo texto é exatamente Arquivo Excel
     return popup.evaluate(
         """() => {
           const links = Array.from(document.querySelectorAll('a, span, button'));
@@ -931,10 +977,83 @@ def _clicar_excel_73(popup) -> str:
     )
 
 
+def _scrape_relatorio_to_sswweb(popup, dest: Path, status, key: str) -> Path:
+    """Se Relatório não baixar arquivo, tenta montar CSV a partir da tela."""
+    payload = popup.evaluate(
+        """() => {
+          const body = (document.body && (document.body.innerText || '')) || '';
+          const tables = Array.from(document.querySelectorAll('table'));
+          let best = null;
+          let bestScore = 0;
+          for (const tb of tables) {
+            const rows = Array.from(tb.querySelectorAll('tr')).map((tr) =>
+              Array.from(tr.querySelectorAll('th,td')).map((c) =>
+                ((c.innerText || c.textContent || '') + '').replace(/\\s+/g, ' ').trim()
+              )
+            ).filter((r) => r.some(Boolean));
+            if (rows.length < 2) continue;
+            const head = (rows[0] || []).join(' ').toUpperCase();
+            let score = rows.length;
+            if (head.includes('CTRB') || head.includes('PLACA')) score += 50;
+            if (head.includes('TIPO') || head.includes('PROPRIEDADE')) score += 20;
+            if (score > bestScore) { bestScore = score; best = rows; }
+          }
+          return { body: body.slice(0, 500), rows: best || [], score: bestScore };
+        }"""
+    )
+    rows = (payload or {}).get("rows") or []
+    if len(rows) < 2:
+        raise RuntimeError(
+            f"073/{key}: Relatório sem download e sem tabela na tela "
+            f"(score={(payload or {}).get('score')})"
+        )
+    # Formato SSW: 1;headers · 2;dados
+    lines = ["0;SSW073;RELATORIO"]
+    header = rows[0]
+    lines.append("1;" + ";".join(header))
+    for r in rows[1:]:
+        # alinha colunas ao header
+        cells = list(r) + [""] * max(0, len(header) - len(r))
+        lines.append("2;" + ";".join(cells[: len(header)]))
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text("\n".join(lines) + "\n", encoding="latin-1", errors="replace")
+    status(f"[73/{key}] Relatório raspado da tela → {dest.name} ({len(rows)-1} linhas)")
+    return dest
+
+
+def _download_relatorio_73(
+    client, context, popup, dest_name: str, key: str, status
+) -> Path:
+    """073: clica Relatório — prefere download; senão raspa a tabela da tela."""
+    dest = Path(client.download_dir) / Path(dest_name).name
+    clicked = ""
+    try:
+        with context.expect_event("download", timeout=45000) as di:
+            clicked = _clicar_relatorio_73(popup)
+            if not clicked:
+                raise RuntimeError(f"073/{key}: botão Relatório não encontrado")
+            status(f"[73/{key}] clique={clicked}")
+        download = di.value
+        return _save_named(client, download, dest_name)
+    except Exception as err:  # noqa: BLE001
+        status(f"[73/{key}] download Relatório indisponível ({err}) — lendo tela…")
+        if not clicked:
+            try:
+                clicked = _clicar_relatorio_73(popup)
+            except Exception:
+                pass
+            if clicked:
+                status(f"[73/{key}] clique={clicked} (raspagem)")
+            _safe_wait(popup, 2500)
+        else:
+            _safe_wait(popup, 1500)
+        return _scrape_relatorio_to_sswweb(popup, dest, status, key)
+
+
 def _download_excel_direto_73(
     client, context, popup, dest_name: str, key: str, status
 ) -> Path:
-    """073: Arquivo Excel gera download imediato (não usa fila 156)."""
+    """Legado: Arquivo Excel (fluxo atual usa Relatório)."""
     with context.expect_event("download", timeout=120000) as di:
         clicked = _clicar_excel_73(popup)
         if not clicked:
@@ -945,10 +1064,10 @@ def _download_excel_direto_73(
 
 
 def _enviar_fila_73(popup, status, key: str) -> None:
-    """Legado: só clica Excel (sem esperar). Preferir `_download_excel_direto_73`."""
-    clicked = _clicar_excel_73(popup)
+    """Legado."""
+    clicked = _clicar_relatorio_73(popup) or _clicar_excel_73(popup)
     if not clicked:
-        raise RuntimeError(f"073/{key}: botão Arquivo Excel / ► não encontrado")
+        raise RuntimeError(f"073/{key}: botão Relatório/Excel não encontrado")
     status(f"[73/{key}] clique={clicked}")
     _safe_wait(popup, 800)
 

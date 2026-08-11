@@ -46,7 +46,7 @@ Atalhos úteis no prompt: `local`, `automatica`, `50`, `31`, `73`, `parar`, `hel
 | `78` | Armazém (pátio) + tenta 177 |
 | `177` | Só conferentes |
 | `31` | Pendência (ocorrências / SLA) |
-| `73` | Contratação 073 → filiais 076+200 |
+| `73` | Contratação: 073 Relatório (T+A) → filiais 076+200 · mix COLETA/EN × TRANSFERÊNCIA |
 | `sync` | Envia distribuição à planilha (se não estiver em modo local) |
 | `dash` | Atualiza arquivos do dashboard local |
 | `local` | Abre telas internas (veja §4) |
