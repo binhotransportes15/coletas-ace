@@ -1,5 +1,8 @@
-"""Abre SSW opcao 225, dumpa campos/HTML para descobrir o formulario."""
+﻿"""Abre SSW opcao 225, dumpa campos/HTML para descobrir o formulario."""
+
 from __future__ import annotations
+
+import _root  # noqa: F401
 
 import json
 

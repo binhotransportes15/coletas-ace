@@ -1,4 +1,4 @@
-"""
+﻿"""
 Teste interativo do relatorio 36 (ssw0146).
 
 1) Login SSW + abre opcao 36 (browser visivel)
@@ -13,7 +13,10 @@ Uso:
   py -3 tools_test_36.py --gerar     # tambem tenta baixar (apos 15s de inspecao)
   py -3 tools_test_36.py --unidade SPO
 """
+
 from __future__ import annotations
+
+import _root  # noqa: F401
 
 import argparse
 import json

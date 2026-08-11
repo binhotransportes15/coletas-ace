@@ -1,9 +1,12 @@
-"""Abre SSW visível · login · opção 73 (formulário preenchido) · fica aberto.
+﻿"""Abre SSW visível · login · opção 73 (formulário preenchido) · fica aberto.
 
 Uso: py -3 tools_open_ssw73.py
 Ctrl+C no terminal fecha.
 """
+
 from __future__ import annotations
+
+import _root  # noqa: F401
 
 import os
 import time

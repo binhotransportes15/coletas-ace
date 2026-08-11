@@ -1,5 +1,8 @@
-"""Dump SSW opção 78 — captura texto da tela (estilo Ctrl+A) + HTML/campos."""
+﻿"""Dump SSW opção 78 — captura texto da tela (estilo Ctrl+A) + HTML/campos."""
+
 from __future__ import annotations
+
+import _root  # noqa: F401
 
 import json
 import os

@@ -4589,6 +4589,30 @@
     const DIST_CSV = (window.ACE_CONFIG && window.ACE_CONFIG.distribuicaoCsv) || {};
     const HISTORICO_CSV_PATH = DIST_CSV.historico || 'data/historico.csv';
     const COLETAS_50_CSV_PATH = DIST_CSV.coletas || 'data/coletas.csv';
+    const COLETAS_103_CSV_PATH = DIST_CSV.coletas103 || 'data/coletas_103.csv';
+
+    function isPrivateLanHost(host) {
+      const h = String(host || '').toLowerCase();
+      if (!h || h === 'localhost' || h === '127.0.0.1') return true;
+      if (/^192\.168\.\d+\.\d+$/.test(h)) return true;
+      if (/^10\.\d+\.\d+\.\d+$/.test(h)) return true;
+      if (/^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(h)) return true;
+      return false;
+    }
+
+    /** Na LAN / ?local=1 usa só CSV do PC ACE (não depende da planilha). */
+    function preferLocalCsv() {
+      const cfg = window.ACE_CONFIG || {};
+      if (cfg.preferLocalCsv === true) return true;
+      if (cfg.preferLocalCsv === false) return false;
+      try {
+        const q = new URLSearchParams(location.search || '');
+        if (q.get('local') === '1' || q.get('csv') === '1') return true;
+      } catch (_) { /* ignore */ }
+      return isPrivateLanHost(location.hostname);
+    }
+
+    const PREFER_LOCAL_CSV = preferLocalCsv();
     let lastCtrDataVersion = null;
     let ctrRefreshTimer = null;
     let lastGoodCtrResumo = null;
@@ -4755,6 +4779,16 @@
     let forceNextRefresh = true;
 
     async function fetchDataVersion() {
+      if (PREFER_LOCAL_CSV) {
+        try {
+          const res = await fetch('data/meta.json?t=' + Date.now(), { cache: 'no-store' });
+          if (!res.ok) return String(Date.now());
+          const j = await res.json();
+          return String((j && (j.updated_at || j.version)) || Date.now());
+        } catch (_) {
+          return String(Date.now());
+        }
+      }
       try {
         const v = await chamarPlanilha('version');
         return v && v.version != null ? String(v.version) : null;
@@ -5260,6 +5294,8 @@
     }
 
     const TV_SLOT_KEY = 'ace_tv_slot';
+    /** Seletor "Qual TV é esta?" desligado por agora (rede/local abre direto o setor). */
+    const TV_SLOT_PICKER_ENABLED = false;
 
     function readStoredTvSlot() {
       try {
@@ -5277,7 +5313,12 @@
 
     function openTvSlotPicker(open = true) {
       const el = document.getElementById('tvSlotOverlay');
-      if (el) el.hidden = !open;
+      if (!el) return;
+      if (!TV_SLOT_PICKER_ENABLED) {
+        el.hidden = true;
+        return;
+      }
+      el.hidden = !open;
     }
 
     function ensureTvSlot() {
@@ -5286,6 +5327,11 @@
       if (stored) {
         TV_SLOT = stored;
         return Promise.resolve(TV_SLOT);
+      }
+      // Sem seletor: segue sem slot (usa o setor da URL / setor atual)
+      if (!TV_SLOT_PICKER_ENABLED) {
+        openTvSlotPicker(false);
+        return Promise.resolve(null);
       }
       return new Promise((resolve) => {
         openTvSlotPicker(true);
@@ -6327,7 +6373,27 @@
         let veicRows = [];
         let confRows = [];
         let resumo177 = {};
-        try {
+        if (PREFER_LOCAL_CSV) {
+          resumoRows = await loadCsvLocal(ARMA_CSV.resumo || 'data/armazem/resumo_78.csv');
+          veicRows = await loadCsvLocal(ARMA_CSV.veiculos || 'data/armazem/veiculos_78.csv');
+          if (!resumoRows.length && lastGoodArmResumo) resumoRows = [lastGoodArmResumo];
+          if (!veicRows.length && lastGoodArmVeic.length) veicRows = lastGoodArmVeic.slice();
+          if (resumoRows[0]) lastGoodArmResumo = { ...resumoRows[0] };
+          if (veicRows.length) lastGoodArmVeic = veicRows.slice();
+          try {
+            confRows = await loadCsvLocal(ARMA_CSV.conferentes || 'data/armazem/conferentes_177.csv');
+            const r177 = await loadCsvLocal(ARMA_CSV.resumo177 || 'data/armazem/resumo_177.csv');
+            resumo177 = r177[0] || {};
+            if (!confRows.length && lastGoodArmConf.length) confRows = lastGoodArmConf.slice();
+            if (!Object.keys(resumo177).length && lastGoodArmResumo177) {
+              resumo177 = { ...lastGoodArmResumo177 };
+            }
+            if (confRows.length) lastGoodArmConf = confRows.slice();
+            if (resumo177 && Object.keys(resumo177).length) {
+              lastGoodArmResumo177 = { ...resumo177 };
+            }
+          } catch (_) { /* ignore */ }
+        } else try {
           const [rSum, rVeic] = await Promise.all([
             chamarPlanilhaArmazem('resumo78'),
             chamarPlanilhaArmazem('veiculos78'),
@@ -6346,7 +6412,7 @@
           if (resumoRows[0]) lastGoodArmResumo = { ...resumoRows[0] };
           if (veicRows.length) lastGoodArmVeic = veicRows.slice();
         }
-        try {
+        if (!PREFER_LOCAL_CSV) try {
           const [rConf, rSum177] = await Promise.all([
             chamarPlanilhaArmazem('conferentes177'),
             chamarPlanilhaArmazem('resumo177'),
@@ -6491,7 +6557,18 @@
         let resumo = {};
         let ofens = [];
         let rows = [];
-        try {
+        if (PREFER_LOCAL_CSV) {
+          try {
+            const rCsv = await loadCsvLocal(PEN_CSV.resumo || 'data/pendencia/resumo_31.csv');
+            resumo = rCsv[0] || {};
+            ofens = await loadCsvLocal(PEN_CSV.ofensores || 'data/pendencia/ofensores_31.csv');
+            rows = await loadCsvLocal(PEN_CSV.pendencias || 'data/pendencia/pendencias_31.csv');
+          } catch (__ ) {
+            resumo = lastGoodPenResumo ? { ...lastGoodPenResumo } : {};
+            ofens = lastGoodPenOfens.slice();
+            rows = lastGoodPenRows.slice();
+          }
+        } else try {
           const [rResumo, rOf, rPend] = await Promise.all([
             chamarPlanilha('resumo31'),
             chamarPlanilha('ofensores31'),
@@ -8434,12 +8511,36 @@
           if (status) status.textContent = `Atualizado · v${getLastDataVersionLabel()} (sem mudança)`;
           return;
         }
-        const [r103, r50, r36, rRom] = await Promise.all([
-          chamarPlanilha('coletas103').catch(() => null),
-          chamarPlanilha('coletas').catch(() => ({ rows: [] })),
-          chamarPlanilha('entregas36').catch(() => null),
-          chamarPlanilha('romaneios36').catch(() => ({ rows: [] })),
-        ]);
+
+        let r103 = null;
+        let r50 = { rows: [] };
+        let r36 = null;
+        let rRom = { rows: [] };
+
+        if (PREFER_LOCAL_CSV) {
+          if (status) status.textContent = 'Local/LAN · lendo CSV…';
+          const [local50, local103, local36, localRom] = await Promise.all([
+            loadCsvLocal(COLETAS_50_CSV_PATH).catch(() => []),
+            loadCsvLocal(COLETAS_103_CSV_PATH).catch(() => []),
+            loadCsvLocal('data/entregas_36.csv').catch(() => []),
+            loadCsvLocal('data/romaneios_36.csv').catch(() => []),
+          ]);
+          r50 = { rows: local50 || [] };
+          r103 = { rows: local103 || [] };
+          r36 = { rows: local36 || [] };
+          rRom = { rows: localRom || [] };
+        } else {
+          const pack = await Promise.all([
+            chamarPlanilha('coletas103').catch(() => null),
+            chamarPlanilha('coletas').catch(() => ({ rows: [] })),
+            chamarPlanilha('entregas36').catch(() => null),
+            chamarPlanilha('romaneios36').catch(() => ({ rows: [] })),
+          ]);
+          r103 = pack[0];
+          r50 = pack[1];
+          r36 = pack[2];
+          rRom = pack[3];
+        }
         if (seq !== refreshSeq) return;
         await carregarAgendamentos225().catch(() => {});
         if (seq !== refreshSeq) return;
@@ -8488,7 +8589,18 @@
         } else if (lastGood103.length) {
           COLETAS_103 = lastGood103.slice();
         } else {
-          COLETAS_103 = [];
+          // fallback CSV 103 se planilha veio vazia
+          try {
+            const local103 = await loadCsvLocal(COLETAS_103_CSV_PATH);
+            if (local103 && local103.length) {
+              COLETAS_103 = uniqueRows(local103);
+              lastGood103 = COLETAS_103.slice();
+            } else {
+              COLETAS_103 = [];
+            }
+          } catch (_) {
+            COLETAS_103 = [];
+          }
         }
 
         COLETAS = COLETAS_103.slice();

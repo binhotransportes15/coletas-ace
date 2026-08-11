@@ -1,6 +1,4 @@
 @echo off
 cd /d "%~dp0"
-set QT_OPENGL=software
-set QSG_RHI_BACKEND=software
-python app.py
-if errorlevel 1 pause
+REM Atalho principal → painel CRT (mesmo que ace.bat)
+call "%~dp0ace.bat" %*

@@ -513,6 +513,8 @@ _FIELD_LABELS: dict[str, str] = {
     "loop_intervalo": "Intervalo da atualização",
     "ciclo_paralelo": "Ciclo em paralelo",
     "modo_local": "Modo local (sem planilha)",
+    "dashboard_lan": "Dashboard na rede (LAN)",
+    "dashboard_port": "Porta do dashboard",
     "enable_sheets": "Enviar à planilha",
     "apps_script_url": "Endereço da conexão",
     "apps_script_token": "Chave da conexão",
@@ -556,6 +558,9 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "telas locais": "local",
     "modo local": "local",
     "local": "local",
+    "rede": "lan",
+    "wifi": "lan",
+    "lan": "lan",
     "atualizacao continua": "automatica",
     "atualização contínua": "automatica",
     "ajuda": "help",
@@ -884,7 +889,9 @@ class AceCrtConsole(QWidget):
         prompt_row.addWidget(self.btn_run)
         lay.addLayout(prompt_row)
 
-        hint = QLabel("Este histórico é o console · Enter envia · “parar” encerra a atualização contínua")
+        hint = QLabel(
+            "Console · Enter envia · “parar” encerra o loop · Manual: docs/MANUAL.md"
+        )
         hint.setObjectName("hint")
         lay.addWidget(hint)
         return box
@@ -997,6 +1004,27 @@ class AceCrtConsole(QWidget):
         path_hint.setObjectName("hint")
         outer.addWidget(path_hint)
 
+        outer.addWidget(self._section("Rede (mesma Wi‑Fi)"))
+        self.chk_dashboard_lan = QCheckBox("Liberar acesso na rede (outros aparelhos)")
+        self.chk_dashboard_lan.setChecked(bool(self.payload.get("dashboard_lan", False)))
+        self.chk_dashboard_lan.stateChanged.connect(self._local_toggle_lan)
+        outer.addWidget(self.chk_dashboard_lan)
+        port_row = QHBoxLayout()
+        port_row.addWidget(QLabel("Porta"))
+        self.edit_dash_port = QLineEdit(str(self.payload.get("dashboard_port") or 8787))
+        self.edit_dash_port.setMaximumWidth(80)
+        port_row.addWidget(self.edit_dash_port)
+        port_row.addStretch(1)
+        outer.addLayout(port_row)
+        btn_lan = QPushButton("Mostrar links da rede")
+        btn_lan.clicked.connect(self._local_show_lan_urls)
+        outer.addWidget(btn_lan)
+        self._lan_urls = QLabel("")
+        self._lan_urls.setObjectName("hint")
+        self._lan_urls.setWordWrap(True)
+        self._lan_urls.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        outer.addWidget(self._lan_urls)
+
         outer.addWidget(self._section("Telas"))
         self._local_checks: dict[str, QCheckBox] = {}
         defaults_on = {"coleta", "entrega", "armazem", "pendencia", "contratacao"}
@@ -1064,6 +1092,96 @@ class AceCrtConsole(QWidget):
             self._append_log("sistema", f"modo_local={str(on).lower()}")
         except Exception as err:  # noqa: BLE001
             self._local_status.setText(f"Falha ao salvar modo_local: {err}")
+
+    def _local_toggle_lan(self, state: int) -> None:
+        on = bool(state)
+        self.payload["dashboard_lan"] = on
+        try:
+            port_txt = (self.edit_dash_port.text() or "8787").strip()
+            self.payload["dashboard_port"] = int(port_txt)
+        except ValueError:
+            self.payload["dashboard_port"] = 8787
+            self.edit_dash_port.setText("8787")
+        try:
+            from ace_cmd import _save_payload
+
+            _save_payload(self.payload)
+            w = self._fields.get("dashboard_lan")
+            if isinstance(w, QCheckBox):
+                w.blockSignals(True)
+                w.setChecked(on)
+                w.blockSignals(False)
+            if on:
+                self._local_show_lan_urls(force_on=True)
+            else:
+                self._lan_urls.setText("LAN desligada — só este PC (127.0.0.1).")
+                self._append_log("sistema", "dashboard_lan=false")
+        except Exception as err:  # noqa: BLE001
+            self._local_status.setText(f"Falha LAN: {err}")
+
+    def _local_show_lan_urls(
+        self,
+        force_on: bool = False,
+        filter_ids: list[str] | None = None,
+    ) -> None:
+        try:
+            from ace_cmd import _save_payload
+            from ace_local_view import screen_label
+            from dashboard_server import (
+                ensure_dashboard_server,
+                get_lan_ip,
+                lan_urls_by_screen,
+                server_info,
+            )
+            from publish_dashboard import publish_dashboard
+
+            if force_on or bool(self.payload.get("dashboard_lan")):
+                self.payload["dashboard_lan"] = True
+                if hasattr(self, "chk_dashboard_lan"):
+                    self.chk_dashboard_lan.blockSignals(True)
+                    self.chk_dashboard_lan.setChecked(True)
+                    self.chk_dashboard_lan.blockSignals(False)
+            try:
+                self.payload["dashboard_port"] = int(
+                    (self.edit_dash_port.text() if hasattr(self, "edit_dash_port") else None)
+                    or self.payload.get("dashboard_port")
+                    or 8787
+                )
+            except ValueError:
+                self.payload["dashboard_port"] = 8787
+            _save_payload(self.payload)
+            if not self.payload.get("dashboard_lan"):
+                self._lan_urls.setText("Marque “Liberar acesso na rede” primeiro.")
+                return
+
+            publish_dashboard(on_status=lambda m: self._append_log("sistema", m), allow_push=False)
+            port = ensure_dashboard_server(lan=True, restart_if_needed=True)
+            urls = lan_urls_by_screen(port)
+            info = server_info()
+            wanted = {str(x).strip().lower() for x in (filter_ids or []) if str(x).strip()}
+            lines = [
+                f"PC na rede: {get_lan_ip()}  ·  porta {port}",
+                f"Base: {info.get('lan_url')}/index.html",
+                "No outro aparelho (mesma Wi‑Fi), abra:",
+            ]
+            for sid, url in urls.items():
+                if wanted and sid not in wanted:
+                    continue
+                lines.append(f"• {screen_label(sid)}")
+                lines.append(f"  {url}")
+            text = "\n".join(lines)
+            self._lan_urls.setText(text)
+            self._local_status.setText("Links LAN prontos (selecione o texto para copiar).")
+            self._append_log("ok", f"LAN {get_lan_ip()}:{port}")
+            if hasattr(self, "_right_tabs"):
+                try:
+                    self._right_tabs.setCurrentIndex(1)
+                except Exception:  # noqa: BLE001
+                    pass
+        except Exception as err:  # noqa: BLE001
+            self._lan_urls.setText(str(err))
+            self._append_log("erro", str(err))
+            QMessageBox.warning(self, "LAN", str(err))
 
     def _local_ensure_modo(self) -> None:
         """Ao usar a aba Local, garante modo_local ativo (sem planilha)."""
@@ -1477,7 +1595,14 @@ class AceCrtConsole(QWidget):
                     data = w.currentData()
                     self.payload[key] = str(data if data is not None else w.currentText()).strip()
                 elif isinstance(w, QLineEdit):
-                    self.payload[key] = w.text().strip()
+                    text = w.text().strip()
+                    if typ == "int":
+                        try:
+                            self.payload[key] = int(text or "0")
+                        except ValueError:
+                            raise ValueError(f"{key} deve ser número (ex.: 8787)") from None
+                    else:
+                        self.payload[key] = text
             self.payload["headless"] = not self.chk_viz.isChecked()
             self.payload["crt_theme"] = self._theme_id
             _save_payload(self.payload)
@@ -1568,6 +1693,9 @@ class AceCrtConsole(QWidget):
         head_probe = parts_probe[0].lower().lstrip("/") if parts_probe else ""
         if head_probe in {"local", "tvlocal", "dashlocal", "telas"}:
             self._open_local_from_cmd(parts_probe[1:])
+            return
+        if head_probe in {"lan", "rede", "wifi"}:
+            self._local_show_lan_urls(force_on=True, filter_ids=parts_probe[1:])
             return
 
         if self._worker and self._worker.isRunning():

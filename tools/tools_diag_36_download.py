@@ -1,8 +1,11 @@
-"""
+﻿"""
 Diagnostico: preenche 36, clica REL2 e registra o que acontece
 (download / dialog / nova pagina / timeout).
 """
+
 from __future__ import annotations
+
+import _root  # noqa: F401
 
 import json
 import sys

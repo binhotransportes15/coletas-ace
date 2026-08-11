@@ -10,6 +10,11 @@
 window.ACE_CONFIG = {
   scriptUrl:
     "https://script.google.com/macros/s/AKfycbxse6pGIoSJ8CQAZNuRhNsk_xYY-bqY34HtYxAczx3XQz97fjlEIYFISGiGCGHGjUI6/exec",
+  /**
+   * true = só CSV local (ignora planilha).
+   * null/auto = na LAN (IP 192.168/10./…) usa CSV; no Pages usa planilha.
+   */
+  preferLocalCsv: null,
   /** fallback local / Pages se Sheets falhar */
   distribuicaoCsv: {
     coletas: "data/coletas.csv",

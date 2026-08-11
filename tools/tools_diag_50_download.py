@@ -1,8 +1,11 @@
-"""
+﻿"""
 Diagnostico: preenche 50 (ssw0157), clica #21 e registra
 download / dialog / nova pagina / timeout / corpo da tela.
 """
+
 from __future__ import annotations
+
+import _root  # noqa: F401
 
 import json
 import sys

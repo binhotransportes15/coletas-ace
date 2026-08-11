@@ -222,7 +222,17 @@ def open_local_screens(
         refresh_local_data(on_status=status)
 
     port = ensure_dashboard_server()
-    status(f"Local: http://127.0.0.1:{port} · {len(ids)} tela(s)")
+    info_extra = ""
+    try:
+        from config import load_settings
+        from dashboard_server import get_lan_ip, server_info
+
+        if getattr(load_settings(), "dashboard_lan", False):
+            info = server_info()
+            info_extra = f" · LAN {get_lan_ip()}:{info.get('port')}"
+    except Exception:  # noqa: BLE001
+        pass
+    status(f"Local: http://127.0.0.1:{port}{info_extra} · {len(ids)} tela(s)")
 
     opened: list[str] = []
     urls: list[str] = []

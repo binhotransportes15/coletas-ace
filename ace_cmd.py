@@ -73,6 +73,8 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "contratacao_in_loop": ("contratacao", "bool", False),
     "ciclo_paralelo": ("auto", "bool", False),
     "modo_local": ("local", "bool", False),
+    "dashboard_lan": ("local", "bool", False),
+    "dashboard_port": ("local", "int", False),
     "headless": ("auto", "bool", False),
 }
 
@@ -138,6 +140,8 @@ def _save_payload(payload: dict[str, Any]) -> None:
         contratacao_in_loop=bool(payload.get("contratacao_in_loop", True)),
         ciclo_paralelo=bool(payload.get("ciclo_paralelo", True)),
         modo_local=bool(payload.get("modo_local", False)),
+        dashboard_lan=bool(payload.get("dashboard_lan", False)),
+        dashboard_port=int(payload.get("dashboard_port") or 8787),
         headless=bool(payload.get("headless", True)),
         crt_theme=str(payload.get("crt_theme") or "binho").strip() or "binho",
     )
@@ -285,6 +289,11 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print(f"    {muted('ciclo_paralelo'.ljust(18))} {str(para_on).lower()}")
     print(f"  {g('[MODO LOCAL]', bold=True)}")
     print(f"    {muted('modo_local'.ljust(18))} {str(local_on).lower()}  (sem Sheets; JSON em data/cache/local)")
+    print(
+        f"    {muted('dashboard_lan'.ljust(18))} "
+        f"{str(bool(payload.get('dashboard_lan', False))).lower()}  "
+        f"porta={payload.get('dashboard_port') or 8787}"
+    )
     print(f"  {rule()}")
     print(f"  {w('COMMANDS', bold=True)}  {cubes_row()}")
     print(f"    {g('1/50')}  baixar 50     {g('2/103')} baixar 103    {g('3/sync')} sheets")
@@ -293,6 +302,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print(f"    {g('78')} {g('177')} {g('607')} armazém/ranking/nomes  {g('sync78')} sheets arm")
     print(f"    {g('31')} pendência SSW  {g('sync31')} sheets 31")
     print(f"    {g('/viz')} on|off   {g('brand')} ANSI   {g('crt')} CRT   {g('help')}   {g('sair')}")
+    print(f"    {muted('manual')}  docs/MANUAL.md")
     print(f"  {rule('═')}")
     if message:
         low = message.lower()
@@ -338,13 +348,15 @@ def cmd_help() -> str:
         "  Paralelo: /e ciclo_paralelo true|false — dist+078+031+073 ao mesmo tempo\n"
         "  Local: `local` abre telas internas (sem GitHub) · `local coleta pendencia`\n"
         "             /e modo_local true → relatórios NÃO vão ao Sheets (só JSON em data/cache/local)\n"
-        "             telas: coleta|entrega|agendamento|armazem|conferentes|pendencia|contratacao\n"
+        "             /e dashboard_lan true → outros aparelhos na rede · /e dashboard_port 8787\n"
+        "             `lan` lista URLs por setor · telas: coleta|entrega|agendamento|armazem|…\n"
         "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
         "  Contratação: `73` = 073×3 (SPO) → por cada DESTINO: 076(E fila) + 200(E download direto, origem=destino)\n"
         "             F+Tipo C=frota (CTRB) · A+Tipo C=contratados (CTRB) · A+Tipo O=agregados (OS) · período=mês até hoje\n"
         "             `73 so73` = só 073 · `73 sem200` = sem manifesto · CSV ssw0644 local = frete\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
-        "  /automatica [intervalo] | /status | /push [msg] | /pull"
+        "  /automatica [intervalo] | /status | /push [msg] | /pull\n"
+        "  Manual: docs/MANUAL.md"
     )
 
 
@@ -389,6 +401,10 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "local_mode": "modo_local",
         "modo_local": "modo_local",
         "sem_planilha": "modo_local",
+        "lan_rede": "dashboard_lan",
+        "dashboard_lan": "dashboard_lan",
+        "porta_dash": "dashboard_port",
+        "dashboard_port": "dashboard_port",
         "visualizar": "visualizar",
         "viz": "visualizar",
         "mostrar": "visualizar",
@@ -450,6 +466,11 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
             payload[key] = _parse_bool(raw)
         except ValueError as err:
             return str(err)
+    elif typ == "int":
+        try:
+            payload[key] = int(str(raw).strip())
+        except ValueError:
+            return f"{key} deve ser um número inteiro (ex.: 8787)"
     else:
         if key == "periodo_modo":
             v = raw.lower()
@@ -767,6 +788,37 @@ def run_local(tokens: list[str] | None = None) -> str:
     )
 
 
+def run_lan(tokens: list[str] | None = None) -> str:
+    """Liga servidor na LAN e lista URLs por setor (mesma rede Wi‑Fi)."""
+    from ace_local_view import screen_label
+    from dashboard_server import ensure_dashboard_server, get_lan_ip, lan_urls_by_screen, server_info
+    from publish_dashboard import publish_dashboard
+
+    payload = _load_payload()
+    payload["dashboard_lan"] = True
+    if not payload.get("dashboard_port"):
+        payload["dashboard_port"] = 8787
+    _save_payload(payload)
+    publish_dashboard(on_status=_on_status, allow_push=False)
+    port = ensure_dashboard_server(lan=True, restart_if_needed=True)
+    urls = lan_urls_by_screen(port)
+    info = server_info()
+    lines = [
+        f"LAN ligada · PC={get_lan_ip()} · porta={port} · bind={info.get('bind')}",
+        f"Base: {info.get('lan_url')}/index.html",
+        "IMPORTANTE: use IP + PORTA (não só o IP).",
+        f"Exemplo coleta: {info.get('lan_url')}/index.html#tv/distribuicao/coleta",
+        "No celular/TV (mesma Wi‑Fi), abra uma URL:",
+    ]
+    wanted = {t.strip().lower() for t in (tokens or []) if str(t).strip()}
+    for sid, url in urls.items():
+        if wanted and sid not in wanted and not any(w in sid for w in wanted):
+            continue
+        lines.append(f"  {screen_label(sid)}: {url}")
+    lines.append("Firewall do Windows pode pedir permissão na 1ª vez.")
+    return "\n".join(lines)
+
+
 def run_gui() -> str:
     import subprocess
 
@@ -900,6 +952,8 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
         return (run_dash(), payload)
     if cmd in {"local", "/local", "tvlocal", "dashlocal", "telas"}:
         return (run_local(parts[1:] if len(parts) > 1 else None), payload)
+    if cmd in {"lan", "/lan", "rede", "wifi"}:
+        return (run_lan(parts[1:] if len(parts) > 1 else None), payload)
     if cmd in {"5", "gui", "/gui", "app"}:
         return (run_gui(), payload)
     if cmd in {
@@ -1151,6 +1205,8 @@ def main(argv: list[str] | None = None) -> int:
                 message = run_dash()
             elif cmd in {"local", "/local", "tvlocal", "dashlocal", "telas"}:
                 message = run_local(parts[1:] if len(parts) > 1 else None)
+            elif cmd in {"lan", "/lan", "rede", "wifi"}:
+                message = run_lan(parts[1:] if len(parts) > 1 else None)
             elif cmd in {"5", "gui", "/gui", "app"}:
                 message = run_gui()
             elif cmd in {

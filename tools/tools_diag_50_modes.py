@@ -1,5 +1,8 @@
-"""Diag rapido 50: testa 2 modos de periodo e captura corpo/dialogs apos ENV."""
+﻿"""Diag rapido 50: testa 2 modos de periodo e captura corpo/dialogs apos ENV."""
+
 from __future__ import annotations
+
+import _root  # noqa: F401
 
 import json
 import time

@@ -1,21 +1,26 @@
-"""Abre SSW opcao 36, dumpa campos/HTML e deixa o browser aberto para inspecao."""
+﻿"""Dump de campos da tela SSW opção 31 (pendências / ocorrências)."""
+
 from __future__ import annotations
+
+import _root  # noqa: F401
 
 import json
 
 from config import CACHE_DIR, load_credentials, load_settings
+from dates import periodo_mes_corrente, to_ssw_ddmmyy
 from ssw_client import AceSswClient
 
-OUT = CACHE_DIR / "dump_36_fields.json"
-HTML_OUT = CACHE_DIR / "dump_36.html"
+OUT = CACHE_DIR / "dump_31_fields.json"
+HTML_OUT = CACHE_DIR / "dump_31.html"
 
 
 def main() -> None:
     creds = load_credentials()
     settings = load_settings()
+    ini, fim = periodo_mes_corrente()
     client = AceSswClient(
-        "300726",
-        "310726",
+        ini,
+        fim,
         credentials=creds,
         settings=settings,
         keep_open=True,
@@ -25,25 +30,24 @@ def main() -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, slow_mo=150)
+        browser = p.chromium.launch(headless=False, slow_mo=120)
         context = browser.new_context(accept_downloads=True)
         page = context.new_page()
-        page.set_default_timeout(30000)
+        page.set_default_timeout(45000)
         client._login(page)
         client._ensure_unit(page)
         client._patch_blank_popup_fix(page)
         popup = client._open_menu_option(
             page,
-            "36",
+            "31",
             markers=(
-                "romaneio",
-                "entrega",
+                "ocorr",
                 "ctrc",
                 "periodo",
-                "unidade",
-                "0146",
-                "36",
-                "relacao",
+                "excel",
+                "pendenc",
+                "31",
+                "arquivo",
             ),
         )
         info = popup.evaluate(
@@ -53,7 +57,7 @@ def main() -> None:
                 const prev = el.previousElementSibling;
                 if (prev) t = (prev.innerText || prev.textContent || '').trim();
                 if (!t && el.parentElement) {
-                  t = (el.parentElement.innerText || '').trim().slice(0, 80);
+                  t = (el.parentElement.innerText || '').trim().slice(0, 120);
                 }
                 return t;
               };
@@ -69,24 +73,18 @@ def main() -> None:
                 className: el.className || '',
                 label: nearLabel(el),
               }));
-              const bodyText = (document.body && document.body.innerText || '').slice(0, 5000);
+              const bodyText = (document.body && document.body.innerText || '').slice(0, 6000);
               const action = (document.querySelector('form') || {}).action || '';
               const title = document.title || '';
-              const links = Array.from(document.querySelectorAll('a')).slice(0, 60).map(a => ({
-                text: (a.innerText || a.textContent || '').trim().slice(0, 80),
+              const links = Array.from(document.querySelectorAll('a, img, button, input[type=image]')).slice(0, 80).map(a => ({
+                text: (a.innerText || a.textContent || a.alt || a.title || '').trim().slice(0, 80),
                 href: a.getAttribute('href') || '',
-                onclick: (a.getAttribute('onclick') || '').slice(0, 200),
+                onclick: (a.getAttribute('onclick') || '').slice(0, 220),
                 id: a.id || '',
+                src: a.getAttribute('src') || '',
                 className: a.className || '',
               }));
-              return {
-                url: location.href,
-                title,
-                action,
-                bodyText,
-                inputs,
-                links,
-              };
+              return { url: location.href, title, action, bodyText, inputs, links };
             }"""
         )
         OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -95,17 +93,9 @@ def main() -> None:
         print(f"DUMP JSON: {OUT}")
         print(f"DUMP HTML: {HTML_OUT}")
         print(f"URL: {info.get('url')}")
-        print(f"ACTION: {info.get('action')}")
-        print("--- BODY (inicio) ---")
-        print((info.get("bodyText") or "")[:2000])
-        print("--- INPUTS ---")
         for row in info.get("inputs") or []:
             print(row)
-        print("--- LINKS (onclick) ---")
-        for row in info.get("links") or []:
-            if row.get("onclick") or "gera" in (row.get("text") or "").lower():
-                print(row)
-        print("Browser fica aberto 3 min para inspecao manual...")
+        print("Browser aberto 3 min…")
         page.wait_for_timeout(180_000)
         browser.close()
 

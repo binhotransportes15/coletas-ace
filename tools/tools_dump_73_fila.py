@@ -1,9 +1,12 @@
-"""Dump ao vivo: 073 → Arquivo Excel → fila 156 (ssw1440).
+﻿"""Dump ao vivo: 073 → Arquivo Excel → fila 156 (ssw1440).
 
 Uso:
   py -3 tools_dump_73_fila.py
 """
+
 from __future__ import annotations
+
+import _root  # noqa: F401
 
 import json
 import time

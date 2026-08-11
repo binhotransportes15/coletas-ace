@@ -23,9 +23,12 @@ echo.
 echo Atalho criado em:
 echo %SHORTCUT%
 echo.
-echo Robo ACE na pasta:
+echo Robo legado (ace_robot.py) na pasta:
 echo %ACE_DIR%
 echo.
-echo Teste agora: python ace_robot.py
+echo Preferivel no dia a dia: ace.bat  (painel CRT + atualizacao continua)
+echo Manual: docs\MANUAL.md
+echo.
+echo Teste legado: python ace_robot.py
 echo.
 pause

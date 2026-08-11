@@ -1,5 +1,8 @@
-"""Abre SSW opcao 103, dumpa campos/HTML e deixa o browser aberto para inspecao."""
+﻿"""Abre SSW opcao 103, dumpa campos/HTML e deixa o browser aberto para inspecao."""
+
 from __future__ import annotations
+
+import _root  # noqa: F401
 
 import json
 from pathlib import Path

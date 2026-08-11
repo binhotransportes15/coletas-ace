@@ -91,6 +91,10 @@ class AceSettings:
     ciclo_paralelo: bool = True
     # Modo local: não envia Sheets/GitHub — só cache CSV + JSON em data/cache/local
     modo_local: bool = False
+    # Servir dashboard na LAN (0.0.0.0) para outros aparelhos na mesma rede
+    dashboard_lan: bool = False
+    # Porta fixa na LAN (0 = automática). Padrão útil: 8787
+    dashboard_port: int = 8787
     headless: bool = True
     # Tema visual do CRT (binho | painel | ops | claro)
     crt_theme: str = "binho"
@@ -152,6 +156,8 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         ),
         ciclo_paralelo=bool(payload.get("ciclo_paralelo", defaults.ciclo_paralelo)),
         modo_local=bool(payload.get("modo_local", defaults.modo_local)),
+        dashboard_lan=bool(payload.get("dashboard_lan", defaults.dashboard_lan)),
+        dashboard_port=int(payload.get("dashboard_port") or defaults.dashboard_port or 8787),
         headless=bool(payload.get("headless", defaults.headless)),
         crt_theme=str(payload.get("crt_theme") or defaults.crt_theme).strip()
         or defaults.crt_theme,
