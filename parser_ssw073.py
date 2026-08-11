@@ -147,13 +147,25 @@ def _read_text(path: Path) -> str:
 def _grupo_from_fonte(name: str) -> str | None:
     """Detecta grupo pela chave do arquivo (contratacao_073_F_|AC_|AO_)."""
     n = (name or "").upper().replace("-", "_")
-    if "073_AC" in n or "_AC_" in n:
+    # ordem importa: AC antes de A / F genérico
+    if "073_AC" in n or "_AC_" in n or n.startswith("AC_") or "/AC_" in n:
         return "contratados"
-    if "073_AO" in n or "_AO_" in n:
+    if "073_AO" in n or "_AO_" in n or n.startswith("AO_"):
         return "agregado"
-    if "073_F_" in n or n.endswith("073_F") or "_073_F_" in n:
+    if "073_F_" in n or "_073_F_" in n or n.startswith("F_") or "/F_" in n:
+        return "frota"
+    # legado: contratacao_073_F.xxx
+    if "073_F." in n or n.endswith("073_F") or "_073_F." in n:
         return "frota"
     return None
+
+
+_GRUPO_RANK = {
+    "frota": 0,
+    "contratados": 1,
+    "agregado": 2,
+    "outro": 9,
+}
 
 
 def _grupo_propriedade(prop: str, tipo: str = "", fonte: str = "") -> str:
@@ -167,12 +179,13 @@ def _grupo_propriedade(prop: str, tipo: str = "", fonte: str = "") -> str:
         return "frota"
     if p in {"AGREGADO", "A"} or "AGREG" in p:
         # A + Tipo C = contratados · A + Tipo O = agregados
+        # (tipo no CSV costuma ser TRANSFERENCIA/REMUNERACAO — aí a fonte manda)
         if t in {"C", "CTRB", "CTR"}:
             return "contratados"
         if t in {"O", "OS"}:
             return "agregado"
         return "agregado"
-    if p in {"CARRETEIRO", "TERCEIRO", "TERCEIROS"} or "CARRET" in p or "TERC" in p:
+    if p in {"CARRETEIRO", "TERCEIRO", "TERCEIROS", "CONTRATADO", "CONTRATADOS"} or "CARRET" in p or "TERC" in p or "CONTRAT" in p:
         return "contratados"
     return "outro"
 
@@ -457,16 +470,12 @@ def analyze_reports_073(
             by_placa[placa] = slot
         if r.get("carreta") and not slot["carreta"]:
             slot["carreta"] = r["carreta"]
-        # preserva grupo mais específico quando a mesma placa aparece em vários jobs
+        # preserva o melhor grupo: frota > contratados > agregado
         g = r.get("grupo") or "outro"
-        if g != "outro" and (
-            slot["grupo"] in {"", "outro"}
-            or (g == "frota" and slot["grupo"] != "frota")
-        ):
-            if slot["grupo"] in {"", "outro"} or g == "frota":
-                slot["grupo"] = g
-            elif slot["grupo"] not in {"frota", "contratados", "agregado"}:
-                slot["grupo"] = g
+        if _GRUPO_RANK.get(g, 9) < _GRUPO_RANK.get(slot.get("grupo") or "outro", 9):
+            slot["grupo"] = g
+            if r.get("propriedade"):
+                slot["propriedade"] = r["propriedade"]
         slot["qtd_ctrb"] += 1
         slot["custo"] += float(r.get("custo") or 0)
         slot["custo_av"] += float(r.get("custo_av") or 0)

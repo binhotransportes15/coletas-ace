@@ -215,8 +215,7 @@ def merge_frete_076_into_073(
         if extra["frete"] > 0:
             v["frete"] = f"{extra['frete']:.2f}"
             updated += 1
-        if extra["peso"] > 0 and float(v.get("peso") or 0) <= 0:
-            v["peso"] = f"{extra['peso']:.3f}"
+        # peso fica do 073 (076 soma viagens e infla o total do painel)
 
     _write_csv(VEICULOS_073_CSV, VEICULO_FIELDS, veiculos)
     _write_csv(FRETE_076_CSV, FRETE_FIELDS, frete_rows)

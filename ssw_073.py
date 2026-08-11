@@ -950,17 +950,23 @@ def _enviar_fila_73(popup, status, key: str) -> None:
 
 
 def _save_named(client, download, dest_name: str) -> Path:
+    """Salva com o nome pedido (F/AC/AO). SSW sugere CSVssw0332… e apaga a chave."""
     suggested = (download.suggested_filename or "").lower()
-    name = dest_name
+    name = Path(dest_name).name
     if suggested.endswith(".csv"):
-        name = Path(dest_name).with_suffix(".csv").name
+        name = Path(name).with_suffix(".csv").name
     elif suggested.endswith(".xlsx"):
-        name = Path(dest_name).with_suffix(".xlsx").name
+        name = Path(name).with_suffix(".xlsx").name
     elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
-        name = Path(dest_name).with_suffix(".xls").name
+        name = Path(name).with_suffix(".xls").name
     elif suggested.endswith(".sswweb"):
-        name = Path(dest_name).with_suffix(".sswweb").name
-    return client._save_download(download, name)
+        name = Path(name).with_suffix(".sswweb").name
+
+    dest = Path(client.download_dir) / name
+    if dest.exists():
+        dest = dest.with_name(f"{dest.stem}_{getattr(client, 'timestamp', '') or 'dup'}{dest.suffix}")
+    download.save_as(str(dest))
+    return dest
 
 
 def _abrir_fila_156(client, context, page, status):

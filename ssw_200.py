@@ -190,12 +190,11 @@ def download_reports_200(
 
 def _preencher_200(popup, *, ini: str, fim: str, unidade: str, tipo: str, on_status) -> None:
     """
-    ssw0644 (tela 200):
-      Período emissão · Unidade origem · Unidade destino (opc)
-      Placa (opc) · CPF (opc) · Tipo arquivo (T-texto / E-excel)
+    ssw0644 (tela 200) — ordem do form (print):
+      0-1 Período emissão · 2 Unidade origem · 3 Unidade destino (opc)
+      4 Placa (opc) · 5 CPF (opc) · 6 Tipo arquivo (T/E)
 
-    Download é DIRETO (não vai pra fila 156).
-    Unidade origem = destino do 073 (sigla da filial).
+    Download DIRETO. Unidade origem = destino do 073.
     """
     status = on_status
     origem = (unidade or "").strip().upper()
@@ -208,143 +207,79 @@ def _preencher_200(popup, *, ini: str, fim: str, unidade: str, tipo: str, on_sta
         "okOrigem": False,
         "okTipo": False,
         "vals": [],
+        "n": 0,
     }
-    try:
-        # Preferência: fill por rótulo (mais fiel ao print da tela)
-        filled_js = popup.evaluate(
-            """({ ini, fim, origem, tipo }) => {
-              const norm = (s) => (s || '').toLowerCase().normalize('NFD')
-                .replace(/[\\u0300-\\u036f]/g, '').replace(/\\s+/g, ' ').trim();
-              const inputs = Array.from(document.querySelectorAll('input[type=text], input:not([type])'));
-              const near = (el) => {
-                let t = '';
-                if (el.previousElementSibling) t = el.previousElementSibling.innerText || '';
-                if (!t && el.parentElement) t = el.parentElement.innerText || '';
-                return t;
-              };
-              const byHint = (hints) => {
-                const hs = hints.map(norm);
-                for (const el of inputs) {
-                  const lab = norm(near(el));
-                  if (hs.some((h) => lab.includes(h))) return el;
-                }
-                return null;
-              };
-              const set = (el, val) => {
-                if (!el) return false;
-                el.focus();
-                el.value = val;
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-                return true;
-              };
-
-              // Datas: maxlength/size 6 (ddmmyy)
-              const dates = inputs.filter((el) => Number(el.maxLength) === 6 || Number(el.size) === 6);
-              let okIni = false, okFim = false;
-              if (dates.length >= 2) {
-                okIni = set(dates[0], ini);
-                okFim = set(dates[1], fim);
-              }
-
-              // Unidade origem (não confundir com destino opc)
-              let elOrig = null;
-              for (const el of inputs) {
-                const lab = norm(near(el));
-                if (lab.includes('unidade origem') || (lab.includes('origem') && !lab.includes('destino'))) {
-                  elOrig = el; break;
-                }
-              }
-              if (!elOrig && dates.length >= 2) {
-                // ordem do form: ini, fim, origem, destino, placa, cpf, tipo
-                const idx = inputs.indexOf(dates[1]);
-                if (idx >= 0 && idx + 1 < inputs.length) elOrig = inputs[idx + 1];
-              }
-              const okOrigem = origem ? set(elOrig, origem) : true;
-
-              // limpa destino opc / placa / cpf se vierem sujos
-              for (const el of inputs) {
-                const lab = norm(near(el));
-                if (lab.includes('unidade destino') || lab.includes('placa') || lab.includes('cpf')) {
-                  if ((el.value || '').trim()) set(el, '');
-                }
-              }
-
-              // Tipo de arquivo: T/E de 1 char
-              let elTipo = byHint(['tipo de arquivo', 'tipo arquivo']);
-              if (!elTipo) {
-                for (let i = inputs.length - 1; i >= 0; i--) {
-                  const el = inputs[i];
-                  const v = (el.value || '').toUpperCase().trim();
-                  const ml = Number(el.maxLength || 0);
-                  const sz = Number(el.size || 0);
-                  if ((ml === 1 || sz === 1 || ml === 0) && (v === 'T' || v === 'E' || v === '')) {
-                    elTipo = el; break;
-                  }
-                }
-              }
-              const okTipo = set(elTipo, tipo);
-
-              return {
-                okIni, okFim, okOrigem, okTipo,
-                n: inputs.length,
-                vals: inputs.slice(0, 8).map((el) => el.value || ''),
-              };
-            }""",
-            {"ini": ini, "fim": fim, "origem": origem, "tipo": arq},
-        )
-        filled.update(filled_js or {})
-    except Exception as err:  # noqa: BLE001
-        status(f"[200] fill evaluate: {err}")
-
-    # Playwright fallback se evaluate falhou em algo crítico
     try:
         inputs = popup.locator('input[type=text], input:not([type])')
         n = inputs.count()
-        if not filled.get("okIni") or not filled.get("okFim"):
-            date_idxs: list[int] = []
-            for i in range(n):
-                try:
-                    ml = inputs.nth(i).evaluate(
-                        "e => ({ ml: Number(e.maxLength||0), sz: Number(e.size||0) })"
-                    )
-                    if ml.get("ml") == 6 or ml.get("sz") == 6:
-                        date_idxs.append(i)
-                except Exception:
-                    continue
-            if len(date_idxs) >= 2:
-                inputs.nth(date_idxs[0]).fill(ini)
-                inputs.nth(date_idxs[1]).fill(fim)
-                filled["okIni"] = True
-                filled["okFim"] = True
-                # origem = 1º campo após as datas
-                if origem and not filled.get("okOrigem"):
-                    oi = date_idxs[1] + 1
-                    if oi < n:
-                        inputs.nth(oi).fill(origem)
-                        filled["okOrigem"] = True
-        if not filled.get("okTipo"):
-            for i in range(n - 1, -1, -1):
-                try:
-                    meta = inputs.nth(i).evaluate(
-                        """e => ({
-                          ml: Number(e.maxLength||0),
-                          sz: Number(e.size||0),
-                          v: (e.value||'').toUpperCase().trim(),
-                        })"""
-                    )
-                    if meta.get("v") in {"T", "E"} or meta.get("ml") == 1 or meta.get("sz") == 1:
-                        inputs.nth(i).fill(arq)
-                        filled["okTipo"] = True
-                        status(f"[200] Tipo arquivo input[{i}]={arq}")
-                        break
-                except Exception:
-                    continue
-        if origem and not filled.get("okOrigem") and n >= 3:
-            # índice 2 = Unidade origem (print da tela)
-            inputs.nth(2).fill(origem)
+        filled["n"] = n
+
+        # Datas ddmmyy
+        date_idxs: list[int] = []
+        for i in range(n):
+            try:
+                meta = inputs.nth(i).evaluate(
+                    "e => ({ ml: Number(e.maxLength||0), sz: Number(e.size||0), v: (e.value||'').toUpperCase().trim() })"
+                )
+            except Exception:
+                continue
+            if meta.get("ml") == 6 or meta.get("sz") == 6:
+                date_idxs.append(i)
+
+        if len(date_idxs) >= 2:
+            inputs.nth(date_idxs[0]).fill(ini)
+            inputs.nth(date_idxs[1]).fill(fim)
+            filled["okIni"] = True
+            filled["okFim"] = True
+
+        # Índice base após as datas
+        base = (date_idxs[1] + 1) if len(date_idxs) >= 2 else 2
+
+        # Unidade origem = 1º após datas
+        if origem and base < n:
+            inputs.nth(base).fill(origem)
             filled["okOrigem"] = True
-        filled["vals"] = [(inputs.nth(i).input_value() or "") for i in range(min(n, 8))]
+
+        # Limpa destino / placa / cpf (base+1 .. base+3)
+        for off in (1, 2, 3):
+            idx = base + off
+            if idx < n:
+                try:
+                    cur = (inputs.nth(idx).input_value() or "").strip()
+                    # não limpar o campo Tipo (T/E de 1 char)
+                    meta = inputs.nth(idx).evaluate(
+                        "e => ({ ml: Number(e.maxLength||0), sz: Number(e.size||0), v: (e.value||'').toUpperCase().trim() })"
+                    )
+                    if meta.get("v") in {"T", "E"} and (meta.get("ml") in {0, 1, 2} or meta.get("sz") in {0, 1, 2}):
+                        continue
+                    if cur:
+                        inputs.nth(idx).fill("")
+                except Exception:
+                    pass
+
+        # Tipo arquivo = último input com T/E ou maxlength/size 1
+        tipo_idx = -1
+        for i in range(n - 1, -1, -1):
+            try:
+                meta = inputs.nth(i).evaluate(
+                    "e => ({ ml: Number(e.maxLength||0), sz: Number(e.size||0), v: (e.value||'').toUpperCase().trim() })"
+                )
+            except Exception:
+                continue
+            if meta.get("v") in {"T", "E"}:
+                tipo_idx = i
+                break
+            if meta.get("ml") == 1 or meta.get("sz") == 1:
+                tipo_idx = i
+                break
+        if tipo_idx < 0 and n > 0:
+            tipo_idx = n - 1
+        if tipo_idx >= 0:
+            inputs.nth(tipo_idx).fill(arq)
+            filled["okTipo"] = True
+            status(f"[200] Tipo arquivo input[{tipo_idx}]={arq}")
+
+        filled["vals"] = [(inputs.nth(i).input_value() or "") for i in range(min(n, 9))]
     except Exception as err:  # noqa: BLE001
         status(f"[200] fill playwright: {err}")
 
@@ -353,6 +288,10 @@ def _preencher_200(popup, *, ini: str, fim: str, unidade: str, tipo: str, on_sta
         raise RuntimeError(f"200: não achei Tipo de arquivo (E). form={filled}")
     if origem and not filled.get("okOrigem"):
         raise RuntimeError(f"200: não preencheu Unidade origem={origem}. form={filled}")
+    # Sanidade: E não pode estar no campo origem/destino
+    vals = filled.get("vals") or []
+    if origem and len(vals) > 2 and str(vals[2]).strip().upper() == "E":
+        raise RuntimeError(f"200: Tipo E caiu no lugar da origem. form={filled}")
     popup.wait_for_timeout(200)
 
 
@@ -460,6 +399,16 @@ def _gerar_download_200(client, context, page, popup, dest_name: str, status) ->
         while time.time() < deadline:
             if downloads:
                 path = client._save_download(downloads[0], dest_name)
+                # força nome contratacao_200_TAG.csv (SSW manda m.aguir…BIN)
+                try:
+                    forced = Path(client.download_dir) / Path(dest_name).name
+                    if path.resolve() != forced.resolve():
+                        if forced.exists():
+                            forced.unlink()
+                        path.replace(forced)
+                        path = forced
+                except Exception:
+                    pass
                 status(f"[200] download OK · {path.name}")
                 return path
 
@@ -473,7 +422,6 @@ def _gerar_download_200(client, context, page, popup, dest_name: str, status) ->
             except Exception:
                 time.sleep(0.35)
 
-        # última checagem do aviso antes de falhar
         dismissed = _try_dismiss_nenhum_registro(popup)
         if dismissed:
             status(f"[200] sem registro — OK ({dismissed})")
