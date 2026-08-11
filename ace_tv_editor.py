@@ -68,30 +68,9 @@ _preview_lock = threading.Lock()
 
 def _ensure_preview_server() -> int:
     """HTTP local do /dashboard — evita CORS/file:// no WebEngine."""
-    global _preview_httpd, _preview_port
-    with _preview_lock:
-        if _preview_httpd is not None and _preview_port:
-            return _preview_port
+    from dashboard_server import ensure_dashboard_server
 
-        class _Handler(SimpleHTTPRequestHandler):
-            def __init__(self, *args, **kwargs):  # noqa: ANN002, ANN003
-                super().__init__(*args, directory=str(DASHBOARD_DIR), **kwargs)
-
-            def log_message(self, *_args) -> None:  # noqa: ANN002
-                return
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(("127.0.0.1", 0))
-        port = int(sock.getsockname()[1])
-        sock.close()
-
-        httpd = ThreadingHTTPServer(("127.0.0.1", port), _Handler)
-        thread = threading.Thread(target=httpd.serve_forever, daemon=True, name="ace-dash-preview")
-        thread.start()
-        _preview_httpd = httpd
-        _preview_port = port
-        return port
-
+    return ensure_dashboard_server()
 
 BLOCK_DEFS: dict[str, list[dict[str, Any]]] = {
     "distribuicao:agendamento": [

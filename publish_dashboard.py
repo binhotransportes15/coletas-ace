@@ -427,16 +427,24 @@ def publish_dashboard(
     settings: AceSettings | None = None,
     *,
     on_status: StatusCallback | None = None,
+    allow_push: bool = True,
 ) -> dict[str, Any]:
     """
     Copia CSV para dashboard/ e, se configurado, faz git commit/push.
     Em falha de push, mantém o ultimo HTML/CSV ja publicado.
+    allow_push=False → só arquivos locais (modo Local / CRT).
     """
     status = on_status or _noop
     cfg = settings or load_settings()
     ensure_dashboard_files()
     paths = _copy_cache_to_dashboard()
+    paths.update(_copy_contratacao_to_dashboard())
     result: dict[str, Any] = {"ok": True, "local": paths, "pushed": False}
+
+    if not allow_push or getattr(cfg, "modo_local", False):
+        status("Dashboard local atualizado (sem GitHub).")
+        result["skipped_push"] = True
+        return result
 
     if not cfg.enable_github_publish:
         status("Dashboard local atualizado (publish GitHub desabilitado).")

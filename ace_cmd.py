@@ -71,6 +71,8 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "armazem_in_loop": ("armazem", "bool", False),
     "pendencia_in_loop": ("pendencia", "bool", False),
     "contratacao_in_loop": ("contratacao", "bool", False),
+    "ciclo_paralelo": ("auto", "bool", False),
+    "modo_local": ("local", "bool", False),
     "headless": ("auto", "bool", False),
 }
 
@@ -134,6 +136,8 @@ def _save_payload(payload: dict[str, Any]) -> None:
         armazem_in_loop=bool(payload.get("armazem_in_loop", True)),
         pendencia_in_loop=bool(payload.get("pendencia_in_loop", True)),
         contratacao_in_loop=bool(payload.get("contratacao_in_loop", True)),
+        ciclo_paralelo=bool(payload.get("ciclo_paralelo", True)),
+        modo_local=bool(payload.get("modo_local", False)),
         headless=bool(payload.get("headless", True)),
         crt_theme=str(payload.get("crt_theme") or "binho").strip() or "binho",
     )
@@ -207,14 +211,18 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     arm_on = bool(payload.get("armazem_in_loop", True))
     pend_on = bool(payload.get("pendencia_in_loop", True))
     ctr_on = bool(payload.get("contratacao_in_loop", True))
+    para_on = bool(payload.get("ciclo_paralelo", True))
+    local_on = bool(payload.get("modo_local", False))
 
     print_header_banner(subtitle="OPERACIONAL · Console CMD", payload=payload)
     print(
-        f"  {status_online('SHEETS') if sheets_on else status_offline('SHEETS')}  "
+        f"  {status_online('SHEETS') if sheets_on and not local_on else status_idle('SHEETS')}  "
         f"{status_work('SSW·VIZ') if viz_on else status_idle('SSW·HIDE')}  "
         f"{status_online('078') if arm_on else status_idle('078·OFF')}  "
         f"{status_online('031') if pend_on else status_idle('031·OFF')}  "
-        f"{status_online('073') if ctr_on else status_idle('073·OFF')}"
+        f"{status_online('073') if ctr_on else status_idle('073·OFF')}  "
+        f"{status_online('PARA') if para_on else status_idle('SEQ')}  "
+        f"{status_online('LOCAL') if local_on else status_idle('CLOUD')}"
     )
     print(f"  {rule()}")
     print(f"  {muted('config')}  {CONFIG_PATH}")
@@ -273,11 +281,15 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print(f"    {muted('pendencia_in_loop'.ljust(18))} {str(pend_on).lower()}")
     print(f"  {g('[CONTRATACAO 073]', bold=True)}")
     print(f"    {muted('contratacao_in_loop'.ljust(18))} {str(ctr_on).lower()}")
+    print(f"  {g('[PARALELO]', bold=True)}")
+    print(f"    {muted('ciclo_paralelo'.ljust(18))} {str(para_on).lower()}")
+    print(f"  {g('[MODO LOCAL]', bold=True)}")
+    print(f"    {muted('modo_local'.ljust(18))} {str(local_on).lower()}  (sem Sheets; JSON em data/cache/local)")
     print(f"  {rule()}")
     print(f"  {w('COMMANDS', bold=True)}  {cubes_row()}")
     print(f"    {g('1/50')}  baixar 50     {g('2/103')} baixar 103    {g('3/sync')} sheets")
-    print(f"    {g('4/dash')} dashboard    {g('5/gui')}  ACE gráfico   {g('6/show')} config")
-    print(f"    {g('7/auto')} /automatica  {g('8/git')}  status        {g('9/push')} pages")
+    print(f"    {g('4/dash')} dados local  {g('local')} telas internas {g('5/gui')} gráfico")
+    print(f"    {g('6/show')} config       {g('7/auto')} /automatica  {g('9/push')} pages")
     print(f"    {g('78')} {g('177')} {g('607')} armazém/ranking/nomes  {g('sync78')} sheets arm")
     print(f"    {g('31')} pendência SSW  {g('sync31')} sheets 31")
     print(f"    {g('/viz')} on|off   {g('brand')} ANSI   {g('crt')} CRT   {g('help')}   {g('sair')}")
@@ -312,7 +324,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
 def cmd_help() -> str:
     keys = ", ".join(sorted(EDITABLE.keys()))
     return (
-        "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | 31 | 73 | sync | sync78 | sync31 | dash | gui | "
+        "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | 31 | 73 | sync | sync78 | sync31 | dash | local | gui | "
         "brand | crt | /automatica | /status | /push | /pull | show | help | sair\n"
         f"  Campos: {keys}\n"
         "  Bool: true/false | sim/nao | 1/0\n"
@@ -323,6 +335,10 @@ def cmd_help() -> str:
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
         "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos\n"
         "  Contratação: /e contratacao_in_loop true|false · `73` sob demanda\n"
+        "  Paralelo: /e ciclo_paralelo true|false — dist+078+031+073 ao mesmo tempo\n"
+        "  Local: `local` abre telas internas (sem GitHub) · `local coleta pendencia`\n"
+        "             /e modo_local true → relatórios NÃO vão ao Sheets (só JSON em data/cache/local)\n"
+        "             telas: coleta|entrega|agendamento|armazem|conferentes|pendencia|contratacao\n"
         "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
         "  Contratação: `73` = 073×3 (SPO) → por cada DESTINO: 076(E fila) + 200(E download direto, origem=destino)\n"
         "             F+Tipo C=frota (CTRB) · A+Tipo C=contratados (CTRB) · A+Tipo O=agregados (OS) · período=mês até hoje\n"
@@ -367,6 +383,12 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "contratacao_loop": "contratacao_in_loop",
         "ctr_loop": "contratacao_in_loop",
         "73_loop": "contratacao_in_loop",
+        "paralelo": "ciclo_paralelo",
+        "parallel": "ciclo_paralelo",
+        "ciclo_paralelo": "ciclo_paralelo",
+        "local_mode": "modo_local",
+        "modo_local": "modo_local",
+        "sem_planilha": "modo_local",
         "visualizar": "visualizar",
         "viz": "visualizar",
         "mostrar": "visualizar",
@@ -727,6 +749,24 @@ def run_dash() -> str:
     return f"dashboard ok={r.get('ok')} pushed={r.get('pushed')}"
 
 
+def run_local(tokens: list[str] | None = None) -> str:
+    """Abre telas do dashboard em modo local (sem GitHub)."""
+    from ace_local_view import open_local_screens, screen_label
+
+    result = open_local_screens(
+        tokens,
+        parent=None,
+        refresh=True,
+        prefer_embed=True,
+        on_status=_on_status,
+    )
+    labels = ", ".join(screen_label(s) for s in (result.get("screens") or []))
+    mode = "janelas Qt" if result.get("embed") else "navegador"
+    return (
+        f"local ok · {mode} · porta={result.get('port')} · {labels}"
+    )
+
+
 def run_gui() -> str:
     import subprocess
 
@@ -772,6 +812,7 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
             "armazem_in_loop": cfg.armazem_in_loop,
             "pendencia_in_loop": getattr(cfg, "pendencia_in_loop", True),
             "contratacao_in_loop": getattr(cfg, "contratacao_in_loop", True),
+            "ciclo_paralelo": getattr(cfg, "ciclo_paralelo", True),
             "loop_intervalo": cfg.loop_intervalo,
             "unit": getattr(load_credentials(), "unit", ""),
             "user": getattr(load_credentials(), "user", ""),
@@ -792,6 +833,10 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
         print(f"  {status_online('073')} Contratação no loop (filiais 076+200)")
     else:
         print(f"  {status_idle('073')} fora do loop (rode `73` sob demanda)")
+    if getattr(cfg, "ciclo_paralelo", True):
+        print(f"  {status_online('PARA')} ciclo paralelo (dist · 078 · 031 · 073 juntos)")
+    else:
+        print(f"  {status_idle('SEQ')} ciclo sequencial (/e ciclo_paralelo true)")
     print(f"  {rule()}")
     print(f"  {muted('Ctrl+C → menu · /viz on|off · /e intervalo 30s|5m')}")
     print(f"  {rule()}\n")
@@ -853,6 +898,8 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
         return (run_sync(), payload)
     if cmd in {"4", "dash", "/dash", "dashboard"}:
         return (run_dash(), payload)
+    if cmd in {"local", "/local", "tvlocal", "dashlocal", "telas"}:
+        return (run_local(parts[1:] if len(parts) > 1 else None), payload)
     if cmd in {"5", "gui", "/gui", "app"}:
         return (run_gui(), payload)
     if cmd in {
@@ -1102,6 +1149,8 @@ def main(argv: list[str] | None = None) -> int:
                 message = run_sync()
             elif cmd in {"4", "dash", "/dash", "dashboard"}:
                 message = run_dash()
+            elif cmd in {"local", "/local", "tvlocal", "dashlocal", "telas"}:
+                message = run_local(parts[1:] if len(parts) > 1 else None)
             elif cmd in {"5", "gui", "/gui", "app"}:
                 message = run_gui()
             elif cmd in {

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -23,16 +25,53 @@ from parser_ssw225 import analyze_report_225
 
 StatusCallback = Callable[[str], None]
 
+_LOG_LOCK = threading.Lock()
+_STATUS_LOCK = threading.Lock()
+
 
 def _noop(_: str) -> None:
     return None
 
 
+def _persist_local_instead_of_sheets(
+    sector: str,
+    *,
+    cfg: AceSettings,
+    on_status: StatusCallback,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Grava JSON interno + dashboard local (sem Sheets/GitHub)."""
+    from local_store import persist_sector
+
+    snap = persist_sector(sector, extra=extra, on_status=on_status)
+    dash = publish_dashboard(cfg, on_status=on_status, allow_push=False)
+    return {"ok": True, "via": "local_json", "local": snap, "dashboard": dash}
+
+
+def _should_use_local_store(cfg: AceSettings) -> bool:
+    return bool(getattr(cfg, "modo_local", False))
+
+
+def _sync_after_report(
+    label: str,
+    *,
+    cfg: AceSettings,
+    on_status: StatusCallback,
+    sync_fn: Callable[[], dict[str, Any]],
+) -> dict[str, Any]:
+    """Sheets ou JSON local conforme modo_local."""
+    if _should_use_local_store(cfg):
+        on_status(f"[{label}] Modo local: salvando JSON (sem planilha)…")
+        return _persist_local_instead_of_sheets(label, cfg=cfg, on_status=on_status, extra={"report": label})
+    return sync_fn()
+
+
 def _log_file(message: str) -> None:
     ensure_dirs()
     path = LOG_DIR / f"ace_{datetime.now():%Y%m%d}.log"
-    with path.open("a", encoding="utf-8") as fh:
-        fh.write(f"[{datetime.now():%H:%M:%S}] {message}\n")
+    with _LOG_LOCK:
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(f"[{datetime.now():%H:%M:%S}] {message}\n")
 
 
 def find_latest_report(download_dir: Path | None = None) -> Path | None:
@@ -86,8 +125,15 @@ def run_analysis_only(
     result: dict[str, Any] = {"analysis": meta, "report": str(path)}
 
     if sync:
-        result["sheets"] = sync_google_sheets(cfg, on_status=status)
-        result["dashboard"] = publish_dashboard(cfg, on_status=status)
+        if _should_use_local_store(cfg):
+            result["sheets"] = {"ok": False, "skipped": True, "reason": "modo_local"}
+            result["local"] = _persist_local_instead_of_sheets(
+                "distribuicao", cfg=cfg, on_status=status, extra={"report": "50"}
+            )
+            result["dashboard"] = (result["local"] or {}).get("dashboard") or {}
+        else:
+            result["sheets"] = sync_google_sheets(cfg, on_status=status)
+            result["dashboard"] = publish_dashboard(cfg, on_status=status)
     return result
 
 
@@ -220,6 +266,19 @@ def run_analysis_103(
     sheets = {"ok": False, "skipped": True}
     dash = {"ok": False, "skipped": True}
     if sync:
+        if _should_use_local_store(cfg):
+            local = _persist_local_instead_of_sheets(
+                "103", cfg=cfg, on_status=status, extra={"report": "103"}
+            )
+            sheets = {"ok": False, "skipped": True, "reason": "modo_local"}
+            dash = (local or {}).get("dashboard") or {}
+            return {
+                "analysis": meta,
+                "report": str(path),
+                "sheets": sheets,
+                "dashboard": dash,
+                "local": local,
+            }
         sheets = sync_google_sheets_103(cfg, on_status=status)
         dash = publish_dashboard(cfg, on_status=status)
     return {
@@ -347,8 +406,15 @@ def run_analysis_225(
     )
     result: dict[str, Any] = {"analysis": meta, "report": str(path)}
     if sync:
-        result["sheets"] = sync_google_sheets_225(cfg, on_status=status)
-        result["dashboard"] = publish_dashboard(cfg, on_status=status)
+        if _should_use_local_store(cfg):
+            result["sheets"] = {"ok": False, "skipped": True, "reason": "modo_local"}
+            result["local"] = _persist_local_instead_of_sheets(
+                "225", cfg=cfg, on_status=status, extra={"report": "225"}
+            )
+            result["dashboard"] = (result["local"] or {}).get("dashboard") or {}
+        else:
+            result["sheets"] = sync_google_sheets_225(cfg, on_status=status)
+            result["dashboard"] = publish_dashboard(cfg, on_status=status)
     return result
 
 
@@ -390,8 +456,15 @@ def run_analysis_36(
     )
     result: dict[str, Any] = {"analysis": meta, "report": str(path)}
     if sync:
-        result["sheets"] = sync_google_sheets_36(cfg, on_status=status)
-        result["dashboard"] = publish_dashboard(cfg, on_status=status)
+        if _should_use_local_store(cfg):
+            result["sheets"] = {"ok": False, "skipped": True, "reason": "modo_local"}
+            result["local"] = _persist_local_instead_of_sheets(
+                "36", cfg=cfg, on_status=status, extra={"report": "36"}
+            )
+            result["dashboard"] = (result["local"] or {}).get("dashboard") or {}
+        else:
+            result["sheets"] = sync_google_sheets_36(cfg, on_status=status)
+            result["dashboard"] = publish_dashboard(cfg, on_status=status)
     return result
 
 
@@ -508,12 +581,17 @@ def run_dual_cycle(
     headless: bool | None = None,
     on_status: StatusCallback | None = None,
     sync: bool = True,
+    run_extras: bool = True,
+    skip_cleanup: bool = False,
 ) -> dict[str, Any]:
     """
     Baixa 50 + 103 (+ 36 se entrega_option=36) + 225 EM CICLO automatico.
 
     Um unico login SSW (sessao compartilhada) — mais rapido que logar por relatorio.
     Assim que cada arquivo baixa: analisa e envia ao Sheets na hora (não espera o fim).
+
+    Com ciclo_paralelo=True (padrao), 078 / 031 / 073 rodam ao mesmo tempo que a
+    distribuicao (browsers separados). Use run_extras=False para so a dist.
 
     Periodos automaticos (recalculados a cada ciclo / virada de dia):
       50  → periodo de COLETA = HOJE
@@ -530,6 +608,25 @@ def run_dual_cycle(
     cfg = settings or load_settings()
     creds = credentials or load_credentials()
     use_headless = cfg.headless if headless is None else bool(headless)
+
+    wants_extras = bool(
+        getattr(cfg, "armazem_in_loop", False)
+        or getattr(cfg, "pendencia_in_loop", False)
+        or getattr(cfg, "contratacao_in_loop", False)
+    )
+    if (
+        run_extras
+        and wants_extras
+        and getattr(cfg, "ciclo_paralelo", True)
+    ):
+        return run_parallel_cycle(
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=on_status,
+            sync=sync,
+        )
+
     ini50, fim50 = periodo_50_coleta_hoje()
     ini103, fim103 = periodo_103_hoje()
     ini36, fim36 = periodo_36_ontem_hoje()
@@ -549,7 +646,8 @@ def run_dual_cycle(
         + f" | 225 {titulo225} mes={format_period(ini225, fim225)}"
     )
 
-    cleanup_downloads(DOWNLOAD_DIR, on_status=emit)
+    if not skip_cleanup:
+        cleanup_downloads(DOWNLOAD_DIR, on_status=emit)
 
     result_50: dict[str, Any] = {}
     result_103: dict[str, Any] = {}
@@ -593,8 +691,12 @@ def run_dual_cycle(
             }
             emit("50 concluido.")
             if sync:
-                emit("[50] Sheets: enviando agora…")
-                sheets50 = sync_google_sheets(cfg, on_status=emit)
+                sheets50 = _sync_after_report(
+                    "50",
+                    cfg=cfg,
+                    on_status=emit,
+                    sync_fn=lambda: sync_google_sheets(cfg, on_status=emit),
+                )
                 result_50["sheets"] = sheets50
             done.add("50")
             return
@@ -622,8 +724,12 @@ def run_dual_cycle(
             }
             emit("103 concluido.")
             if sync:
-                emit("[103] Sheets: enviando agora…")
-                sheets103 = sync_google_sheets_103(cfg, on_status=emit)
+                sheets103 = _sync_after_report(
+                    "103",
+                    cfg=cfg,
+                    on_status=emit,
+                    sync_fn=lambda: sync_google_sheets_103(cfg, on_status=emit),
+                )
                 result_103["sheets"] = sheets103
             done.add("103")
             return
@@ -645,8 +751,12 @@ def run_dual_cycle(
             }
             emit("36 concluido.")
             if sync:
-                emit("[36] Sheets: enviando agora…")
-                sheets36 = sync_google_sheets_36(cfg, on_status=emit)
+                sheets36 = _sync_after_report(
+                    "36",
+                    cfg=cfg,
+                    on_status=emit,
+                    sync_fn=lambda: sync_google_sheets_36(cfg, on_status=emit),
+                )
                 result_36["sheets"] = sheets36
             done.add("36")
             return
@@ -674,8 +784,12 @@ def run_dual_cycle(
             }
             emit("225 concluido.")
             if sync:
-                emit("[225] Sheets: enviando agora…")
-                sheets225 = sync_google_sheets_225(cfg, on_status=emit)
+                sheets225 = _sync_after_report(
+                    "225",
+                    cfg=cfg,
+                    on_status=emit,
+                    sync_fn=lambda: sync_google_sheets_225(cfg, on_status=emit),
+                )
                 result_225["sheets"] = sheets225
             done.add("225")
             return
@@ -819,49 +933,50 @@ def run_dual_cycle(
     cleanup_downloads(DOWNLOAD_DIR, keep=keep, on_status=emit)
 
     result_78: dict[str, Any] = {}
-    if getattr(cfg, "armazem_in_loop", False):
-        emit("078 / Armazem sequencial apos distribuicao...")
-        try:
-            result_78 = run_pipeline_78(
-                credentials=creds,
-                settings=cfg,
-                headless=use_headless,
-                on_status=lambda m: emit(f"[78] {m}"),
-            )
-            emit("078 concluido.")
-        except Exception as err:  # noqa: BLE001
-            errors["78"] = str(err)
-            emit(f"078 FALHOU: {err}")
-
     result_31: dict[str, Any] = {}
-    if getattr(cfg, "pendencia_in_loop", False):
-        emit("031 / Pendencia sequencial apos armazem...")
-        try:
-            result_31 = run_pipeline_31(
-                credentials=creds,
-                settings=cfg,
-                headless=use_headless,
-                on_status=lambda m: emit(f"[31] {m}"),
-            )
-            emit("031 concluido.")
-        except Exception as err:  # noqa: BLE001
-            errors["31"] = str(err)
-            emit(f"031 FALHOU: {err}")
-
     result_73: dict[str, Any] = {}
-    if getattr(cfg, "contratacao_in_loop", False):
-        emit("073 / Contratacao sequencial (filiais 076+200)...")
-        try:
-            result_73 = run_pipeline_contratacao(
-                credentials=creds,
-                settings=cfg,
-                headless=use_headless,
-                on_status=lambda m: emit(f"[73] {m}"),
-            )
-            emit("073 concluido.")
-        except Exception as err:  # noqa: BLE001
-            errors["73"] = str(err)
-            emit(f"073 FALHOU: {err}")
+    if run_extras:
+        if getattr(cfg, "armazem_in_loop", False):
+            emit("078 / Armazem sequencial apos distribuicao...")
+            try:
+                result_78 = run_pipeline_78(
+                    credentials=creds,
+                    settings=cfg,
+                    headless=use_headless,
+                    on_status=lambda m: emit(f"[78] {m}"),
+                )
+                emit("078 concluido.")
+            except Exception as err:  # noqa: BLE001
+                errors["78"] = str(err)
+                emit(f"078 FALHOU: {err}")
+
+        if getattr(cfg, "pendencia_in_loop", False):
+            emit("031 / Pendencia sequencial apos armazem...")
+            try:
+                result_31 = run_pipeline_31(
+                    credentials=creds,
+                    settings=cfg,
+                    headless=use_headless,
+                    on_status=lambda m: emit(f"[31] {m}"),
+                )
+                emit("031 concluido.")
+            except Exception as err:  # noqa: BLE001
+                errors["31"] = str(err)
+                emit(f"031 FALHOU: {err}")
+
+        if getattr(cfg, "contratacao_in_loop", False):
+            emit("073 / Contratacao sequencial (filiais 076+200)...")
+            try:
+                result_73 = run_pipeline_contratacao(
+                    credentials=creds,
+                    settings=cfg,
+                    headless=use_headless,
+                    on_status=lambda m: emit(f"[73] {m}"),
+                )
+                emit("073 concluido.")
+            except Exception as err:  # noqa: BLE001
+                errors["73"] = str(err)
+                emit(f"073 FALHOU: {err}")
 
     if errors and not result_50 and not result_103 and not result_36 and not result_225 and not result_78 and not result_31 and not result_73:
         raise RuntimeError("; ".join(f"{k}: {v}" for k, v in errors.items()))
@@ -887,6 +1002,164 @@ def run_dual_cycle(
         "sheets_225": sheets225,
         "dashboard": dash,
         "shared_session": True,
+        "parallel_cycle": False,
+        "headless": use_headless,
+    }
+
+
+def run_parallel_cycle(
+    *,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    headless: bool | None = None,
+    on_status: StatusCallback | None = None,
+    sync: bool = True,
+) -> dict[str, Any]:
+    """
+    Roda distribuição (50+103+36+225) + 078 + 031 + 073 ao mesmo tempo.
+
+    Cada bloco usa seu próprio Chromium/login SSW. Limpeza de downloads
+    acontece só no início (workers não apagam arquivos uns dos outros).
+    """
+    status = on_status or _noop
+
+    def emit(msg: str) -> None:
+        with _STATUS_LOCK:
+            status(msg)
+            _log_file(msg)
+
+    cfg = settings or load_settings()
+    creds = credentials or load_credentials()
+    use_headless = cfg.headless if headless is None else bool(headless)
+
+    jobs: list[str] = ["dist"]
+    if getattr(cfg, "armazem_in_loop", False):
+        jobs.append("78")
+    if getattr(cfg, "pendencia_in_loop", False):
+        jobs.append("31")
+    if getattr(cfg, "contratacao_in_loop", False):
+        jobs.append("73")
+
+    emit(
+        f"CICLO paralelo | {len(jobs)} bloco(s) simultâneos: "
+        + " · ".join(jobs)
+        + f" | viz={'oculto' if use_headless else 'visivel'}"
+    )
+    cleanup_downloads(DOWNLOAD_DIR, on_status=emit)
+
+    results: dict[str, Any] = {}
+    errors: dict[str, str] = {}
+
+    def _run_dist() -> dict[str, Any]:
+        return run_dual_cycle(
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=lambda m: emit(f"[dist] {m}"),
+            sync=sync,
+            run_extras=False,
+            skip_cleanup=True,
+        )
+
+    def _run_78() -> dict[str, Any]:
+        return run_pipeline_78(
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=lambda m: emit(f"[78] {m}"),
+        )
+
+    def _run_31() -> dict[str, Any]:
+        return run_pipeline_31(
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=lambda m: emit(f"[31] {m}"),
+            clean_downloads=False,
+        )
+
+    def _run_73() -> dict[str, Any]:
+        return run_pipeline_contratacao(
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=lambda m: emit(f"[73] {m}"),
+            clean_downloads=False,
+        )
+
+    workers = {
+        "dist": _run_dist,
+        "78": _run_78,
+        "31": _run_31,
+        "73": _run_73,
+    }
+
+    with ThreadPoolExecutor(max_workers=max(1, len(jobs)), thread_name_prefix="ace") as pool:
+        futures = {pool.submit(workers[name]): name for name in jobs}
+        for fut in as_completed(futures):
+            name = futures[fut]
+            try:
+                results[name] = fut.result()
+                emit(f"[{name}] bloco OK")
+            except Exception as err:  # noqa: BLE001
+                errors[name] = str(err)
+                results[name] = {}
+                emit(f"[{name}] bloco FALHOU: {err}")
+
+    dist = results.get("dist") or {}
+    dist_errors = dict(dist.get("errors") or {})
+    # erros do bloco dist já vêm tipados (50/103/…); bloco inteiro falhou → "dist"
+    merged_errors = {**dist_errors, **{k: v for k, v in errors.items() if k != "dist"}}
+    if "dist" in errors:
+        merged_errors["dist"] = errors["dist"]
+
+    result_78 = results.get("78") or {}
+    result_31 = results.get("31") or {}
+    result_73 = results.get("73") or {}
+    result_50 = dist.get("50") or {}
+    result_103 = dist.get("103") or {}
+    result_36 = dist.get("36") or {}
+    result_225 = dist.get("225") or {}
+
+    any_ok = bool(
+        result_50
+        or result_103
+        or result_36
+        or result_225
+        or result_78
+        or result_31
+        or result_73
+    )
+    if merged_errors and not any_ok:
+        raise RuntimeError("; ".join(f"{k}: {v}" for k, v in merged_errors.items()))
+
+    emit(
+        "CICLO paralelo concluído | "
+        f"ok={any_ok} | erros={merged_errors or '{}'}"
+    )
+
+    return {
+        "ok": not merged_errors or any_ok,
+        "errors": merged_errors,
+        "period_50": dist.get("period_50") or "",
+        "period_103": dist.get("period_103") or "",
+        "period_36": dist.get("period_36") or "",
+        "period_225": dist.get("period_225") or "",
+        "50": result_50,
+        "103": result_103,
+        "36": result_36,
+        "225": result_225,
+        "78": result_78,
+        "31": result_31,
+        "73": result_73,
+        "sheets_50": dist.get("sheets_50") or {"ok": False, "skipped": True},
+        "sheets_103": dist.get("sheets_103") or {"ok": False, "skipped": True},
+        "sheets_36": dist.get("sheets_36") or {"ok": False, "skipped": True},
+        "sheets_225": dist.get("sheets_225") or {"ok": False, "skipped": True},
+        "dashboard": dist.get("dashboard") or {"ok": False, "skipped": True},
+        "shared_session": True,
+        "parallel_cycle": True,
+        "parallel_jobs": jobs,
         "headless": use_headless,
     }
 
@@ -922,8 +1195,12 @@ def run_pipeline_78(
         body_text=str(capture.get("body_text") or ""),
         html=str(capture.get("html") or ""),
     )
-    status("078 capturado — enviando Sheets (pátio) agora…")
-    sheets78 = sync_sheets_78(cfg, on_status=status, include_78=True, include_177=False)
+    if _should_use_local_store(cfg):
+        status("078 capturado — modo local (JSON, sem Sheets)…")
+        sheets78 = _persist_local_instead_of_sheets("78", cfg=cfg, on_status=status)
+    else:
+        status("078 capturado — enviando Sheets (pátio) agora…")
+        sheets78 = sync_sheets_78(cfg, on_status=status, include_78=True, include_177=False)
 
     conf177: dict[str, Any] = {"ok": False}
     sheets177: dict[str, Any] = {"ok": False, "skipped": True}
@@ -932,8 +1209,12 @@ def run_pipeline_78(
         dl177 = download_report_177(headless=use_headless, on_status=status)
         conf177 = analyze_report_177(dl177["path"], on_status=status)
         conf177["download"] = dl177
-        status("177 analisado — enviando Sheets (conferentes) agora…")
-        sheets177 = sync_sheets_78(cfg, on_status=status, include_78=False, include_177=True)
+        if _should_use_local_store(cfg):
+            status("177 analisado — modo local (JSON)…")
+            sheets177 = _persist_local_instead_of_sheets("177", cfg=cfg, on_status=status)
+        else:
+            status("177 analisado — enviando Sheets (conferentes) agora…")
+            sheets177 = sync_sheets_78(cfg, on_status=status, include_78=False, include_177=True)
     except Exception as err:  # noqa: BLE001
         status(f"177 falhou (pátio 078 segue): {err}")
         conf177 = {"ok": False, "error": str(err)}
@@ -972,6 +1253,7 @@ def run_pipeline_31(
     headless: bool | None = None,
     codes: list[str] | tuple[str, ...] | None = None,
     on_status: StatusCallback | None = None,
+    clean_downloads: bool = True,
 ) -> dict[str, Any]:
     """SSW 031: download Excel por ocorrência → análise → Sheets → dashboard local."""
     status = on_status or _noop
@@ -991,14 +1273,19 @@ def run_pipeline_31(
         settings=cfg,
         headless=use_headless,
         on_status=status,
+        clean_downloads=clean_downloads,
     )
     analysis = analyze_reports_31(
         dl.get("paths") or {},
         periodo=str(dl.get("period") or ""),
         on_status=status,
     )
-    status("031 analisado — enviando Sheets agora…")
-    sheets = sync_sheets_31(cfg, on_status=status)
+    if _should_use_local_store(cfg):
+        status("031 analisado — modo local (JSON, sem Sheets)…")
+        sheets = _persist_local_instead_of_sheets("31", cfg=cfg, on_status=status)
+    else:
+        status("031 analisado — enviando Sheets agora…")
+        sheets = sync_sheets_31(cfg, on_status=status)
     pub = publish_pendencia_local(on_status=status)
     status(
         f"OK · CTRCs={analysis.get('total')} "
@@ -1024,6 +1311,7 @@ def run_pipeline_contratacao(
     local_073: list[str] | Path | str | None = None,
     local_200: list[str] | Path | str | None = None,
     on_status: StatusCallback | None = None,
+    clean_downloads: bool = True,
 ) -> dict[str, Any]:
     """
     Contratação: 073 (placas/custo) → 076 (remuneração) → 200/ssw0644 (frete manifesto).
@@ -1166,8 +1454,13 @@ def run_pipeline_contratacao(
         settings=cfg,
         headless=use_headless,
         on_status=status,
+        clean_downloads=clean_downloads,
     )
     pub = publish_contratacao_local(on_status=status)
+    local_snap: dict[str, Any] = {}
+    if _should_use_local_store(cfg):
+        status("073 concluído — modo local (JSON, sem Sheets)…")
+        local_snap = _persist_local_instead_of_sheets("73", cfg=cfg, on_status=status)
     resumo = bundle.get("resumo") or {}
     status(
         f"OK · veículos={(resumo or {}).get('total_veiculos')} "
@@ -1182,6 +1475,7 @@ def run_pipeline_contratacao(
         "filiais": list(bundle.get("filiais") or []),
         "filial_errors": bundle.get("filial_errors") or {},
         "publish": pub,
+        "local": local_snap,
         "resumo": resumo,
         "placas": list(bundle.get("placas") or []),
     }

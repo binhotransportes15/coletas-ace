@@ -2,10 +2,9 @@
 ACE · Loop CMD (tempo real)
 
 Roda sem parar:
-  - a cada N: 50 + 103 em paralelo · 36 · 225
-  - se armazem_in_loop: 078 (+177)
-  - se pendencia_in_loop: 031
-  - se contratacao_in_loop: 073 → filiais 076+200
+  - a cada N: distribuição 50+103(+36)+225
+  - se ciclo_paralelo (padrão): 078 + 031 + 073 ao mesmo tempo que a dist
+  - senão: 078 → 031 → 073 em sequência após a dist
   - intervalo: config loop_intervalo (ex.: 5m, 30s, 1h)
 
 Ctrl+C para parar.
@@ -102,7 +101,8 @@ def _banner(interval_sec: int, headless: bool) -> None:
         )
         print(
             f"  {status_online('078') if load_settings().armazem_in_loop else status_idle('078')}  "
-            f"{status_online('SHEETS') if load_settings().enable_sheets else status_idle('SHEETS')}"
+            f"{status_online('SHEETS') if load_settings().enable_sheets else status_idle('SHEETS')}  "
+            f"{status_online('PARA') if getattr(load_settings(), 'ciclo_paralelo', True) else status_idle('SEQ')}"
         )
         print(f"  {cubes_row()}")
         # barra só ornamental do ciclo (cheio = intervalo curto)

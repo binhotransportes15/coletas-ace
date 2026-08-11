@@ -117,6 +117,7 @@ def download_reports_073(
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
+    clean_downloads: bool = True,
     # legado
     tipos: tuple[str, ...] | None = None,
     propriedade: str | None = None,
@@ -142,7 +143,8 @@ def download_reports_073(
     fim = to_ssw_ddmmyy(fim_ddmm)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    cleanup_downloads(DOWNLOAD_DIR, on_status=status)
+    if clean_downloads:
+        cleanup_downloads(DOWNLOAD_DIR, on_status=status)
 
     client = AceSswClient(
         ini_ddmm,
@@ -226,6 +228,7 @@ def download_contratacao_ssw(
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
+    clean_downloads: bool = True,
 ) -> dict[str, Any]:
     """1 login: 073 (SPO) → por cada destino: menu → 076 + 200 (frete)."""
     status = on_status or _noop
@@ -241,7 +244,8 @@ def download_contratacao_ssw(
     fim = to_ssw_ddmmyy(fim_ddmm)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    cleanup_downloads(DOWNLOAD_DIR, on_status=status)
+    if clean_downloads:
+        cleanup_downloads(DOWNLOAD_DIR, on_status=status)
 
     from parser_ssw073 import analyze_reports_073
     from parser_ssw076 import analyze_reports_076

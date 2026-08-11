@@ -393,6 +393,11 @@ def _ensure_apps_script(
 ) -> dict[str, Any]:
     """Valida config (+ ping opcional). Retorna {ok, url, token} ou erro/skipped."""
     result: dict[str, Any] = {"ok": False, "skipped": False}
+    if getattr(cfg, "modo_local", False):
+        result["skipped"] = True
+        result["reason"] = "modo_local"
+        status("Modo local: planilha ignorada (JSON/CSV interno).")
+        return result
     if not cfg.enable_sheets:
         result["skipped"] = True
         result["reason"] = "enable_sheets=false"

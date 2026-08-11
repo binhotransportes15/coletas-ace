@@ -87,6 +87,10 @@ class AceSettings:
     pendencia_in_loop: bool = True
     # 073→076+200 por filial destino (ciclo mais longo)
     contratacao_in_loop: bool = True
+    # /automatica: dist + 078 + 031 + 073 em paralelo (1 browser cada bloco)
+    ciclo_paralelo: bool = True
+    # Modo local: não envia Sheets/GitHub — só cache CSV + JSON em data/cache/local
+    modo_local: bool = False
     headless: bool = True
     # Tema visual do CRT (binho | painel | ops | claro)
     crt_theme: str = "binho"
@@ -101,6 +105,7 @@ def ensure_dirs() -> None:
     (DASHBOARD_DIR / "data" / "armazem").mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data" / "pendencia").mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data" / "contratacao").mkdir(parents=True, exist_ok=True)
+    (CACHE_DIR / "local").mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
@@ -145,10 +150,20 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         contratacao_in_loop=bool(
             payload.get("contratacao_in_loop", defaults.contratacao_in_loop)
         ),
+        ciclo_paralelo=bool(payload.get("ciclo_paralelo", defaults.ciclo_paralelo)),
+        modo_local=bool(payload.get("modo_local", defaults.modo_local)),
         headless=bool(payload.get("headless", defaults.headless)),
         crt_theme=str(payload.get("crt_theme") or defaults.crt_theme).strip()
         or defaults.crt_theme,
     )
+
+
+def sheets_enabled(settings: AceSettings | None = None) -> bool:
+    """True só se planilha ligada E não estiver em modo local."""
+    cfg = settings or load_settings()
+    if getattr(cfg, "modo_local", False):
+        return False
+    return bool(getattr(cfg, "enable_sheets", False))
 
 
 def load_credentials() -> SswCredentials:

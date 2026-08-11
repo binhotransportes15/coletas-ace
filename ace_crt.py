@@ -4,7 +4,7 @@ BINHO · ACE CRT — painel de gestão widescreen (cara de CMD).
 Layout:
   esq  → cubos animados + CPU/MEM/GPU + status
   centro → atalhos + log + prompt de comandos
-  dir  → abas Configuração | Gestão
+  dir  → abas Configuração | Local | TV | Gestão
 
   python ace_crt.py
   ace.bat crt
@@ -511,6 +511,8 @@ _FIELD_LABELS: dict[str, str] = {
     "periodo_modo": "Tipo de período",
     "auto_baixar_ao_abrir": "Baixar ao abrir",
     "loop_intervalo": "Intervalo da atualização",
+    "ciclo_paralelo": "Ciclo em paralelo",
+    "modo_local": "Modo local (sem planilha)",
     "enable_sheets": "Enviar à planilha",
     "apps_script_url": "Endereço da conexão",
     "apps_script_token": "Chave da conexão",
@@ -549,8 +551,11 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "atualizar tudo": "sync",
     "sincronizar": "sync",
     "planilha": "sync",
-    "abrir painel": "dash",
-    "painel": "dash",
+    "abrir painel": "local",
+    "painel": "local",
+    "telas locais": "local",
+    "modo local": "local",
+    "local": "local",
     "atualizacao continua": "automatica",
     "atualização contínua": "automatica",
     "ajuda": "help",
@@ -852,7 +857,8 @@ class AceCrtConsole(QWidget):
             ("Pendência", "31"),
             ("Contratação", "73"),
             ("Atualizar tudo", "sync"),
-            ("Abrir painel", "dash"),
+            ("Atualizar dados", "dash"),
+            ("Telas locais", "local"),
         ]
         for i, (label, cmd) in enumerate(shortcuts):
             btn = QPushButton(label)
@@ -886,8 +892,10 @@ class AceCrtConsole(QWidget):
     def _build_right(self) -> QWidget:
         tabs = QTabWidget()
         tabs.addTab(self._build_config_tab(), "Configuração")
+        tabs.addTab(self._build_local_tab(), "Local")
         tabs.addTab(self._build_tv_tab(), "TV")
         tabs.addTab(self._build_gestao_tab(), "Gestão")
+        self._right_tabs = tabs
         return tabs
 
     def _build_config_tab(self) -> QWidget:
@@ -907,9 +915,11 @@ class AceCrtConsole(QWidget):
         groups = {
             "ssw": "Acesso ao sistema",
             "auto": "Atualização",
+            "local": "Modo local",
             "cloud": "Planilha e site",
             "armazem": "Armazém",
             "pendencia": "Pendência",
+            "contratacao": "Contratação",
         }
         # headless: controlado só pelo “Mostrar navegador”
         skip_keys = {"headless"}
@@ -959,6 +969,186 @@ class AceCrtConsole(QWidget):
         row.addWidget(btn_save)
         outer.addLayout(row)
         return wrap
+
+    def _build_local_tab(self) -> QWidget:
+        """Modo local: escolhe telas e abre várias janelas internas (sem GitHub)."""
+        from ace_local_view import LOCAL_SCREEN_ORDER, screen_label
+
+        wrap = QWidget()
+        outer = QVBoxLayout(wrap)
+        outer.setContentsMargins(10, 10, 10, 10)
+        outer.setSpacing(8)
+
+        tip = QLabel(
+            "Dashboard interno · sem GitHub e sem planilha.\n"
+            "Relatórios ficam em CSV + JSON rápido (data/cache/local).\n"
+            "Marque as telas e abra várias ao mesmo tempo."
+        )
+        tip.setObjectName("hint")
+        tip.setWordWrap(True)
+        outer.addWidget(tip)
+
+        outer.addWidget(self._section("Armazenamento"))
+        self.chk_modo_local = QCheckBox("Não enviar à planilha (só JSON/CSV interno)")
+        self.chk_modo_local.setChecked(bool(self.payload.get("modo_local", False)))
+        self.chk_modo_local.stateChanged.connect(self._local_toggle_modo)
+        outer.addWidget(self.chk_modo_local)
+        path_hint = QLabel("Pasta: data/cache/local/*.json")
+        path_hint.setObjectName("hint")
+        outer.addWidget(path_hint)
+
+        outer.addWidget(self._section("Telas"))
+        self._local_checks: dict[str, QCheckBox] = {}
+        defaults_on = {"coleta", "entrega", "armazem", "pendencia", "contratacao"}
+        for sid in LOCAL_SCREEN_ORDER:
+            chk = QCheckBox(screen_label(sid))
+            chk.setChecked(sid in defaults_on)
+            self._local_checks[sid] = chk
+            outer.addWidget(chk)
+
+        row_sel = QHBoxLayout()
+        btn_all = QPushButton("Todas")
+        btn_all.clicked.connect(lambda: self._local_set_all(True))
+        btn_none = QPushButton("Nenhuma")
+        btn_none.clicked.connect(lambda: self._local_set_all(False))
+        row_sel.addWidget(btn_all)
+        row_sel.addWidget(btn_none)
+        row_sel.addStretch(1)
+        outer.addLayout(row_sel)
+
+        outer.addWidget(self._section("Ações"))
+        btn_refresh = QPushButton("Atualizar dados (local)")
+        btn_refresh.clicked.connect(self._local_refresh_data)
+        outer.addWidget(btn_refresh)
+
+        btn_open = QPushButton("Abrir selecionadas")
+        btn_open.setObjectName("primary")
+        btn_open.clicked.connect(self._local_open_selected)
+        outer.addWidget(btn_open)
+
+        btn_tab = QPushButton("Ir para esta aba (atalho: local)")
+        btn_tab.setObjectName("hint")
+        btn_tab.clicked.connect(lambda: None)
+        btn_tab.hide()
+
+        self._local_status = QLabel("")
+        self._local_status.setObjectName("hint")
+        self._local_status.setWordWrap(True)
+        outer.addWidget(self._local_status)
+        outer.addStretch(1)
+        return wrap
+
+    def _local_set_all(self, checked: bool) -> None:
+        for chk in getattr(self, "_local_checks", {}).values():
+            chk.setChecked(checked)
+
+    def _local_toggle_modo(self, state: int) -> None:
+        """Liga/desliga modo_local e grava na config."""
+        on = bool(state)
+        self.payload["modo_local"] = on
+        try:
+            from ace_cmd import _save_payload
+
+            _save_payload(self.payload)
+            # espelha no campo da aba Configuração, se existir
+            w = self._fields.get("modo_local")
+            if isinstance(w, QCheckBox):
+                w.blockSignals(True)
+                w.setChecked(on)
+                w.blockSignals(False)
+            self._local_status.setText(
+                "Modo local LIGADO — relatórios não vão ao Sheets."
+                if on
+                else "Modo local desligado — planilha volta a valer (se enable_sheets)."
+            )
+            self._append_log("sistema", f"modo_local={str(on).lower()}")
+        except Exception as err:  # noqa: BLE001
+            self._local_status.setText(f"Falha ao salvar modo_local: {err}")
+
+    def _local_ensure_modo(self) -> None:
+        """Ao usar a aba Local, garante modo_local ativo (sem planilha)."""
+        if not bool(self.payload.get("modo_local")):
+            self.payload["modo_local"] = True
+            if hasattr(self, "chk_modo_local"):
+                self.chk_modo_local.blockSignals(True)
+                self.chk_modo_local.setChecked(True)
+                self.chk_modo_local.blockSignals(False)
+            try:
+                from ace_cmd import _save_payload
+
+                _save_payload(self.payload)
+            except Exception:  # noqa: BLE001
+                pass
+            self._append_log("sistema", "modo_local=true (ativado pelo modo Local)")
+
+    def _local_selected_ids(self) -> list[str]:
+        return [
+            sid
+            for sid, chk in getattr(self, "_local_checks", {}).items()
+            if chk.isChecked()
+        ]
+
+    def _local_refresh_data(self) -> None:
+        try:
+            from ace_local_view import refresh_local_data
+
+            self._local_ensure_modo()
+            r = refresh_local_data(on_status=lambda m: self._append_log("sistema", m))
+            sectors = ((r or {}).get("local") or {}).get("sectors") or {}
+            self._local_status.setText(
+                f"JSON local atualizado · {len(sectors)} setor(es) · sem Sheets/GitHub."
+            )
+            self._append_log("ok", "Dashboard + JSON local atualizados (sem planilha).")
+        except Exception as err:  # noqa: BLE001
+            self._local_status.setText(f"Falha: {err}")
+            self._append_log("erro", str(err))
+
+    def _local_open_selected(self) -> None:
+        ids = self._local_selected_ids()
+        if not ids:
+            self._local_status.setText("Marque ao menos uma tela.")
+            return
+        self._local_ensure_modo()
+        self._open_local_screens(ids)
+
+    def _open_local_from_cmd(self, tokens: list[str]) -> None:
+        """Comando `local` / `local coleta pendencia` — foca aba e abre telas."""
+        self._local_ensure_modo()
+        if hasattr(self, "_right_tabs"):
+            try:
+                self._right_tabs.setCurrentIndex(1)
+            except Exception:  # noqa: BLE001
+                pass
+        if not tokens and getattr(self, "_local_checks", None):
+            ids = self._local_selected_ids()
+            if not ids:
+                self._append_log("sistema", "Local: nenhuma tela marcada — abrindo todas.")
+                ids = None
+        else:
+            ids = list(tokens) if tokens else None
+        self._open_local_screens(ids)
+
+    def _open_local_screens(self, ids: list[str] | None) -> None:
+        try:
+            from ace_local_view import open_local_screens, screen_label
+
+            result = open_local_screens(
+                ids,
+                parent=None,  # janelas independentes (não filhas do CRT)
+                refresh=True,
+                prefer_embed=True,
+                on_status=lambda m: self._append_log("sistema", m),
+            )
+            labels = ", ".join(screen_label(s) for s in (result.get("screens") or []))
+            mode = "janelas internas" if result.get("embed") else "navegador"
+            msg = f"Local OK · {mode} · {labels}"
+            self._local_status.setText(msg)
+            self._append_log("ok", msg)
+            self.mode.setText("LOCAL")
+        except Exception as err:  # noqa: BLE001
+            self._local_status.setText(f"Falha local: {err}")
+            self._append_log("erro", str(err))
+            QMessageBox.warning(self, "Modo local", str(err))
 
     def _build_tv_tab(self) -> QWidget:
         wrap = QWidget()
@@ -1372,6 +1562,12 @@ class AceCrtConsole(QWidget):
         if low in {"parar", "stop", "halt"}:
             self._pending_cmd = None
             self._stop_auto()
+            return
+
+        parts_probe = raw.split()
+        head_probe = parts_probe[0].lower().lstrip("/") if parts_probe else ""
+        if head_probe in {"local", "tvlocal", "dashlocal", "telas"}:
+            self._open_local_from_cmd(parts_probe[1:])
             return
 
         if self._worker and self._worker.isRunning():

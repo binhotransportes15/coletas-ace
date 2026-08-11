@@ -69,6 +69,7 @@ def download_reports_31(
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
+    clean_downloads: bool = True,
 ) -> dict[str, Any]:
     """
     1 login · N telas 31 em paralelo · ► em todas → fila 156 · baixa todos.
@@ -88,7 +89,8 @@ def download_reports_31(
     fim = to_ssw_ddmmyy(fim_ddmm)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    cleanup_downloads(DOWNLOAD_DIR, on_status=status)
+    if clean_downloads:
+        cleanup_downloads(DOWNLOAD_DIR, on_status=status)
 
     client = AceSswClient(
         ini_ddmm,
