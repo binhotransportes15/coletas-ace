@@ -3033,13 +3033,18 @@
     .emi-exp-list { overflow: auto; min-height: 0; padding-right: 4px; }
     .emi-exp-row {
       display: grid;
-      grid-template-columns: 92px 1fr 56px;
+      grid-template-columns: minmax(140px, 1.15fr) 1.4fr 48px;
       gap: 8px;
       align-items: center;
       margin-bottom: 8px;
       font-size: clamp(12px, 1.1vw, 15px);
       font-weight: 700;
       color: #e2e8f0;
+    }
+    .emi-exp-row > span:first-child {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .emi-exp-bar {
       height: 12px;
@@ -4856,7 +4861,7 @@
             <section class="arm-hero-card">
               <header>
                 <h2>Expedidores</h2>
-                <div class="meta">coluna K · login</div>
+                <div class="meta">nome completo</div>
               </header>
               <div class="emi-exp-list" id="emiExpedidores"></div>
             </section>
@@ -7157,9 +7162,9 @@
       host.innerHTML = items.map((r) => {
         const qtd = Number(r.qtd) || 0;
         const w = Math.max(4, Math.round((qtd / max) * 100));
-        const nome = esc(String(r.nome_exibicao || r.nome || '—').toUpperCase());
+        const nome = esc(String(r.nome_exibicao || r.nome || '—'));
         return `<div class="emi-exp-row">
-          <span>${nome}</span>
+          <span title="${nome}">${nome}</span>
           <div class="emi-exp-bar"><i style="width:${w}%"></i></div>
           <span class="qtd">${qtd}</span>
         </div>`;

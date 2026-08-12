@@ -1,7 +1,7 @@
 """Parser Excel SSW 455 — Fretes Expedidos/Recebidos (Emissão).
 
 Agrega KPIs do painel com colunas fixas do Excel:
-  H=hora · K=login · BD=peso · BE=volumes · BF=cubagem
+  H=hora · K=login · BD=peso · BE=cubagem · BF=volumes
   BI=cancelados · BN=valor mercadoria · BQ=frete
   DIA / NOITE (coluna H) · Expedidores (coluna K)
 """
@@ -33,16 +33,32 @@ DIA_END = 18  # exclusive
 COL_K_LOGIN = 11
 
 # Colunas fixas do Excel 455 (letras → métricas do painel)
-# BF citado 2× no briefing; layout padrão SSW: BD peso · BE volumes · BF cubagem
+# Ordem real SSW: BD=peso · BE=cubagem · BF=qtde volumes · BI=cancel · BN=merc · BQ=frete
 COL_FIXED_455: dict[str, str] = {
     "hora": "H",
     "login": "K",
     "peso": "BD",
-    "volumes": "BE",  # qtde volumes (entre peso e cubagem)
-    "cubagem": "BF",
+    "cubagem": "BE",
+    "volumes": "BF",
     "cancelado": "BI",
     "valor_mercadoria": "BN",
     "frete": "BQ",
+}
+
+# Ranking do painel: só estes logins · exibição = nome completo (direita)
+LOGIN_NOME_455: dict[str, str] = {
+    "l.marque": "Lidiane Marques",
+    "eloi": "Emerson Eloi",
+    "g.fagund": "Gabriel Fagundes",
+    "f.silva": "Flaviana Eneas",
+    "e.beliza": "Edson Belizario",
+    "m.cordei": "Maria Eduarda",
+    "anderson": "Anderson Vieira",
+    "s.silva": "Simone Silva",
+    "j.rodrig": "Julia Rodrigues",
+    "portal": "Portal",
+    "g.nascim": "Gabriely Nascimento",
+    "m.neres": "Mayara Neres",
 }
 
 
@@ -171,11 +187,7 @@ def _norm_header(h: Any) -> str:
 
 
 def _map_headers(headers: list[Any]) -> dict[str, int]:
-    """Mapeia nomes canônicos → índice 0-based.
-
-    Métricas do painel (frete/peso/…) vêm das letras fixas COL_FIXED_455;
-    aqui só reforçamos CTRC / datas / unidade se o header existir.
-    """
+    """Mapeia nomes canônicos → índice 0-based + letras fixas das métricas."""
     norms = [_norm_header(h) for h in headers]
     out: dict[str, int] = {}
 
@@ -189,22 +201,46 @@ def _map_headers(headers: list[Any]) -> dict[str, int]:
                         out.setdefault(k, i)
                     return
 
-    pick(("ctrc",), "ctrc", "conhecimento", "cte", "nr cte", "n cte")
-    pick(("data_emissao",), "data emissao", "emissao", "dt emissao")
+    pick(("ctrc",), "serie numero", "serie/numero", "nr cte", "n cte", "ctrc", "conhecimento", "cte")
+    pick(("data_emissao",), "data emissao", "dt emissao")
+    pick(("hora",), "hora emissao", "hr emissao", "hora de emissao")
     pick(("unidade",), "unidade", "filial", "sigla")
     pick(("liquidacao",), "liquidacao", "liq ")
+    # headers de métricas (se existirem, reforçam; letras fixas sobrescrevem abaixo)
+    pick(("peso",), "peso real", "peso total", "peso kg", "peso")
+    pick(("cubagem",), "cubagem", "m3", "metro cub")
+    pick(("volumes",), "quantidade de volume", "qtde volume", "qtd volume", "volumes", "volume")
+    pick(("valor_mercadoria",), "valor da mercadoria", "valor mercadoria", "vl mercadoria")
+    pick(("frete",), "valor do frete", "valor frete", "frete total", "vl frete", "frete")
+    pick(("cancelado",), "cancelado", "anulado")
+    pick(("expedidor",), "login", "usuario", "usuário", "expedidor")
 
-    # Força letras fixas do briefing (sobrescreve qualquer alias)
+    # Letras fixas do Excel 455 — fonte da verdade das métricas
     out["hora"] = _col_letter_to_idx(COL_FIXED_455["hora"])
-    out["hora_autorizacao"] = out["hora"]  # DIA/NOITE pela coluna H
+    out["hora_autorizacao"] = out["hora"]
     out["expedidor"] = _col_letter_to_idx(COL_FIXED_455["login"])
     out["peso"] = _col_letter_to_idx(COL_FIXED_455["peso"])
-    out["volumes"] = _col_letter_to_idx(COL_FIXED_455["volumes"])
     out["cubagem"] = _col_letter_to_idx(COL_FIXED_455["cubagem"])
+    out["volumes"] = _col_letter_to_idx(COL_FIXED_455["volumes"])
     out["cancelado"] = _col_letter_to_idx(COL_FIXED_455["cancelado"])
     out["valor_mercadoria"] = _col_letter_to_idx(COL_FIXED_455["valor_mercadoria"])
     out["frete"] = _col_letter_to_idx(COL_FIXED_455["frete"])
     return out
+
+
+def _is_junk_row(rec: dict[str, Any]) -> bool:
+    """Descarta cabeçalho residual / linhas sem movimento."""
+    login = str(rec.get("expedidor") or "").strip().lower()
+    ctrc = str(rec.get("ctrc") or "").strip().lower()
+    if login in {"", "login", "usuario", "usuário", "expedidor"}:
+        return True
+    if any(x in ctrc for x in ("serie", "ct-e", "ctrc", "conhecimento", "numero")):
+        return True
+    if ctrc in {"0", "0.0", "-"}:
+        # só aceita se tiver frete/peso real
+        if float(rec.get("peso") or 0) <= 0 and float(rec.get("frete") or 0) <= 0:
+            return True
+    return False
 
 
 def _parse_hora(row: dict[str, Any], raw_row: tuple[Any, ...] | list[Any], colmap: dict[str, int]) -> int | None:
@@ -267,20 +303,22 @@ def _is_cancelado(row: dict[str, str]) -> bool:
     return bool(re.search(r"\bcancel|\banulad|\bsubstitu", blob))
 
 
+def _norm_login(nome: str) -> str:
+    return (nome or "").strip().rstrip("*＊").strip().lower()
+
+
 def _is_expedidor(nome: str) -> bool:
-    """Qualquer login não vazio da coluna K conta."""
-    return bool((nome or "").strip())
+    """Só logins da lista oficial do painel Emissão."""
+    return _norm_login(nome) in LOGIN_NOME_455
 
 
 def _display_expedidor(nome: str) -> str:
-    """Exibe o login (coluna K), sem sufixo * se houver."""
+    """Nome completo no ranking (direita) — nunca o login."""
+    key = _norm_login(nome)
+    if key in LOGIN_NOME_455:
+        return LOGIN_NOME_455[key]
     t = (nome or "").strip().rstrip("*＊").strip()
-    if not t:
-        return "—"
-    parts = re.split(r"[\s._\-]+", t)
-    if parts and len(parts[0]) >= 2:
-        return parts[0].upper()
-    return t.upper()
+    return t.title() if t else "—"
 
 
 def _login_from_row(row: tuple[Any, ...] | list[Any], colmap: dict[str, int]) -> str:
@@ -379,6 +417,8 @@ def parse_excel_455(path: Path | str) -> list[dict[str, Any]]:
             rec["hora_autorizacao"] = "" if hora is None else f"{hora:02d}:00"
             rec["_hora"] = hora
             rec["_cancelado"] = _is_cancelado(rec)
+            if _is_junk_row(rec):
+                continue
             out.append(rec)
         return out
     finally:
@@ -438,6 +478,8 @@ def _parse_text_455(path: Path) -> list[dict[str, Any]]:
         rec["hora_autorizacao"] = "" if hora is None else f"{hora:02d}:00"
         rec["_hora"] = hora
         rec["_cancelado"] = _is_cancelado(rec)
+        if _is_junk_row(rec):
+            continue
         out.append(rec)
     return out
 
@@ -482,20 +524,20 @@ def analyze_reports_455(
         else:
             noite += 1
 
-    # Expedidores: TODOS os logins da coluna K (sem filtro *)
+    # Expedidores: só logins oficiais · chave = login normalizado
     exp_count: Counter[str] = Counter()
     for r in rows:
-        nome = str(r.get("expedidor") or "").strip()
-        if _is_expedidor(nome):
-            exp_count[nome] += 1
+        login = _norm_login(str(r.get("expedidor") or ""))
+        if _is_expedidor(login):
+            exp_count[login] += 1
 
     total_exp = sum(exp_count.values()) or 1
     expedidores = []
-    for nome, qtd in exp_count.most_common(20):
+    for login, qtd in exp_count.most_common(20):
         expedidores.append(
             {
-                "nome": nome,
-                "nome_exibicao": _display_expedidor(nome),
+                "nome": login,
+                "nome_exibicao": _display_expedidor(login),
                 "qtd": qtd,
                 "pct": round(100.0 * qtd / total_exp, 1),
             }
