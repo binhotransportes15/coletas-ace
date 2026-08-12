@@ -1306,11 +1306,11 @@ def run_pipeline_455(
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
     headless: bool | None = None,
-    unidade: str = "",
+    unidade: str = "SPO",
     on_status: StatusCallback | None = None,
     clean_downloads: bool = True,
 ) -> dict[str, Any]:
-    """SSW 455: Fretes Expedidos/Recebidos → painel Emissão."""
+    """SSW 455: Fretes Expedidos (SPO/E) · dia emissão → painel Emissão."""
     status = on_status or _noop
     ensure_dirs()
     creds = credentials or load_credentials()
@@ -1322,7 +1322,9 @@ def run_pipeline_455(
     status(f"ACE EMISSAO · 455 | {datetime.now():%d/%m %H:%M:%S}")
     use_headless = cfg.headless if headless is None else headless
     dl = download_reports_455(
-        unidade=unidade,
+        unidade=unidade or "SPO",
+        tipo_unidade="E",
+        arquivo="E",
         credentials=creds,
         settings=cfg,
         headless=use_headless,

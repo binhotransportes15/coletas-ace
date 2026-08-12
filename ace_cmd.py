@@ -706,14 +706,14 @@ def run_pipeline_455_cmd(extra: list[str] | None = None) -> str:
     from pipeline import run_pipeline_455
 
     extra = extra or []
-    unidade = ""
+    unidade = "SPO"
     for x in extra:
         t = str(x).strip().upper()
-        if t in {"SPO", "LEO", "RIS", "GRU", "ALL", "*"}:
-            unidade = "" if t in {"ALL", "*"} else t
+        if t in {"SPO", "LEO", "RIS", "GRU"}:
+            unidade = t
             break
     print("\n=== Pipeline 455 (Emissão) ===")
-    print(f"  unidade={unidade or '(todas / menu)'}")
+    print(f"  unidade={unidade} · tipo=E(expedidora) · arquivo=E · período=emissão hoje")
     result = run_pipeline_455(
         on_status=_on_status, headless=_cfg_headless(), unidade=unidade
     )

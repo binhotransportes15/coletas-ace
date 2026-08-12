@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 from config import CACHE_DIR, load_credentials, load_settings
-from dates import periodo_mes_ate_hoje
+from dates import periodo_hoje
 from ssw_client import AceSswClient
 
 OUT = CACHE_DIR / "dump_455_fields.json"
@@ -31,7 +31,7 @@ def main() -> None:
     _ensure_playwright_path()
     creds = load_credentials()
     settings = load_settings()
-    ini, fim = periodo_mes_ate_hoje()
+    ini, fim = periodo_hoje()
     client = AceSswClient(
         ini,
         fim,
