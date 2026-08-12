@@ -80,6 +80,7 @@ MENU_PROGRAM = {
     "73": "/bin/ssw0332",  # 073 - Consulta de CTRBs e OSs (CSVssw0332)
     "76": "/bin/ssw0216",  # 076 - Demonstrativo Coletas/Entregas (remuneração)
     "200": "/bin/ssw0644",  # 200 - Relação de Manifestos Operacionais
+    "455": "/bin/ssw0230",  # 455 - Fretes Expedidos/Recebidos - CTRCs (Emissão)
     "156": "/bin/ssw1440",  # 156 - Fila de processamento em lotes
 }
 

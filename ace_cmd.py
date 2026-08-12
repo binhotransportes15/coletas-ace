@@ -314,6 +314,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print(f"    Dist  {g('50')} coleta  {g('103')} torres  {g('36')} entrega  {g('225')} agenda")
     print(f"    Arm   {g('78')} patio   {g('177')} conf.   {g('607')} nomes   {g('sync78')}")
     print(f"    Pend  {g('31')} (10 cod.)  {g('sync31')}   Contr {g('73')}  {g('73 so73')}")
+    print(f"    Emis  {g('455')} / {g('emissao')}  {g('sync455')}   Armaz {g('78')}  {g('sync78')}")
     print(f"    Sync  {g('sync')} dist   Loop {g('/automatica')}  {g('piloto_sites')}  {g('sites')}")
     print(f"    Local {g('local')}  {g('lan')}  {g('dash')}   Config {g('/e')}  {g('show')}  {g('help')}")
     print(f"    {g('/viz')} on|off   {g('brand')} ANSI   {g('crt')} CRT   {g('sair')}")
@@ -374,6 +375,7 @@ def cmd_help() -> str:
             "    sync      distribuicao (50/103/36/225)",
             "    sync78    armazem (078 + 177)",
             "    sync31    pendencia (031)",
+            "    sync455   emissao (455)",
             "",
             "LOOP E STATUS",
             "    /automatica [intervalo]   ciclo continuo (ex.: /automatica 5m)",
@@ -699,6 +701,31 @@ def run_pipeline_31_cmd(extra: list[str] | None = None) -> str:
     )
 
 
+def run_pipeline_455_cmd(extra: list[str] | None = None) -> str:
+    """`455` / `emissao` — Fretes Expedidos/Recebidos → painel Emissão."""
+    from pipeline import run_pipeline_455
+
+    extra = extra or []
+    unidade = ""
+    for x in extra:
+        t = str(x).strip().upper()
+        if t in {"SPO", "LEO", "RIS", "GRU", "ALL", "*"}:
+            unidade = "" if t in {"ALL", "*"} else t
+            break
+    print("\n=== Pipeline 455 (Emissão) ===")
+    print(f"  unidade={unidade or '(todas / menu)'}")
+    result = run_pipeline_455(
+        on_status=_on_status, headless=_cfg_headless(), unidade=unidade
+    )
+    resumo = result.get("resumo") or {}
+    return (
+        f"455 OK · CTEs={resumo.get('ctes')} "
+        f"frete={resumo.get('frete_fmt')} "
+        f"dia={resumo.get('dia')} noite={resumo.get('noite')} "
+        f"cancel={resumo.get('cancelados')}"
+    )
+
+
 def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
     """`73` / `contratacao` · `73 so73` só 073 · arquivos locais 073/0644."""
     from pipeline import run_pipeline_contratacao
@@ -748,6 +775,21 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
         f"custo=R${resumo.get('custo_fmt')} frete=R${resumo.get('frete_fmt')} "
         f"peso={resumo.get('peso_fmt')}kg · placas={len(result.get('placas') or [])}{extra}"
     )
+
+
+def run_sync_455() -> str:
+    from publish_dashboard import publish_emissao_local
+    from sheets_sync_455 import sync_sheets_455
+
+    print("\n=== Sync Sheets Emissão 455 ===")
+    r = sync_sheets_455(on_status=_on_status)
+    publish_emissao_local(on_status=_on_status)
+    if r.get("ok"):
+        return (
+            f"sync455 OK · expedidores={r.get('expedidores')} "
+            f"horas={r.get('horas')}"
+        )
+    return f"sync455: {r.get('error') or r.get('reason') or r}"
 
 
 def run_sync_31() -> str:
@@ -1068,10 +1110,14 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
         return (run_pipeline_78_cmd(), _load_payload())
     if cmd in {"31", "/31", "pendencia", "/pendencia", "pendencias"}:
         return (run_pipeline_31_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
+    if cmd in {"455", "/455", "emissao", "/emissao", "emissão", "/emissão"}:
+        return (run_pipeline_455_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
     if cmd in {"73", "/73", "76", "/76", "contratacao", "/contratacao", "contratação"}:
         return (run_pipeline_contratacao_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
     if cmd in {"sync31", "/sync31", "sheets31"}:
         return (run_sync_31(), payload)
+    if cmd in {"sync455", "/sync455", "sheets455", "syncemissao"}:
+        return (run_sync_455(), payload)
     if cmd in {"177", "/177", "conferentes", "/conferentes"}:
         return (run_pipeline_177_cmd(), _load_payload())
     if cmd in {"607", "/607", "0607", "/0607", "mapa", "nomes"}:
@@ -1261,6 +1307,9 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0].lstrip("/").lower() in {"sync31", "sheets31"}:
         print(run_sync_31())
         return 0
+    if args and args[0].lstrip("/").lower() in {"sync455", "sheets455", "syncemissao"}:
+        print(run_sync_455())
+        return 0
     if args and args[0].lstrip("/").lower() in {"piloto_sites", "piloto", "pilotosites"}:
         print(apply_piloto_sites())
         return 0
@@ -1327,6 +1376,8 @@ def main(argv: list[str] | None = None) -> int:
                 payload = _load_payload()
             elif cmd in {"31", "/31", "pendencia", "/pendencia", "pendencias"}:
                 message = run_pipeline_31_cmd(parts[1:] if len(parts) > 1 else None)
+            elif cmd in {"455", "/455", "emissao", "/emissao", "emissão", "/emissão"}:
+                message = run_pipeline_455_cmd(parts[1:] if len(parts) > 1 else None)
                 payload = _load_payload()
             elif cmd in {"73", "/73", "76", "/76", "contratacao", "/contratacao", "contratação"}:
                 message = run_pipeline_contratacao_cmd(parts[1:] if len(parts) > 1 else None)
@@ -1341,6 +1392,8 @@ def main(argv: list[str] | None = None) -> int:
                 message = run_sync_78()
             elif cmd in {"sync31", "/sync31", "sheets31"}:
                 message = run_sync_31()
+            elif cmd in {"sync455", "/sync455", "sheets455", "syncemissao"}:
+                message = run_sync_455()
             elif cmd in {"3", "sync", "/sync"}:
                 message = run_sync()
             elif cmd in {"4", "dash", "/dash", "dashboard"}:

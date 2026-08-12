@@ -105,10 +105,10 @@ Colunas úteis no piloto (Coleta):
 
 | Setor | Sheets hoje |
 |-------|-------------|
-| Contratação (073) | **não sync** — só `dashboard/data/contratacao/` |
-| Emissão (455) | **ainda não existe** no ACE |
+| Contratação (073) | sync local CSV · painel OK |
+| Emissão (455) | `sheets_sync_455` · abas `Resumo455`, `Expedidores455`, `Horas455` · painel `#tv/emissao` |
 
-Próximas fases: sync TV-ready + páginas Sites por setor.
+Comando: `455` (baixa + analisa + sync) ou `sync455` (só sobe CSV → planilha).
 
 ---
 
@@ -122,7 +122,21 @@ Próximas fases: sync TV-ready + páginas Sites por setor.
 | Armazém | `Resumo78` | 78 |
 | Pendência | `Resumo31` + ofensores | 31 |
 | Contratação | TBD após sync 073 | — |
-| Emissão | TBD após 455 | — |
+| Emissão | embed SPA `#tv/emissao` | `Resumo455` + expedidores + horas |
+
+### 5.1 Implantar Emissão no Google Sites
+
+1. **Apps Script** (planilha ACE): cole/atualize `apps_script/Code.gs` → Implantar → **Nova versão**.
+2. No ACE: `455` (ou `sync455` se o Excel já estiver no cache).
+3. **GitHub Pages** (HTML do painel): um `/push` com o `dashboard/index.html` atualizado (setor Emissão ready).
+4. No **Sites** (`binhotransportes`):
+   - Crie/edite a página **Emissão** (ou substitua o “Em breve”).
+   - Inserir → Incorporar → URL do dashboard em TV:
+     `https://binhotransportes15.github.io/coletas-ace/dashboard/#tv/emissao`
+   - Publique o Sites.
+5. Confirme: TV abre Emissão com KPIs (não “Em breve”); após `455`/`sync455` os números mudam em segundos (F5 no Sites se o iframe cachear).
+
+Embed de planilha pura (só abas) também funciona, mas o layout TV completo usa o SPA acima.
 
 ---
 
@@ -175,7 +189,8 @@ Anote no papel / planilha de teste:
 - Abas “TV-ready” (só KPIs) se o embed bruto for feio.
 - CRT: botão/atalho `sites` (já previsto).
 - Desligar `enable_github_publish` no operacional.
-- Emissão 455 e sync da Contratação entram **depois**, já no trilho Sheets → Sites.
+- Emissão 455: `sync455` + página Sites com embed `#tv/emissao` (ver §5.1).
+- Sync da Contratação entra **depois**, já no trilho Sheets → Sites.
 
 ---
 
@@ -183,4 +198,4 @@ Anote no papel / planilha de teste:
 
 - Não reescreve o `dashboard/index.html` dentro do Sites.
 - Não apaga GitHub Pages nem o servidor LAN.
-- Não implementa SSW 455 nesta fase.
+- Sites continua sendo a casca; o SPA (`index.html`) roda no embed (Pages/LAN).

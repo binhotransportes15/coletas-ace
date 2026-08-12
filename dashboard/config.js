@@ -2,10 +2,12 @@
  * BINHO · OPERACIONAL
  * GitHub Pages hospeda o HTML; dados vêm do Apps Script / planilha única.
  *
- * Mesma URL para Distribuição (50/103/36/225), Armazém (078 + 177) e Pendência (031).
+ * Mesma URL para Distribuição (50/103/36/225), Armazém (078 + 177), Pendência (031)
+ * e Emissão (455).
  * Abas 078: Veiculos78 | Resumo78
  * Abas 177: Conferentes177 | Resumo177
  * Abas 031: Pendencias31 | Resumo31 | Ofensores31
+ * Abas 455: Resumo455 | Expedidores455 | Horas455
  */
 window.ACE_CONFIG = {
   scriptUrl:
@@ -37,5 +39,10 @@ window.ACE_CONFIG = {
     veiculos: "data/contratacao/veiculos_073.csv",
     ctrbs: "data/contratacao/ctrbs_073.csv",
     destinos: "data/contratacao/destinos_073.csv",
+  },
+  emissaoCsv: {
+    resumo: "data/emissao/resumo_455.csv",
+    expedidores: "data/emissao/expedidores_455.csv",
+    horas: "data/emissao/horas_455.csv",
   },
 };

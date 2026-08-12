@@ -19,6 +19,8 @@
  *       | ?action=entregas36 | ?action=romaneios36 | ?action=resumo36
  *       | ?action=agendamentos225 | ?action=resumo225 | ?action=alertas225
  *       | ?action=veiculos78 | ?action=resumo78 | ?action=ping
+ *       | ?action=resumo31 | ?action=ofensores31 | ?action=pendencias31
+ *       | ?action=resumo455 | ?action=expedidores455 | ?action=horas455
  * Escrita do ACE (com token): POST JSON action clear/append/replace|replace_many|ping|bump
  * replace_many: várias abas num POST só (ciclo automático rápido)
  * replace: sobrescreve no lugar (sem clear total) + content_hash (pula se igual)
@@ -33,6 +35,7 @@
  * Abas 078: Veiculos78, Resumo78
  * Abas 177: Conferentes177, Resumo177
  * Abas 031: Pendencias31, Resumo31, Ofensores31
+ * Abas 455: Resumo455, Expedidores455, Horas455
  */
 
 var SPREADSHEET_ID = '1VOkCF1Hn-VUZC7aKu_pa0Hgo1VjjuEJOqFqNSAErCzU';
@@ -93,6 +96,9 @@ function doGet(e) {
       resumo177: 'Resumo177',
       resumo31: 'Resumo31',
       ofensores31: 'Ofensores31',
+      resumo455: 'Resumo455',
+      expedidores455: 'Expedidores455',
+      horas455: 'Horas455',
     };
     if (cachedActions[action]) {
       return cachedSheetJson_(action, cachedActions[action]);

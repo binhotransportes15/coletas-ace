@@ -89,6 +89,8 @@ class AceSettings:
     armazem_in_loop: bool = True
     # 031 — ofensores/SLA (pode demorar: N códigos × Excel)
     pendencia_in_loop: bool = True
+    # 455 — Emissão (fretes expedidos/recebidos)
+    emissao_in_loop: bool = False
     # 073→076+200 por filial destino (ciclo mais longo)
     contratacao_in_loop: bool = True
     # /automatica: dist + 078 + 031 + 073 em paralelo (1 browser cada bloco)
@@ -113,6 +115,7 @@ def ensure_dirs() -> None:
     (DASHBOARD_DIR / "data" / "armazem").mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data" / "pendencia").mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data" / "contratacao").mkdir(parents=True, exist_ok=True)
+    (DASHBOARD_DIR / "data" / "emissao").mkdir(parents=True, exist_ok=True)
     (CACHE_DIR / "local").mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -160,6 +163,7 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         google_sites_url=str(payload.get("google_sites_url") or "").strip(),
         armazem_in_loop=bool(payload.get("armazem_in_loop", defaults.armazem_in_loop)),
         pendencia_in_loop=bool(payload.get("pendencia_in_loop", defaults.pendencia_in_loop)),
+        emissao_in_loop=bool(payload.get("emissao_in_loop", defaults.emissao_in_loop)),
         contratacao_in_loop=bool(
             payload.get("contratacao_in_loop", defaults.contratacao_in_loop)
         ),

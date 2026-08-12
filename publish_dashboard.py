@@ -21,6 +21,11 @@ from parser_ssw31 import (
     PENDENCIAS_31_CSV,
     RESUMO_31_CSV,
 )
+from parser_ssw455 import (
+    EXPEDIDORES_455_CSV,
+    HORAS_455_CSV,
+    RESUMO_455_CSV,
+)
 
 StatusCallback = Callable[[str], None]
 
@@ -98,6 +103,7 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
     )
     paths.update(_copy_armazem_to_dashboard())
     paths.update(_copy_pendencia_to_dashboard())
+    paths.update(_copy_emissao_to_dashboard())
     return paths
 
 
@@ -136,6 +142,41 @@ def publish_pendencia_local(*, on_status: StatusCallback | None = None) -> dict[
     status = on_status or _noop
     paths = _copy_pendencia_to_dashboard()
     status(f"Dashboard Pendência local: {len(paths)} arquivo(s).")
+    return {"ok": True, "local": paths}
+
+
+def _copy_emissao_to_dashboard() -> dict[str, str]:
+    """Copia CSVs 455 para dashboard/data/emissao/."""
+    data_dir = DASHBOARD_DIR / "data" / "emissao"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    out: dict[str, str] = {}
+    defaults = {
+        "resumo_455.csv": (
+            "periodo,mes,atualizado,ctes,peso,peso_fmt,valor_mercadoria,valor_mercadoria_fmt,"
+            "volumes,cubagem,cubagem_fmt,frete,frete_fmt,dia,noite,cancelados\n"
+        ),
+        "expedidores_455.csv": "nome,nome_exibicao,qtd,pct\n",
+        "horas_455.csv": "hora,label,qtd\n",
+    }
+    for src, name in (
+        (RESUMO_455_CSV, "resumo_455.csv"),
+        (EXPEDIDORES_455_CSV, "expedidores_455.csv"),
+        (HORAS_455_CSV, "horas_455.csv"),
+    ):
+        dest = data_dir / name
+        if src.exists():
+            shutil.copy2(src, dest)
+            out[f"emissao/{name}"] = str(dest)
+        elif not dest.exists():
+            dest.write_text(defaults[name], encoding="utf-8-sig")
+            out[f"emissao/{name}"] = str(dest)
+    return out
+
+
+def publish_emissao_local(*, on_status: StatusCallback | None = None) -> dict[str, Any]:
+    status = on_status or _noop
+    paths = _copy_emissao_to_dashboard()
+    status(f"Dashboard Emissão local: {len(paths)} arquivo(s).")
     return {"ok": True, "local": paths}
 
 

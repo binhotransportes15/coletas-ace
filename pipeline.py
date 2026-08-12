@@ -1301,6 +1301,62 @@ def run_pipeline_31(
     }
 
 
+def run_pipeline_455(
+    *,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    headless: bool | None = None,
+    unidade: str = "",
+    on_status: StatusCallback | None = None,
+    clean_downloads: bool = True,
+) -> dict[str, Any]:
+    """SSW 455: Fretes Expedidos/Recebidos → painel Emissão."""
+    status = on_status or _noop
+    ensure_dirs()
+    creds = credentials or load_credentials()
+    cfg = settings or load_settings()
+    from parser_ssw455 import analyze_reports_455
+    from publish_dashboard import publish_emissao_local
+    from ssw_455 import download_reports_455
+
+    status(f"ACE EMISSAO · 455 | {datetime.now():%d/%m %H:%M:%S}")
+    use_headless = cfg.headless if headless is None else headless
+    dl = download_reports_455(
+        unidade=unidade,
+        credentials=creds,
+        settings=cfg,
+        headless=use_headless,
+        on_status=status,
+        clean_downloads=clean_downloads,
+    )
+    analysis = analyze_reports_455(
+        dl.get("files") or [],
+        periodo=str(dl.get("periodo_fmt") or dl.get("period") or ""),
+        on_status=status,
+    )
+    if _should_use_local_store(cfg):
+        status("455 analisado — modo local (JSON/CSV, sem Sheets)…")
+        sheets: dict[str, Any] = {"ok": True, "local": True}
+    else:
+        from sheets_sync_455 import sync_sheets_455
+
+        status("455 analisado — sync Sheets (Sites/TV)…")
+        sheets = sync_sheets_455(settings=cfg, on_status=status)
+    pub = publish_emissao_local(on_status=status)
+    resumo = analysis.get("resumo") or {}
+    status(
+        f"OK · CTEs={resumo.get('ctes')} frete={resumo.get('frete_fmt')} "
+        f"dia={resumo.get('dia')} noite={resumo.get('noite')}"
+    )
+    return {
+        "download": dl,
+        "analysis": analysis,
+        "sheets": sheets,
+        "publish": pub,
+        **analysis,
+    }
+
+
 def run_pipeline_contratacao(
     *,
     credentials: SswCredentials | None = None,
