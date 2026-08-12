@@ -1642,9 +1642,9 @@
       flex: 1;
       min-height: 0;
       display: grid;
-      grid-template-columns: repeat(12, minmax(0, 1fr));
-      grid-template-rows: repeat(12, minmax(0, 1fr));
-      gap: 10px;
+      grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr);
+      grid-template-rows: auto minmax(0, 1fr) minmax(150px, 0.42fr);
+      gap: clamp(8px, 1vw, 14px);
       overflow: hidden;
       position: relative;
       align-content: stretch;
@@ -1659,12 +1659,7 @@
       container-name: dashblock;
     }
     .agenda-layout .dash-block[hidden] { display: none !important; }
-    /* fallback TV fixo — agendamento */
-    .agenda-layout:not(.has-blocks) {
-      grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr);
-      grid-template-rows: auto minmax(0, 1fr) minmax(150px, 0.42fr);
-      gap: clamp(8px, 1vw, 14px);
-    }
+    /* Layout fixo — blocos filhos diretos (sem display:contents / Sites-safe) */
     .agenda-layout:not(.has-blocks) [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
     .agenda-layout:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; }
     .agenda-layout:not(.has-blocks) [data-block="status"] { grid-column: 2; grid-row: 2; }
@@ -1673,8 +1668,25 @@
       container-type: normal !important;
       overflow: hidden;
     }
+    .agenda-layout > .agenda-alert-chip,
+    .agenda-layout > span[hidden],
+    .agenda-layout > span[id^="ag"] {
+      display: none !important;
+    }
+    body.live-mode .agenda-alert-chip.is-on {
+      display: flex !important;
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      z-index: 5;
+    }
 
     /* Blocos posicionados: tipografia acompanha a altura do bloco (sem cortar) */
+    .agenda-layout.has-blocks {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-template-rows: repeat(12, minmax(0, 1fr));
+      gap: 10px;
+    }
     .agenda-layout.has-blocks [data-block="kpis"] {
       overflow: hidden;
     }
@@ -1751,26 +1763,6 @@
     body.dash-scale-large .agenda-layout.has-blocks .torres.agenda-torres .barra strong {
       font-size: clamp(20px, 20cqh, 72px) !important;
     }
-    .agenda-hero {
-      flex: 1;
-      min-height: 0;
-      display: contents;
-    }
-    .agenda-left-col {
-      display: contents;
-    }
-    .agenda-hero > .agenda-alert-chip,
-    .agenda-hero > span[hidden],
-    .agenda-hero > span[id^="ag"] {
-      display: none !important;
-    }
-    body.live-mode .agenda-alert-chip.is-on {
-      display: flex !important;
-      position: absolute;
-      top: 8px;
-      left: 12px;
-      z-index: 5;
-    }
     .agenda-tower-side {
       min-height: 0;
       height: 100%;
@@ -1779,7 +1771,7 @@
       flex-direction: column;
       gap: 14px;
       padding: 18px 16px 20px;
-      margin-top: 28px;
+      margin-top: 0;
       border-radius: 14px;
       border: 1px solid #1e293b;
       background: rgba(2,6,23,.55);
@@ -1882,7 +1874,7 @@
     body.live-mode .agenda-amanha-wrap { display: flex; }
     .agenda-cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 8px;
       padding: 10px 12px 12px;
       overflow: auto;
@@ -2276,13 +2268,60 @@
     body.tv-mode.live-mode .agenda-pizza .callout-count { font-size: 22px; }
     body.tv-mode.live-mode .tower-bar .track { height: 18px; }
     @media (max-width: 980px) {
-      body.live-mode .agenda-hero {
+      /* Só empilha em telas realmente estreitas — Sites/TV iframe usa o grid 2 colunas */
+      body.live-mode:not(.tv-mode) .agenda-layout:not(.has-blocks) {
         grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(220px, 1fr) auto minmax(140px, 0.45fr);
       }
-      body.live-mode .agenda-tower-side {
-        margin-top: 0;
+      body.live-mode:not(.tv-mode) .agenda-layout:not(.has-blocks) [data-block="chart"] {
+        grid-column: 1;
+        grid-row: 2;
+      }
+      body.live-mode:not(.tv-mode) .agenda-layout:not(.has-blocks) [data-block="status"] {
+        grid-column: 1;
+        grid-row: 3;
         max-height: 220px;
       }
+      body.live-mode:not(.tv-mode) .agenda-layout:not(.has-blocks) [data-block="amanha"] {
+        grid-column: 1;
+        grid-row: 4;
+      }
+    }
+    /* iframe Sites / TV: nunca colapsar Agendamento em coluna única */
+    html.tv-in-frame .agenda-layout:not(.has-blocks),
+    body.tv-mode .agenda-layout:not(.has-blocks) {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1.4fr) minmax(200px, 0.7fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) minmax(140px, 0.4fr) !important;
+    }
+    html.tv-in-frame .agenda-layout:not(.has-blocks) [data-block="kpis"],
+    body.tv-mode .agenda-layout:not(.has-blocks) [data-block="kpis"] {
+      grid-column: 1 / -1 !important;
+      grid-row: 1 !important;
+    }
+    html.tv-in-frame .agenda-layout:not(.has-blocks) [data-block="chart"],
+    body.tv-mode .agenda-layout:not(.has-blocks) [data-block="chart"] {
+      grid-column: 1 !important;
+      grid-row: 2 !important;
+    }
+    html.tv-in-frame .agenda-layout:not(.has-blocks) [data-block="status"],
+    body.tv-mode .agenda-layout:not(.has-blocks) [data-block="status"] {
+      grid-column: 2 !important;
+      grid-row: 2 !important;
+      max-height: none !important;
+    }
+    html.tv-in-frame .agenda-layout:not(.has-blocks) [data-block="amanha"],
+    body.tv-mode .agenda-layout:not(.has-blocks) [data-block="amanha"] {
+      grid-column: 1 / -1 !important;
+      grid-row: 3 !important;
+    }
+    html.tv-in-frame .agenda-kpis,
+    body.tv-mode .agenda-kpis {
+      grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+    }
+    html.tv-in-frame .agenda-cards,
+    body.tv-mode .agenda-cards {
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
     }
     @keyframes sirenBlink {
       0%, 100% { opacity: 1; }
@@ -4403,58 +4442,57 @@
           </div>
         </div>
 
-        <div class="agenda-hero">
-          <div class="agenda-left-col">
-            <div class="agenda-chart-stage dash-block" data-block="chart">
-              <div class="agenda-towers-wrap" id="agendaTowersWrap" aria-label="Torres de agendamento">
-                <div class="torres agenda-torres" id="agendaTorres">
-                  <div class="torre t-col">
-                    <div class="pin" title="Quantidade"><span id="agRankOk">0</span></div>
-                    <div class="barra" id="agBarOk"><strong id="agNOk">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Realizado</div></div>
-                  </div>
-                  <div class="torre t-com">
-                    <div class="pin" title="Quantidade"><span id="agRankRota">0</span></div>
-                    <div class="barra" id="agBarRota"><strong id="agNRota">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Em rota</div></div>
-                  </div>
-                  <div class="torre t-cad">
-                    <div class="pin" title="Quantidade"><span id="agRankPar">0</span></div>
-                    <div class="barra" id="agBarPar"><strong id="agNPar">0<span class="pct-sign">%</span></strong></div>
-                    <div class="base"><div class="lbl">Parado</div></div>
-                  </div>
-                </div>
+        <div class="agenda-chart-stage dash-block" data-block="chart">
+          <div class="agenda-towers-wrap" id="agendaTowersWrap" aria-label="Torres de agendamento">
+            <div class="torres agenda-torres" id="agendaTorres">
+              <div class="torre t-col">
+                <div class="pin" title="Quantidade"><span id="agRankOk">0</span></div>
+                <div class="barra" id="agBarOk"><strong id="agNOk">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Realizado</div></div>
               </div>
-              <div class="agenda-pizza-wrap" id="agendaPizzaWrap" hidden>
-                <svg id="agendaPizza" class="agenda-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de agendamentos"></svg>
+              <div class="torre t-com">
+                <div class="pin" title="Quantidade"><span id="agRankRota">0</span></div>
+                <div class="barra" id="agBarRota"><strong id="agNRota">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Em rota</div></div>
+              </div>
+              <div class="torre t-cad">
+                <div class="pin" title="Quantidade"><span id="agRankPar">0</span></div>
+                <div class="barra" id="agBarPar"><strong id="agNPar">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Parado</div></div>
               </div>
             </div>
-            <div class="agenda-amanha-wrap dash-block" data-block="amanha" aria-label="Agendamentos de amanhã">
-              <div class="agenda-table-head">
-                <strong>Amanhã</strong>
-                <span class="muted" id="agendaFilaMeta">dia seguinte</span>
-              </div>
-              <div class="agenda-cards" id="agendaAmanhaCards"></div>
-            </div>
           </div>
-          <aside class="agenda-tower-side dash-block" data-block="status" aria-label="Status e alertas">
-            <div class="tower-side-title">Status dos agendamentos</div>
-            <div class="tower-bars" id="agendaStatusBars"></div>
-            <div class="tower-side-title">Alertas</div>
-            <div class="tower-alerts" id="agendaTowerAlerts"></div>
-          </aside>
-          <div class="agenda-alert-chip" id="agendaAlertChip" hidden>
-            <span>⚠ Sem saída hoje</span>
-            <b id="agAlert">0</b>
+          <div class="agenda-pizza-wrap" id="agendaPizzaWrap" hidden>
+            <svg id="agendaPizza" class="agenda-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de agendamentos"></svg>
           </div>
-          <span id="agTotal" hidden>0</span>
-          <span id="agRota" hidden>0</span>
-          <span id="agPar" hidden>0</span>
-          <span id="agOk" hidden>0</span>
-          <span id="agRotaPct" hidden>0%</span>
-          <span id="agParPct" hidden>0%</span>
-          <span id="agOkPct" hidden>0%</span>
         </div>
+
+        <aside class="agenda-tower-side dash-block" data-block="status" aria-label="Status e alertas">
+          <div class="tower-side-title">Status dos agendamentos</div>
+          <div class="tower-bars" id="agendaStatusBars"></div>
+          <div class="tower-side-title">Alertas</div>
+          <div class="tower-alerts" id="agendaTowerAlerts"></div>
+        </aside>
+
+        <div class="agenda-amanha-wrap dash-block" data-block="amanha" aria-label="Agendamentos de amanhã">
+          <div class="agenda-table-head">
+            <strong>Amanhã</strong>
+            <span class="muted" id="agendaFilaMeta">dia seguinte</span>
+          </div>
+          <div class="agenda-cards" id="agendaAmanhaCards"></div>
+        </div>
+
+        <div class="agenda-alert-chip" id="agendaAlertChip" hidden>
+          <span>⚠ Sem saída hoje</span>
+          <b id="agAlert">0</b>
+        </div>
+        <span id="agTotal" hidden>0</span>
+        <span id="agRota" hidden>0</span>
+        <span id="agPar" hidden>0</span>
+        <span id="agOk" hidden>0</span>
+        <span id="agRotaPct" hidden>0%</span>
+        <span id="agParPct" hidden>0%</span>
+        <span id="agOkPct" hidden>0%</span>
         </div>
 
         <div class="agenda-alerts" id="agendaAlerts"></div>
