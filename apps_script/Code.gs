@@ -21,7 +21,8 @@
  *       | ?action=veiculos78 | ?action=resumo78 | ?action=ping
  * Escrita do ACE (com token): POST JSON action clear/append/replace|replace_many|ping|bump
  * replace_many: várias abas num POST só (ciclo automático rápido)
- * replace: clear+setValues (rápido em volume) + content_hash (pula se igual)
+ * replace: sobrescreve no lugar (sem clear total) + content_hash (pula se igual)
+ *         → TV/dashboard não vê aba vazia no meio do sync
  * GET action=version → {version} para o site não reler a planilha se nada mudou
  * CacheService nos resumos leves (TTL curto, invalidado no bump)
  * LockService evita POST em paralelo travar
@@ -563,17 +564,36 @@ function replaceSheetUnlocked_(name, headers, rows, contentHash) {
 
   var sh = getOrCreateSheet_(name);
   var matrix = [headers].concat(rowsToMatrix_(headers, rows));
+  var height = Math.max(matrix.length, 1);
   var width = Math.max(headers.length, 1);
 
-  sh.clear();
-  var rangeAll = sh.getRange(1, 1, matrix.length, width);
+  // Garante espaço antes de escrever (sem apagar a aba inteira)
+  var maxRows = sh.getMaxRows();
+  var maxCols = sh.getMaxColumns();
+  if (maxRows < height) sh.insertRowsAfter(maxRows, height - maxRows);
+  if (maxCols < width) sh.insertColumnsAfter(maxCols, width - maxCols);
+
+  // Antes: sh.clear() + setValues → janela com dashboard zerado.
+  // Agora: sobrescreve A1 e só limpa o excedente (TV sempre vê dados velhos ou novos).
+  var prevLastRow = Math.max(sh.getLastRow(), 1);
+  var prevLastCol = Math.max(sh.getLastColumn(), 1);
+
+  var rangeAll = sh.getRange(1, 1, height, width);
   rangeAll.setNumberFormat('@');
   rangeAll.setValues(matrix);
+
+  if (prevLastRow > height) {
+    sh.getRange(height + 1, 1, prevLastRow - height, Math.max(prevLastCol, width)).clearContent();
+  }
+  if (prevLastCol > width) {
+    sh.getRange(1, width + 1, height, prevLastCol - width).clearContent();
+  }
 
   if (hash) {
     setSheetHash_(name, hash);
   }
 
+  // Limpa rascunhos antigos de double-buffer (se existirem)
   var ss = getSpreadsheet_();
   var oldTemp = ss.getSheetByName(String(name) + '__next');
   if (oldTemp) {

@@ -80,6 +80,10 @@ class AceSettings:
     github_repo: str = ""  # owner/repo
     github_branch: str = "main"
     github_token_env: str = "GH_TOKEN"
+    # Parede TV: sites | github | local | auto (ver docs/CONCEITO_SITES.md)
+    publish_target: str = "auto"
+    # URL pública do Google Sites (comando `sites` / piloto)
+    google_sites_url: str = ""
     # Se true, /automatica também captura a tela 078 no fim do ciclo
     # (Sheets 078 usa a mesma enable_sheets / apps_script_url / token)
     armazem_in_loop: bool = True
@@ -149,6 +153,11 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
             payload.get("github_token_env") or defaults.github_token_env
         ).strip()
         or defaults.github_token_env,
+        publish_target=str(payload.get("publish_target") or defaults.publish_target)
+        .strip()
+        .lower()
+        or defaults.publish_target,
+        google_sites_url=str(payload.get("google_sites_url") or "").strip(),
         armazem_in_loop=bool(payload.get("armazem_in_loop", defaults.armazem_in_loop)),
         pendencia_in_loop=bool(payload.get("pendencia_in_loop", defaults.pendencia_in_loop)),
         contratacao_in_loop=bool(
@@ -170,6 +179,36 @@ def sheets_enabled(settings: AceSettings | None = None) -> bool:
     if getattr(cfg, "modo_local", False):
         return False
     return bool(getattr(cfg, "enable_sheets", False))
+
+
+def resolve_publish_target(settings: AceSettings | None = None) -> str:
+    """sites | github | local — ver docs/CONCEITO_SITES.md."""
+    cfg = settings or load_settings()
+    raw = str(getattr(cfg, "publish_target", "") or "auto").strip().lower()
+    if raw in {"sites", "site", "googlesites"}:
+        return "sites"
+    if raw in {"github", "gh", "pages"}:
+        return "github"
+    if raw in {"local", "lan", "offline"}:
+        return "local"
+    # auto
+    if getattr(cfg, "modo_local", False):
+        return "local"
+    if getattr(cfg, "enable_github_publish", False):
+        return "github"
+    if getattr(cfg, "enable_sheets", False):
+        return "sites"
+    return "local"
+
+
+def github_publish_allowed(settings: AceSettings | None = None) -> bool:
+    """Push Pages só se destino for github e flags ok."""
+    cfg = settings or load_settings()
+    if getattr(cfg, "modo_local", False):
+        return False
+    if resolve_publish_target(cfg) != "github":
+        return False
+    return bool(getattr(cfg, "enable_github_publish", False))
 
 
 def load_credentials() -> SswCredentials:

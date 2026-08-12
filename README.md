@@ -1,6 +1,6 @@
 # ACE · Analisador Coleta Entrega (BINHO)
 
-Baixa relatórios do SSW (coleta, entrega, armazém, pendência, contratação), analisa e alimenta **cache local**, telas internas e, se quiser, Google Sheets + GitHub Pages.
+Baixa relatórios do SSW (coleta, entrega, armazém, pendência, contratação), analisa e alimenta **cache local**, telas internas e, se quiser, **Google Sheets → Google Sites** (TV) ou GitHub Pages (legado).
 
 ## Começar
 
@@ -18,16 +18,20 @@ Guia completo (comandos, modo local, paralelo, planilha, pastas):
 
 → **[docs/MANUAL.md](docs/MANUAL.md)**
 
+Conceito TV via Google Sites (piloto):
+
+→ **[docs/CONCEITO_SITES.md](docs/CONCEITO_SITES.md)**
+
 ## Estrutura rápida
 
 | Pasta / arquivo | Conteúdo |
 |-----------------|----------|
 | `ace.bat` | Entrada principal (CRT) |
-| `dashboard/` | Telas TV / SPA |
+| `dashboard/` | Telas TV / SPA (LAN / legado) |
 | `data/` | Config, cache, downloads, logs |
 | `apps_script/` | Integração planilha |
 | `tools/` | Diagnósticos (fora do dia a dia) |
-| `docs/` | Manual |
+| `docs/` | Manual + conceito Sites |
 
 ## Apps Script
 

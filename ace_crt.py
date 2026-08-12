@@ -520,6 +520,8 @@ _FIELD_LABELS: dict[str, str] = {
     "apps_script_token": "Chave da conexão",
     "google_sheet_id": "Código da planilha",
     "enable_github_publish": "Publicar site automaticamente",
+    "publish_target": "Destino TV (sites|github|local|auto)",
+    "google_sites_url": "URL do Google Sites",
     "github_repo": "Pasta do site",
     "github_branch": "Linha do site",
     "github_token_env": "Nome da chave do site",
@@ -946,6 +948,12 @@ class AceCrtConsole(QWidget):
                 w = QComboBox()
                 w.addItem("Diário", "diario")
                 w.addItem("A partir da sexta", "sexta")
+            elif key == "publish_target":
+                w = QComboBox()
+                w.addItem("Auto (Sheets→Sites se planilha ligada)", "auto")
+                w.addItem("Google Sites", "sites")
+                w.addItem("GitHub Pages", "github")
+                w.addItem("Só local", "local")
             else:
                 w = QLineEdit()
                 if secret:
@@ -1530,7 +1538,8 @@ class AceCrtConsole(QWidget):
             if isinstance(w, QCheckBox):
                 w.setChecked(bool(val))
             elif isinstance(w, QComboBox):
-                s = str(val or "diario")
+                default = "auto" if key == "publish_target" else "diario"
+                s = str(val or default)
                 idx = w.findData(s)
                 if idx < 0:
                     idx = w.findText(s)
@@ -1619,6 +1628,12 @@ class AceCrtConsole(QWidget):
         p = self.payload or {}
         viz = "navegador ligado" if not p.get("headless", True) else "navegador oculto"
         sheets = "planilha ligada" if p.get("enable_sheets") else "planilha desligada"
+        try:
+            from config import resolve_publish_target, load_settings
+
+            dest = resolve_publish_target(load_settings())
+        except Exception:
+            dest = str(p.get("publish_target") or "auto")
         arm = "armazém no ciclo" if p.get("armazem_in_loop", True) else "armazém fora do ciclo"
         pend = "pendência no ciclo" if p.get("pendencia_in_loop", True) else "pendência fora do ciclo"
         ctr = "contratação no ciclo" if p.get("contratacao_in_loop", True) else "contratação fora do ciclo"
@@ -1626,7 +1641,7 @@ class AceCrtConsole(QWidget):
         modo_txt = "diário" if modo == "diario" else "a partir da sexta"
         self.meta.setText(
             f"usuário {p.get('user') or '—'}  ·  unidades {p.get('unit') or '—'}\n"
-            f"{sheets}  ·  {viz}\n"
+            f"{sheets}  ·  TV={dest}  ·  {viz}\n"
             f"{arm}  ·  {pend}  ·  {ctr}\n"
             f"a cada {p.get('loop_intervalo') or '5m'}  ·  {modo_txt}"
         )

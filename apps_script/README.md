@@ -32,6 +32,11 @@ Copie o **ID** da URL:
 4. Quem tem acesso: **Qualquer pessoa**
 5. Copie a URL `.../exec`
 
+### Sync sem “zerar” a TV
+O `replace` **não apaga mais a aba inteira** antes de gravar: sobrescreve no lugar e limpa só o excedente. Assim, quem abre o Sites/dashboard no meio do ciclo do ACE continua vendo os dados anteriores até os novos terminarem de gravar.
+
+Depois de atualizar o `Code.gs`, publique **Nova versão** da App da Web (só Salvar no editor não basta).
+
 ## 4) Configurar o ACE (`data/config.json`)
 ```json
 "enable_sheets": true,

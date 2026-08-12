@@ -266,7 +266,7 @@ def _send_sheet(
     *,
     on_status: StatusCallback,
 ) -> dict[str, Any]:
-    """Substitui a aba (clear+write). Pula se hash local/remoto igual."""
+    """Substitui a aba (overwrite no Apps Script, sem clear total). Pula se hash igual."""
     digest = _content_hash(headers, rows)
     if _local_hash_match(sheet, digest):
         on_status(f"Sheets: {sheet} igual (local) — pulou rede.")

@@ -49,6 +49,8 @@ Atalhos úteis no prompt: `local`, `automatica`, `50`, `31`, `73`, `parar`, `hel
 | `73` | Contratação: 073 Relatório (T+A) → filiais 076+200 · mix COLETA/EN × TRANSFERÊNCIA |
 | `sync` | Envia distribuição à planilha (se não estiver em modo local) |
 | `dash` | Atualiza arquivos do dashboard local |
+| `piloto_sites` | Liga Sheets + destino Sites (desliga GitHub Pages) |
+| `sites` | Mostra destino TV e abre o Google Sites |
 | `local` | Abre telas internas (veja §4) |
 | `/automatica` ou `automatica` | Loop contínuo |
 | `/push` | Publica no GitHub Pages |
@@ -86,6 +88,26 @@ Na aba **Local**, marque as telas e use **Abrir selecionadas** (várias janelas 
 Telas: `coleta` · `entrega` · `agendamento` · `armazem` · `conferentes` · `pendencia` · `contratacao`
 
 Para voltar à nuvem: `/e modo_local false` e `enable_sheets true` (se for usar planilha).
+
+---
+
+## 4.1 Google Sites (conceito TV)
+
+A parede pode consumir **Google Sites** alimentado pela planilha, em vez do GitHub Pages (mais lento).
+
+Documento completo: **[`docs/CONCEITO_SITES.md`](CONCEITO_SITES.md)**
+
+Piloto rápido:
+
+```text
+piloto_sites
+/e google_sites_url https://sites.google.com/view/...
+103
+sync
+sites
+```
+
+Campos: `publish_target` (`sites` \| `github` \| `local` \| `auto`) · `google_sites_url`.
 
 ### Acesso na mesma rede (celular / outra TV)
 

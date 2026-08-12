@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from config import DASHBOARD_DIR, BASE_DIR, AceSettings, load_settings
+from config import DASHBOARD_DIR, BASE_DIR, AceSettings, github_publish_allowed, load_settings, resolve_publish_target
 from parser_ssw0157 import COLETAS_CSV, RESUMO_CSV, HISTORICO_CSV
 from parser_ssw103 import COLETAS_103_CSV, RESUMO_103_CSV
 from parser_ssw0146 import ENTREGAS_36_CSV, ROMANEIOS_36_CSV, RESUMO_36_CSV
@@ -443,6 +443,25 @@ def publish_dashboard(
 
     if not allow_push or getattr(cfg, "modo_local", False):
         status("Dashboard local atualizado (sem GitHub).")
+        result["skipped_push"] = True
+        result["publish_target"] = resolve_publish_target(cfg)
+        return result
+
+    target = resolve_publish_target(cfg)
+    result["publish_target"] = target
+    if target == "sites":
+        status(
+            "Dashboard local atualizado (destino=sites — use `sync` + Google Sites; sem push)."
+        )
+        result["skipped_push"] = True
+        return result
+    if target == "local":
+        status("Dashboard local atualizado (destino=local — sem push).")
+        result["skipped_push"] = True
+        return result
+
+    if not github_publish_allowed(cfg):
+        status("Dashboard local atualizado (publish GitHub desabilitado / destino ≠ github).")
         result["skipped_push"] = True
         return result
 

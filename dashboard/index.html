@@ -38,6 +38,21 @@
     }
     body.live-mode { overflow: hidden; height: 100vh; }
 
+    /* webOS / Smart TV: vídeo 1×1 em loop impede o protetor de tela */
+    #tvKeepAliveVideo {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      width: 1px;
+      height: 1px;
+      opacity: 0.01;
+      pointer-events: none;
+      z-index: 2147483647;
+      border: 0;
+      outline: none;
+      background: transparent;
+    }
+
     .board {
       width: min(1680px, 100%);
       margin: 0 auto;
@@ -749,11 +764,48 @@
     }
 
     /* ===== MODO TV / TELA INTEIRA ===== */
+    html:has(body.tv-mode) {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: #05080f;
+    }
     body.tv-mode {
       overflow: hidden !important;
       height: 100dvh !important;
-      width: 100vw;
+      width: 100%;
+      max-width: none !important;
       background: #05080f;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    /* Embed (Sites / iframe): preenche o frame inteiro (100dvh falha em iframe baixo) */
+    html.tv-in-frame,
+    html.tv-in-frame body,
+    html.tv-in-frame body.tv-mode {
+      height: 100% !important;
+      width: 100% !important;
+      max-width: none !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #05080f;
+    }
+    html.tv-in-frame body.tv-mode .board,
+    html.tv-in-frame body.tv-mode #panel-operacao,
+    html.tv-in-frame body.tv-mode #panel-armazem,
+    html.tv-in-frame body.tv-mode #panel-pendencia,
+    html.tv-in-frame body.tv-mode #panel-contratacao,
+    html.tv-in-frame body.tv-mode .arm-wrap,
+    html.tv-in-frame body.tv-mode .ctr-wrap,
+    html.tv-in-frame body.tv-mode .pen-wrap,
+    html.tv-in-frame body.tv-mode .sector-soon-panel {
+      width: 100% !important;
+      max-width: none !important;
+      height: 100% !important;
+      min-height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
     body.tv-mode.tv-idle { cursor: none; }
     /* TV: logo só na Distribuição */
@@ -772,8 +824,8 @@
     body.tv-mode.tv-no-logo .sector-soon-panel img { display: none !important; }
     body.tv-mode.tv-no-logo .arm-brand { gap: 0; }
     body.tv-mode .sector-soon-panel {
-      height: 100dvh;
-      min-height: 100dvh;
+      height: 100%;
+      min-height: 100%;
       padding: 0;
       background: #05080f;
     }
@@ -800,17 +852,19 @@
       border-radius: 0;
       border: none;
       width: 100%;
-      min-height: 100dvh;
+      min-height: 100%;
+      height: 100%;
       display: grid;
       place-content: center;
     }
-    /* Sem margem: ponta a ponta */
+    /* Sem margem: ponta a ponta (100% = funciona em iframe; 100vw/dvh estoura o frame) */
     body.tv-mode.tv-no-margins .board,
     body.tv-mode.tv-no-margins #panel-operacao,
     body.tv-mode.tv-no-margins #panel-armazem {
-      width: 100vw !important;
+      width: 100% !important;
       max-width: none !important;
-      height: 100dvh !important;
+      height: 100% !important;
+      min-height: 100% !important;
       margin: 0 !important;
       padding: 0 !important;
       gap: 0 !important;
@@ -834,7 +888,8 @@
       width: 100% !important;
     }
     body.tv-mode.tv-no-margins .arm-wrap {
-      height: 100dvh !important;
+      height: 100% !important;
+      min-height: 100% !important;
       padding: 0 !important;
       gap: 0 !important;
     }
@@ -842,9 +897,10 @@
     body.tv-mode:not(.tv-no-margins) .board,
     body.tv-mode:not(.tv-no-margins) #panel-operacao,
     body.tv-mode:not(.tv-no-margins) #panel-armazem {
-      width: 100vw !important;
+      width: 100% !important;
       max-width: none !important;
-      height: 100dvh !important;
+      height: 100% !important;
+      min-height: 100% !important;
       margin: 0 !important;
       padding: 12px !important;
       gap: 8px !important;
@@ -2793,9 +2849,10 @@
     }
     body.tv-mode.tv-no-margins #panel-contratacao,
     body.tv-mode:not(.tv-no-margins) #panel-contratacao {
-      width: 100vw !important;
+      width: 100% !important;
       max-width: none !important;
-      height: 100dvh !important;
+      height: 100% !important;
+      min-height: 100% !important;
     }
     @media (max-width: 1100px) {
       .ctr-layout {
@@ -3004,9 +3061,10 @@
     }
     body.tv-mode.tv-no-margins #panel-pendencia,
     body.tv-mode:not(.tv-no-margins) #panel-pendencia {
-      width: 100vw !important;
+      width: 100% !important;
       max-width: none !important;
-      height: 100dvh !important;
+      height: 100% !important;
+      min-height: 100% !important;
     }
     @media (max-width: 1100px) {
       .pen-layout {
@@ -3916,6 +3974,19 @@
   </style>
 </head>
 <body class="live-mode" data-sector="distribuicao" data-view="coleta">
+  <!-- webOS: vídeo 1×1 muted+loop (src preenchido em JS via canvas/stream silencioso) -->
+  <video
+    id="tvKeepAliveVideo"
+    muted
+    loop
+    autoplay
+    playsinline
+    webkit-playsinline
+    preload="auto"
+    disablePictureInPicture
+    aria-hidden="true"
+    tabindex="-1"
+  ></video>
   <div class="tv-slot-overlay" id="tvSlotOverlay" hidden>
     <div class="tv-slot-sheet" role="dialog" aria-modal="true" aria-labelledby="tvSlotTitle">
       <p class="kicker">PAREDE 2×3</p>
@@ -5176,6 +5247,7 @@
           wakeLock.addEventListener('release', () => { wakeLock = null; });
         }
       } catch (_) { /* TV/browser pode negar */ }
+      ensureTvKeepAliveVideo();
     }
 
     async function releaseWakeLock() {
@@ -5183,6 +5255,84 @@
         if (wakeLock) await wakeLock.release();
       } catch (_) { /* ignore */ }
       wakeLock = null;
+    }
+
+    /** Mantém <video> 1×1 tocando — webOS não ativa screensaver com mídia “em tela”. */
+    let _tvKeepAliveReady = false;
+    function buildTvKeepAliveStream() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 2;
+      canvas.height = 2;
+      const ctx = canvas.getContext('2d');
+      const paint = () => {
+        if (!ctx) return;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, 2, 2);
+      };
+      paint();
+      // redesenha de vez em quando para o captureStream continuar “vivo”
+      setInterval(paint, 1000);
+      const stream = canvas.captureStream ? canvas.captureStream(1) : null;
+      if (!stream) return null;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) {
+          const ac = new AC();
+          const osc = ac.createOscillator();
+          const gain = ac.createGain();
+          gain.gain.value = 0.00001; // praticamente mudo, mas track de áudio existe
+          osc.connect(gain);
+          const dest = ac.createMediaStreamDestination();
+          gain.connect(dest);
+          osc.start();
+          dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
+        }
+      } catch (_) { /* sem áudio — só vídeo ainda ajuda em várias TVs */ }
+      return stream;
+    }
+
+    function ensureTvKeepAliveVideo() {
+      const v = document.getElementById('tvKeepAliveVideo');
+      if (!v) return;
+      try {
+        v.muted = true;
+        v.defaultMuted = true;
+        v.volume = 0;
+        v.loop = true;
+        v.setAttribute('playsinline', '');
+        v.setAttribute('webkit-playsinline', '');
+        if (!_tvKeepAliveReady || !v.srcObject) {
+          const stream = buildTvKeepAliveStream();
+          if (stream) {
+            v.srcObject = stream;
+            _tvKeepAliveReady = true;
+          }
+        }
+        const p = v.play();
+        if (p && typeof p.catch === 'function') p.catch(() => { /* autoplay até gesto */ });
+      } catch (_) { /* ignore */ }
+    }
+
+    function startTvKeepAliveWatch() {
+      ensureTvKeepAliveVideo();
+      setInterval(() => {
+        const v = document.getElementById('tvKeepAliveVideo');
+        if (!v) return;
+        if (v.paused || v.ended) ensureTvKeepAliveVideo();
+      }, 15000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          ensureTvKeepAliveVideo();
+          if (TV_MODE) requestWakeLock();
+        }
+      });
+      const unlock = () => {
+        ensureTvKeepAliveVideo();
+        document.removeEventListener('pointerdown', unlock, true);
+        document.removeEventListener('keydown', unlock, true);
+      };
+      document.addEventListener('pointerdown', unlock, true);
+      document.addEventListener('keydown', unlock, true);
     }
 
     function showTvHint(ms = 4500) {
@@ -5237,12 +5387,15 @@
 
       if (want) {
         // Visual + fullscreen no gesto do clique (sem await antes — senão a API atrasa/falha)
+        if (detectTvInFrame()) document.documentElement.classList.add('tv-in-frame');
+        document.body.classList.add('tv-no-margins');
         if (isOpsSector(CURRENT_SECTOR)) setView('live');
         else if (CURRENT_SECTOR === 'armazem') applyArmViews();
         showTvHint();
         bumpTvIdle();
         if (syncHash) writeRouteHash({ tv: true, sector: CURRENT_SECTOR });
-        const fsP = enterFullscreen();
+        // Fullscreen nativo falha dentro de iframe (Google Sites) — CSS já cobre
+        const fsP = detectTvInFrame() ? Promise.resolve() : enterFullscreen();
         const wakeP = requestWakeLock();
 
         try {
@@ -5359,7 +5512,7 @@
         syncSwap: true,
         swapMs: SWAP_MS,
         hubs: {
-          A: { name: 'Hub A', showLogo: true, margins: 'normal' },
+          A: { name: 'Hub A', showLogo: true, margins: 'none' },
           B: { name: 'Hub B', showLogo: false, margins: 'none' },
           C: { name: 'Hub C', showLogo: false, margins: 'none' },
         },
@@ -5579,9 +5732,18 @@
       applyBlockLayout(document.getElementById('armLayoutConferentes'), [], { active: false });
     }
 
+    function detectTvInFrame() {
+      try {
+        return window.self !== window.top;
+      } catch (_) {
+        return true;
+      }
+    }
+
     function applyTvChrome() {
       if (!TV_MODE) {
         document.body.classList.remove('tv-no-logo', 'tv-no-margins', 'tv-mosaic');
+        document.documentElement.classList.remove('tv-in-frame');
         document.body.style.removeProperty('--mosaic-col');
         document.body.style.removeProperty('--mosaic-row');
         document.body.style.removeProperty('--mosaic-cols');
@@ -5589,14 +5751,20 @@
         applyDashboardChrome();
         return;
       }
+      if (detectTvInFrame()) document.documentElement.classList.add('tv-in-frame');
       const eff = TV_EFFECTIVE || (TV_SLOT ? resolveTvEffective(TV_LAYOUT, TV_SLOT) : null);
       if (!eff) {
+        // Sem layout do CRT: TV parede = tela cheia sem moldura
+        document.body.classList.add('tv-no-margins');
         applyDashboardChrome();
         return;
       }
       document.body.classList.toggle('tv-no-logo', !eff.showLogo);
-      // Parede (mosaico) sempre sem margem; senão respeita layout do setor/slot
-      document.body.classList.toggle('tv-no-margins', !!eff.mosaic || eff.margins === 'none');
+      // Parede / iframe / margins none → edge-to-edge
+      document.body.classList.toggle(
+        'tv-no-margins',
+        !!eff.mosaic || eff.margins === 'none' || detectTvInFrame()
+      );
       document.body.classList.toggle('tv-mosaic', !!eff.mosaic);
       if (eff.mosaic) {
         document.body.style.setProperty('--mosaic-col', String(eff.col || 0));
@@ -8864,11 +9032,14 @@
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && TV_MODE) requestWakeLock();
+      else if (document.visibilityState === 'visible') ensureTvKeepAliveVideo();
     });
     window.addEventListener('hashchange', () => applyRouteFromHash());
 
+    if (detectTvInFrame()) document.documentElement.classList.add('tv-in-frame');
     applyRouteFromHash();
     applyDashboardChrome();
+    startTvKeepAliveWatch();
     // normaliza legado #tv → #tv/coleta (ou #tv/slot/N se já conhecido)
     if (/^#?(tv|fullscreen|tela)$/i.test((location.hash || '').replace(/^#/, ''))) {
       writeRouteHash({ tv: true, sector: 'distribuicao' });

@@ -67,6 +67,8 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "github_repo": ("cloud", "str", False),
     "github_branch": ("cloud", "str", False),
     "github_token_env": ("cloud", "str", False),
+    "publish_target": ("cloud", "str", False),  # sites | github | local | auto
+    "google_sites_url": ("cloud", "str", False),
     # Armazém 078 (mesmo Sheets da distribuição)
     "armazem_in_loop": ("armazem", "bool", False),
     "pendencia_in_loop": ("pendencia", "bool", False),
@@ -135,6 +137,8 @@ def _save_payload(payload: dict[str, Any]) -> None:
         github_repo=str(payload.get("github_repo") or ""),
         github_branch=str(payload.get("github_branch") or "main"),
         github_token_env=str(payload.get("github_token_env") or "GH_TOKEN"),
+        publish_target=str(payload.get("publish_target") or "auto"),
+        google_sites_url=str(payload.get("google_sites_url") or ""),
         armazem_in_loop=bool(payload.get("armazem_in_loop", True)),
         pendencia_in_loop=bool(payload.get("pendencia_in_loop", True)),
         contratacao_in_loop=bool(payload.get("contratacao_in_loop", True)),
@@ -265,6 +269,8 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
         "apps_script_url",
         "apps_script_token",
         "google_sheet_id",
+        "publish_target",
+        "google_sites_url",
         "enable_github_publish",
         "github_repo",
         "github_branch",
@@ -276,9 +282,18 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
             shown = str(bool(val)).lower()
         else:
             shown = _mask(str(val), secret)
-            if key == "apps_script_url" and len(shown) > 48:
+            if key in {"apps_script_url", "google_sites_url"} and len(shown) > 48:
                 shown = shown[:45] + "..."
         print(f"    {muted(key.ljust(18))} {shown}")
+    try:
+        from config import resolve_publish_target, load_settings
+
+        print(
+            f"    {muted('destino efetivo'.ljust(18))} "
+            f"{resolve_publish_target(load_settings())}"
+        )
+    except Exception:
+        pass
     print(f"  {g('[ARMAZEM 078]', bold=True)}")
     print(f"    {muted('armazem_in_loop'.ljust(18))} {str(arm_on).lower()}")
     print(f"  {g('[PENDENCIA 031]', bold=True)}")
@@ -334,7 +349,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
 def cmd_help() -> str:
     keys = ", ".join(sorted(EDITABLE.keys()))
     return (
-        "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | 31 | 73 | sync | sync78 | sync31 | dash | local | gui | "
+        "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | 31 | 73 | sync | sync78 | sync31 | dash | local | sites | piloto_sites | gui | "
         "brand | crt | /automatica | /status | /push | /pull | show | help | sair\n"
         f"  Campos: {keys}\n"
         "  Bool: true/false | sim/nao | 1/0\n"
@@ -342,6 +357,9 @@ def cmd_help() -> str:
         "  loop_intervalo: 30s | 5m | 1h | 2d  (min 5s, max 30d)\n"
         "    /e intervalo 30s\n"
         "  Visualização SSW: /viz on|off  ou  /e visualizar sim|nao\n"
+        "  Publicação TV: /e publish_target sites|github|local|auto · /e google_sites_url URL\n"
+        "             `piloto_sites` liga Sheets e desliga GitHub · `sites` abre o Google Sites\n"
+        "             Conceito: docs/CONCEITO_SITES.md\n"
         "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
         "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos\n"
         "  Contratação: /e contratacao_in_loop true|false · `73` sob demanda\n"
@@ -356,7 +374,7 @@ def cmd_help() -> str:
         "             `73 so73` = só 073 · `73 sem200` = sem manifesto · CSV ssw0644 local = frete\n"
         "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
         "  /automatica [intervalo] | /status | /push [msg] | /pull\n"
-        "  Manual: docs/MANUAL.md"
+        "  Manual: docs/MANUAL.md · Sites: docs/CONCEITO_SITES.md"
     )
 
 
@@ -382,6 +400,10 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "token": "apps_script_token",
         "script": "apps_script_url",
         "repo": "github_repo",
+        "destino": "publish_target",
+        "publish_target": "publish_target",
+        "sites_url": "google_sites_url",
+        "google_sites_url": "google_sites_url",
         "opcao": "coleta_option",
         "auto": "auto_baixar_ao_abrir",
         "intervalo": "loop_intervalo",
@@ -488,6 +510,20 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         elif key == "unit":
             # Aceita varias siglas: SPO,LEO,RIS | * = todas
             payload[key] = raw.strip().upper().replace(" ", "")
+        elif key == "publish_target":
+            v = raw.strip().lower()
+            aliases_pt = {
+                "site": "sites",
+                "googlesites": "sites",
+                "gh": "github",
+                "pages": "github",
+                "lan": "local",
+                "offline": "local",
+            }
+            v = aliases_pt.get(v, v)
+            if v not in {"sites", "github", "local", "auto"}:
+                return "publish_target deve ser: sites | github | local | auto"
+            payload[key] = v
         elif key in {"domain", "user"}:
             payload[key] = raw.strip()
         else:
@@ -767,7 +803,69 @@ def run_dash() -> str:
     from publish_dashboard import publish_dashboard
 
     r = publish_dashboard(on_status=_on_status)
-    return f"dashboard ok={r.get('ok')} pushed={r.get('pushed')}"
+    target = r.get("publish_target") or ""
+    extra = f" destino={target}" if target else ""
+    return (
+        f"dashboard ok={r.get('ok')} pushed={r.get('pushed')}"
+        f" skipped_push={r.get('skipped_push')}{extra}"
+    )
+
+
+def apply_piloto_sites(payload: dict[str, Any] | None = None) -> str:
+    """Liga fluxo Sheets→Sites e desliga GitHub Pages (piloto TV)."""
+    payload = dict(payload or _load_payload())
+    payload["modo_local"] = False
+    payload["enable_sheets"] = True
+    payload["enable_github_publish"] = False
+    payload["publish_target"] = "sites"
+    _save_payload(payload)
+    url = str(payload.get("google_sites_url") or "").strip()
+    lines = [
+        "Piloto Google Sites aplicado:",
+        "  modo_local=false",
+        "  enable_sheets=true",
+        "  enable_github_publish=false",
+        "  publish_target=sites",
+        "",
+        "Proximos passos:",
+        "  1) Sites embutindo Resumo103 / ResumoDiario (docs/CONCEITO_SITES.md secao 6)",
+        "  2) /e google_sites_url <URL publica>",
+        "  3) 103  ->  sync  ->  sites  (medir latencia vs /push)",
+    ]
+    if url:
+        lines.append(f"  URL ja salva: {url}")
+    else:
+        lines.append("  (google_sites_url ainda vazio)")
+    return "\n".join(lines)
+
+
+def run_sites(open_browser: bool = True) -> str:
+    """Mostra destino de publicação e abre o Google Sites se houver URL."""
+    from config import load_settings, resolve_publish_target
+
+    cfg = load_settings()
+    target = resolve_publish_target(cfg)
+    url = str(getattr(cfg, "google_sites_url", "") or "").strip()
+    lines = [
+        f"publish_target (config) = {getattr(cfg, 'publish_target', 'auto')}",
+        f"destino efetivo         = {target}",
+        f"enable_sheets           = {str(bool(cfg.enable_sheets)).lower()}",
+        f"enable_github_publish   = {str(bool(cfg.enable_github_publish)).lower()}",
+        f"modo_local              = {str(bool(cfg.modo_local)).lower()}",
+        f"google_sites_url        = {url or '(vazio)'}",
+        "Conceito: docs/CONCEITO_SITES.md",
+    ]
+    if open_browser and url:
+        try:
+            import webbrowser
+
+            webbrowser.open(url)
+            lines.append("Abrindo Google Sites no navegador…")
+        except Exception as err:  # noqa: BLE001
+            lines.append(f"Não abriu o navegador: {err}")
+    elif open_browser and not url:
+        lines.append("Defina a URL: /e google_sites_url https://sites.google.com/...")
+    return "\n".join(lines)
 
 
 def run_local(tokens: list[str] | None = None) -> str:
@@ -950,6 +1048,10 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
         return (run_sync(), payload)
     if cmd in {"4", "dash", "/dash", "dashboard"}:
         return (run_dash(), payload)
+    if cmd in {"sites", "/sites", "googlesites", "site"}:
+        return (run_sites(open_browser=True), payload)
+    if cmd in {"piloto_sites", "/piloto_sites", "piloto", "pilotosites"}:
+        return (apply_piloto_sites(payload), _load_payload())
     if cmd in {"local", "/local", "tvlocal", "dashlocal", "telas"}:
         return (run_local(parts[1:] if len(parts) > 1 else None), payload)
     if cmd in {"lan", "/lan", "rede", "wifi"}:
@@ -1125,6 +1227,12 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0].lstrip("/").lower() in {"sync31", "sheets31"}:
         print(run_sync_31())
         return 0
+    if args and args[0].lstrip("/").lower() in {"piloto_sites", "piloto", "pilotosites"}:
+        print(apply_piloto_sites())
+        return 0
+    if args and args[0].lstrip("/").lower() in {"sites", "site", "googlesites"}:
+        print(run_sites(open_browser=True))
+        return 0
     if args and args[0].lstrip("/").lower() in {"brand", "logo", "cubos", "neofetch"}:
         from term_brand import main as brand_main
 
@@ -1203,6 +1311,10 @@ def main(argv: list[str] | None = None) -> int:
                 message = run_sync()
             elif cmd in {"4", "dash", "/dash", "dashboard"}:
                 message = run_dash()
+            elif cmd in {"sites", "/sites", "googlesites", "site"}:
+                message = run_sites(open_browser=True)
+            elif cmd in {"piloto_sites", "/piloto_sites", "piloto", "pilotosites"}:
+                message = apply_piloto_sites()
             elif cmd in {"local", "/local", "tvlocal", "dashlocal", "telas"}:
                 message = run_local(parts[1:] if len(parts) > 1 else None)
             elif cmd in {"lan", "/lan", "rede", "wifi"}:
