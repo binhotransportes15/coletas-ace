@@ -2,8 +2,8 @@
 
 Pull único: Propriedade=T · Tipo=A · Relatório.
 Mix do painel (coluna TIPO do CSV):
-  COLETA/ENTREGA → contratados
-  TRANSFERÊNCIA  → agregado
+  COLETA/ENTREGA → agregado
+  TRANSFERÊNCIA  → contratados
   demais (REMUNERACAO, frota etc.) → ignorados
 
 Colunas Excel (com tipo de linha na col. A):
@@ -153,17 +153,17 @@ def _read_text(path: Path) -> str:
 def _grupo_from_tipo_csv(tipo: str) -> str | None:
     """Classifica pelo TIPO da linha CSV (não pela propriedade F/A).
 
-    COLETA/ENTREGA → contratados
-    TRANSFERÊNCIA / TRANSFERE → agregado
+    COLETA/ENTREGA → agregado
+    TRANSFERÊNCIA / TRANSFERE → contratados
     demais (ex.: REMUNERACAO) → None (ignorado no painel)
     """
     t = _clean(tipo).upper()
     if not t:
         return None
     if "COLETA" in t or "ENTREGA" in t:
-        return "contratados"
-    if "TRANSFER" in t:
         return "agregado"
+    if "TRANSFER" in t:
+        return "contratados"
     return None
 
 
@@ -180,14 +180,14 @@ def _grupo_from_fonte(name: str) -> str | None:
 
 
 _GRUPO_RANK = {
-    "contratados": 0,
-    "agregado": 1,
+    "agregado": 0,
+    "contratados": 1,
     "outro": 9,
 }
 
 
 def _grupo_propriedade(prop: str, tipo: str = "", fonte: str = "") -> str:
-    """contratados (COLETA/EN) | agregado (TRANSFERÊNCIA). Sem frota."""
+    """agregado (COLETA/EN) | contratados (TRANSFERÊNCIA). Sem frota."""
     _ = prop  # propriedade do formulário não define o mix do painel
     from_tipo = _grupo_from_tipo_csv(tipo)
     if from_tipo:
@@ -452,7 +452,7 @@ def analyze_reports_073(
         prev = by_ctrb.get(key)
         if not prev or float(r.get("custo") or 0) >= float(prev.get("custo") or 0):
             by_ctrb[key] = r
-    # Painel: só COLETA/EN (contratados) e TRANSFERÊNCIA (agregado) — ignora frota/REMUNERACAO
+    # Painel: só COLETA/EN (agregado) e TRANSFERÊNCIA (contratados) — ignora frota/REMUNERACAO
     ctrbs = [
         r
         for r in by_ctrb.values()
@@ -483,7 +483,7 @@ def analyze_reports_073(
             by_placa[placa] = slot
         if r.get("carreta") and not slot["carreta"]:
             slot["carreta"] = r["carreta"]
-        # preferência: contratados (COLETA/EN) > agregado (TRANSFERÊNCIA)
+        # preferência: agregado (COLETA/EN) > contratados (TRANSFERÊNCIA)
         g = r.get("grupo") or "outro"
         if _GRUPO_RANK.get(g, 9) < _GRUPO_RANK.get(slot.get("grupo") or "outro", 9):
             slot["grupo"] = g

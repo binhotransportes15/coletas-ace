@@ -6764,8 +6764,8 @@
           const agreg = Number(resumo.agregado) || 0;
           const contrat = Number(resumo.contratados) || Number(resumo.terceiro) || 0;
           mix.innerHTML = `
-            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">COLETA/EN · contratado</div></div>
-            <div class="mix-card agregado"><div class="n">${agreg}</div><div class="l">TRANSFERÊNCIA</div></div>
+            <div class="mix-card agregado"><div class="n">${agreg}</div><div class="l">COLETA/EN · agregado</div></div>
+            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">TRANSFERÊNCIA · contratação</div></div>
           `;
         }
 
@@ -6778,7 +6778,7 @@
             <tr>
               <td class="mono">${esc(v.placa || '—')}</td>
               <td class="mono">${esc(v.carreta || '—')}</td>
-              <td>${esc(({'contratados':'COLETA/EN','agregado':'TRANSFERÊNCIA'}[v.grupo] || v.grupo || v.propriedade || '—'))}</td>
+              <td>${esc(({'agregado':'COLETA/EN','contratados':'TRANSFERÊNCIA'}[v.grupo] || v.grupo || v.propriedade || '—'))}</td>
               <td class="mono right">${esc(v.qtd_ctrb || '0')}</td>
               <td class="mono right">${esc(fmtCtrMoney(v.custo))}</td>
               <td class="mono right">${esc(fmtCtrMoney(v.frete))}</td>

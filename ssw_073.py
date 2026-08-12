@@ -2,7 +2,7 @@
 
 Fluxo Contratação (Unidade = SPO · período = mês até hoje):
   1) 1 login · 1 tela 073 (Propriedade=T · Tipo=A) · Relatório (sem Excel)
-  2) Parser: COLETA/EN = contratado · TRANSFERÊNCIA = agregado (sem frota)
+  2) Parser: COLETA/EN = agregado · TRANSFERÊNCIA = contratação (sem frota)
   3) Para cada DESTINO: troca menu → 076+200 · merge frete
 """
 from __future__ import annotations
