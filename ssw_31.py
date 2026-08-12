@@ -1,14 +1,16 @@
 """Download SSW 031 (ssw0495) — CTRCs por código de ocorrência → Excel.
 
-Fluxo (rápido):
-  1) 1 login · abre N telas 31 (1 por código) · preenche todas · ► em todas → fila 156
-  2) Abre opção 156 (ssw1440) uma vez e baixa todos os Excel 0495 concluídos
+Fluxo:
+  1) 1 login · abre N telas 31 · preenche · ► (mapeia código→seq na 156)
+  2) Várias abas 156 em paralelo — cada uma baixa o próprio seq
 """
 from __future__ import annotations
 
 import os
 import re
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -27,9 +29,12 @@ SSW_FILA_MARKERS = ("fila", "processamento", "lote", "156", "atualizar", "sequ")
 # Job 031 concluiu na 156 sem Excel (código sem CTRC no período)
 _EMPTY_FILA_RE = re.compile(
     r"n[aã]o\s+selecionou|sem\s+ctrc|nenhum\s+ctrc|sem\s+dados|n[aã]o\s+h[aá]\s+regist|"
-    r"nada\s+a\s+(gerar|emitir)|sem\s+movimento|sem\s+ocorr|nenhuma\s+ocorr",
+    r"nada\s+a\s+(gerar|emitir)|sem\s+movimento|sem\s+ocorr|nenhuma\s+ocorr|"
+    r"nenhum\s+registro\s+encontrado|registro\s+n[aã]o\s+encontrado",
     re.IGNORECASE,
 )
+
+_STATUS_LOCK = threading.Lock()
 
 
 class FilaSemDados31(RuntimeError):
@@ -40,12 +45,21 @@ def _noop(_: str) -> None:
     return None
 
 
+def _status_safe(status: StatusCallback, msg: str) -> None:
+    with _STATUS_LOCK:
+        status(msg)
+
+
 def _ensure_playwright_path() -> None:
     if os.environ.get("PLAYWRIGHT_BROWSERS_PATH"):
         return
     local = os.environ.get("LOCALAPPDATA") or ""
     if local:
         os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(Path(local) / "ms-playwright")
+
+
+def _seq_num(seq: str) -> int:
+    return int(re.sub(r"\D", "", str(seq or "")) or 0)
 
 
 def _safe_wait(page_or_popup, ms: int) -> None:
@@ -72,7 +86,7 @@ def download_reports_31(
     clean_downloads: bool = True,
 ) -> dict[str, Any]:
     """
-    1 login · N telas 31 em paralelo · ► em todas → fila 156 · baixa todos.
+    1 login · N telas 31 · ► com mapa código→seq · downloads em paralelo (abas 156).
     """
     status = on_status or _noop
     ensure_dirs()
@@ -109,7 +123,7 @@ def download_reports_31(
     errors: dict[str, str] = {}
     queued: list[dict[str, Any]] = []
     status(
-        f"SSW 31 | {len(code_list)} tela(s) em paralelo → fila 156 | "
+        f"SSW 31 | {len(code_list)} tela(s) → fila 156 (download paralelo) | "
         f"ocorrência {ini}-{fim} | excel=S"
     )
     status("códigos: " + ", ".join(code_list))
@@ -122,13 +136,13 @@ def download_reports_31(
         page.on("dialog", lambda d: d.accept())
         context.on("page", lambda pg: pg.on("dialog", lambda d: d.accept()))
         screens: list[tuple[str, Any]] = []
-        fila = None
+        fila_map = None
         try:
             client._login(page)
             client._ensure_unit(page)
             client._patch_blank_popup_form(page)
 
-            # ── Fase 1: abrir N telas · preencher · ► em todas ───────
+            # ── Fase 1: abrir N telas · preencher · ► + mapear seq ────
             status(f"[31] fase 1/2 · abrindo {len(code_list)} tela(s) 31…")
             known_seqs = _snapshot_fila_seqs(client, context, page, status)
             status(f"[31] fila 156: {len(known_seqs)} job(s) já existentes (ignorados)")
@@ -136,7 +150,7 @@ def download_reports_31(
             for idx, code in enumerate(code_list, start=1):
                 try:
                     status(f"[31/{code}] ({idx}/{len(code_list)}) abrindo tela…")
-                    popup = _open_31(client, page)
+                    popup = _open_31_rapido(client, context, page, status)
                     try:
                         popup.on("dialog", lambda d: d.accept())
                     except Exception:
@@ -162,7 +176,11 @@ def download_reports_31(
                     errors[code] = str(err)
                     status(f"[31/{code}] FALHOU no form: {err}")
 
-            status(f"[31] enviando {len(screens)} relatório(s) pra fila 156…")
+            # Mapa código→seq: ► um a um + lê a 156 (rápido) para pegar a seq nova
+            status(f"[31] enviando {len(screens)} relatório(s) e mapeando seq na 156…")
+            fila_map = _abrir_fila_156(client, context, page, status)
+            claimed: set[str] = set(known_seqs)
+
             for idx, (code, popup) in enumerate(screens, start=1):
                 if code in errors:
                     continue
@@ -171,23 +189,42 @@ def download_reports_31(
                         popup.bring_to_front()
                     except Exception:
                         pass
+                    before = set(claimed)
                     status(f"[31/{code}] ► fila 156…")
                     t0 = time.time()
                     _enviar_fila_31(popup, status, code)
-                    _safe_wait(popup, 600)
-                    queued.append({"code": code, "seq": "", "t": t0, "idx": idx})
-                    status(f"[31/{code}] enviado à fila 156")
+                    _safe_wait(popup, 400)
+                    try:
+                        if popup is not None and not popup.is_closed():
+                            popup.close()
+                    except Exception:
+                        pass
+                    seq = _esperar_nova_seq_0495(
+                        fila_map, before=before, claimed=claimed, status=status, code=code
+                    )
+                    if not seq:
+                        errors[code] = "seq não apareceu na 156 após ►"
+                        status(f"[31/{code}] FALHOU: seq não apareceu na 156")
+                        continue
+                    claimed.add(seq)
+                    queued.append({"code": code, "seq": seq, "t": t0, "idx": idx})
+                    status(f"[31/{code}] na fila · seq={seq}")
                 except Exception as err:  # noqa: BLE001
                     errors[code] = str(err)
                     status(f"[31/{code}] FALHOU ao enfileirar: {err}")
+                    try:
+                        if popup is not None and not popup.is_closed():
+                            popup.close()
+                    except Exception:
+                        pass
 
-            for _code, popup in screens:
-                try:
-                    if popup is not None and not popup.is_closed():
-                        popup.close()
-                except Exception:
-                    pass
             screens = []
+            try:
+                if fila_map is not None and not fila_map.is_closed():
+                    fila_map.close()
+            except Exception:
+                pass
+            fila_map = None
 
             if not queued:
                 raise RuntimeError(
@@ -195,23 +232,23 @@ def download_reports_31(
                     + "; ".join(f"{k}:{v}" for k, v in errors.items())
                 )
 
-            status("[31] aguardando fila registrar os jobs (não baixa enquanto processa)…")
-            time.sleep(5)
-
-            # ── Fase 2: baixar na 156 ────────────────────────────────
+            # ── Fase 2: cada seq em browser próprio (paralelo) ───────
             status(
-                f"[31] fase 2/2 · baixando {len(queued)} Excel na fila 156…"
+                f"[31] fase 2/2 · {len(queued)} download(s) em paralelo "
+                f"(até {min(5, len(queued))} abas 156)…"
             )
-            fila = _abrir_fila_156(client, context, page, status)
-            paths = _baixar_todos_da_fila(
+            try:
+                storage_state = context.storage_state()
+            except Exception:
+                storage_state = None
+
+            paths = _baixar_seqs_paralelo(
+                storage_state,
                 client,
-                context,
-                page,
-                fila,
                 queued=queued,
-                known_before=known_seqs,
                 ts=ts,
                 status=status,
+                max_workers=min(5, len(queued)),
             )
         finally:
             for _code, popup in screens:
@@ -221,8 +258,8 @@ def download_reports_31(
                 except Exception:
                     pass
             try:
-                if fila is not None and not fila.is_closed():
-                    fila.close()
+                if fila_map is not None and not fila_map.is_closed():
+                    fila_map.close()
             except Exception:
                 pass
             try:
@@ -255,6 +292,196 @@ def _open_31(client: AceSswClient, page):
         "31",
         markers=("ocorr", "ctrc", "excel", "pendenc", "31", "arquivo", "0495"),
     )
+
+
+def _open_31_rapido(client, context, page, status):
+    """Abre 31 via ajax (mais rápido); fallback menu."""
+    try:
+        with context.expect_page(timeout=18000) as pi:
+            page.evaluate(
+                """() => {
+                  if (typeof ajaxEnvia === 'function') {
+                    try { ajaxEnvia('', 1, 'ssw0495'); return '0495'; } catch (e) {}
+                    try { ajaxEnvia('', 1, 'ssw031'); return '031'; } catch (e2) {}
+                  }
+                  return '';
+                }"""
+            )
+        popup = pi.value
+        try:
+            popup.wait_for_load_state("domcontentloaded", timeout=12000)
+        except Exception:
+            pass
+        return popup
+    except Exception as err:
+        status(f"[31] ajax tela: {err} — tentando menu")
+        return _open_31(client, page)
+
+
+def _esperar_nova_seq_0495(
+    fila,
+    *,
+    before: set[str],
+    claimed: set[str],
+    status,
+    code: str,
+    timeout_s: float = 28.0,
+) -> str:
+    """Após ►, espera a seq 031 nova aparecer na 156."""
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        try:
+            _atualizar_fila(fila)
+            _safe_wait(fila, 700)
+            jobs = _ler_jobs_fila(fila)
+        except Exception:
+            time.sleep(1)
+            continue
+        novos = [
+            j
+            for j in jobs
+            if j.get("is0495")
+            and str(j.get("seq") or "")
+            and str(j.get("seq") or "") not in before
+            and str(j.get("seq") or "") not in claimed
+        ]
+        if not novos:
+            time.sleep(0.6)
+            continue
+        novos.sort(key=lambda j: _seq_num(str(j.get("seq") or "")))
+        seq = str(novos[-1].get("seq") or "")
+        if seq:
+            return seq
+    status(f"[31/{code}] timeout aguardando seq nova na 156")
+    return ""
+
+
+def _baixar_seqs_paralelo(
+    storage_state: dict[str, Any] | None,
+    client: AceSswClient,
+    *,
+    queued: list[dict[str, Any]],
+    ts: str,
+    status: StatusCallback,
+    max_workers: int = 5,
+) -> dict[str, str]:
+    """Cada (código, seq) baixa no próprio browser Playwright (thread-safe)."""
+    paths: dict[str, str] = {}
+    workers = max(1, min(max_workers, len(queued)))
+    status(f"[31] workers paralelo: {workers} · jobs: {len(queued)}")
+
+    def _job(item: dict[str, Any]) -> tuple[str, str | None, str | None]:
+        code = str(item.get("code") or "")
+        seq = str(item.get("seq") or "")
+        try:
+            path = _baixar_um_seq_worker(
+                storage_state,
+                client,
+                code=code,
+                seq=seq,
+                ts=ts,
+                status=status,
+                headless=True,
+            )
+            return code, path, None
+        except FilaSemDados31 as err:
+            _status_safe(status, f"[31/{code}] sem dados · seq={seq} · skip · {err}")
+            return code, None, "vazio"
+        except Exception as err:  # noqa: BLE001
+            _status_safe(status, f"[31/{code}] download falhou: {err}")
+            return code, None, str(err)
+
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="ace31") as pool:
+        futs = [pool.submit(_job, item) for item in queued]
+        for fut in as_completed(futs):
+            code, path, err = fut.result()
+            if path:
+                paths[code] = path
+                _status_safe(status, f"[31/{code}] OK {Path(path).name}")
+            elif err and err != "vazio":
+                _status_safe(status, f"[31/{code}] sem arquivo ({err[:80]})")
+
+    return paths
+
+
+def _baixar_um_seq_worker(
+    storage_state: dict[str, Any] | None,
+    client: AceSswClient,
+    *,
+    code: str,
+    seq: str,
+    ts: str,
+    status: StatusCallback,
+    headless: bool = True,
+) -> str:
+    """Browser próprio na thread: abre 156, espera seq pronta, clica Baixar."""
+    from playwright.sync_api import sync_playwright
+
+    _ensure_playwright_path()
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=headless, slow_mo=0)
+        ctx = browser.new_context(
+            accept_downloads=True,
+            storage_state=storage_state if storage_state else None,
+        )
+        fila = ctx.new_page()
+        fila.set_default_timeout(45000)
+        try:
+            fila.on("dialog", lambda d: d.accept())
+        except Exception:
+            pass
+        try:
+            _status_safe(status, f"[31/{code}] aba 156 · seq={seq}")
+            fila.goto(SSW_FILA_URL, wait_until="domcontentloaded", timeout=45000)
+            _safe_wait(fila, 600)
+
+            deadline = time.time() + 180
+            last_log = 0.0
+            while time.time() < deadline:
+                _atualizar_fila(fila)
+                _safe_wait(fila, 900)
+                jobs = _ler_jobs_fila(fila)
+                job = next((j for j in jobs if str(j.get("seq") or "") == seq), None)
+                now = time.time()
+                if now - last_log >= 5:
+                    last_log = now
+                    if job:
+                        _status_safe(
+                            status,
+                            f"[31/{code}] seq={seq} · {job.get('situacao') or '?'} · "
+                            f"baixar={'sim' if job.get('hasDow') else 'nao'}",
+                        )
+                    else:
+                        _status_safe(status, f"[31/{code}] seq={seq} ainda não listada…")
+
+                if not job:
+                    continue
+                if job.get("concluido") and not job.get("hasDow"):
+                    if _EMPTY_FILA_RE.search(str(job.get("mensagem") or "")):
+                        raise FilaSemDados31(str(job.get("mensagem") or "")[:80])
+                    if _job_31_sem_dados(job, since=now - 35):
+                        raise FilaSemDados31(str(job.get("mensagem") or "sem DOW")[:80])
+                if job.get("concluido") and job.get("hasDow"):
+                    dest_name = f"pendencia_31_{code}_{ts}.xlsx"
+                    path = _clicar_dow_job(client, ctx, fila, job, dest_name, status, code)
+                    size = path.stat().st_size if path.exists() else 0
+                    if size < 64:
+                        try:
+                            path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                        raise RuntimeError(f"arquivo suspeito ({size} bytes)")
+                    return str(path)
+            raise RuntimeError(f"timeout aguardando Baixar na seq={seq}")
+        finally:
+            try:
+                ctx.close()
+            except Exception:
+                pass
+            try:
+                browser.close()
+            except Exception:
+                pass
 
 
 def _reopen_31(client: AceSswClient, page, popup=None):
@@ -473,11 +700,11 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
               if (!c) continue;
               if (/^(conclu|process|fila|erro|abort|\\d)/i.test(c) && c.length < 24) continue;
               if (/^\\d{1,2}\\/\\d{1,2}/.test(c)) continue;
-              if (/^dow$/i.test(c)) continue;
+              if (/^dow$/i.test(c) || /^baixar$/i.test(c)) continue;
               if (c.length >= 8) { mensagem = c; break; }
             }
             const nodes = Array.from(tr.querySelectorAll(
-              'a[onclick], a[href], img[onclick], input[onclick], font, b, span, td'
+              'a[onclick], a[href], img[onclick], input[onclick], font, b, span, td, button'
             ));
             const links = nodes.map(a => {
               const text = norm(a.textContent || a.alt || a.title || a.value || '');
@@ -488,21 +715,21 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
             });
             const dows = links.filter(x => {
               if (/imprimir|correio|e-mails|emails|retaguarda|voltar|fechar|sair|atualizar/i.test(x.text)
-                  && !/\\bdow\\b/i.test(x.text)) return false;
-              if (/^dow$/i.test(x.text) || /\\bdow\\b/i.test(x.text)) return true;
+                  && !/\\bdow\\b|baixar/i.test(x.text)) return false;
+              if (/^(dow|baixar)$/i.test(x.text) || /\\bdow\\b/i.test(x.text)) return true;
               return /\\bdow\\b|download\\(|ssw0495|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob)
-                || (/0495|031/.test(x.blob) && /dow|href=|http|download/.test(x.blob));
+                || (/0495|031/.test(x.blob) && /dow|baixar|href=|http|download/.test(x.blob));
             });
-            // fallback: célula com texto DOW curto
+            // fallback: célula com texto DOW / Baixar
             if (!dows.length) {
               for (const td of Array.from(tr.querySelectorAll('td'))) {
                 const t = norm(td.innerText || '');
-                if (/^dow$/i.test(t) || (t.length <= 6 && /\\bdow\\b/i.test(t))) {
+                if (/^(dow|baixar)$/i.test(t) || (t.length <= 8 && /\\b(dow|baixar)\\b/i.test(t))) {
                   dows.push({
                     text: t,
                     onclick: String(td.getAttribute('onclick') || ''),
                     href: '',
-                    blob: ('dow ' + t).toLowerCase(),
+                    blob: ('dow baixar ' + t).toLowerCase(),
                     tag: 'td',
                   });
                   break;
@@ -591,19 +818,21 @@ def _baixar_todos_da_fila(
     status,
 ) -> dict[str, str]:
     """
-    Espera os jobs NOVOS na 156 aparecerem e ficarem Concluído+DOW.
-    Não baixa job antigo, nem DOW de outra opção, nem linha ainda em processamento.
+    Espera TODOS os jobs NOVOS na 156 aparecerem e finalizarem
+    (Concluído+Baixar/DOW ou NENHUM REGISTRO) — só então baixa.
+    Não baixa job antigo, nem de outra opção, nem enquanto ainda processa.
     """
     paths: dict[str, str] = {}
     want = len(queued)
     codes_order = [q["code"] for q in queued]
-    deadline = time.time() + max(240, 60 * want)
+    deadline = time.time() + max(300, 75 * want)
     downloaded_seqs: set[str] = set()
     skipped_seqs: set[str] = set()
     skipped_codes: set[str] = set()
     our_seqs: set[str] = set()  # seqs novas vistas após o enqueue
     concluido_sem_dow_since: dict[str, float] = {}
     last_log = 0.0
+    all_ready_announced = False
 
     def _done_count() -> int:
         return len(paths) + len(skipped_codes)
@@ -709,24 +938,6 @@ def _baixar_todos_da_fila(
             jobs = _poll()
             _pool, prontos, pendentes, vazios = _classify(jobs)
 
-            # Concluído sem DOW (código sem CTRC) → não trava a fila
-            for job in vazios:
-                if _done_count() >= want:
-                    break
-                seq = str(job.get("seq") or "")
-                if not seq or seq in skipped_seqs or seq in downloaded_seqs:
-                    continue
-                code = _next_code()
-                if not code:
-                    break
-                msg = str(job.get("mensagem") or job.get("situacao") or "sem DOW")
-                skipped_seqs.add(seq)
-                skipped_codes.add(code)
-                concluido_sem_dow_since.pop(seq, None)
-                status(
-                    f"[31/{code}] sem dados · seq={seq} · skip · {msg[:70]}"
-                )
-
             now = time.time()
             if now - last_log >= 4:
                 last_log = now
@@ -748,17 +959,51 @@ def _baixar_todos_da_fila(
                         f"{(j.get('opcao') or '')[:36]}"
                     )
 
-            # ainda não baixar: falta job aparecer OU ainda processando
-            if len(our_seqs) < want and not prontos and not vazios:
+            # Ideal: NÃO baixar enquanto faltar job aparecer OU ainda processar
+            still_waiting = len(our_seqs) < want or len(pendentes) > 0
+            if still_waiting:
+                if not all_ready_announced:
+                    status(
+                        f"[31] aguardando TODOS na 156 "
+                        f"({len(our_seqs)}/{want} seqs · "
+                        f"{len(pendentes)} processando · "
+                        f"{len(prontos)} Baixar · {len(vazios)} vazios)…"
+                    )
                 _safe_wait(fila, 2500)
                 continue
+
+            if not all_ready_announced:
+                all_ready_announced = True
+                status(
+                    f"[31] todos prontos na 156 · "
+                    f"{len(prontos)} Baixar + {len(vazios)} sem registro — iniciando downloads…"
+                )
+
+            # Concluído sem arquivo (NENHUM REGISTRO…) → skip
+            for job in vazios:
+                if _done_count() >= want:
+                    break
+                seq = str(job.get("seq") or "")
+                if not seq or seq in skipped_seqs or seq in downloaded_seqs:
+                    continue
+                code = _next_code()
+                if not code:
+                    break
+                msg = str(job.get("mensagem") or job.get("situacao") or "sem DOW")
+                skipped_seqs.add(seq)
+                skipped_codes.add(code)
+                concluido_sem_dow_since.pop(seq, None)
+                status(
+                    f"[31/{code}] sem dados · seq={seq} · skip · {msg[:70]}"
+                )
 
             if not prontos:
-                # jobs já apareceram mas nenhum Concluído+DOW ainda — espera
-                _safe_wait(fila, 2500)
+                if _done_count() >= want:
+                    break
+                _safe_wait(fila, 2000)
                 continue
 
-            # FIFO: baixa só prontos, do seq mais antigo
+            # FIFO: baixa prontos (Baixar/DOW), do seq mais antigo
             prontos.sort(
                 key=lambda j: int(re.sub(r"\D", "", str(j.get("seq") or "")) or 0)
             )
@@ -769,18 +1014,16 @@ def _baixar_todos_da_fila(
                 seq = str(job.get("seq") or "")
                 if seq in downloaded_seqs or seq in skipped_seqs:
                     continue
-                # próximo código sem arquivo (ordem de enfileiramento)
                 code = _next_code()
                 if not code:
                     break
 
-                # segurança: não clicar se a linha voltou a processando no DOM
                 if not job.get("concluido") or not job.get("hasDow"):
                     continue
 
                 dest_name = f"pendencia_31_{code}_{ts}.xlsx"
                 status(
-                    f"[31/{code}] DOW pronto · seq={seq} · "
+                    f"[31/{code}] Baixar · seq={seq} · "
                     f"{job.get('situacao') or 'Concluído'} · "
                     f"{(job.get('opcao') or '')[:50]}"
                 )
@@ -795,13 +1038,15 @@ def _baixar_todos_da_fila(
                             path.unlink(missing_ok=True)
                         except Exception:
                             pass
+                        all_ready_announced = False  # re-poll / re-esperar
                         _safe_wait(fila, 2000)
-                        continue
+                        break
                     paths[code] = str(path)
                     downloaded_seqs.add(seq)
                     status(f"[31/{code}] OK {path.name} ({size} bytes)")
                 except Exception as err:  # noqa: BLE001
                     status(f"[31/{code}] download falhou: {err}")
+                    all_ready_announced = False
                     _safe_wait(fila, 2000)
                     break  # re-poll após falha
         except Exception as err:  # noqa: BLE001
@@ -827,8 +1072,11 @@ def _baixar_todos_da_fila(
 
 
 def _clicar_dow_job(client, context, fila, job: dict, dest_name: str, status, code: str) -> Path:
-    """Clica o link DOW **da linha da seq** (nunca o primeiro DOW da página)."""
-    with context.expect_event("download", timeout=90000) as di:
+    """Clica Baixar/DOW da linha da seq — espera download na página (não no context)."""
+    _atualizar_fila(fila)
+    _safe_wait(fila, 400)
+
+    with fila.expect_download(timeout=45000) as di:
         ok = fila.evaluate(
             """({ seq }) => {
               const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
@@ -840,33 +1088,32 @@ def _clicar_dow_job(client, context, fila, job: dict, dest_name: str, status, co
                 if (!cells.length) continue;
                 const s = (cells[0] || '').replace(/\\D/g, '');
                 if (s !== want) continue;
-                // só baixa se a linha ainda parece concluída
                 const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || '';
                 if (sit && /processando|na\\s*fila|em\\s*fila/i.test(sit) && !/conclu/i.test(sit)) {
                   return 'ainda_processando';
                 }
                 const links = Array.from(tr.querySelectorAll(
-                  'a[onclick], a[href], img[onclick], input[onclick], font, b, span'
+                  'a[onclick], a[href], img[onclick], input[onclick], button, font, b, span'
                 ));
                 for (const a of links) {
                   const text = norm(a.textContent || a.alt || a.title || a.value || '');
                   const onclick = String(a.getAttribute('onclick') || '');
                   const href = String(a.getAttribute('href') || '');
                   const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
-                  if (/imprimir|correio|atualizar|voltar|fechar/i.test(text) && !/\\bdow\\b/i.test(text)) continue;
-                  if (/^dow$/i.test(text) || /\\bdow\\b/i.test(text)
+                  if (/imprimir|correio|atualizar|voltar|fechar/i.test(text)
+                      && !/\\b(dow|baixar)\\b/i.test(text)) continue;
+                  if (/^(dow|baixar)$/i.test(text) || /\\b(dow|baixar)\\b/i.test(text)
                       || /\\bdow\\b|download\\(|ssw0495|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(blob)
-                      || (/0495|031/.test(blob) && /dow|href=|http|download/.test(blob))) {
-                    const clickEl = a.closest('a') || a;
+                      || (/0495|031/.test(blob) && /dow|baixar|href=|http|download/.test(blob))) {
+                    const clickEl = a.closest('a,button') || a;
                     clickEl.click();
                     return 'row';
                   }
                 }
-                // fallback: td com texto DOW
                 for (const td of Array.from(tr.querySelectorAll('td'))) {
                   const t = norm(td.innerText || '');
-                  if (!(/^dow$/i.test(t) || (t.length <= 8 && /\\bdow\\b/i.test(t)))) continue;
-                  const clickEl = td.querySelector('a, img, [onclick]') || td;
+                  if (!(/^(dow|baixar)$/i.test(t) || (t.length <= 10 && /\\b(dow|baixar)\\b/i.test(t)))) continue;
+                  const clickEl = td.querySelector('a, button, img, [onclick]') || td;
                   clickEl.click();
                   return 'row-td';
                 }
@@ -877,9 +1124,13 @@ def _clicar_dow_job(client, context, fila, job: dict, dest_name: str, status, co
             {"seq": job.get("seq") or ""},
         )
         if ok == "ainda_processando":
-            raise RuntimeError(f"31/{code}: seq ainda processando — não clicou DOW")
+            raise RuntimeError(f"31/{code}: seq ainda processando — não clicou Baixar")
         if ok not in ("row", "row-td"):
-            raise RuntimeError(f"31/{code}: DOW da seq não encontrado ({ok})")
-        status(f"[31/{code}] clique DOW={ok}")
+            raise RuntimeError(f"31/{code}: Baixar/DOW da seq não encontrado ({ok})")
+        status_fn = status
+        try:
+            status_fn(f"[31/{code}] clique Baixar={ok}")
+        except Exception:
+            _status_safe(status, f"[31/{code}] clique Baixar={ok}")
     download = di.value
     return _save_named(client, download, dest_name)

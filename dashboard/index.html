@@ -5439,6 +5439,15 @@
         // Fullscreen / CSS TV assentam a altura depois — recalcula torres
         setTimeout(rerenderTorres, 280);
         setTimeout(rerenderTorres, 600);
+        // Se o 1º refresh pintou e o layout TV veio depois, reaplicam os totais
+        setTimeout(() => {
+          if (!TV_MODE) return;
+          if (lastCounts) renderTorres(lastCounts);
+          else if (COLETAS_103.length) renderTorres(countByStatus(COLETAS_103));
+          if (ENTREGAS_36.length) renderCilindroEntrega(countByStatus36(ENTREGAS_36));
+          if (CURRENT_VIEW === 'agendamento') renderAgendamento();
+          if (typeof renderPlacaPops === 'function') renderPlacaPops();
+        }, 700);
       }
     }
 
@@ -8675,6 +8684,15 @@
         if (forceNextRefresh) forceNextRefresh = false;
         if (!changed && (COLETAS_103.length || COLETAS_50.length || ENTREGAS_ALL.length)) {
           if (status) status.textContent = `Atualizado · v${getLastDataVersionLabel()} (sem mudança)`;
+          // TV / iframe: layout assenta depois do 1º paint — re-pinta senão fica 0 na Coleta
+          if (lastCounts) renderTorres(lastCounts);
+          else if (COLETAS_103.length) renderTorres(countByStatus(COLETAS_103));
+          if (ENTREGAS_36.length) renderCilindroEntrega(countByStatus36(ENTREGAS_36));
+          if (typeof renderPlacaPops === 'function') renderPlacaPops();
+          if (typeof renderPrazoPops === 'function') renderPrazoPops();
+          if (typeof renderPendenciaPops === 'function') renderPendenciaPops();
+          if (CURRENT_VIEW === 'agendamento') renderAgendamento();
+          rerenderTorres();
           return;
         }
 

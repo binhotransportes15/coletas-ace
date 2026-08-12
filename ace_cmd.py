@@ -310,14 +310,14 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
         f"porta={payload.get('dashboard_port') or 8787}"
     )
     print(f"  {rule()}")
-    print(f"  {w('COMMANDS', bold=True)}  {cubes_row()}")
-    print(f"    {g('1/50')}  baixar 50     {g('2/103')} baixar 103    {g('3/sync')} sheets")
-    print(f"    {g('4/dash')} dados local  {g('local')} telas internas {g('5/gui')} gráfico")
-    print(f"    {g('6/show')} config       {g('7/auto')} /automatica  {g('9/push')} pages")
-    print(f"    {g('78')} {g('177')} {g('607')} armazém/ranking/nomes  {g('sync78')} sheets arm")
-    print(f"    {g('31')} pendência SSW  {g('sync31')} sheets 31")
-    print(f"    {g('/viz')} on|off   {g('brand')} ANSI   {g('crt')} CRT   {g('help')}   {g('sair')}")
-    print(f"    {muted('manual')}  docs/MANUAL.md")
+    print(f"  {w('CODIGOS', bold=True)}  {cubes_row()}")
+    print(f"    Dist  {g('50')} coleta  {g('103')} torres  {g('36')} entrega  {g('225')} agenda")
+    print(f"    Arm   {g('78')} patio   {g('177')} conf.   {g('607')} nomes   {g('sync78')}")
+    print(f"    Pend  {g('31')} (10 cod.)  {g('sync31')}   Contr {g('73')}  {g('73 so73')}")
+    print(f"    Sync  {g('sync')} dist   Loop {g('/automatica')}  {g('piloto_sites')}  {g('sites')}")
+    print(f"    Local {g('local')}  {g('lan')}  {g('dash')}   Config {g('/e')}  {g('show')}  {g('help')}")
+    print(f"    {g('/viz')} on|off   {g('brand')} ANSI   {g('crt')} CRT   {g('sair')}")
+    print(f"    {muted('manual')}  docs/MANUAL.md  ·  {muted('sites')} docs/CONCEITO_SITES.md")
     print(f"  {rule('═')}")
     if message:
         low = message.lower()
@@ -348,33 +348,67 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
 
 def cmd_help() -> str:
     keys = ", ".join(sorted(EDITABLE.keys()))
-    return (
-        "Comandos: /e | /viz | 50 | 103 | 36 | 225 | 78 | 177 | 607 | 31 | 73 | sync | sync78 | sync31 | dash | local | sites | piloto_sites | gui | "
-        "brand | crt | /automatica | /status | /push | /pull | show | help | sair\n"
-        f"  Campos: {keys}\n"
-        "  Bool: true/false | sim/nao | 1/0\n"
-        "  periodo_modo: diario | sexta\n"
-        "  loop_intervalo: 30s | 5m | 1h | 2d  (min 5s, max 30d)\n"
-        "    /e intervalo 30s\n"
-        "  Visualização SSW: /viz on|off  ou  /e visualizar sim|nao\n"
-        "  Publicação TV: /e publish_target sites|github|local|auto · /e google_sites_url URL\n"
-        "             `piloto_sites` liga Sheets e desliga GitHub · `sites` abre o Google Sites\n"
-        "             Conceito: docs/CONCEITO_SITES.md\n"
-        "  Armazém: /e armazem_in_loop true|false (Sheets = enable_sheets)\n"
-        "  Pendência: /e pendencia_in_loop true|false · `31` puxa os 10 códigos\n"
-        "  Contratação: /e contratacao_in_loop true|false · `73` sob demanda\n"
-        "  Paralelo: /e ciclo_paralelo true|false — dist+078+031+073 ao mesmo tempo\n"
-        "  Local: `local` abre telas internas (sem GitHub) · `local coleta pendencia`\n"
-        "             /e modo_local true → relatórios NÃO vão ao Sheets (só JSON em data/cache/local)\n"
-        "             /e dashboard_lan true → outros aparelhos na rede · /e dashboard_port 8787\n"
-        "             `lan` lista URLs por setor · telas: coleta|entrega|agendamento|armazem|…\n"
-        "             `31 63 60` ou `31 63,60` = só esses · 63=SLA+ · demais=−\n"
-        "  Contratação: `73` = 073×1 Relatório (prop=T tipo=A SPO) → por DESTINO: 076(E) + 200(E)\n"
-        "             Mix: COLETA/EN=agregado · TRANSFERÊNCIA=contratação (sem frota) · período=mês até hoje\n"
-        "             `73 so73` = só 073 · `73 sem200` = sem manifesto · CSV ssw0644 local = frete\n"
-        "  brand = logo ANSI no CMD | crt = painel gráfico CRT\n"
-        "  /automatica [intervalo] | /status | /push [msg] | /pull\n"
-        "  Manual: docs/MANUAL.md · Sites: docs/CONCEITO_SITES.md"
+    return "\n".join(
+        [
+            "=== AJUDA ACE ===",
+            "",
+            "CODIGOS SSW (digite no prompt)",
+            "  Distribuicao",
+            "    50     Coletas (SSW 0157 / opcao coleta)",
+            "    103    Torres / situacao das coletas",
+            "    36     Entrega (romaneios)",
+            "    225    Agendamento",
+            "  Armazem",
+            "    78     Patio / veiculos (078)",
+            "    177    Conferentes (ranking)",
+            "    607    Atualizar nomes",
+            "  Pendencia",
+            "    31     10 codigos (inclui SLA)",
+            "    31 63 60   ou  31 63,60  -> so esses (63=SLA+ · demais=-)",
+            "  Contratacao (mes)",
+            "    73     073 Relatorio -> por destino: 076(E) + 200(E)",
+            "    73 so73     so 073 (sem frete 076)",
+            "    73 sem200   sem manifesto 200",
+            "",
+            "SYNC (so envia planilha / nao baixa SSW)",
+            "    sync      distribuicao (50/103/36/225)",
+            "    sync78    armazem (078 + 177)",
+            "    sync31    pendencia (031)",
+            "",
+            "LOOP E STATUS",
+            "    /automatica [intervalo]   ciclo continuo (ex.: /automatica 5m)",
+            "    /status                   situacao da publicacao",
+            "    /push [msg]  /pull        GitHub Pages (se enable_github_publish)",
+            "    /e ciclo_paralelo true    dist + 078 + 031 + 073 juntos",
+            "    /e armazem_in_loop true|false",
+            "    /e pendencia_in_loop true|false",
+            "    /e contratacao_in_loop true|false",
+            "",
+            "TV / SITES",
+            "    piloto_sites   Sheets ON · GitHub OFF · publish_target=sites",
+            "    sites          abre google_sites_url",
+            "    /e publish_target sites|github|local|auto",
+            "    /e google_sites_url URL",
+            "    Conceito: docs/CONCEITO_SITES.md",
+            "",
+            "LOCAL / LAN (sem depender do GitHub)",
+            "    local [tela...]   abre telas internas (coleta|entrega|agendamento|armazem|...)",
+            "    lan             lista URLs por setor na rede",
+            "    /e modo_local true     NAO envia Sheets (so JSON em data/cache/local)",
+            "    /e dashboard_lan true  · /e dashboard_port 8787",
+            "    dash            gera/atualiza arquivos do dashboard local",
+            "",
+            "CONFIG E UTILITARIOS",
+            "    /e campo valor   · /e   (lista campos)",
+            f"    Campos: {keys}",
+            "    Bool: true/false | sim/nao | 1/0",
+            "    periodo_modo: diario | sexta",
+            "    loop_intervalo: 30s | 5m | 1h | 2d  (min 5s, max 30d)  · /e intervalo 30s",
+            "    /viz on|off     ou  /e visualizar sim|nao",
+            "    show · gui · brand · crt · help · sair",
+            "",
+            "Manual: docs/MANUAL.md",
+        ]
     )
 
 
