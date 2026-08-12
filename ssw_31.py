@@ -1,8 +1,8 @@
 """Download SSW 031 (ssw0495) — CTRCs por código de ocorrência → Excel.
 
 Fluxo:
-  1) 1 login · abre N telas 31 · preenche · ► (mapeia código→seq na 156)
-  2) Várias abas 156 em paralelo — cada uma baixa o próprio seq
+  1) 1 login · abre N telas 31 · preenche · ► (sem abrir 156)
+  2) Abre a fila 156 UMA vez · espera todos · baixa tudo na mesma aba
 """
 from __future__ import annotations
 
@@ -35,6 +35,7 @@ _EMPTY_FILA_RE = re.compile(
 )
 
 _STATUS_LOCK = threading.Lock()
+_DOWNLOAD_CLICK_LOCK = threading.Lock()
 
 
 class FilaSemDados31(RuntimeError):
@@ -86,7 +87,7 @@ def download_reports_31(
     clean_downloads: bool = True,
 ) -> dict[str, Any]:
     """
-    1 login · N telas 31 · ► com mapa código→seq · downloads em paralelo (abas 156).
+    1 login · N telas 31 · ► (sem 156) · depois 1 aba 156 baixa tudo e só então fecha.
     """
     status = on_status or _noop
     ensure_dirs()
@@ -109,7 +110,7 @@ def download_reports_31(
     client = AceSswClient(
         ini_ddmm,
         fim_ddmm,
-        keep_open=False,
+        keep_open=True,  # browser gerenciado aqui — não deixar o client fechar cedo
         headless=use_headless,
         on_status=status,
         credentials=creds,
@@ -123,7 +124,7 @@ def download_reports_31(
     errors: dict[str, str] = {}
     queued: list[dict[str, Any]] = []
     status(
-        f"SSW 31 | {len(code_list)} tela(s) → fila 156 (download paralelo) | "
+        f"SSW 31 | {len(code_list)} tela(s) → depois fila 156 | "
         f"ocorrência {ini}-{fim} | excel=S"
     )
     status("códigos: " + ", ".join(code_list))
@@ -136,16 +137,14 @@ def download_reports_31(
         page.on("dialog", lambda d: d.accept())
         context.on("page", lambda pg: pg.on("dialog", lambda d: d.accept()))
         screens: list[tuple[str, Any]] = []
-        fila_map = None
+        fila = None
         try:
             client._login(page)
             client._ensure_unit(page)
             client._patch_blank_popup_form(page)
 
-            # ── Fase 1: abrir N telas · preencher · ► + mapear seq ────
-            status(f"[31] fase 1/2 · abrindo {len(code_list)} tela(s) 31…")
-            known_seqs = _snapshot_fila_seqs(client, context, page, status)
-            status(f"[31] fila 156: {len(known_seqs)} job(s) já existentes (ignorados)")
+            # ── Fase 1: só telas 31 (NÃO abre 156) ───────────────────
+            status(f"[31] fase 1/2 · abrindo {len(code_list)} tela(s) 31 (sem fila 156)…")
 
             for idx, code in enumerate(code_list, start=1):
                 try:
@@ -176,11 +175,8 @@ def download_reports_31(
                     errors[code] = str(err)
                     status(f"[31/{code}] FALHOU no form: {err}")
 
-            # Mapa código→seq: ► um a um + lê a 156 (rápido) para pegar a seq nova
-            status(f"[31] enviando {len(screens)} relatório(s) e mapeando seq na 156…")
-            fila_map = _abrir_fila_156(client, context, page, status)
-            claimed: set[str] = set(known_seqs)
-
+            status(f"[31] enviando {len(screens)} relatório(s) pra fila (ainda sem abrir 156)…")
+            enqueue_t0 = time.time()
             for idx, (code, popup) in enumerate(screens, start=1):
                 if code in errors:
                     continue
@@ -189,42 +185,24 @@ def download_reports_31(
                         popup.bring_to_front()
                     except Exception:
                         pass
-                    before = set(claimed)
-                    status(f"[31/{code}] ► fila 156…")
+                    status(f"[31/{code}] ► (enfileira; 156 só depois)…")
                     t0 = time.time()
                     _enviar_fila_31(popup, status, code)
-                    _safe_wait(popup, 400)
-                    try:
-                        if popup is not None and not popup.is_closed():
-                            popup.close()
-                    except Exception:
-                        pass
-                    seq = _esperar_nova_seq_0495(
-                        fila_map, before=before, claimed=claimed, status=status, code=code
-                    )
-                    if not seq:
-                        errors[code] = "seq não apareceu na 156 após ►"
-                        status(f"[31/{code}] FALHOU: seq não apareceu na 156")
-                        continue
-                    claimed.add(seq)
-                    queued.append({"code": code, "seq": seq, "t": t0, "idx": idx})
-                    status(f"[31/{code}] na fila · seq={seq}")
+                    _safe_wait(popup, 500)
+                    queued.append({"code": code, "seq": "", "t": t0, "idx": idx})
+                    status(f"[31/{code}] enviado")
                 except Exception as err:  # noqa: BLE001
                     errors[code] = str(err)
                     status(f"[31/{code}] FALHOU ao enfileirar: {err}")
-                    try:
-                        if popup is not None and not popup.is_closed():
-                            popup.close()
-                    except Exception:
-                        pass
 
+            # Fecha telas 31 só agora — a 156 ainda NÃO foi aberta
+            for _code, popup in screens:
+                try:
+                    if popup is not None and not popup.is_closed():
+                        popup.close()
+                except Exception:
+                    pass
             screens = []
-            try:
-                if fila_map is not None and not fila_map.is_closed():
-                    fila_map.close()
-            except Exception:
-                pass
-            fila_map = None
 
             if not queued:
                 raise RuntimeError(
@@ -232,23 +210,26 @@ def download_reports_31(
                     + "; ".join(f"{k}:{v}" for k, v in errors.items())
                 )
 
-            # ── Fase 2: cada seq em browser próprio (paralelo) ───────
+            # ── Fase 2: abre 156 UMA vez e só fecha DEPOIS dos downloads ─
             status(
-                f"[31] fase 2/2 · {len(queued)} download(s) em paralelo "
-                f"(até {min(5, len(queued))} abas 156)…"
+                f"[31] fase 2/2 · abrindo fila 156 agora · "
+                f"baixar {len(queued)} job(s) nesta sessão (não fecha no meio)…"
             )
-            try:
-                storage_state = context.storage_state()
-            except Exception:
-                storage_state = None
-
-            paths = _baixar_seqs_paralelo(
-                storage_state,
+            time.sleep(3)
+            fila = _abrir_fila_156(client, context, page, status)
+            paths = _baixar_tudo_na_mesma_156(
                 client,
+                context,
+                page,
+                fila,
                 queued=queued,
+                enqueue_t0=enqueue_t0,
                 ts=ts,
                 status=status,
-                max_workers=min(5, len(queued)),
+            )
+            status(
+                f"[31] downloads ok · {len(paths)}/{len(queued)} arquivo(s) — "
+                f"fechando sessão…"
             )
         finally:
             for _code, popup in screens:
@@ -258,8 +239,8 @@ def download_reports_31(
                 except Exception:
                     pass
             try:
-                if fila_map is not None and not fila_map.is_closed():
-                    fila_map.close()
+                if fila is not None and not fila.is_closed():
+                    fila.close()
             except Exception:
                 pass
             try:
@@ -316,6 +297,284 @@ def _open_31_rapido(client, context, page, status):
     except Exception as err:
         status(f"[31] ajax tela: {err} — tentando menu")
         return _open_31(client, page)
+
+
+def _baixar_tudo_na_mesma_156(
+    client,
+    context,
+    page,
+    fila,
+    *,
+    queued: list[dict[str, Any]],
+    enqueue_t0: float,
+    ts: str,
+    status: StatusCallback,
+) -> dict[str, str]:
+    """
+    Mantém UMA aba 156 aberta até o fim: espera jobs desta rodada, baixa um a um.
+    Se a aba cair, reabre — nunca encerra a sessão no meio dos downloads.
+    """
+    want = len(queued)
+    codes_order = [str(q.get("code") or "") for q in queued]
+    paths: dict[str, str] = {}
+    skipped_codes: set[str] = set()
+    downloaded_seqs: set[str] = set()
+    skipped_seqs: set[str] = set()
+    our_seqs: list[str] = []  # ordem de aparição (FIFO)
+    concluido_sem_dow_since: dict[str, float] = {}
+    deadline = time.time() + max(420, 70 * want)
+    last_log = 0.0
+    all_ready_announced = False
+
+    def _done_count() -> int:
+        return len(paths) + len(skipped_codes)
+
+    def _next_code() -> str | None:
+        return next(
+            (c for c in codes_order if c not in paths and c not in skipped_codes),
+            None,
+        )
+
+    def _ensure_fila():
+        nonlocal fila
+        try:
+            if fila is not None and not fila.is_closed():
+                url = (fila.url or "").lower()
+                if "ssw1440" in url and "blank" not in url:
+                    return fila
+        except Exception:
+            pass
+        status("[31] 156 caiu/sumiu — reabrindo (não fecha a sessão)…")
+        fila = _abrir_fila_156(client, context, page, status)
+        _safe_wait(fila, 800)
+        return fila
+
+    def _poll() -> list[dict[str, Any]]:
+        f = _ensure_fila()
+        try:
+            f.bring_to_front()
+        except Exception:
+            pass
+        _atualizar_fila(f)
+        _safe_wait(f, 900)
+        return _ler_jobs_fila(f)
+
+    status(f"[31] 156 aberta · aguardando {want} job(s) 031 desta rodada…")
+
+    while time.time() < deadline and _done_count() < want:
+        try:
+            jobs = _poll()
+            only = [j for j in jobs if j.get("is0495") and str(j.get("seq") or "")]
+            # Jobs desta rodada: por horário OU (fallback) últimas N seqs novas
+            round_jobs = _filtrar_jobs_desta_rodada(
+                only, enqueue_t0=enqueue_t0, want=want
+            )
+            # Se ainda não mapeamos nossas seqs, captura as que forem aparecendo
+            for j in sorted(round_jobs, key=lambda x: _seq_num(str(x.get("seq") or ""))):
+                seq = str(j.get("seq") or "")
+                if seq and seq not in our_seqs:
+                    our_seqs.append(seq)
+
+            # Limita our_seqs às últimas `want` se veio demais
+            if len(our_seqs) > want:
+                our_seqs[:] = our_seqs[-want:]
+
+            pool = [
+                j
+                for j in only
+                if str(j.get("seq") or "") in our_seqs
+            ] if our_seqs else round_jobs
+
+            now = time.time()
+            prontos: list[dict[str, Any]] = []
+            pendentes: list[dict[str, Any]] = []
+            vazios: list[dict[str, Any]] = []
+            for j in pool:
+                seq = str(j.get("seq") or "")
+                if seq in downloaded_seqs or seq in skipped_seqs:
+                    continue
+                if j.get("concluido") and j.get("hasDow"):
+                    prontos.append(j)
+                    concluido_sem_dow_since.pop(seq, None)
+                elif _job_31_sem_dados(j, since=concluido_sem_dow_since.get(seq) or enqueue_t0):
+                    vazios.append(j)
+                elif j.get("concluido") and not j.get("hasDow"):
+                    concluido_sem_dow_since.setdefault(seq, now)
+                    # ainda dentro do grace → trata como pendente
+                    if _job_31_sem_dados(j, since=concluido_sem_dow_since[seq], grace_s=28.0):
+                        vazios.append(j)
+                    else:
+                        pendentes.append(j)
+                else:
+                    pendentes.append(j)
+
+            if now - last_log >= 4:
+                last_log = now
+                status(
+                    f"[31] 156 · baixados {_done_count()}/{want} · "
+                    f"seqs {len(our_seqs)}/{want} · "
+                    f"prontos {len(prontos)} · processando {len(pendentes)} · "
+                    f"vazios {len(vazios)}"
+                )
+                for j in pendentes[:5]:
+                    status(
+                        f"[31]   ⏳ seq={j.get('seq')} · {j.get('situacao') or '?'} · "
+                        f"baixar={'sim' if j.get('hasDow') else 'nao'}"
+                    )
+
+            still_waiting = len(our_seqs) < want or len(pendentes) > 0
+            if still_waiting:
+                if not all_ready_announced:
+                    status(
+                        f"[31] aguardando TODOS na 156 "
+                        f"({len(our_seqs)}/{want} seqs · "
+                        f"{len(pendentes)} processando · "
+                        f"{len(prontos)} Baixar · {len(vazios)} vazios)…"
+                    )
+                _safe_wait(fila, 2200)
+                continue
+
+            if not all_ready_announced:
+                all_ready_announced = True
+                status(
+                    f"[31] todos prontos na 156 · "
+                    f"{len(prontos)} Baixar + {len(vazios)} sem registro — "
+                    f"baixando NA MESMA ABA (sem fechar)…"
+                )
+
+            # Mapear seq → code na ordem FIFO
+            for job in vazios:
+                if _done_count() >= want:
+                    break
+                seq = str(job.get("seq") or "")
+                if not seq or seq in skipped_seqs or seq in downloaded_seqs:
+                    continue
+                code = _next_code()
+                if not code:
+                    break
+                msg = str(job.get("mensagem") or job.get("situacao") or "sem DOW")
+                skipped_seqs.add(seq)
+                skipped_codes.add(code)
+                for q in queued:
+                    if q.get("code") == code and not q.get("seq"):
+                        q["seq"] = seq
+                        break
+                status(f"[31/{code}] sem dados · seq={seq} · skip · {msg[:70]}")
+
+            if not prontos:
+                if _done_count() >= want:
+                    break
+                _safe_wait(fila, 1500)
+                continue
+
+            prontos.sort(key=lambda j: _seq_num(str(j.get("seq") or "")))
+            for job in prontos:
+                if _done_count() >= want:
+                    break
+                seq = str(job.get("seq") or "")
+                if seq in downloaded_seqs or seq in skipped_seqs:
+                    continue
+                code = _next_code()
+                if not code:
+                    break
+                for q in queued:
+                    if q.get("code") == code and not q.get("seq"):
+                        q["seq"] = seq
+                        break
+
+                dest_name = f"pendencia_31_{code}_{ts}.xlsx"
+                status(
+                    f"[31/{code}] Baixar · seq={seq} · "
+                    f"{job.get('situacao') or 'Concluído'}"
+                )
+                try:
+                    _ensure_fila()
+                    path = _clicar_dow_job(
+                        client, context, fila, job, dest_name, status, code
+                    )
+                    size = path.stat().st_size if path.exists() else 0
+                    if size < 64:
+                        status(f"[31/{code}] arquivo suspeito ({size} bytes) — re-tenta")
+                        try:
+                            path.unlink(missing_ok=True)
+                        except Exception:
+                            pass
+                        all_ready_announced = False
+                        _ensure_fila()
+                        _safe_wait(fila, 2000)
+                        break
+                    paths[code] = str(path)
+                    downloaded_seqs.add(seq)
+                    status(f"[31/{code}] OK {path.name} ({size} bytes)")
+                    # após Baixar o SSW às vezes bagunça a página — garante 156
+                    _ensure_fila()
+                    _safe_wait(fila, 800)
+                except Exception as err:  # noqa: BLE001
+                    status(f"[31/{code}] download falhou: {err}")
+                    all_ready_announced = False
+                    _ensure_fila()
+                    _safe_wait(fila, 2000)
+                    break
+        except Exception as err:  # noqa: BLE001
+            status(f"[31] 156 loop: {err}")
+            try:
+                _ensure_fila()
+            except Exception:
+                pass
+            time.sleep(2)
+
+    missing = [c for c in codes_order if c not in paths and c not in skipped_codes]
+    if skipped_codes:
+        status(f"[31] skip sem CTRC: {', '.join(sorted(skipped_codes, key=codes_order.index))}")
+    if missing:
+        status(
+            f"[31] parcial na fila — faltou: {', '.join(missing)} "
+            f"(baixados {len(paths)}/{want}; skip {len(skipped_codes)})"
+        )
+    return paths
+
+
+def _filtrar_jobs_desta_rodada(
+    jobs: list[dict[str, Any]],
+    *,
+    enqueue_t0: float,
+    want: int,
+) -> list[dict[str, Any]]:
+    """Pega jobs 031 recentes desta rodada (por horário da fila ou top-N seq)."""
+    only = [j for j in jobs if j.get("is0495") and str(j.get("seq") or "")]
+    if not only:
+        return []
+
+    recent: list[dict[str, Any]] = []
+    timed = 0
+    for j in only:
+        ts_job = j.get("quando_epoch")
+        if isinstance(ts_job, (int, float)) and ts_job > 0:
+            timed += 1
+            # janela larga: 10 min antes do enqueue (ou mesmo dia se só veio data)
+            if ts_job >= (enqueue_t0 - 600):
+                recent.append(j)
+            else:
+                # data sem hora (00:00) no mesmo dia civil
+                try:
+                    from datetime import datetime as _dt
+
+                    d_job = _dt.fromtimestamp(ts_job).date()
+                    d_enq = _dt.fromtimestamp(enqueue_t0).date()
+                    if d_job == d_enq:
+                        recent.append(j)
+                except Exception:
+                    pass
+        else:
+            recent.append(j)
+
+    recent.sort(key=lambda j: _seq_num(str(j.get("seq") or "")))
+    # Sem match temporal útil → últimas N seqs 0495
+    if not recent:
+        recent = sorted(only, key=lambda j: _seq_num(str(j.get("seq") or "")))
+    if timed == 0 or len(recent) > want:
+        recent = recent[-want:]
+    return recent
 
 
 def _esperar_nova_seq_0495(
@@ -463,7 +722,11 @@ def _baixar_um_seq_worker(
                         raise FilaSemDados31(str(job.get("mensagem") or "sem DOW")[:80])
                 if job.get("concluido") and job.get("hasDow"):
                     dest_name = f"pendencia_31_{code}_{ts}.xlsx"
-                    path = _clicar_dow_job(client, ctx, fila, job, dest_name, status, code)
+                    # SSW costuma falhar com vários Baixar ao mesmo tempo — serializa o clique
+                    with _DOWNLOAD_CLICK_LOCK:
+                        path = _clicar_dow_job(
+                            client, ctx, fila, job, dest_name, status, code
+                        )
                     size = path.stat().st_size if path.exists() else 0
                     if size < 64:
                         try:
@@ -671,12 +934,13 @@ def _abrir_fila_156(client, context, page, status):
 
 
 def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
-    """Lê linhas da fila 156 (seq, opção, situação, tem download)."""
+    """Lê linhas da fila 156 (seq, opção, situação, tem download, horário)."""
     return fila.evaluate(
         """() => {
           const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
           const jobs = [];
           const rows = Array.from(document.querySelectorAll('tr'));
+          const now = new Date();
           for (const tr of rows) {
             const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
             if (cells.length < 4) continue;
@@ -692,6 +956,30 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
             }
             if (!sit) {
               sit = cells.find(c => /conclu|processando|na\\s*fila|erro|abort/i.test(c)) || cells[6] || '';
+            }
+            // horário da linha (dd/mm/aa[aa] [hh:mm[:ss]])
+            let quando = '';
+            let quando_epoch = 0;
+            for (const c of cells) {
+              const m = (c || '').match(
+                /(\\d{1,2})\\/(\\d{1,2})\\/(\\d{2,4})(?:\\s+(\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?/
+              );
+              if (!m) continue;
+              quando = m[0];
+              let yy = parseInt(m[3], 10);
+              if (yy < 100) yy += 2000;
+              const hh = parseInt(m[4] || '0', 10);
+              const mm = parseInt(m[5] || '0', 10);
+              const ss = parseInt(m[6] || '0', 10);
+              const dt = new Date(yy, parseInt(m[2], 10) - 1, parseInt(m[1], 10), hh, mm, ss);
+              if (!isNaN(dt.getTime())) {
+                quando_epoch = Math.floor(dt.getTime() / 1000);
+                // se data futura absurda (>1d), ignora
+                if (quando_epoch > Math.floor(now.getTime() / 1000) + 86400) {
+                  quando_epoch = 0;
+                }
+              }
+              break;
             }
             // mensagem (última coluna longa) — ex.: sem CTRCs / sem ocorrência
             let mensagem = '';
@@ -746,6 +1034,8 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
               opcao,
               situacao: sit,
               mensagem,
+              quando,
+              quando_epoch,
               concluido,
               processando,
               is0495: /0495|031\\s*-|ocorr|ssw0495/.test(blobAll),
@@ -788,22 +1078,9 @@ def _atualizar_fila(fila) -> None:
 
 
 def _snapshot_fila_seqs(client, context, page, status) -> set[str]:
-    """Abre 156 rapidinho, lê seqs atuais, fecha."""
-    fila = None
-    try:
-        fila = _abrir_fila_156(client, context, page, status)
-        _safe_wait(fila, 600)
-        jobs = _ler_jobs_fila(fila)
-        return {str(j.get("seq") or "") for j in jobs if j.get("seq")}
-    except Exception as err:
-        status(f"[31] snapshot fila: {err}")
-        return set()
-    finally:
-        try:
-            if fila is not None and not fila.is_closed():
-                fila.close()
-        except Exception:
-            pass
+    """LEGADO — não usar no fluxo 31 (abria/fechava 156 cedo demais)."""
+    status("[31] snapshot 156 desativado (evita abrir/fechar no começo)")
+    return set()
 
 
 def _baixar_todos_da_fila(
@@ -1072,65 +1349,257 @@ def _baixar_todos_da_fila(
 
 
 def _clicar_dow_job(client, context, fila, job: dict, dest_name: str, status, code: str) -> Path:
-    """Clica Baixar/DOW da linha da seq — espera download na página (não no context)."""
+    """Clica o link real de Baixar/DOW da seq (a/img com onclick) e captura o arquivo.
+
+    O SSW às vezes não dispara 'download' e abre outra aba — tentamos os dois.
+    """
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    seq = str(job.get("seq") or "")
     _atualizar_fila(fila)
     _safe_wait(fila, 400)
 
-    with fila.expect_download(timeout=45000) as di:
-        ok = fila.evaluate(
-            """({ seq }) => {
-              const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
-              const want = String(seq || '').replace(/\\D/g, '');
-              if (!want) return '';
-              const rows = Array.from(document.querySelectorAll('tr'));
-              for (const tr of rows) {
-                const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
-                if (!cells.length) continue;
-                const s = (cells[0] || '').replace(/\\D/g, '');
-                if (s !== want) continue;
-                const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || '';
-                if (sit && /processando|na\\s*fila|em\\s*fila/i.test(sit) && !/conclu/i.test(sit)) {
-                  return 'ainda_processando';
-                }
-                const links = Array.from(tr.querySelectorAll(
-                  'a[onclick], a[href], img[onclick], input[onclick], button, font, b, span'
-                ));
-                for (const a of links) {
-                  const text = norm(a.textContent || a.alt || a.title || a.value || '');
-                  const onclick = String(a.getAttribute('onclick') || '');
-                  const href = String(a.getAttribute('href') || '');
-                  const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
-                  if (/imprimir|correio|atualizar|voltar|fechar/i.test(text)
-                      && !/\\b(dow|baixar)\\b/i.test(text)) continue;
-                  if (/^(dow|baixar)$/i.test(text) || /\\b(dow|baixar)\\b/i.test(text)
-                      || /\\bdow\\b|download\\(|ssw0495|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(blob)
-                      || (/0495|031/.test(blob) && /dow|baixar|href=|http|download/.test(blob))) {
-                    const clickEl = a.closest('a,button') || a;
-                    clickEl.click();
-                    return 'row';
-                  }
-                }
-                for (const td of Array.from(tr.querySelectorAll('td'))) {
-                  const t = norm(td.innerText || '');
-                  if (!(/^(dow|baixar)$/i.test(t) || (t.length <= 10 && /\\b(dow|baixar)\\b/i.test(t)))) continue;
-                  const clickEl = td.querySelector('a, button, img, [onclick]') || td;
-                  clickEl.click();
-                  return 'row-td';
-                }
-                return 'sem_dow';
+    meta = fila.evaluate(
+        """({ seq }) => {
+          const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
+          const want = String(seq || '').replace(/\\D/g, '');
+          if (!want) return { ok: false, why: 'seq_vazia' };
+          const rows = Array.from(document.querySelectorAll('tr'));
+          for (const tr of rows) {
+            const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
+            if (!cells.length) continue;
+            const s = (cells[0] || '').replace(/\\D/g, '');
+            if (s !== want) continue;
+            const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || '';
+            if (sit && /processando|na\\s*fila|em\\s*fila/i.test(sit) && !/conclu/i.test(sit)) {
+              return { ok: false, why: 'ainda_processando' };
+            }
+            // Só elementos que realmente disparam download (não font/span/td soltos)
+            const links = Array.from(tr.querySelectorAll(
+              'a[onclick], a[href], img[onclick], input[onclick], button[onclick]'
+            ));
+            const scored = [];
+            for (const a of links) {
+              const text = norm(a.textContent || a.alt || a.title || a.value || '');
+              const onclick = String(a.getAttribute('onclick') || '');
+              const href = String(a.getAttribute('href') || '');
+              const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
+              if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(text)
+                  && !/\\b(dow|baixar)\\b/i.test(text)) continue;
+              let score = 0;
+              if (/^(dow|baixar)$/i.test(text)) score += 50;
+              if (/\\b(dow|baixar)\\b/i.test(text)) score += 20;
+              if (/\\bdow\\b|baixar|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|arquivo/.test(blob)) score += 15;
+              if (onclick) score += 10;
+              if (href && href !== '#' && !/^javascript:/i.test(href)) score += 8;
+              if (score > 0) scored.push({ text, onclick, href, score, tag: (a.tagName || '').toLowerCase() });
+            }
+            scored.sort((x, y) => y.score - x.score);
+            if (scored.length) {
+              return { ok: true, why: 'link', best: scored[0], n: scored.length };
+            }
+            // fallback: célula Baixar com filho clicável
+            for (const td of Array.from(tr.querySelectorAll('td'))) {
+              const t = norm(td.innerText || '');
+              if (!(/^(dow|baixar)$/i.test(t) || (t.length <= 10 && /\\b(dow|baixar)\\b/i.test(t)))) continue;
+              const child = td.querySelector('a[onclick], a[href], img[onclick], input[onclick], button[onclick]');
+              if (child) {
+                return {
+                  ok: true,
+                  why: 'td-child',
+                  best: {
+                    text: t,
+                    onclick: String(child.getAttribute('onclick') || ''),
+                    href: String(child.getAttribute('href') || ''),
+                    score: 40,
+                    tag: (child.tagName || '').toLowerCase(),
+                  },
+                  n: 1,
+                };
               }
-              return 'seq_sumiu';
-            }""",
-            {"seq": job.get("seq") or ""},
-        )
-        if ok == "ainda_processando":
+            }
+            return { ok: false, why: 'sem_dow', cells: cells.slice(0, 8) };
+          }
+          return { ok: false, why: 'seq_sumiu' };
+        }""",
+        {"seq": seq},
+    )
+
+    if not meta or not meta.get("ok"):
+        why = (meta or {}).get("why") or "desconhecido"
+        if why == "ainda_processando":
             raise RuntimeError(f"31/{code}: seq ainda processando — não clicou Baixar")
-        if ok not in ("row", "row-td"):
-            raise RuntimeError(f"31/{code}: Baixar/DOW da seq não encontrado ({ok})")
-        status_fn = status
+        raise RuntimeError(f"31/{code}: Baixar/DOW da seq não encontrado ({why})")
+
+    best = meta.get("best") or {}
+    _status_safe(
+        status,
+        f"[31/{code}] Baixar meta · tag={best.get('tag')} · "
+        f"txt={(best.get('text') or '')[:20]} · "
+        f"onclick={(best.get('onclick') or '')[:70]}",
+    )
+
+    def _trigger() -> str:
+        return str(
+            fila.evaluate(
+                """({ seq }) => {
+                  const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
+                  const want = String(seq || '').replace(/\\D/g, '');
+                  const rows = Array.from(document.querySelectorAll('tr'));
+                  for (const tr of rows) {
+                    const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
+                    const s = (cells[0] || '').replace(/\\D/g, '');
+                    if (s !== want) continue;
+                    const links = Array.from(tr.querySelectorAll(
+                      'a[onclick], a[href], img[onclick], input[onclick], button[onclick]'
+                    ));
+                    const pick = [];
+                    for (const a of links) {
+                      const text = norm(a.textContent || a.alt || a.title || a.value || '');
+                      const onclick = String(a.getAttribute('onclick') || '');
+                      const href = String(a.getAttribute('href') || '');
+                      const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
+                      if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(text)
+                          && !/\\b(dow|baixar)\\b/i.test(text)) continue;
+                      let score = 0;
+                      if (/^(dow|baixar)$/i.test(text)) score += 50;
+                      if (/\\b(dow|baixar)\\b/i.test(text)) score += 20;
+                      if (/\\bdow\\b|baixar|download\\(|\\.xlsx|\\.csv|\\.sswweb|arquivo/.test(blob)) score += 15;
+                      if (score > 0) pick.push({ a, score, onclick });
+                    }
+                    pick.sort((x, y) => y.score - x.score);
+                    if (pick.length) {
+                      const el = pick[0].a;
+                      const oc = pick[0].onclick || '';
+                      try { el.click(); return 'click'; } catch (e1) {}
+                      if (oc) {
+                        try { (function(){ eval(oc); })(); return 'eval-onclick'; } catch (e2) {}
+                      }
+                      if (typeof ajaxEnvia === 'function' && /ajaxEnvia/i.test(oc)) {
+                        try { eval(oc); return 'ajax-onclick'; } catch (e3) {}
+                      }
+                      return 'click-fail';
+                    }
+                    // fallback ajaxEnvia('DOW', seq) se existir
+                    if (typeof ajaxEnvia === 'function') {
+                      try { ajaxEnvia('DOW', want); return 'ajax-DOW'; } catch (e4) {}
+                      try { ajaxEnvia('DOW', 0); return 'ajax-DOW0'; } catch (e5) {}
+                    }
+                    // último recurso: clica a última célula (onde o SSW mostra Baixar)
+                    const tds = tr.querySelectorAll('td');
+                    if (tds.length) {
+                      const last = tds[tds.length - 1];
+                      const child = last.querySelector('a, img, input, button, font, b, span') || last;
+                      try { child.click(); return 'td-last'; } catch (e6) {}
+                    }
+                    return 'sem_link';
+                  }
+                  return 'seq_sumiu';
+                }""",
+                {"seq": seq},
+            )
+            or ""
+        )
+
+    def _save_dl(download) -> Path:
+        return _save_named(client, download, dest_name)
+
+    # 1) download no contexto (mais comum no SSW)
+    try:
+        with context.expect_event("download", timeout=25000) as di:
+            how = _trigger()
+            _status_safe(status, f"[31/{code}] clique Baixar={how}")
+            if how in {"seq_sumiu", "sem_link", "click-fail", ""}:
+                raise RuntimeError(f"trigger falhou ({how})")
+        return _save_dl(di.value)
+    except PlaywrightTimeoutError:
+        _status_safe(status, f"[31/{code}] sem evento download — tentando nova aba…")
+    except RuntimeError:
+        raise
+    except Exception as err:
+        _status_safe(status, f"[31/{code}] download context: {err}")
+
+    # 2) nova aba / popup
+    pages_before = list(context.pages)
+    try:
+        with context.expect_page(timeout=12000) as pi:
+            how = _trigger()
+            _status_safe(status, f"[31/{code}] clique(aba) Baixar={how}")
+        new_page = pi.value
+    except PlaywrightTimeoutError:
+        new_page = None
+        # talvez já abriu
+        after = [p for p in context.pages if p not in pages_before]
+        if after:
+            new_page = after[-1]
+
+    if new_page is not None:
         try:
-            status_fn(f"[31/{code}] clique Baixar={ok}")
+            new_page.wait_for_load_state("domcontentloaded", timeout=15000)
         except Exception:
-            _status_safe(status, f"[31/{code}] clique Baixar={ok}")
-    download = di.value
-    return _save_named(client, download, dest_name)
+            pass
+        try:
+            with new_page.expect_download(timeout=20000) as di:
+                # se o download já veio na navegação, este wait pode falhar —
+                # então também tentamos pegar response/body
+                try:
+                    new_page.wait_for_load_state("load", timeout=5000)
+                except Exception:
+                    pass
+            path = _save_dl(di.value)
+            try:
+                new_page.close()
+            except Exception:
+                pass
+            return path
+        except PlaywrightTimeoutError:
+            # Página pode ser o próprio arquivo (sswweb/csv) ou URL direta
+            try:
+                url = new_page.url or ""
+                _status_safe(status, f"[31/{code}] aba aberta · {url[:80]}")
+                # tenta baixar a URL com cookies da sessão
+                if url and not url.startswith("about:") and "blank" not in url.lower():
+                    resp = context.request.get(url, timeout=30000)
+                    body = resp.body()
+                    if body and len(body) > 64:
+                        dest = Path(client.download_dir) / dest_name
+                        if dest.exists():
+                            dest = dest.with_name(
+                                f"{dest.stem}_{int(time.time())}{dest.suffix}"
+                            )
+                        # ajusta extensão pela URL / content-type
+                        ct = (resp.headers.get("content-type") or "").lower()
+                        low_url = url.lower()
+                        if "xlsx" in low_url or "spreadsheet" in ct:
+                            dest = dest.with_suffix(".xlsx")
+                        elif "csv" in low_url or "csv" in ct:
+                            dest = dest.with_suffix(".csv")
+                        elif "sswweb" in low_url:
+                            dest = dest.with_suffix(".sswweb")
+                        dest.write_bytes(body)
+                        try:
+                            new_page.close()
+                        except Exception:
+                            pass
+                        return dest
+            except Exception as err:
+                _status_safe(status, f"[31/{code}] fetch aba: {err}")
+            try:
+                new_page.close()
+            except Exception:
+                pass
+
+    # 3) última tentativa: locator Playwright no link da linha
+    try:
+        row = fila.locator("tr").filter(has_text=re.compile(rf"^\s*{re.escape(seq)}"))
+        link = row.locator("a[onclick], a[href], img[onclick]").first
+        with context.expect_event("download", timeout=20000) as di:
+            link.click(timeout=5000, force=True)
+            _status_safe(status, f"[31/{code}] clique Baixar=locator")
+        return _save_dl(di.value)
+    except Exception as err:
+        _status_safe(status, f"[31/{code}] locator falhou: {err}")
+
+    raise RuntimeError(
+        f"31/{code}: Baixar clicou mas não gerou arquivo (seq={seq})"
+    )
