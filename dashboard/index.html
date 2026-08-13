@@ -957,8 +957,10 @@
     body.tv-mode .agenda-kpi,
     body.tv-mode .arm-hero-card,
     body.tv-mode .arm-panel,
-    body.tv-mode .arm-podium-slot,
-    body.tv-mode .arm-rank-list,
+    body.tv-mode .arm-best-list,
+    body.tv-mode .arm-best-badge,
+    body.tv-mode .arm-best-avatar,
+    body.tv-mode .arm-best-track,
     body.tv-mode .zone,
     body.tv-mode .zone-head,
     body.tv-mode .pop-card,
@@ -1023,20 +1025,12 @@
       font-variant-numeric: tabular-nums;
       font-feature-settings: "tnum";
     }
-    body.tv-mode .arm-podium-slot {
-      border: none !important;
-      background: linear-gradient(180deg, #101c30, #0a121e) !important;
-    }
-    body.tv-mode .arm-rank-list {
+    body.tv-mode .arm-best-list {
       border: none !important;
       background: #070e18 !important;
     }
-    body.tv-mode .arm-rank-head {
-      background: #0d1626 !important;
-      border-bottom: none !important;
-    }
-    body.tv-mode .arm-rank-row {
-      border-bottom: none !important;
+    body.tv-mode .arm-best-row {
+      border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
     }
     body.tv-mode .clock-box {
       border: none !important;
@@ -3655,353 +3649,192 @@
     .agenda-pizza .callout-dot.s-des { fill: var(--cad-dark); }
     .agenda-pizza .callout-dot.s-pat { fill: #38bdf8; }
     .arm-rank-body {
-      padding: 10px 14px 14px;
-      display: grid;
-      /* Ranking em destaque: pódio grande + lista */
-      grid-template-rows: minmax(300px, 1.4fr) minmax(200px, 1fr);
-      gap: 14px;
+      padding: 8px 16px 16px;
+      display: flex;
+      flex-direction: column;
       min-height: 0;
       flex: 1;
     }
-    .arm-podium {
-      display: grid;
-      grid-template-columns: 1fr 1.28fr 1fr;
-      gap: clamp(10px, 1.2vw, 18px);
-      align-items: end;
-      min-height: 0;
-      height: 100%;
+    .arm-conf-head h2 {
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #fbbf24;
     }
-    .arm-podium-slot {
-      position: relative;
-      background: linear-gradient(180deg, #182640 0%, #0d1728 100%);
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      border-radius: 16px;
-      padding: 16px 12px 14px;
-      text-align: center;
-      min-width: 0;
-      overflow: hidden;
-      height: 100%;
+    .arm-best-list {
+      overflow: auto;
+      min-height: 0;
+      flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;
+      gap: 0;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(18, 30, 50, 0.92), rgba(8, 14, 24, 0.88));
+      padding: 4px 0;
+    }
+    .arm-best-row {
+      display: grid;
+      grid-template-columns: 56px 48px minmax(0, 1.15fr) minmax(120px, 1.4fr) minmax(110px, 0.85fr);
+      gap: 12px;
       align-items: center;
+      padding: 12px 18px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+      min-height: 58px;
+      transition: background 0.15s ease;
     }
-    .arm-podium-slot::before {
-      content: '';
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: var(--bar-h, 34%);
-      background: linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.14));
-      pointer-events: none;
+    .arm-best-row:last-child { border-bottom: none; }
+    .arm-best-row:hover { background: rgba(56, 189, 248, 0.06); }
+    .arm-best-row.r1 { background: rgba(251, 191, 36, 0.06); }
+    .arm-best-row.r2 { background: rgba(203, 213, 225, 0.05); }
+    .arm-best-row.r3 { background: rgba(180, 120, 70, 0.07); }
+    .arm-best-badge {
+      --badge: #2563eb;
+      position: relative;
+      width: 44px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 900;
+      font-size: clamp(15px, 1.6vw, 20px);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      background: var(--badge);
+      clip-path: polygon(0 0, 82% 0, 100% 50%, 82% 100%, 0 100%);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
     }
-    .arm-podium-slot.p1 {
-      border-color: rgba(251, 191, 36, 0.6);
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32), inset 0 0 0 1px rgba(251, 191, 36, 0.12);
-      min-height: 100%;
-      padding-top: 18px;
-      transform: translateY(-10px);
-      z-index: 2;
-    }
-    .arm-podium-slot.p1::before {
-      background: linear-gradient(180deg, transparent, rgba(251, 191, 36, 0.2));
-    }
-    .arm-podium-slot.p2 {
-      min-height: 88%;
-      max-height: 92%;
-      border-color: rgba(203, 213, 225, 0.4);
-      transform: translateY(4px);
-    }
-    .arm-podium-slot.p2::before {
-      background: linear-gradient(180deg, transparent, rgba(203, 213, 225, 0.12));
-    }
-    .arm-podium-slot.p3 {
-      min-height: 78%;
-      max-height: 86%;
-      border-color: rgba(180, 120, 70, 0.5);
-      transform: translateY(10px);
-    }
-    .arm-podium-slot.p3::before {
-      background: linear-gradient(180deg, transparent, rgba(180, 120, 70, 0.16));
-    }
-    .arm-podium-slot .avatar {
-      width: clamp(52px, 5.2vw, 72px);
-      height: clamp(52px, 5.2vw, 72px);
-      margin: 0 auto 10px;
+    .arm-best-row.r1 .arm-best-badge { --badge: linear-gradient(145deg, #f6c453, #d4a017); background: linear-gradient(145deg, #f6c453, #c9970e); color: #1a1300; }
+    .arm-best-row.r2 .arm-best-badge { background: linear-gradient(145deg, #e8edf5, #9aa7b8); color: #1e293b; }
+    .arm-best-row.r3 .arm-best-badge { background: linear-gradient(145deg, #e0a070, #a85a2a); color: #fff7ed; }
+    .arm-best-avatar {
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
       display: grid;
       place-items: center;
       font-weight: 800;
-      font-size: clamp(16px, 1.7vw, 22px);
+      font-size: 13px;
       letter-spacing: 0.04em;
       color: #0b1220;
-      background: #94a3b8;
-      border: 2px solid rgba(255, 255, 255, 0.22);
-      position: relative;
-      z-index: 1;
+      background: linear-gradient(145deg, #7dd3fc, #38bdf8);
+      border: 2px solid rgba(255, 255, 255, 0.18);
+      flex-shrink: 0;
     }
-    .arm-podium-slot.p1 .avatar {
-      width: clamp(64px, 6.4vw, 88px);
-      height: clamp(64px, 6.4vw, 88px);
-      font-size: clamp(20px, 2.1vw, 28px);
-      background: linear-gradient(145deg, #fde68a, #f59e0b);
-      box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.22);
-    }
-    .arm-podium-slot.p2 .avatar {
-      background: linear-gradient(145deg, #e2e8f0, #94a3b8);
-    }
-    .arm-podium-slot.p3 .avatar {
-      background: linear-gradient(145deg, #fdba74, #b45309);
-      color: #fff7ed;
-    }
-    .arm-podium-slot .place {
-      position: relative;
-      z-index: 1;
+    .arm-best-row.r1 .arm-best-avatar { background: linear-gradient(145deg, #fde68a, #f59e0b); }
+    .arm-best-row.r2 .arm-best-avatar { background: linear-gradient(145deg, #e2e8f0, #94a3b8); }
+    .arm-best-row.r3 .arm-best-avatar { background: linear-gradient(145deg, #fdba74, #b45309); color: #fff7ed; }
+    .arm-best-who {
+      min-width: 0;
       display: flex;
       flex-direction: column;
-      align-items: center;
       gap: 2px;
-      margin-bottom: 4px;
-      line-height: 1;
     }
-    .arm-podium-slot .medal {
-      font-size: clamp(28px, 3.2vw, 42px);
-      line-height: 1;
-      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
-    }
-    .arm-podium-slot .place-num {
-      font-size: clamp(28px, 3.4vw, 48px);
-      font-weight: 900;
-      letter-spacing: -0.02em;
-      font-variant-numeric: tabular-nums;
-      color: var(--muted);
-    }
-    .arm-podium-slot.p1 .place-num { color: #fbbf24; font-size: clamp(34px, 4.2vw, 58px); }
-    .arm-podium-slot.p2 .place-num { color: #e2e8f0; }
-    .arm-podium-slot.p3 .place-num { color: #d4a574; }
-    .arm-podium-slot.p1 .medal { font-size: clamp(34px, 4vw, 52px); }
-    .arm-podium-slot .name {
-      position: relative;
-      z-index: 1;
-      margin-top: 8px;
-      font-size: clamp(15px, 1.65vw, 22px);
+    .arm-best-who .nm {
       font-weight: 800;
-      line-height: 1.2;
-      word-break: break-word;
-      max-width: 100%;
+      font-size: clamp(14px, 1.45vw, 18px);
+      line-height: 1.15;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #f1f5f9;
     }
-    .arm-podium-slot.p1 .name {
-      font-size: clamp(17px, 1.9vw, 26px);
-    }
-    .arm-podium-slot .kg {
-      position: relative;
-      z-index: 1;
-      margin-top: 10px;
-      font-size: clamp(18px, 2.1vw, 28px);
-      font-weight: 800;
-      font-variant-numeric: tabular-nums;
-      color: #e2e8f0;
-    }
-    .arm-podium-slot.p1 .kg {
-      color: #fde68a;
-      font-size: clamp(22px, 2.5vw, 34px);
-    }
-    .arm-podium-slot .share {
-      position: relative;
-      z-index: 1;
-      margin-top: 4px;
-      font-size: clamp(12px, 1.2vw, 15px);
-      font-weight: 700;
-      color: #38bdf8;
-      font-variant-numeric: tabular-nums;
-    }
-    .arm-podium-slot .unit {
-      position: relative;
-      z-index: 1;
-      margin-top: 6px;
-      font-size: clamp(11px, 1.05vw, 13px);
+    .arm-best-who .un {
+      font-size: 11px;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
     }
-    .arm-rank-list {
-      overflow: auto;
-      min-height: 0;
-      border: 1px solid rgba(148, 163, 184, 0.14);
-      border-radius: 12px;
-      background: rgba(8, 14, 24, 0.45);
-      display: flex;
-      flex-direction: column;
-    }
-    .arm-rank-head,
-    .arm-rank-row {
-      display: grid;
-      grid-template-columns: 72px minmax(0, 1.6fr) minmax(88px, 0.85fr) minmax(110px, 0.85fr) 64px minmax(90px, 1.1fr);
-      gap: 10px;
-      align-items: center;
-      padding: 11px 16px;
-    }
-    .arm-rank-head {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      background: #121e32;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.16);
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      flex-shrink: 0;
-    }
-    .arm-rank-row {
-      border-bottom: 1px solid rgba(19, 32, 51, 0.95);
-      font-size: 14px;
-      min-height: 44px;
-    }
-    .arm-rank-row:last-child { border-bottom: none; }
-    .arm-rank-row:nth-child(even) { background: rgba(255, 255, 255, 0.025); }
-    .arm-rank-row:hover { background: rgba(56, 189, 248, 0.06); }
-    .arm-rank-row .rk {
-      color: #e2e8f0;
-      font-weight: 900;
-      font-variant-numeric: tabular-nums;
-      font-size: clamp(22px, 2.4vw, 32px);
-      letter-spacing: -0.03em;
-      line-height: 1;
-    }
-    .arm-rank-row .rk .rk-ord {
-      font-size: 0.55em;
-      font-weight: 800;
-      color: #94a3b8;
-      margin-left: 1px;
-    }
-    .arm-rank-row .nm {
-      font-weight: 700;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 14px;
-    }
-    .arm-rank-row .un {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .arm-rank-row .kg {
-      color: #f1f5f9;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      font-family: ui-monospace, Consolas, monospace;
-      text-align: right;
-      font-size: 14px;
-    }
-    .arm-rank-row .pct {
-      color: #38bdf8;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      text-align: right;
-      font-size: 13px;
-    }
-    .arm-rank-row .bar {
+    .arm-best-track {
       height: 10px;
       border-radius: 999px;
       background: rgba(30, 41, 59, 0.95);
       overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.12);
     }
-    .arm-rank-row .bar > i {
+    .arm-best-track > i {
       display: block;
       height: 100%;
       width: var(--w, 0%);
       border-radius: inherit;
-      background: linear-gradient(90deg, #0ea5e9, #7dd3fc);
+      background: linear-gradient(90deg, #0ea5e9 0%, #38bdf8 55%, #7dd3fc 100%);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+      transition: width 0.45s ease;
     }
+    .arm-best-row.r1 .arm-best-track > i {
+      background: linear-gradient(90deg, #d97706, #fbbf24, #fde68a);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+    }
+    .arm-best-row.r2 .arm-best-track > i {
+      background: linear-gradient(90deg, #64748b, #cbd5e1, #f1f5f9);
+    }
+    .arm-best-row.r3 .arm-best-track > i {
+      background: linear-gradient(90deg, #9a3412, #ea580c, #fdba74);
+    }
+    .arm-best-val {
+      text-align: right;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(16px, 1.7vw, 22px);
+      color: #e2e8f0;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+    .arm-best-val small {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #38bdf8;
+      letter-spacing: 0;
+    }
+    .arm-best-row.r1 .arm-best-val { color: #fde68a; }
     .arm-rank-empty {
-      padding: 22px 14px;
+      padding: 28px 16px;
       color: var(--muted);
       text-align: center;
       font-size: 14px;
     }
     body.tv-mode #viewArmConferentes .arm-rank-body {
-      grid-template-rows: minmax(340px, 1.45fr) minmax(200px, 0.9fr) !important;
-      gap: clamp(14px, 1.6vmin, 22px) !important;
-      padding: clamp(10px, 1.2vmin, 16px) !important;
+      padding: clamp(10px, 1.2vmin, 18px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-podium {
-      gap: clamp(12px, 1.8vmin, 28px) !important;
+    body.tv-mode #viewArmConferentes .arm-best-row {
+      grid-template-columns: 68px 56px minmax(0, 1.2fr) minmax(160px, 1.5fr) minmax(130px, 0.9fr) !important;
+      padding: clamp(14px, 1.5vmin, 20px) clamp(18px, 2vmin, 28px) !important;
+      gap: clamp(12px, 1.4vmin, 18px) !important;
+      min-height: clamp(64px, 6.5vmin, 84px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 {
-      transform: translateY(-14px);
+    body.tv-mode #viewArmConferentes .arm-best-badge {
+      width: 54px !important;
+      height: 38px !important;
+      font-size: clamp(18px, 2.2vmin, 26px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-podium-slot .medal {
-      font-size: clamp(36px, 4.5vmin, 58px) !important;
+    body.tv-mode #viewArmConferentes .arm-best-avatar {
+      width: 52px !important;
+      height: 52px !important;
+      font-size: 15px !important;
     }
-    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 .medal {
-      font-size: clamp(44px, 5.5vmin, 72px) !important;
+    body.tv-mode #viewArmConferentes .arm-best-who .nm {
+      font-size: clamp(17px, 2vmin, 26px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-podium-slot .place-num {
-      font-size: clamp(36px, 4.6vmin, 64px) !important;
+    body.tv-mode #viewArmConferentes .arm-best-track {
+      height: clamp(12px, 1.4vmin, 16px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 .place-num {
-      font-size: clamp(44px, 5.6vmin, 78px) !important;
+    body.tv-mode #viewArmConferentes .arm-best-val {
+      font-size: clamp(20px, 2.4vmin, 30px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-podium-slot .avatar {
-      width: clamp(60px, 6.5vmin, 92px) !important;
-      height: clamp(60px, 6.5vmin, 92px) !important;
-      font-size: clamp(18px, 2.2vmin, 28px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 .avatar {
-      width: clamp(76px, 8vmin, 112px) !important;
-      height: clamp(76px, 8vmin, 112px) !important;
-      font-size: clamp(24px, 2.8vmin, 36px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-podium-slot .name {
-      font-size: clamp(18px, 2.2vmin, 28px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 .name {
-      font-size: clamp(22px, 2.6vmin, 34px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-podium-slot .kg {
-      font-size: clamp(22px, 2.6vmin, 36px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-podium-slot.p1 .kg {
-      font-size: clamp(28px, 3.2vmin, 44px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-podium-slot .share {
-      font-size: clamp(13px, 1.5vmin, 18px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-rank-head,
-    body.tv-mode #viewArmConferentes .arm-rank-row {
-      grid-template-columns: 88px minmax(0, 1.7fr) minmax(100px, 0.9fr) minmax(120px, 0.9fr) 72px minmax(110px, 1.15fr) !important;
-      padding: clamp(12px, 1.4vmin, 18px) clamp(14px, 1.6vmin, 22px) !important;
-      gap: clamp(10px, 1.2vmin, 16px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-rank-head {
-      font-size: clamp(12px, 1.3vmin, 15px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-rank-row {
-      font-size: clamp(15px, 1.7vmin, 22px) !important;
-      min-height: clamp(52px, 5.4vmin, 72px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-rank-row .rk {
-      font-size: clamp(28px, 3.4vmin, 44px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-rank-row .nm {
-      font-size: clamp(15px, 1.7vmin, 22px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-rank-row .kg {
-      font-size: clamp(15px, 1.7vmin, 22px) !important;
-    }
-    body.tv-mode #viewArmConferentes .arm-rank-row .bar {
-      height: clamp(10px, 1.2vmin, 14px) !important;
+    @media (max-width: 900px) {
+      .arm-best-row {
+        grid-template-columns: 44px 40px minmax(0, 1fr) minmax(90px, 0.9fr);
+        grid-template-areas:
+          "badge avatar who val"
+          "badge avatar track track";
+        row-gap: 8px;
+      }
+      .arm-best-badge { grid-area: badge; }
+      .arm-best-avatar { grid-area: avatar; }
+      .arm-best-who { grid-area: who; }
+      .arm-best-track { grid-area: track; }
+      .arm-best-val { grid-area: val; align-self: end; }
     }
     .arm-panel {
       background: var(--panel);
@@ -4660,12 +4493,11 @@
         </div>
         <section class="arm-hero-card arm-conf-card dash-block" data-block="chart">
           <header class="arm-conf-head">
-            <h2>Ranking · 177</h2>
+            <h2>Melhores da BINHO</h2>
             <div class="meta" id="armRankMeta">peso lido no mês</div>
           </header>
           <div class="arm-rank-body arm-rank-body-full">
-            <div class="arm-podium" id="armPodium" aria-label="Pódio top 3"></div>
-            <div class="arm-rank-list" id="armRankRest"></div>
+            <div class="arm-best-list" id="armRankRest" aria-label="Ranking conferentes"></div>
           </div>
         </section>
         </div>
@@ -4939,7 +4771,7 @@
     const OPS_VIEWS = ['coleta', 'entrega', 'agendamento'];
     const VIEW_LABELS = { coleta: 'Coleta', entrega: 'Entrega', agendamento: 'Agendamento' };
     const ARM_VIEWS = ['patio', 'conferentes'];
-    const ARM_VIEW_LABELS = { patio: 'Armazém', conferentes: 'Conferentes' };
+    const ARM_VIEW_LABELS = { patio: 'Armazém', conferentes: 'Melhores da BINHO' };
     const SECTORS = {
       distribuicao: { id: 'distribuicao', label: 'Distribuição', ready: true, panel: 'operacao' },
       armazem: { id: 'armazem', label: 'Armazém', ready: true, panel: 'armazem' },
@@ -6204,13 +6036,13 @@
       const title = document.getElementById('armTitle');
       const kick = document.getElementById('armKicker');
       if (title) {
-        const label = onPatio ? 'ARMAZÉM' : 'CONFERENTES';
+        const label = onPatio ? 'ARMAZÉM' : 'MELHORES DA BINHO';
         title.innerHTML = `${label} <span class="swap-dot" id="armSwapDot" aria-hidden="true"><i class="d-patio"></i><i class="d-conf"></i></span>`;
         title.title = 'Clique ou ← → para trocar tela';
         title.style.cursor = 'pointer';
         title.onclick = () => stepSwap(1);
       }
-      if (kick) kick.textContent = onPatio ? 'BINHO · OPERACIONAL · 078' : 'BINHO · OPERACIONAL · 177';
+      if (kick) kick.textContent = onPatio ? 'BINHO · OPERACIONAL · 078' : 'BINHO · OPERACIONAL · 177 · RANKING';
       document.body.setAttribute('data-view', CURRENT_VIEW);
     }
 
@@ -6677,7 +6509,6 @@
     }
 
     function renderArmRanking(rows, resumo) {
-      const podiumEl = document.getElementById('armPodium');
       const rest = document.getElementById('armRankRest');
       const meta = document.getElementById('armRankMeta');
       const ranked = (rows || [])
@@ -6702,25 +6533,28 @@
         return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
       };
       const sharePct = (peso) => (totalPeso > 0 ? Math.round((peso / totalPeso) * 1000) / 10 : 0);
-      const barVsLeader = (peso) => (topPeso > 0 ? Math.max(8, Math.round((peso / topPeso) * 100)) : 0);
+      const barVsLeader = (peso) => (topPeso > 0 ? Math.max(6, Math.round((peso / topPeso) * 100)) : 0);
       const fmtShare = (p) => `${String(p).replace('.', ',')}%`;
+      const esc = (s) => String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 
       const mes = (resumo && (resumo.mes || resumo.Mes || resumo.periodo)) || '';
       if (meta) {
         const tot = (resumo && (resumo.peso_total_fmt || resumo.peso_total)) || '';
+        const atualizado = (resumo && resumo.atualizado) || '';
         meta.textContent = [
-          mes ? `mês ${mes}` : 'peso lido no mês',
+          mes ? `peso lido · ${mes}` : 'peso lido no mês',
           tot ? `${tot}${String(tot).toLowerCase().includes('kg') ? '' : ' kg'}` : '',
-          ranked.length ? `${ranked.length} ativos` : '',
+          ranked.length ? `${ranked.length} conferentes` : '',
+          atualizado ? `atualizado ${atualizado}` : '',
         ].filter(Boolean).join(' · ');
       }
-      if (!podiumEl || !rest) return;
+      if (!rest) return;
+
       if (!ranked.length) {
-        podiumEl.innerHTML = `<div class="arm-podium-slot p1" style="grid-column:1/-1">
-          <div class="avatar">—</div>
-          <div class="place">Ranking</div>
-          <div class="name muted">Sem conferentes no período</div>
-        </div>`;
         rest.innerHTML = `<div class="arm-rank-empty">Aguardando leitura 177…</div>`;
         ['kConfN', 'kConfPeso', 'kConfLeader', 'kConfMes'].forEach((id) => {
           const el = document.getElementById(id);
@@ -6728,47 +6562,24 @@
         });
         return;
       }
-      const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
-      const top = ranked.slice(0, 3);
-      const slot = (place, item) => {
-        const medal = medals[place] || '';
-        if (!item) {
-          return `<div class="arm-podium-slot p${place}" style="--bar-h:12%">
-            <div class="place"><span class="medal">${medal}</span><span class="place-num">${place}º</span></div>
-            <div class="avatar">—</div>
-            <div class="name muted">—</div>
-          </div>`;
-        }
-        const pct = sharePct(item.peso);
-        const barH = Math.max(28, Math.round(40 + barVsLeader(item.peso) * 0.5));
-        return `<div class="arm-podium-slot p${place}" style="--bar-h:${barH}%">
-          <div class="place"><span class="medal" aria-hidden="true">${medal}</span><span class="place-num">${place}º</span></div>
-          <div class="avatar" title="${item.login || item.nome}">${initials(item.nome)}</div>
-          <div class="name" title="${item.login || item.nome}">${item.nome}</div>
-          <div class="kg">${item.kg} kg</div>
-          <div class="share">${fmtShare(pct)} do total</div>
-          <div class="unit">${item.unidade || ' '}</div>
-        </div>`;
-      };
-      podiumEl.innerHTML = slot(2, top[1]) + slot(1, top[0]) + slot(3, top[2]);
 
-      const head = `<div class="arm-rank-head">
-        <span>#</span><span>Conferente</span><span>Unidade</span><span class="kg">Peso</span><span class="pct">%</span><span>vs líder</span>
-      </div>`;
-      const body = ranked.slice(3).map((r, i) => {
+      rest.innerHTML = ranked.map((r, i) => {
+        const n = r.rank || (i + 1);
+        const place = Math.min(n, 99);
+        const cls = place <= 3 ? ` r${place}` : '';
         const pct = sharePct(r.peso);
         const w = barVsLeader(r.peso);
-        const n = r.rank || (i + 4);
-        return `<div class="arm-rank-row">
-          <span class="rk">${n}<span class="rk-ord">º</span></span>
-          <span class="nm" title="${r.login || r.nome}">${r.nome}</span>
-          <span class="un">${r.unidade || '—'}</span>
-          <span class="kg">${r.kg} kg</span>
-          <span class="pct">${fmtShare(pct)}</span>
-          <span class="bar" title="${w}% do líder"><i style="--w:${w}%"></i></span>
+        return `<div class="arm-best-row${cls}">
+          <span class="arm-best-badge" aria-label="${place}º lugar">${place}</span>
+          <span class="arm-best-avatar" title="${esc(r.login || r.nome)}">${esc(initials(r.nome))}</span>
+          <div class="arm-best-who">
+            <span class="nm" title="${esc(r.login || r.nome)}">${esc(r.nome)}</span>
+            <span class="un">${esc(r.unidade || 'SPO')}</span>
+          </div>
+          <span class="arm-best-track" title="${w}% do líder"><i style="--w:${w}%"></i></span>
+          <div class="arm-best-val">${esc(r.kg)} kg<small>${fmtShare(pct)} do total</small></div>
         </div>`;
       }).join('');
-      rest.innerHTML = head + (body || `<div class="arm-rank-empty">Só o pódio Top 3 neste mês</div>`);
 
       const kn = document.getElementById('kConfN');
       const kp = document.getElementById('kConfPeso');
