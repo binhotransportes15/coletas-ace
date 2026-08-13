@@ -621,8 +621,7 @@ def analyze_reports_073(
     status(
         f"073 análise: {resumo['total_veiculos']} veículo(s) · "
         f"{len(destinos)} destino(s) · "
-        f"custo R$ {resumo['custo_fmt']} · frete R$ {resumo['frete_fmt']} · "
-        f"peso {resumo['peso_fmt']} kg"
+        f"custo R$ {resumo['custo_fmt']} · frete R$ {resumo['frete_fmt']}"
     )
     return {
         "ok": True,

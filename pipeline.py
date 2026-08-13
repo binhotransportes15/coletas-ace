@@ -967,7 +967,7 @@ def run_dual_cycle(
                 emit(f"031 FALHOU: {err}")
 
         if getattr(cfg, "contratacao_in_loop", False):
-            emit("073 / Contratacao sequencial (filiais 076+200)...")
+            emit("073 / Contratacao (filiais 200)...")
             try:
                 result_73 = run_pipeline_contratacao(
                     credentials=creds,
@@ -1471,7 +1471,7 @@ def run_pipeline_contratacao(
     credentials: SswCredentials | None = None,
     settings: AceSettings | None = None,
     headless: bool | None = None,
-    skip_076: bool = False,
+    skip_076: bool = True,
     skip_200: bool = False,
     local_073: list[str] | Path | str | None = None,
     local_200: list[str] | Path | str | None = None,
@@ -1479,13 +1479,13 @@ def run_pipeline_contratacao(
     clean_downloads: bool = True,
 ) -> dict[str, Any]:
     """
-    Contratação: 073 (placas/custo) → 076 (remuneração) → 200/ssw0644 (frete manifesto).
+    Contratação: 073 (tela) → por destino 200/ssw0644 (frete). Sem 076.
     """
     status = on_status or _noop
     ensure_dirs()
     creds = credentials or load_credentials()
     cfg = settings or load_settings()
-    from dates import format_period, periodo_mes_ate_hoje
+    from dates import format_period, periodo_hoje
     from parser_ssw073 import analyze_reports_073
     from parser_ssw076 import analyze_reports_076
     from parser_ssw0644 import analyze_reports_200
@@ -1493,9 +1493,9 @@ def run_pipeline_contratacao(
     from ssw_076 import download_reports_076
     from ssw_200 import download_reports_200
 
-    status(f"ACE CONTRATACAO · 73→filiais(76+200) | {datetime.now():%d/%m %H:%M:%S}")
+    status(f"ACE CONTRATACAO · 73→filiais(200) | {datetime.now():%d/%m %H:%M:%S}")
     use_headless = cfg.headless if headless is None else headless
-    ini, fim = periodo_mes_ate_hoje()
+    ini, fim = periodo_hoje()
     periodo_fmt = format_period(ini, fim)
 
     dl73: dict[str, Any] = {}

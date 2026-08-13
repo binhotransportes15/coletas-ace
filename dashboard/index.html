@@ -2708,7 +2708,7 @@
     body[data-sector="pendencia"] #penTitle { color: #f472b6; }
     body[data-sector="contratacao"] #ctrTitle { color: #fb923c; }
 
-    /* Contratação 073→076 */
+    /* Contratação 073→200 */
     .ctr-wrap {
       height: 100vh;
       padding: 12px 14px;
@@ -2730,7 +2730,7 @@
     .ctr-layout [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
     .ctr-layout [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
     .ctr-layout [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
-    .ctr-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .ctr-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .ctr-mix {
       display: flex;
       flex-wrap: wrap;
@@ -4198,9 +4198,9 @@
           <span class="desc">Descarga · pátio · status</span>
         </button>
         <button type="button" class="sector-card" data-sector="contratacao">
-          <span class="tag">073 · 076</span>
+          <span class="tag">073 · 200</span>
           <span class="name">Contratação</span>
-          <span class="desc">Veículos · custo · frete · peso</span>
+          <span class="desc">Veículos · custo · frete</span>
         </button>
         <button type="button" class="sector-card" data-sector="pendencia">
           <span class="tag">031</span>
@@ -4704,7 +4704,6 @@
           <div class="arm-kpi"><div class="lbl">Veículos</div><div class="val" id="ctrVeic">0</div></div>
           <div class="arm-kpi atrasado"><div class="lbl">Custo</div><div class="val" id="ctrCusto">0</div></div>
           <div class="arm-kpi finalizado"><div class="lbl">Frete</div><div class="val" id="ctrFrete">0</div></div>
-          <div class="arm-kpi peso"><div class="lbl">Peso</div><div class="val" id="ctrPeso">0</div></div>
           <div class="arm-kpi chegou"><div class="lbl">Período</div><div class="val" id="ctrPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
         </div>
         <section class="arm-hero-card dash-block" data-block="chart">
@@ -4733,7 +4732,6 @@
                   <th>CTRBs</th>
                   <th>Custo</th>
                   <th>Frete</th>
-                  <th>Peso</th>
                 </tr>
               </thead>
               <tbody id="ctrTbody"></tbody>
@@ -7307,7 +7305,6 @@
         setCtrText('ctrVeic', resumo.total_veiculos || veics.length || '0');
         setCtrText('ctrCusto', 'R$ ' + (resumo.custo_fmt || fmtCtrMoney(resumo.custo || 0)));
         setCtrText('ctrFrete', 'R$ ' + (resumo.frete_fmt || fmtCtrMoney(resumo.frete || 0)));
-        setCtrText('ctrPeso', resumo.peso_fmt ? (String(resumo.peso_fmt).includes('kg') ? resumo.peso_fmt : resumo.peso_fmt + ' kg') : fmtCtrPeso(resumo.peso || 0));
         setCtrText('ctrPeriodo', resumo.periodo || '—');
         setCtrText('ctrAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
         setCtrText('ctrTabMeta', resumo.unidade || 'SPO');
@@ -7341,9 +7338,8 @@
               <td class="mono right">${esc(v.qtd_ctrb || '0')}</td>
               <td class="mono right">${esc(fmtCtrMoney(v.custo))}</td>
               <td class="mono right">${esc(fmtCtrMoney(v.frete))}</td>
-              <td class="mono right">${esc(fmtCtrPeso(v.peso))}</td>
             </tr>
-          `).join('') || `<tr><td colspan="7" class="muted">Sem carreteiros (transferência) — rode \`73\` no ACE</td></tr>`;
+          `).join('') || `<tr><td colspan="6" class="muted">Sem carreteiros (transferência) — rode \`73\` no ACE</td></tr>`;
         }
         if (stamp) lastCtrDataVersion = stamp;
         else if (resumo.atualizado) lastCtrDataVersion = String(resumo.atualizado);

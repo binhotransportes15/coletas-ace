@@ -1,11 +1,11 @@
 """SSW 073 (ssw0332) — Consulta de CTRBs e OSs · só tela (sem download).
 
-Fluxo Contratação (Unidade = SPO · período = mês até hoje):
+Fluxo Contratação (Unidade = SPO · período = HOJE):
   1) 1 login · 1 tela 073
      Propriedade=T · Operação=T · Tipo=A · Considerar=T · Unidade=SPO
      → clica ► mostrar tela (ajaxEnvia MOS) e copia a grade (sem baixar nada)
   2) Parser: só CARRETEIRO + TRANSFERÊNCIA (= contratados)
-  3) Para cada DESTINO: troca menu → 076+200 · merge frete
+  3) Para cada DESTINO: menu → 200 (frete manifesto) · sem 076
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import periodo_mes_ate_hoje, to_ssw_ddmmyy
+from dates import periodo_hoje, to_ssw_ddmmyy
 from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
@@ -142,7 +142,7 @@ def download_reports_073(
     )
     unidade = (unidade_emissora or "SPO").strip().upper() or "SPO"
 
-    ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
+    ini_ddmm, fim_ddmm = period or periodo_hoje()
     ini = to_ssw_ddmmyy(ini_ddmm)
     fim = to_ssw_ddmmyy(fim_ddmm)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -225,7 +225,7 @@ def download_reports_073(
 def download_contratacao_ssw(
     *,
     period: tuple[str, str] | None = None,
-    skip_076: bool = False,
+    skip_076: bool = True,
     skip_200: bool = False,
     unidade_emissora: str = "SPO",
     headless: bool | None = None,
@@ -234,7 +234,7 @@ def download_contratacao_ssw(
     settings: AceSettings | None = None,
     clean_downloads: bool = True,
 ) -> dict[str, Any]:
-    """1 login: 073 (SPO) → por cada destino: menu → 076 + 200 (frete)."""
+    """1 login: 073 (SPO) → por cada destino: menu → 200 (frete). Sem 076."""
     status = on_status or _noop
     ensure_dirs()
     _ensure_playwright_path()
@@ -243,7 +243,7 @@ def download_contratacao_ssw(
     use_headless = cfg.headless if headless is None else bool(headless)
     jobs = [dict(j) for j in JOBS_073]
     unidade = (unidade_emissora or "SPO").strip().upper() or "SPO"
-    ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
+    ini_ddmm, fim_ddmm = period or periodo_hoje()
     ini = to_ssw_ddmmyy(ini_ddmm)
     fim = to_ssw_ddmmyy(fim_ddmm)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -362,7 +362,11 @@ def download_contratacao_ssw(
                         status(f"[{dest}] menu: {stab_err}")
 
                     try:
-                        status(f"[{dest}] abrindo 076+200 juntos…")
+                        status(
+                            f"[{dest}] abrindo "
+                            + ("076+200" if not skip_076 and not skip_200 else "200" if not skip_200 else "076")
+                            + "…"
+                        )
                         dual = _download_frete_filial_paralelo(
                             client,
                             context,

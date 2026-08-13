@@ -380,9 +380,9 @@ def cmd_help() -> str:
             "  Pendencia",
             "    31     10 codigos (inclui SLA)",
             "    31 63 60   ou  31 63,60  -> so esses (63=SLA+ · demais=-)",
-            "  Contratacao (mes)",
-            "    73     073 Relatorio -> por destino: 076(E) + 200(E)",
-            "    73 so73     so 073 (sem frete 076)",
+            "  Contratacao (hoje)",
+            "    73     073 tela → por destino: 200 (frete) · sem 076",
+            "    73 so73     so 073 (sem frete 200)",
             "    73 sem200   sem manifesto 200",
             "",
             "SYNC (so envia planilha / nao baixa SSW)",
@@ -757,36 +757,50 @@ def run_pipeline_455_cmd(extra: list[str] | None = None) -> str:
 
 
 def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
-    """`73` / `contratacao` · `73 so73` só 073 · arquivos locais 073/0644."""
+    """`73` / `contratacao` · 073 + 200 por destino (sem 076). `73 so73` só 073."""
     from pipeline import run_pipeline_contratacao
 
     extra = extra or []
-    skip_076 = any(str(x).lower() in {"so73", "só73", "skip76", "sem76"} for x in extra)
-    skip_200 = any(str(x).lower() in {"sem200", "skip200"} for x in extra)
+    # 076 desligado por padrão; `com76` reativa se precisar
+    skip_076 = not any(str(x).lower() in {"com76", "com076", "com_76"} for x in extra)
+    if any(str(x).lower() in {"so73", "só73", "skip76", "sem76"} for x in extra):
+        skip_076 = True
+    skip_200 = any(str(x).lower() in {"sem200", "skip200", "so73", "só73"} for x in extra)
     local_073: list[str] = []
     local_200: list[str] = []
     for x in extra:
         xl = str(x).lower()
-        if xl in {"local", "so73", "só73", "skip76", "sem76", "sem200", "skip200"}:
+        if xl in {
+            "local",
+            "so73",
+            "só73",
+            "skip76",
+            "sem76",
+            "sem200",
+            "skip200",
+            "com76",
+            "com076",
+            "com_76",
+        }:
             continue
         p = Path(x)
         if not p.exists():
             continue
         name = p.name.lower()
-        if "0644" in name or "manifesto" in name:
+        if "0644" in name or "manifesto" in name or "contratacao_200" in name:
             local_200.append(str(p))
         else:
             local_073.append(str(p))
-    print("\n=== Pipeline Contratação (073 → filiais: 076+200) ===")
+    print("\n=== Pipeline Contratação (073 → filiais: 200) ===")
     if local_073 or local_200:
         if local_073:
             print(f"  073 local: {', '.join(local_073)}")
         if local_200:
             print(f"  200 local: {', '.join(local_200)}")
     else:
-        print("  073: mês · só tela (Relatório/►) · prop=C op=R · sem Excel")
+        print("  073: hoje · tela MOS · prop=T op=T · filtro carreteiro+transf no parser")
     if skip_076:
-      print("  modo: sem 076")
+        print("  modo: sem 076 (só 200)")
     if skip_200:
         print("  modo: sem 200")
     result = run_pipeline_contratacao(
@@ -799,11 +813,11 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
     )
     resumo = result.get("resumo") or {}
     filiais = result.get("filiais") or []
-    extra = f" · filiais={','.join(filiais)}" if filiais else ""
+    extra_msg = f" · filiais={','.join(filiais)}" if filiais else ""
     return (
-        f"073/076/200 OK · veículos={resumo.get('total_veiculos')} "
+        f"073/200 OK · veículos={resumo.get('total_veiculos')} "
         f"custo=R${resumo.get('custo_fmt')} frete=R${resumo.get('frete_fmt')} "
-        f"peso={resumo.get('peso_fmt')}kg · placas={len(result.get('placas') or [])}{extra}"
+        f"· placas={len(result.get('placas') or [])}{extra_msg}"
     )
 
 
@@ -1086,7 +1100,7 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
     else:
         print(f"  {status_idle('031')} fora do loop (rode `31` sob demanda)")
     if getattr(cfg, "contratacao_in_loop", False):
-        print(f"  {status_online('073')} Contratação no loop (filiais 076+200)")
+        print(f"  {status_online('073')} Contratação no loop (filiais 200)")
     else:
         print(f"  {status_idle('073')} fora do loop (rode `73` sob demanda)")
     if getattr(cfg, "ciclo_paralelo", True):

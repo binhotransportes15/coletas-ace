@@ -1053,7 +1053,7 @@ class AceCrtConsole(QWidget):
             ("dist", "Distribuição", "50 · 103 · 36 · 225", "dist_in_loop", "dist_intervalo"),
             ("78", "Armazém", "078 · descarga", "armazem_in_loop", "armazem_intervalo"),
             ("31", "Pendência", "031 · ofensores/SLA", "pendencia_in_loop", "pendencia_intervalo"),
-            ("73", "Contratação", "073 → 076+200", "contratacao_in_loop", "contratacao_intervalo"),
+            ("73", "Contratação", "073 → 200", "contratacao_in_loop", "contratacao_intervalo"),
             ("455", "Emissão", "455 · fretes do dia", "emissao_in_loop", "emissao_intervalo"),
         )
         lay.addWidget(self._section("Setores no automático"))
@@ -1636,10 +1636,10 @@ class AceCrtConsole(QWidget):
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
             lay.addWidget(b)
 
-        lay.addWidget(self._section("Contratação (mês)"))
+        lay.addWidget(self._section("Contratação (hoje)"))
         for label, cmd in (
-            ("Puxar 073→filiais 076+200 (frete)", "73"),
-            ("Só 073 mês (sem frete 076)", "73 so73"),
+            ("Puxar 073→filiais 200 (frete)", "73"),
+            ("Só 073 hoje (sem frete 200)", "73 so73"),
         ):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
