@@ -784,7 +784,7 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
         if local_200:
             print(f"  200 local: {', '.join(local_200)}")
     else:
-        print("  073: mês · Relatório · prop=C(carreteiro) op=R(transf) tipo=A · SPO")
+        print("  073: mês · só tela (Relatório/►) · prop=C op=R · sem Excel")
     if skip_076:
       print("  modo: sem 076")
     if skip_200:

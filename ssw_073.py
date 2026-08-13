@@ -1,9 +1,9 @@
-"""Download SSW 073 (ssw0332) — Consulta de CTRBs e OSs → Relatório.
+"""SSW 073 (ssw0332) — Consulta de CTRBs e OSs · só tela (sem download).
 
 Fluxo Contratação (Unidade = SPO · período = mês até hoje):
   1) 1 login · 1 tela 073
      Propriedade=C (carreteiro) · Operação=R (transferência) · Tipo=A
-     → Relatório (sem Arquivo Excel)
+     → clica Relatório / ► e copia a tabela da tela (não baixa Excel)
   2) Parser: só CARRETEIRO + TRANSFERÊNCIA (= contratados)
   3) Para cada DESTINO: troca menu → 076+200 · merge frete
 """
@@ -126,7 +126,7 @@ def download_reports_073(
     tipos: tuple[str, ...] | None = None,
     propriedade: str | None = None,
 ) -> dict[str, Any]:
-    """1 login · N telas 073 em paralelo · Excel com download direto."""
+    """1 login · N telas 073 · Relatório na tela (sem baixar arquivo)."""
     status = on_status or _noop
     ensure_dirs()
     _ensure_playwright_path()
@@ -696,7 +696,7 @@ def _run_073_phases(
     ts: str,
     status: StatusCallback,
 ) -> dict[str, Any]:
-    """Abre N telas 073, preenche e baixa Excel direto (073 não usa fila 156)."""
+    """Abre N telas 073, preenche e lê a tabela na tela (sem download)."""
     paths: dict[str, str] = {}
     errors: dict[str, str] = {}
     queued: list[dict[str, Any]] = []
@@ -744,8 +744,8 @@ def _run_073_phases(
             errors[key] = str(err)
             status(f"[73/{key}·{lab}] FALHOU no form: {err}")
 
-    # 073: Relatório (não Excel) — 1 tela
-    status(f"[73] gerando Relatório em {len(screens)} tela(s)…")
+    # 073: só tela — Relatório / ► e copia a grade (sem Excel/download)
+    status(f"[73] lendo tabela na tela em {len(screens)} tela(s)…")
     for job, popup in screens:
         key = job["key"]
         lab = job["label"]
@@ -757,16 +757,14 @@ def _run_073_phases(
                 popup.bring_to_front()
             except Exception:
                 pass
-            status(f"[73/{key}·{lab}] Relatório…")
-            path = _download_relatorio_73(
-                client, context, popup, dest_name, key, status
-            )
+            status(f"[73/{key}·{lab}] Relatório na tela…")
+            path = _ler_tela_73(client, popup, dest_name, key, status)
             paths[key] = str(path)
             queued.append({"key": key, "label": lab, "t": time.time(), "idx": len(queued) + 1})
-            status(f"[73/{key}·{lab}] OK {path.name} ({path.stat().st_size} bytes)")
+            status(f"[73/{key}·{lab}] OK tela → {path.name} ({path.stat().st_size} bytes)")
         except Exception as err:  # noqa: BLE001
             errors[key] = str(err)
-            status(f"[73/{key}·{lab}] FALHOU relatório: {err}")
+            status(f"[73/{key}·{lab}] FALHOU tela: {err}")
 
     for _job, popup in screens:
         try:
@@ -905,7 +903,7 @@ def _preencher_73(
 
 
 def _clicar_relatorio_73(popup) -> str:
-    """Clica 'Relatório' / 'Relatorio' na barra do SSW (não Excel)."""
+    """Clica Relatório / Relatorio / ► na barra do SSW (nunca Arquivo Excel)."""
     for exact in ("Relatório", "Relatorio"):
         try:
             loc = popup.get_by_text(exact, exact=True)
@@ -930,9 +928,11 @@ def _clicar_relatorio_73(popup) -> str:
         pass
     return popup.evaluate(
         """() => {
-          const links = Array.from(document.querySelectorAll('a, span, button, input[type=button]'));
+          const links = Array.from(document.querySelectorAll(
+            'a, span, button, input[type=button], input[type=image], img'
+          ));
           for (const a of links) {
-            const t = ((a.innerText || a.textContent || a.value || '') + '')
+            const t = ((a.innerText || a.textContent || a.value || a.alt || a.title || '') + '')
               .replace(/\\s+/g, ' ').trim();
             if (/^Relat[oó]rio$/i.test(t)) {
               a.click();
@@ -940,16 +940,139 @@ def _clicar_relatorio_73(popup) -> str:
             }
           }
           for (const a of links) {
-            const t = ((a.innerText || a.textContent || a.value || '') + '')
+            const t = ((a.innerText || a.textContent || a.value || a.alt || a.title || '') + '')
               .replace(/\\s+/g, ' ').trim();
             if (/relat[oó]rio/i.test(t) && !/excel/i.test(t)) {
               a.click();
               return 'relatorio-soft';
             }
           }
+          for (const a of links) {
+            const t = ((a.innerText || a.textContent || a.value || a.alt || a.title || '') + '')
+              .replace(/\\s+/g, ' ').trim();
+            if (/^[\\u25b6\\u25ba►▶]$/.test(t) || /^(play|gerar)$/i.test(t)) {
+              a.click();
+              return 'play';
+            }
+          }
+          const play = document.getElementById('13') || document.querySelector('[id=\"13\"]');
+          if (play) { play.click(); return 'id13'; }
           return '';
         }"""
     )
+
+
+def _aguardar_tabela_73(popup, *, timeout_ms: int = 25000) -> bool:
+    """Espera a grade CTRB/placa/propriedade aparecer na tela."""
+    deadline = time.time() + timeout_ms / 1000.0
+    while time.time() < deadline:
+        try:
+            ready = popup.evaluate(
+                """() => {
+                  const tables = Array.from(document.querySelectorAll('table'));
+                  for (const tb of tables) {
+                    const rows = tb.querySelectorAll('tr');
+                    if (rows.length < 2) continue;
+                    const head = ((rows[0] && rows[0].innerText) || '').toUpperCase();
+                    if (/CTRB|PLACA|PROPRIED|OPERAC|VEICULO|VEÍCULO/.test(head)) return true;
+                    const body = (tb.innerText || '').toUpperCase();
+                    if (/[A-Z]{3}\\d[A-Z0-9]\\d{2}|[A-Z]{3}\\d{4}/.test(body) && rows.length >= 2) return true;
+                  }
+                  return false;
+                }"""
+            )
+            if ready:
+                return True
+        except Exception:
+            pass
+        _safe_wait(popup, 400)
+    return False
+
+
+def _scrape_relatorio_to_sswweb(popup, dest: Path, status, key: str) -> Path:
+    """Copia a tabela visível da tela 073 → arquivo sswweb local (sem download)."""
+    payload = popup.evaluate(
+        """() => {
+          const body = (document.body && (document.body.innerText || '')) || '';
+          const tables = Array.from(document.querySelectorAll('table'));
+          let best = null;
+          let bestScore = 0;
+          for (const tb of tables) {
+            const rows = Array.from(tb.querySelectorAll('tr')).map((tr) =>
+              Array.from(tr.querySelectorAll('th,td')).map((c) =>
+                ((c.innerText || c.textContent || '') + '').replace(/\\s+/g, ' ').trim()
+              )
+            ).filter((r) => r.some(Boolean));
+            if (rows.length < 2) continue;
+            const head = (rows[0] || []).join(' ').toUpperCase();
+            let score = rows.length;
+            if (head.includes('CTRB') || head.includes('PLACA') || head.includes('VEÍCULO') || head.includes('VEICULO')) score += 50;
+            if (head.includes('OPERAC') || head.includes('TRANSFER') || head.includes('PROPRIED')) score += 35;
+            if (head.includes('CARRET') || head.includes('DESTI')) score += 15;
+            if (head.includes('TIPO')) score += 10;
+            if (rows.length <= 3 && !/CTRB|PLACA/.test(head)) score -= 20;
+            if (score > bestScore) { bestScore = score; best = rows; }
+          }
+          return { body: body.slice(0, 500), rows: best || [], score: bestScore };
+        }"""
+    )
+    rows = (payload or {}).get("rows") or []
+    if len(rows) < 2:
+        raise RuntimeError(
+            f"073/{key}: nenhuma tabela CTRB na tela "
+            f"(score={(payload or {}).get('score')})"
+        )
+    lines = ["0;SSW073;TELA"]
+    header = rows[0]
+    lines.append("1;" + ";".join(header))
+    data_n = 0
+    for r in rows[1:]:
+        cells = list(r) + [""] * max(0, len(header) - len(r))
+        blob = " ".join(cells).upper()
+        if not blob.strip():
+            continue
+        if blob.startswith("CTRB") and "TIPO" in blob:
+            continue
+        lines.append("2;" + ";".join(cells[: len(header)]))
+        data_n += 1
+    if data_n <= 0:
+        raise RuntimeError(f"073/{key}: tabela na tela sem linhas de dados")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text("\n".join(lines) + "\n", encoding="latin-1", errors="replace")
+    status(f"[73/{key}] copiado da tela → {dest.name} ({data_n} linhas)")
+    return dest
+
+
+def _ler_tela_73(client, popup, dest_name: str, key: str, status) -> Path:
+    """073: clica Relatório/► e copia a grade — sem esperar download."""
+    dest = Path(client.download_dir) / Path(dest_name).name
+    clicked = _clicar_relatorio_73(popup)
+    if not clicked:
+        raise RuntimeError(f"073/{key}: botão Relatório/► não encontrado")
+    status(f"[73/{key}] clique={clicked} · aguardando grade…")
+    if not _aguardar_tabela_73(popup, timeout_ms=28000):
+        if clicked not in {"play", "id13"}:
+            again = popup.evaluate(
+                """() => {
+                  const play = document.getElementById('13') || document.querySelector('[id=\"13\"]');
+                  if (play) { play.click(); return 'id13-retry'; }
+                  return '';
+                }"""
+            )
+            if again:
+                status(f"[73/{key}] retry clique={again}")
+                _aguardar_tabela_73(popup, timeout_ms=12000)
+        else:
+            _safe_wait(popup, 1200)
+    return _scrape_relatorio_to_sswweb(popup, dest, status, key)
+
+
+def _download_relatorio_73(
+    client, context, popup, dest_name: str, key: str, status
+) -> Path:
+    """Compat: agora só lê a tela (sem download)."""
+    _ = context
+    return _ler_tela_73(client, popup, dest_name, key, status)
 
 
 def _clicar_excel_73(popup) -> str:
@@ -981,80 +1104,6 @@ def _clicar_excel_73(popup) -> str:
           return '';
         }"""
     )
-
-
-def _scrape_relatorio_to_sswweb(popup, dest: Path, status, key: str) -> Path:
-    """Se Relatório não baixar arquivo, tenta montar CSV a partir da tela."""
-    payload = popup.evaluate(
-        """() => {
-          const body = (document.body && (document.body.innerText || '')) || '';
-          const tables = Array.from(document.querySelectorAll('table'));
-          let best = null;
-          let bestScore = 0;
-          for (const tb of tables) {
-            const rows = Array.from(tb.querySelectorAll('tr')).map((tr) =>
-              Array.from(tr.querySelectorAll('th,td')).map((c) =>
-                ((c.innerText || c.textContent || '') + '').replace(/\\s+/g, ' ').trim()
-              )
-            ).filter((r) => r.some(Boolean));
-            if (rows.length < 2) continue;
-            const head = (rows[0] || []).join(' ').toUpperCase();
-            let score = rows.length;
-            if (head.includes('CTRB') || head.includes('PLACA')) score += 50;
-            if (head.includes('OPERAC') || head.includes('TRANSFER')) score += 30;
-            if (head.includes('TIPO') || head.includes('PROPRIEDADE') || head.includes('CARRET')) score += 20;
-            if (score > bestScore) { bestScore = score; best = rows; }
-          }
-          return { body: body.slice(0, 500), rows: best || [], score: bestScore };
-        }"""
-    )
-    rows = (payload or {}).get("rows") or []
-    if len(rows) < 2:
-        raise RuntimeError(
-            f"073/{key}: Relatório sem download e sem tabela na tela "
-            f"(score={(payload or {}).get('score')})"
-        )
-    # Formato SSW: 1;headers · 2;dados
-    lines = ["0;SSW073;RELATORIO"]
-    header = rows[0]
-    lines.append("1;" + ";".join(header))
-    for r in rows[1:]:
-        # alinha colunas ao header
-        cells = list(r) + [""] * max(0, len(header) - len(r))
-        lines.append("2;" + ";".join(cells[: len(header)]))
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text("\n".join(lines) + "\n", encoding="latin-1", errors="replace")
-    status(f"[73/{key}] Relatório raspado da tela → {dest.name} ({len(rows)-1} linhas)")
-    return dest
-
-
-def _download_relatorio_73(
-    client, context, popup, dest_name: str, key: str, status
-) -> Path:
-    """073: clica Relatório — prefere download; senão raspa a tabela da tela."""
-    dest = Path(client.download_dir) / Path(dest_name).name
-    clicked = ""
-    try:
-        with context.expect_event("download", timeout=45000) as di:
-            clicked = _clicar_relatorio_73(popup)
-            if not clicked:
-                raise RuntimeError(f"073/{key}: botão Relatório não encontrado")
-            status(f"[73/{key}] clique={clicked}")
-        download = di.value
-        return _save_named(client, download, dest_name)
-    except Exception as err:  # noqa: BLE001
-        status(f"[73/{key}] download Relatório indisponível ({err}) — lendo tela…")
-        if not clicked:
-            try:
-                clicked = _clicar_relatorio_73(popup)
-            except Exception:
-                pass
-            if clicked:
-                status(f"[73/{key}] clique={clicked} (raspagem)")
-            _safe_wait(popup, 2500)
-        else:
-            _safe_wait(popup, 1500)
-        return _scrape_relatorio_to_sswweb(popup, dest, status, key)
 
 
 def _download_excel_direto_73(

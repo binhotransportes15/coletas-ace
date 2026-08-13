@@ -1,17 +1,8 @@
-"""Parser SSW 073 (CSV ssw0332) — CTRBs/OSs · base do painel Contratação.
+"""Parser SSW 073 — CTRBs/OSs · base do painel Contratação.
 
-Pull: Propriedade=C (carreteiro) · Operação=R (transferência) · Tipo=A · Relatório.
-Painel conta SOMENTE:
-  CARRETEIRO + TRANSFERÊNCIA → contratados
-  (agregado / frota / coleta-entrega / remuneração → ignorados)
-
-Colunas Excel (com tipo de linha na col. A):
-  B  CTRB
-  G  PLACA CAVALO
-  L  PLACA CARRETA 1
-  AV ADIANTAMENTO  → custo (pedido)
-  AJ VALOR A PAGAR / AO TOTAL CTRB → reforço do custo quando AV=0
-  BQ PESO CTRCs · BS FRETE CTRCs
+Fonte: tabela copiada da tela 073 (sem Excel/download).
+Filtro do form: Propriedade=C · Operação=R · Tipo=A.
+Painel conta SOMENTE CARRETEIRO + TRANSFERÊNCIA → contratados.
 """
 from __future__ import annotations
 
@@ -265,9 +256,13 @@ def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
     i_prop = _idx_from_header(hmap, "PROPRIEDADE", default=COL_PROPRIEDADE)
     i_oper = _idx_from_header(hmap, "OPERACAO", "OPERAÇÃO", "OPERAC", default=-1)
     i_carreta = _idx_from_header(hmap, "PLACA CARRETA 1", "PLACA CARRETA", default=COL_CARRETA)
-    i_pagar = _idx_from_header(hmap, "VALOR A PAGAR", default=COL_VALOR_PAGAR)
-    i_total = _idx_from_header(hmap, "TOTAL CTRB", default=COL_TOTAL_CTRB)
-    i_av = _idx_from_header(hmap, "ADIANTAMENTO", default=COL_CUSTO_AV)
+    i_pagar = _idx_from_header(
+        hmap, "VALOR A PAGAR", "A RECEBER", "ARECEBER", default=COL_VALOR_PAGAR
+    )
+    i_total = _idx_from_header(
+        hmap, "TOTAL CTRB", "TOTAL CTRE", "TOTAL CTR", default=COL_TOTAL_CTRB
+    )
+    i_av = _idx_from_header(hmap, "ADIANTAMENTO", "ADIANTAN", default=COL_CUSTO_AV)
     # prefer ADIANTAMENTO puro (não CCF/FORNECEDOR) se existir
     for key, idx in hmap.items():
         if key == "ADIANTAMENTO":
@@ -280,7 +275,7 @@ def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
         hmap, "FRETE CTRCs(CTRB COLETA/ENTREGA)", "FRETE CTRCS", "FRETE", default=COL_FRETE
     )
     i_origem = _idx_from_header(hmap, "CIDADE/UF ORIGEM", "ORIGEM", default=COL_ORIGEM_CID)
-    i_destino = _idx_from_header(hmap, "UNIDADE DESTINO", default=COL_DESTINO)
+    i_destino = _idx_from_header(hmap, "UNIDADE DESTINO", "DESTI", "DESTINO", default=COL_DESTINO)
     i_cid_dest = _idx_from_header(
         hmap, "CIDADE/UF DESTINO", "CIDADE DESTINO", default=COL_DESTINO_CID
     )
