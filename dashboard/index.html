@@ -3745,11 +3745,14 @@
       letter-spacing: 0.06em;
     }
     .arm-best-track {
-      height: 10px;
+      position: relative;
+      height: 18px;
       border-radius: 999px;
       background: rgba(30, 41, 59, 0.95);
       overflow: hidden;
-      border: 1px solid rgba(148, 163, 184, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      display: flex;
+      align-items: center;
     }
     .arm-best-track > i {
       display: block;
@@ -3760,13 +3763,29 @@
       box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
       transition: width 0.45s ease;
     }
+    .arm-best-track > b {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      color: #f8fafc;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+      pointer-events: none;
+      z-index: 1;
+    }
     .arm-best-row.r1 .arm-best-track > i {
       background: linear-gradient(90deg, #d97706, #fbbf24, #fde68a);
       box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
     }
+    .arm-best-row.r1 .arm-best-track > b { color: #1a1300; text-shadow: none; }
     .arm-best-row.r2 .arm-best-track > i {
       background: linear-gradient(90deg, #64748b, #cbd5e1, #f1f5f9);
     }
+    .arm-best-row.r2 .arm-best-track > b { color: #0f172a; text-shadow: none; }
     .arm-best-row.r3 .arm-best-track > i {
       background: linear-gradient(90deg, #9a3412, #ea580c, #fdba74);
     }
@@ -3778,14 +3797,6 @@
       color: #e2e8f0;
       letter-spacing: -0.02em;
       line-height: 1.1;
-    }
-    .arm-best-val small {
-      display: block;
-      margin-top: 2px;
-      font-size: 11px;
-      font-weight: 700;
-      color: #38bdf8;
-      letter-spacing: 0;
     }
     .arm-best-row.r1 .arm-best-val { color: #fde68a; }
     .arm-rank-empty {
@@ -3817,7 +3828,10 @@
       font-size: clamp(17px, 2vmin, 26px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-best-track {
-      height: clamp(12px, 1.4vmin, 16px) !important;
+      height: clamp(20px, 2.2vmin, 28px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-best-track > b {
+      font-size: clamp(12px, 1.5vmin, 16px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-best-val {
       font-size: clamp(20px, 2.4vmin, 30px) !important;
@@ -6576,8 +6590,8 @@
             <span class="nm" title="${esc(r.login || r.nome)}">${esc(r.nome)}</span>
             <span class="un">${esc(r.unidade || 'SPO')}</span>
           </div>
-          <span class="arm-best-track" title="${w}% do líder"><i style="--w:${w}%"></i></span>
-          <div class="arm-best-val">${esc(r.kg)} kg<small>${fmtShare(pct)} do total</small></div>
+          <span class="arm-best-track" title="${fmtShare(pct)} do total · ${w}% do líder"><i style="--w:${w}%"></i><b>${fmtShare(pct)}</b></span>
+          <div class="arm-best-val">${esc(r.kg)} kg</div>
         </div>`;
       }).join('');
 
