@@ -758,7 +758,7 @@ def _run_073_phases(
             except Exception:
                 pass
             status(f"[73/{key}·{lab}] Relatório na tela…")
-            path = _ler_tela_73(client, popup, dest_name, key, status)
+            path = _ler_tela_73(client, context, popup, dest_name, key, status)
             paths[key] = str(path)
             queued.append({"key": key, "label": lab, "t": time.time(), "idx": len(queued) + 1})
             status(f"[73/{key}·{lab}] OK tela → {path.name} ({path.stat().st_size} bytes)")
@@ -903,7 +903,58 @@ def _preencher_73(
 
 
 def _clicar_relatorio_73(popup) -> str:
-    """Clica Relatório / Relatorio / ► na barra do SSW (nunca Arquivo Excel)."""
+    """Dispara Relatório / ► (nunca Arquivo Excel). Prefere ajaxEnvia('REL')."""
+    # 1) ajaxEnvia — abre outra janela no SSW com mais previsibilidade
+    try:
+        how = popup.evaluate(
+            """() => {
+              if (typeof ajaxEnvia === 'function') {
+                try { ajaxEnvia('REL', 0); return 'ajax-REL'; } catch (e) {}
+                try { ajaxEnvia('REL2', 0); return 'ajax-REL2'; } catch (e2) {}
+              }
+              return '';
+            }"""
+        )
+        if how:
+            return str(how)
+    except Exception:
+        pass
+    # 2) link/botão Relatório (onclick)
+    try:
+        how = popup.evaluate(
+            """() => {
+              const els = Array.from(document.querySelectorAll('a, span, button, input, img, font, b, td'));
+              const pick = (pred) => {
+                for (const a of els) {
+                  const t = ((a.innerText || a.textContent || a.value || a.alt || a.title || '') + '')
+                    .replace(/\\s+/g, ' ').trim();
+                  if (!pred(t, a)) continue;
+                  if (/excel/i.test(t)) continue;
+                  const oc = a.getAttribute('onclick') || '';
+                  try { a.click(); return (oc ? 'oc:' : 'clk:') + (t || a.id || 'rel'); } catch (e) {}
+                  if (oc) {
+                    try { (function(){ eval(oc); })(); return 'eval:' + t; } catch (e2) {}
+                  }
+                }
+                return '';
+              };
+              let h = pick((t) => /^Relat[oó]rio$/i.test(t));
+              if (h) return h;
+              h = pick((t) => /relat[oó]rio/i.test(t) && t.length < 40);
+              if (h) return h;
+              h = pick((t) => /^[\\u25b6\\u25ba►▶]$/.test(t) || /^(play|gerar)$/i.test(t));
+              if (h) return h;
+              const play = document.getElementById('13') || document.querySelector('[id=\"13\"]');
+              if (play) { play.click(); return 'id13'; }
+              const act = document.getElementById('act_rel');
+              if (act) { act.click(); return 'act_rel'; }
+              return '';
+            }"""
+        )
+        if how:
+            return str(how)
+    except Exception:
+        pass
     for exact in ("Relatório", "Relatorio"):
         try:
             loc = popup.get_by_text(exact, exact=True)
@@ -919,115 +970,215 @@ def _clicar_relatorio_73(popup) -> str:
             return "a:Relatorio"
     except Exception:
         pass
+    return ""
+
+
+_CTRB_CELL_RE = re.compile(r"\b[A-Z]{2,3}\s*\d{4,}-?\d?\b", re.I)
+
+
+def _extract_grid_from_page(page) -> dict:
+    """Extrai grade de CTRB de page/frame: <table>, <pre> ou texto bruto."""
     try:
-        loc = popup.locator("#act_rel, [id*='rel' i], [name*='rel' i]")
-        if loc.count() > 0:
-            loc.first.click(timeout=5000)
-            return "act_rel"
-    except Exception:
-        pass
-    return popup.evaluate(
-        """() => {
-          const links = Array.from(document.querySelectorAll(
-            'a, span, button, input[type=button], input[type=image], img'
-          ));
-          for (const a of links) {
-            const t = ((a.innerText || a.textContent || a.value || a.alt || a.title || '') + '')
-              .replace(/\\s+/g, ' ').trim();
-            if (/^Relat[oó]rio$/i.test(t)) {
-              a.click();
-              return 'relatorio-exact';
-            }
-          }
-          for (const a of links) {
-            const t = ((a.innerText || a.textContent || a.value || a.alt || a.title || '') + '')
-              .replace(/\\s+/g, ' ').trim();
-            if (/relat[oó]rio/i.test(t) && !/excel/i.test(t)) {
-              a.click();
-              return 'relatorio-soft';
-            }
-          }
-          for (const a of links) {
-            const t = ((a.innerText || a.textContent || a.value || a.alt || a.title || '') + '')
-              .replace(/\\s+/g, ' ').trim();
-            if (/^[\\u25b6\\u25ba►▶]$/.test(t) || /^(play|gerar)$/i.test(t)) {
-              a.click();
-              return 'play';
-            }
-          }
-          const play = document.getElementById('13') || document.querySelector('[id=\"13\"]');
-          if (play) { play.click(); return 'id13'; }
-          return '';
-        }"""
-    )
+        return page.evaluate(
+            """() => {
+              const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
+              const ctrbRe = /\\b[A-Z]{2,3}\\s*\\d{4,}-?\\d?\\b/;
+              const out = { rows: [], score: 0, how: '', url: location.href || '', nTables: 0, bodyLen: 0, hint: '' };
 
+              const scoreRows = (rows, how) => {
+                if (!rows || rows.length < 2) return 0;
+                const head = (rows[0] || []).join(' ').toUpperCase();
+                const blob = rows.slice(0, 8).map(r => (r || []).join(' ')).join(' ').toUpperCase();
+                let score = Math.min(rows.length, 80);
+                if (/CTRB|PLACA|VEÍCULO|VEICULO|PROPRIED|OPERAC|DESTI|TOTAL CTRE|A RECEBER/.test(head)) score += 80;
+                if (/CTRB|TRANSFER|CARRET|AGREG|FROTA|COLETA/.test(blob)) score += 40;
+                let ctrbHits = 0;
+                for (const r of rows.slice(1, 40)) {
+                  const t = (r || []).join(' ').toUpperCase();
+                  if (ctrbRe.test(t)) ctrbHits++;
+                }
+                score += Math.min(ctrbHits * 8, 80);
+                if (ctrbHits === 0 && !/CTRB|PLACA|VEICULO|VEÍCULO/.test(head + blob)) score -= 30;
+                out.hint = how + ':hits=' + ctrbHits + ',rows=' + rows.length;
+                return score;
+              };
 
-def _aguardar_tabela_73(popup, *, timeout_ms: int = 25000) -> bool:
-    """Espera a grade CTRB/placa/propriedade aparecer na tela."""
-    deadline = time.time() + timeout_ms / 1000.0
-    while time.time() < deadline:
-        try:
-            ready = popup.evaluate(
-                """() => {
-                  const tables = Array.from(document.querySelectorAll('table'));
-                  for (const tb of tables) {
-                    const rows = tb.querySelectorAll('tr');
-                    if (rows.length < 2) continue;
-                    const head = ((rows[0] && rows[0].innerText) || '').toUpperCase();
-                    if (/CTRB|PLACA|PROPRIED|OPERAC|VEICULO|VEÍCULO/.test(head)) return true;
-                    const body = (tb.innerText || '').toUpperCase();
-                    if (/[A-Z]{3}\\d[A-Z0-9]\\d{2}|[A-Z]{3}\\d{4}/.test(body) && rows.length >= 2) return true;
+              // 1) tables
+              const tables = Array.from(document.querySelectorAll('table'));
+              out.nTables = tables.length;
+              let best = null, bestScore = 0, bestHow = '';
+              for (const tb of tables) {
+                const rows = Array.from(tb.querySelectorAll('tr')).map((tr) =>
+                  Array.from(tr.querySelectorAll('th,td')).map((c) => norm(c.innerText || c.textContent || ''))
+                ).filter((r) => r.some(Boolean));
+                if (rows.length < 2) continue;
+                const sc = scoreRows(rows, 'table');
+                if (sc > bestScore) { bestScore = sc; best = rows; bestHow = 'table'; }
+              }
+
+              // 2) <pre> / texto monoespaçado (relatório SSW clássico)
+              const preNodes = Array.from(document.querySelectorAll('pre, code, tt, font[face], xmp'));
+              let textBlob = preNodes.map(n => n.innerText || n.textContent || '').join('\\n');
+              if (!textBlob || textBlob.length < 40) {
+                textBlob = (document.body && (document.body.innerText || '')) || '';
+              }
+              out.bodyLen = textBlob.length;
+              const lines = textBlob.split(/\\r?\\n/).map(norm).filter(Boolean);
+              const dataLines = [];
+              let headerLine = null;
+              for (const ln of lines) {
+                const up = ln.toUpperCase();
+                if (!headerLine && /CTRB/.test(up) && (/TIPO|PROPRIED|OPERAC|VEICULO|VEÍCULO|DESTI|TOTAL/.test(up))) {
+                  headerLine = ln;
+                  continue;
+                }
+                if (ctrbRe.test(up) && (
+                  /FROTA|CARRET|AGREG|TRANSFER|COLETA|OS\\b|CTRB|PROPRIED/.test(up)
+                  || /\\b[A-Z]{3}\\d[A-Z0-9]\\d{2}\\b/.test(up)
+                  || /\\b[A-Z]{3}-\\d{4}\\b/.test(up)
+                )) {
+                  dataLines.push(ln);
+                }
+              }
+              if (dataLines.length) {
+                const splitRow = (s) => {
+                  let cells = s.split(/\\t+/).map(norm).filter(Boolean);
+                  if (cells.length < 3) cells = s.split(/\\s{2,}/).map(norm).filter(Boolean);
+                  if (cells.length < 3) {
+                    // fallback: CTRB | resto
+                    const m = s.match(/^([A-Z]{2,3}\\s*\\d{4,}-?\\d?)\\s+(.*)$/i);
+                    if (m) cells = [norm(m[1])].concat(m[2].split(/\\s+/).filter(Boolean));
                   }
-                  return false;
-                }"""
-            )
-            if ready:
-                return True
+                  return cells;
+                };
+                const h = headerLine ? splitRow(headerLine) : [];
+                const rows = [h.length >= 4 ? h : ['CTRB/OS','Tipo','Desti','Veículo','Propriedade','Operação','Total CTRE']];
+                for (const dl of dataLines) {
+                  const cells = splitRow(dl);
+                  if (cells.length >= 2) rows.push(cells);
+                }
+                const sc = scoreRows(rows, 'text') + 10;
+                if (sc > bestScore) { bestScore = sc; best = rows; bestHow = headerLine ? 'text' : 'text-nohdr'; }
+              }
+
+              // 3) fallback: linhas com ≥4 td e CTRB em alguma célula
+              if (bestScore < 40) {
+                for (const tb of tables) {
+                  const rows = Array.from(tb.querySelectorAll('tr')).map((tr) =>
+                    Array.from(tr.querySelectorAll('td')).map((c) => norm(c.innerText || ''))
+                  ).filter((r) => r.length >= 3 && r.some(Boolean));
+                  const data = rows.filter(r => ctrbRe.test(r.join(' ').toUpperCase()));
+                  if (data.length < 1) continue;
+                  const built = [['CTRB/OS','Tipo','Desti','Veículo','Propriedade','Operação','Sit','Emissão','Proprie','Mot','Total CTRE'], ...data];
+                  const sc = scoreRows(built, 'table-raw');
+                  if (sc > bestScore) {
+                    bestScore = sc;
+                    best = built;
+                    bestHow = 'table-raw';
+                  }
+                }
+              }
+
+              out.rows = best || [];
+              out.score = bestScore;
+              out.how = bestHow;
+              return out;
+            }"""
+        ) or {"rows": [], "score": 0, "how": ""}
+    except Exception as err:
+        return {"rows": [], "score": 0, "how": f"err:{err}"}
+
+
+def _scrape_targets(context, popup) -> tuple[list, object | None]:
+    """Lista páginas/frames candidatos a conter o relatório."""
+    targets = []
+    pages = []
+    try:
+        pages = list(context.pages)
+    except Exception:
+        pages = []
+    if popup is not None:
+        try:
+            if popup not in pages:
+                pages.append(popup)
         except Exception:
             pass
-        _safe_wait(popup, 400)
-    return False
+    # páginas mais novas primeiro
+    for pg in reversed(pages):
+        try:
+            if pg.is_closed():
+                continue
+        except Exception:
+            continue
+        targets.append(pg)
+        try:
+            for fr in pg.frames:
+                if fr == pg.main_frame:
+                    continue
+                targets.append(fr)
+        except Exception:
+            pass
+    return targets, popup
 
 
-def _scrape_relatorio_to_sswweb(popup, dest: Path, status, key: str) -> Path:
-    """Copia a tabela visível da tela 073 → arquivo sswweb local (sem download)."""
-    payload = popup.evaluate(
-        """() => {
-          const body = (document.body && (document.body.innerText || '')) || '';
-          const tables = Array.from(document.querySelectorAll('table'));
-          let best = null;
-          let bestScore = 0;
-          for (const tb of tables) {
-            const rows = Array.from(tb.querySelectorAll('tr')).map((tr) =>
-              Array.from(tr.querySelectorAll('th,td')).map((c) =>
-                ((c.innerText || c.textContent || '') + '').replace(/\\s+/g, ' ').trim()
-              )
-            ).filter((r) => r.some(Boolean));
-            if (rows.length < 2) continue;
-            const head = (rows[0] || []).join(' ').toUpperCase();
-            let score = rows.length;
-            if (head.includes('CTRB') || head.includes('PLACA') || head.includes('VEÍCULO') || head.includes('VEICULO')) score += 50;
-            if (head.includes('OPERAC') || head.includes('TRANSFER') || head.includes('PROPRIED')) score += 35;
-            if (head.includes('CARRET') || head.includes('DESTI')) score += 15;
-            if (head.includes('TIPO')) score += 10;
-            if (rows.length <= 3 && !/CTRB|PLACA/.test(head)) score -= 20;
-            if (score > bestScore) { bestScore = score; best = rows; }
-          }
-          return { body: body.slice(0, 500), rows: best || [], score: bestScore };
-        }"""
-    )
-    rows = (payload or {}).get("rows") or []
-    if len(rows) < 2:
-        raise RuntimeError(
-            f"073/{key}: nenhuma tabela CTRB na tela "
-            f"(score={(payload or {}).get('score')})"
-        )
+def _dump_73_debug(popup, context, key: str, status) -> None:
+    """Salva HTML/texto para diagnóstico quando a grade não aparece."""
+    try:
+        from config import CACHE_DIR
+
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%H%M%S")
+        pages = []
+        try:
+            pages = list(context.pages)
+        except Exception:
+            pages = [popup] if popup else []
+        for i, pg in enumerate(pages):
+            try:
+                if pg is None or pg.is_closed():
+                    continue
+                html = pg.content()
+                text = pg.evaluate(
+                    "() => (document.body && document.body.innerText || '').slice(0, 12000)"
+                )
+                (CACHE_DIR / f"dump_73_{key}_{stamp}_p{i}.html").write_text(
+                    html or "", encoding="utf-8", errors="replace"
+                )
+                (CACHE_DIR / f"dump_73_{key}_{stamp}_p{i}.txt").write_text(
+                    f"URL={pg.url}\nframes={len(pg.frames)}\n\n{text or ''}",
+                    encoding="utf-8",
+                    errors="replace",
+                )
+                for fi, fr in enumerate(pg.frames):
+                    if fr == pg.main_frame:
+                        continue
+                    try:
+                        ft = fr.evaluate(
+                            "() => (document.body && document.body.innerText || '').slice(0, 6000)"
+                        )
+                        (CACHE_DIR / f"dump_73_{key}_{stamp}_p{i}_f{fi}.txt").write_text(
+                            f"URL={fr.url}\n\n{ft or ''}",
+                            encoding="utf-8",
+                            errors="replace",
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        status(f"[73/{key}] dump debug em data/cache/dump_73_{key}_{stamp}_*")
+    except Exception as err:
+        status(f"[73/{key}] dump debug falhou: {err}")
+
+
+def _rows_to_sswweb(rows: list, dest: Path, status, key: str, how: str) -> Path:
+    if not rows or len(rows) < 2:
+        raise RuntimeError(f"073/{key}: grade vazia ({how})")
     lines = ["0;SSW073;TELA"]
-    header = rows[0]
+    header = [str(c) for c in rows[0]]
     lines.append("1;" + ";".join(header))
     data_n = 0
     for r in rows[1:]:
-        cells = list(r) + [""] * max(0, len(header) - len(r))
+        cells = [str(c) for c in list(r) + [""] * max(0, len(header) - len(r))]
         blob = " ".join(cells).upper()
         if not blob.strip():
             continue
@@ -1036,43 +1187,183 @@ def _scrape_relatorio_to_sswweb(popup, dest: Path, status, key: str) -> Path:
         lines.append("2;" + ";".join(cells[: len(header)]))
         data_n += 1
     if data_n <= 0:
-        raise RuntimeError(f"073/{key}: tabela na tela sem linhas de dados")
+        raise RuntimeError(f"073/{key}: tabela sem linhas de dados ({how})")
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text("\n".join(lines) + "\n", encoding="latin-1", errors="replace")
-    status(f"[73/{key}] copiado da tela → {dest.name} ({data_n} linhas)")
+    status(f"[73/{key}] copiado da tela ({how}) → {dest.name} ({data_n} linhas)")
     return dest
 
 
-def _ler_tela_73(client, popup, dest_name: str, key: str, status) -> Path:
-    """073: clica Relatório/► e copia a grade — sem esperar download."""
+def _scrape_relatorio_to_sswweb(popup, dest: Path, status, key: str) -> Path:
+    """Compat: raspa só a popup atual."""
+    info = _extract_grid_from_page(popup)
+    return _rows_to_sswweb(info.get("rows") or [], dest, status, key, info.get("how") or "popup")
+
+
+def _grid_ok(info: dict) -> bool:
+    rows = info.get("rows") or []
+    score = int(info.get("score") or 0)
+    if len(rows) < 2:
+        return False
+    if score >= 40:
+        return True
+    # score baixo mas tem CTRB nas linhas
+    hits = sum(1 for r in rows[1:] if _CTRB_CELL_RE.search(" ".join(str(c) for c in r)))
+    return hits >= 1 and len(rows) >= 2
+
+
+def _ler_tela_73(client, context, popup, dest_name: str, key: str, status) -> Path:
+    """073: Relatório/► → grade na tela / nova janela; aceita .sswweb/.csv (não Excel)."""
     dest = Path(client.download_dir) / Path(dest_name).name
-    clicked = _clicar_relatorio_73(popup)
-    if not clicked:
-        raise RuntimeError(f"073/{key}: botão Relatório/► não encontrado")
-    status(f"[73/{key}] clique={clicked} · aguardando grade…")
-    if not _aguardar_tabela_73(popup, timeout_ms=28000):
-        if clicked not in {"play", "id13"}:
+    pages_before = list(context.pages)
+    new_page = None
+    clicked = ""
+    download = None
+    held_pages: list = []
+
+    def _on_page(pg) -> None:
+        held_pages.append(pg)
+        try:
+            pg.on("dialog", lambda d: d.accept())
+        except Exception:
+            pass
+
+    try:
+        context.on("page", _on_page)
+    except Exception:
+        pass
+
+    # Clique: Relatório pode abrir janela OU baixar .sswweb/.csv (não Excel)
+    try:
+        with popup.expect_download(timeout=5000) as di:
+            clicked = _clicar_relatorio_73(popup)
+            if not clicked:
+                raise RuntimeError("sem clique Relatório")
+            status(f"[73/{key}] clique={clicked}")
+            _safe_wait(popup, 800)
+        download = di.value
+    except Exception as err:
+        if not clicked:
+            clicked = _clicar_relatorio_73(popup)
+            status(f"[73/{key}] clique={clicked or '—'} ({type(err).__name__})")
+            _safe_wait(popup, 1500)
+        else:
+            status(f"[73/{key}] sem download imediato — varrendo telas…")
+            _safe_wait(popup, 800)
+
+    try:
+        context.remove_listener("page", _on_page)
+    except Exception:
+        pass
+
+    if download is not None:
+        suggested = (download.suggested_filename or "").lower()
+        if suggested.endswith((".xlsx", ".xls")) and ".sswweb" not in suggested:
+            status(f"[73/{key}] ignorando Excel ({suggested}) — raspando tela")
+        else:
+            path = _save_named(client, download, dest_name)
+            status(f"[73/{key}] Relatório arquivo → {path.name} ({path.stat().st_size} bytes)")
+            return path
+
+    # nova janela via listener ou diff de pages
+    if held_pages:
+        new_page = held_pages[-1]
+    else:
+        after = [p for p in context.pages if p not in pages_before]
+        if after:
+            new_page = after[-1]
+
+    if new_page is not None:
+        try:
+            new_page.wait_for_load_state("domcontentloaded", timeout=25000)
+        except Exception:
+            pass
+        try:
+            new_page.wait_for_load_state("networkidle", timeout=8000)
+        except Exception:
+            pass
+        _safe_wait(new_page, 600)
+
+    # espera grade em qualquer página/frame
+    deadline = time.time() + 35
+    best = {"rows": [], "score": 0, "how": ""}
+    while time.time() < deadline:
+        targets, _ = _scrape_targets(context, popup)
+        if new_page is not None:
+            targets = [new_page] + [t for t in targets if t is not new_page]
+        for tgt in targets:
+            info = _extract_grid_from_page(tgt)
+            if int(info.get("score") or 0) > int(best.get("score") or 0):
+                best = info
+        if _grid_ok(best):
+            break
+        try:
+            after = [p for p in context.pages if p not in pages_before]
+            if after and (new_page is None or new_page not in after):
+                new_page = after[-1]
+        except Exception:
+            pass
+        time.sleep(0.4)
+
+    # retry REL / ►
+    if not _grid_ok(best):
+        try:
+            popup.bring_to_front()
+        except Exception:
+            pass
+        try:
             again = popup.evaluate(
                 """() => {
+                  if (typeof ajaxEnvia === 'function') {
+                    try { ajaxEnvia('REL', 0); return 'ajax-REL'; } catch (e) {}
+                  }
                   const play = document.getElementById('13') || document.querySelector('[id=\"13\"]');
-                  if (play) { play.click(); return 'id13-retry'; }
+                  if (play) { play.click(); return 'id13'; }
                   return '';
                 }"""
             )
             if again:
-                status(f"[73/{key}] retry clique={again}")
-                _aguardar_tabela_73(popup, timeout_ms=12000)
-        else:
-            _safe_wait(popup, 1200)
-    return _scrape_relatorio_to_sswweb(popup, dest, status, key)
+                status(f"[73/{key}] retry={again}")
+                _safe_wait(popup, 2000)
+                try:
+                    after = [p for p in context.pages if p not in pages_before]
+                    if after:
+                        new_page = after[-1]
+                        _safe_wait(new_page, 1000)
+                except Exception:
+                    pass
+                for tgt in _scrape_targets(context, popup)[0]:
+                    info = _extract_grid_from_page(tgt)
+                    if int(info.get("score") or 0) > int(best.get("score") or 0):
+                        best = info
+        except Exception:
+            pass
+
+    rows = best.get("rows") or []
+    if not _grid_ok(best):
+        _dump_73_debug(popup, context, key, status)
+        raise RuntimeError(
+            f"073/{key}: nenhuma tabela CTRB na tela "
+            f"(score={best.get('score')} how={best.get('how')!r} "
+            f"tables={best.get('nTables')} body={best.get('bodyLen')} "
+            f"hint={best.get('hint')!r} clique={clicked!r})"
+        )
+
+    path = _rows_to_sswweb(rows, dest, status, key, str(best.get("how") or "tela"))
+    if new_page is not None:
+        try:
+            if not new_page.is_closed():
+                new_page.close()
+        except Exception:
+            pass
+    return path
 
 
 def _download_relatorio_73(
     client, context, popup, dest_name: str, key: str, status
 ) -> Path:
-    """Compat: agora só lê a tela (sem download)."""
-    _ = context
-    return _ler_tela_73(client, popup, dest_name, key, status)
+    """Compat: só lê a tela / nova janela (sem download)."""
+    return _ler_tela_73(client, context, popup, dest_name, key, status)
 
 
 def _clicar_excel_73(popup) -> str:
