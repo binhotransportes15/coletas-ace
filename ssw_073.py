@@ -3,7 +3,7 @@
 Fluxo Contratação (Unidade = SPO · período = mês até hoje):
   1) 1 login · 1 tela 073
      Propriedade=C (carreteiro) · Operação=R (transferência) · Tipo=A
-     → clica Relatório / ► e copia a tabela da tela (não baixa Excel)
+     → clica ► mostrar tela (ajaxEnvia MOS) e copia a grade (sem baixar nada)
   2) Parser: só CARRETEIRO + TRANSFERÊNCIA (= contratados)
   3) Para cada DESTINO: troca menu → 076+200 · merge frete
 """
@@ -48,9 +48,7 @@ SSW_073_MARKERS = (
     "operacao",
     "unidade emissora",
     "073",
-    "relatorio",
-    "relatório",
-    "arquivo excel",
+    "prosseguir",
     "consulta",
 )
 
@@ -126,7 +124,7 @@ def download_reports_073(
     tipos: tuple[str, ...] | None = None,
     propriedade: str | None = None,
 ) -> dict[str, Any]:
-    """1 login · N telas 073 · Relatório na tela (sem baixar arquivo)."""
+    """1 login · N telas 073 · Prosseguir → copia grade (sem baixar arquivo)."""
     status = on_status or _noop
     ensure_dirs()
     _ensure_playwright_path()
@@ -204,7 +202,7 @@ def download_reports_073(
 
     missing = [q["key"] for q in queued if q["key"] not in paths]
     for k in missing:
-        errors.setdefault(k, "sem download do Relatório")
+        errors.setdefault(k, "sem grade CTRB após Prosseguir")
 
     if not paths and errors:
         raise RuntimeError("073 falhou: " + "; ".join(f"{k}: {v}" for k, v in errors.items()))
@@ -744,8 +742,8 @@ def _run_073_phases(
             errors[key] = str(err)
             status(f"[73/{key}·{lab}] FALHOU no form: {err}")
 
-    # 073: só tela — Relatório / ► e copia a grade (sem Excel/download)
-    status(f"[73] lendo tabela na tela em {len(screens)} tela(s)…")
+    # 073: só tela — Prosseguir e copia a grade (sem download)
+    status(f"[73] Prosseguir + copiar grade em {len(screens)} tela(s)…")
     for job, popup in screens:
         key = job["key"]
         lab = job["label"]
@@ -757,7 +755,7 @@ def _run_073_phases(
                 popup.bring_to_front()
             except Exception:
                 pass
-            status(f"[73/{key}·{lab}] Relatório na tela…")
+            status(f"[73/{key}·{lab}] Prosseguir…")
             path = _ler_tela_73(client, context, popup, dest_name, key, status)
             paths[key] = str(path)
             queued.append({"key": key, "label": lab, "t": time.time(), "idx": len(queued) + 1})
@@ -804,91 +802,73 @@ def _preencher_73(
     on_status: StatusCallback,
     job_key: str = "",
 ) -> None:
-    """Preenche 073 por rótulo (ids SSW variam). Unidade emissora sempre SPO."""
+    """Preenche ssw0332 pelos IDs fixos da tela 073."""
     status = on_status
     key = job_key or propriedade
     lab = PROPRIEDADE_LABEL.get(key, PROPRIEDADE_LABEL.get(propriedade, propriedade))
     popup.wait_for_timeout(400)
+    # Fecha aviso residual (ex.: Unidade emissora) se estiver aberto
+    try:
+        popup.evaluate(
+            """() => {
+              try { if (typeof ccx === 'function') ccx(); } catch (e) {}
+              try { if (typeof showmsgonclick === 'function') showmsgonclick(); } catch (e2) {}
+              const ok = document.querySelector('#errormsg a.dialog, #errormsg a');
+              if (ok) { try { ok.click(); } catch (e3) {} }
+              const ep = document.getElementById('errorpanel');
+              const em = document.getElementById('errormsg');
+              if (ep) ep.style.visibility = 'hidden';
+              if (em) em.style.visibility = 'hidden';
+            }"""
+        )
+    except Exception:
+        pass
     filled = popup.evaluate(
         """({ ini, fim, tipo, unidade, propriedade, operacao, considerar }) => {
-          const norm = (s) => (s || '').toLowerCase().normalize('NFD')
-            .replace(/[\\u0300-\\u036f]/g, '').replace(/\\s+/g, ' ').trim();
-          const inputs = Array.from(document.querySelectorAll('input[type=text], input:not([type]), input[type=tel]'));
-          const near = (el) => {
-            let t = '';
-            let p = el.previousElementSibling;
-            if (p) t = (p.innerText || p.textContent || '');
-            if (!t && el.parentElement) t = el.parentElement.innerText || '';
-            const id = el.id;
-            if (id) {
-              const labs = Array.from(document.querySelectorAll('.texto, label, td'));
-              for (const lab of labs) {
-                const lt = (lab.innerText || '').trim();
-                if (!lt || lt.length > 80) continue;
-                try {
-                  const er = el.getBoundingClientRect();
-                  const lr = lab.getBoundingClientRect();
-                  if (Math.abs(lr.top - er.top) < 14 && lr.right <= er.left + 8) {
-                    return lt;
-                  }
-                } catch (_) {}
-              }
-            }
-            return t;
-          };
-          const byHint = (hints) => {
-            const hs = hints.map(norm);
-            for (const el of inputs) {
-              const lab = norm(near(el));
-              if (hs.some((h) => lab.includes(h))) return el;
-            }
-            return null;
-          };
-          const set = (el, val) => {
+          const setId = (id, val) => {
+            const el = document.getElementById(id);
             if (!el) return false;
             el.focus();
-            el.value = val;
+            el.value = String(val || '');
             el.dispatchEvent(new Event('input', { bubbles: true }));
             el.dispatchEvent(new Event('change', { bubbles: true }));
             return true;
           };
-
-          const periodInputs = inputs.filter((el) => {
-            const lab = norm(near(el));
-            return lab.includes('periodo') || lab.includes('data');
-          });
-          const ddmmyy = inputs.filter((el) => Number(el.maxLength) === 6 || Number(el.size) === 6);
-          let okIni = false, okFim = false;
-          if (periodInputs.length >= 2) {
-            okIni = set(periodInputs[0], ini);
-            okFim = set(periodInputs[1], fim);
-          } else if (ddmmyy.length >= 2) {
-            okIni = set(ddmmyy[0], ini);
-            okFim = set(ddmmyy[1], fim);
-          }
-
-          const okProp = set(byHint(['propriedade']), propriedade);
-          const okOp = set(byHint(['operacao', 'opera']), operacao);
-          const okTipo = set(byHint(['tipo']), tipo);
-          const okCons = set(byHint(['considerar']), considerar);
-          const okUni = set(byHint(['unidade emissora', 'unidade emiss', 'emissora']), unidade);
-
+          // IDs confirmados no dump ssw0332
+          const okIni = setId('per_ini_inc', ini);
+          const okFim = setId('per_fin_inc', fim);
+          const okProp = setId('tp_propriedade', propriedade);
+          const okOp = setId('tp_ctrb_os', operacao);      // Operação (R/C/A/T)
+          const okTipo = setId('fg_ctrb_os', tipo);        // Tipo (C/O/A)
+          const okCons = setId('fg_cancelados', considerar);
+          const okUni = setId('unid_orig', unidade);       // Unidade emissora SPO
           return {
             okIni, okFim, okProp, okOp, okTipo, okCons, okUni,
-            nInputs: inputs.length,
+            vals: {
+              ini: (document.getElementById('per_ini_inc') || {}).value || '',
+              fim: (document.getElementById('per_fin_inc') || {}).value || '',
+              prop: (document.getElementById('tp_propriedade') || {}).value || '',
+              op: (document.getElementById('tp_ctrb_os') || {}).value || '',
+              tipo: (document.getElementById('fg_ctrb_os') || {}).value || '',
+              cons: (document.getElementById('fg_cancelados') || {}).value || '',
+              uni: (document.getElementById('unid_orig') || {}).value || '',
+            },
           };
         }""",
         {
             "ini": ini,
             "fim": fim,
-            "tipo": tipo,
-            "unidade": unidade,
-            "propriedade": propriedade,
-            "operacao": operacao,
-            "considerar": considerar,
+            "tipo": str(tipo or "A").strip().upper()[:1] or "A",
+            "unidade": str(unidade or "SPO").strip().upper()[:3] or "SPO",
+            "propriedade": str(propriedade or "C").strip().upper()[:1] or "C",
+            "operacao": str(operacao or "R").strip().upper()[:1] or "R",
+            "considerar": str(considerar or "T").strip().upper()[:1] or "T",
         },
     )
-    status(f"[73/{key}·{lab}] form {filled} · prop={propriedade} op={operacao} tipo={tipo} uni={unidade}")
+    status(
+        f"[73/{key}·{lab}] form {filled} · prop={propriedade} op={operacao} "
+        f"tipo={tipo} uni={unidade}"
+    )
     if not filled.get("okProp"):
         raise RuntimeError(f"073: não achei campo Propriedade ({filled})")
     if not filled.get("okOp"):
@@ -896,21 +876,42 @@ def _preencher_73(
     if not filled.get("okTipo"):
         status(f"[73/{key}·{lab}] aviso: Tipo pode não ter preenchido")
     if not filled.get("okUni"):
-        status(f"[73/{key}·{lab}] aviso: Unidade emissora pode não ter preenchido (esperado SPO)")
+        raise RuntimeError(f"073: não achei Unidade emissora unid_orig ({filled})")
+    vals = filled.get("vals") or {}
+    if str(vals.get("uni") or "").strip().upper() != str(unidade or "SPO").strip().upper():
+        raise RuntimeError(f"073: Unidade emissora não gravou SPO ({vals})")
     if not (filled.get("okIni") and filled.get("okFim")):
         status(f"[73/{key}·{lab}] aviso: período pode não ter preenchido ({filled})")
     popup.wait_for_timeout(200)
 
 
-def _clicar_relatorio_73(popup) -> str:
-    """Dispara Relatório / ► (nunca Arquivo Excel). Prefere ajaxEnvia('REL')."""
-    # 1) ajaxEnvia — abre outra janela no SSW com mais previsibilidade
+def _clicar_prosseguir_73(popup) -> str:
+    """Clica o ► de 'mostrar tela' (ajaxEnvia MOS) — nunca o ► de CTRB/OS (ENV)."""
+    # 1) botão certo: #link_mostra_tela → ajaxEnvia('MOS', 1)
     try:
         how = popup.evaluate(
             """() => {
+              // fecha aviso se aberto
+              try { if (typeof ccx === 'function') ccx(); } catch (e) {}
+              try { if (typeof showmsgonclick === 'function') showmsgonclick(); } catch (e2) {}
+              const em = document.getElementById('errormsg');
+              if (em) em.style.visibility = 'hidden';
+              const ep = document.getElementById('errorpanel');
+              if (ep) ep.style.visibility = 'hidden';
+
+              const mos = document.getElementById('link_mostra_tela');
+              if (mos) {
+                try { mos.click(); return 'link_mostra_tela'; } catch (e3) {}
+              }
               if (typeof ajaxEnvia === 'function') {
-                try { ajaxEnvia('REL', 0); return 'ajax-REL'; } catch (e) {}
-                try { ajaxEnvia('REL2', 0); return 'ajax-REL2'; } catch (e2) {}
+                try { ajaxEnvia('MOS', 1); return 'ajax-MOS'; } catch (e4) {}
+              }
+              // fallback: âncora com MOS no onclick (não ENV)
+              for (const a of Array.from(document.querySelectorAll('a[onclick]'))) {
+                const oc = String(a.getAttribute('onclick') || '');
+                if (/ajaxEnvia\\(\\s*['\"]MOS['\"]/i.test(oc)) {
+                  try { a.click(); return 'oc:MOS'; } catch (e5) {}
+                }
               }
               return '';
             }"""
@@ -919,91 +920,66 @@ def _clicar_relatorio_73(popup) -> str:
             return str(how)
     except Exception:
         pass
-    # 2) link/botão Relatório (onclick)
     try:
-        how = popup.evaluate(
-            """() => {
-              const els = Array.from(document.querySelectorAll('a, span, button, input, img, font, b, td'));
-              const pick = (pred) => {
-                for (const a of els) {
-                  const t = ((a.innerText || a.textContent || a.value || a.alt || a.title || '') + '')
-                    .replace(/\\s+/g, ' ').trim();
-                  if (!pred(t, a)) continue;
-                  if (/excel/i.test(t)) continue;
-                  const oc = a.getAttribute('onclick') || '';
-                  try { a.click(); return (oc ? 'oc:' : 'clk:') + (t || a.id || 'rel'); } catch (e) {}
-                  if (oc) {
-                    try { (function(){ eval(oc); })(); return 'eval:' + t; } catch (e2) {}
-                  }
-                }
-                return '';
-              };
-              let h = pick((t) => /^Relat[oó]rio$/i.test(t));
-              if (h) return h;
-              h = pick((t) => /relat[oó]rio/i.test(t) && t.length < 40);
-              if (h) return h;
-              h = pick((t) => /^[\\u25b6\\u25ba►▶]$/.test(t) || /^(play|gerar)$/i.test(t));
-              if (h) return h;
-              const play = document.getElementById('13') || document.querySelector('[id=\"13\"]');
-              if (play) { play.click(); return 'id13'; }
-              const act = document.getElementById('act_rel');
-              if (act) { act.click(); return 'act_rel'; }
-              return '';
-            }"""
-        )
-        if how:
-            return str(how)
-    except Exception:
-        pass
-    for exact in ("Relatório", "Relatorio"):
-        try:
-            loc = popup.get_by_text(exact, exact=True)
-            if loc.count() > 0:
-                loc.first.click(timeout=5000)
-                return exact
-        except Exception:
-            pass
-    try:
-        loc = popup.locator("a", has_text=re.compile(r"Relat[oó]rio", re.I))
+        loc = popup.locator("#link_mostra_tela")
         if loc.count() > 0:
             loc.first.click(timeout=5000)
-            return "a:Relatorio"
+            return "locator:link_mostra_tela"
     except Exception:
         pass
     return ""
 
 
+def _clicar_relatorio_73(popup) -> str:
+    """Compat: agora = mostrar tela (MOS), sem Relatório/Excel/download."""
+    return _clicar_prosseguir_73(popup)
+
+
 _CTRB_CELL_RE = re.compile(r"\b[A-Z]{2,3}\s*\d{4,}-?\d?\b", re.I)
+
+# Cabeçalhos da grade após Prosseguir (ssw0332)
+_HEADER_HINTS = (
+    "CTRB",
+    "DESTINO",
+    "DESTI",
+    "VEÍCULO",
+    "VEICULO",
+    "PROPRIED",
+    "OPERAC",
+    "TOTAL CTRB",
+    "A RECEBER",
+    "MOTORISTA",
+    "EMISS",
+)
 
 
 def _extract_grid_from_page(page) -> dict:
-    """Extrai grade de CTRB de page/frame: <table>, <pre> ou texto bruto."""
+    """Extrai grade CTRB da tela após Prosseguir: <table>, <pre> ou texto."""
     try:
         return page.evaluate(
             """() => {
               const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
               const ctrbRe = /\\b[A-Z]{2,3}\\s*\\d{4,}-?\\d?\\b/;
+              const headRe = /CTRB|DESTINO|DESTI|VEÍCULO|VEICULO|PROPRIED|OPERAC|TOTAL CTRB|A RECEBER|MOTORISTA/;
               const out = { rows: [], score: 0, how: '', url: location.href || '', nTables: 0, bodyLen: 0, hint: '' };
 
               const scoreRows = (rows, how) => {
                 if (!rows || rows.length < 2) return 0;
                 const head = (rows[0] || []).join(' ').toUpperCase();
-                const blob = rows.slice(0, 8).map(r => (r || []).join(' ')).join(' ').toUpperCase();
+                const blob = rows.slice(0, 12).map(r => (r || []).join(' ')).join(' ').toUpperCase();
                 let score = Math.min(rows.length, 80);
-                if (/CTRB|PLACA|VEÍCULO|VEICULO|PROPRIED|OPERAC|DESTI|TOTAL CTRE|A RECEBER/.test(head)) score += 80;
-                if (/CTRB|TRANSFER|CARRET|AGREG|FROTA|COLETA/.test(blob)) score += 40;
+                if (headRe.test(head)) score += 90;
+                if (/CARRETEIRO|FROTA|AGREGADO|TRANSFER|COLETA/.test(blob)) score += 35;
                 let ctrbHits = 0;
-                for (const r of rows.slice(1, 40)) {
-                  const t = (r || []).join(' ').toUpperCase();
-                  if (ctrbRe.test(t)) ctrbHits++;
+                for (const r of rows.slice(1, 60)) {
+                  if (ctrbRe.test((r || []).join(' ').toUpperCase())) ctrbHits++;
                 }
-                score += Math.min(ctrbHits * 8, 80);
-                if (ctrbHits === 0 && !/CTRB|PLACA|VEICULO|VEÍCULO/.test(head + blob)) score -= 30;
+                score += Math.min(ctrbHits * 6, 90);
+                if (ctrbHits === 0 && !/CTRB/.test(head)) score -= 40;
                 out.hint = how + ':hits=' + ctrbHits + ',rows=' + rows.length;
                 return score;
               };
 
-              // 1) tables
               const tables = Array.from(document.querySelectorAll('table'));
               out.nTables = tables.length;
               let best = null, bestScore = 0, bestHow = '';
@@ -1016,8 +992,7 @@ def _extract_grid_from_page(page) -> dict:
                 if (sc > bestScore) { bestScore = sc; best = rows; bestHow = 'table'; }
               }
 
-              // 2) <pre> / texto monoespaçado (relatório SSW clássico)
-              const preNodes = Array.from(document.querySelectorAll('pre, code, tt, font[face], xmp'));
+              const preNodes = Array.from(document.querySelectorAll('pre, code, tt, xmp'));
               let textBlob = preNodes.map(n => n.innerText || n.textContent || '').join('\\n');
               if (!textBlob || textBlob.length < 40) {
                 textBlob = (document.body && (document.body.innerText || '')) || '';
@@ -1028,7 +1003,7 @@ def _extract_grid_from_page(page) -> dict:
               let headerLine = null;
               for (const ln of lines) {
                 const up = ln.toUpperCase();
-                if (!headerLine && /CTRB/.test(up) && (/TIPO|PROPRIED|OPERAC|VEICULO|VEÍCULO|DESTI|TOTAL/.test(up))) {
+                if (!headerLine && /CTRB/.test(up) && headRe.test(up) && (/TIPO|DEST|VEIC|PROPRIED|OPERAC/.test(up))) {
                   headerLine = ln;
                   continue;
                 }
@@ -1045,14 +1020,18 @@ def _extract_grid_from_page(page) -> dict:
                   let cells = s.split(/\\t+/).map(norm).filter(Boolean);
                   if (cells.length < 3) cells = s.split(/\\s{2,}/).map(norm).filter(Boolean);
                   if (cells.length < 3) {
-                    // fallback: CTRB | resto
                     const m = s.match(/^([A-Z]{2,3}\\s*\\d{4,}-?\\d?)\\s+(.*)$/i);
                     if (m) cells = [norm(m[1])].concat(m[2].split(/\\s+/).filter(Boolean));
                   }
                   return cells;
                 };
+                const defaultHdr = [
+                  'CTRB/OS','Tipo','Destino','Veículo','Propriedade','Operação','Situação',
+                  'Emissão','Proprietário','Motorista','Total CTRB/OS','Retenções','Adiantamento',
+                  'A Receber','Pedágio','Saldo CCF','Conta Bancária','CIOT','Vale pedagio'
+                ];
                 const h = headerLine ? splitRow(headerLine) : [];
-                const rows = [h.length >= 4 ? h : ['CTRB/OS','Tipo','Desti','Veículo','Propriedade','Operação','Total CTRE']];
+                const rows = [h.length >= 4 ? h : defaultHdr];
                 for (const dl of dataLines) {
                   const cells = splitRow(dl);
                   if (cells.length >= 2) rows.push(cells);
@@ -1061,7 +1040,6 @@ def _extract_grid_from_page(page) -> dict:
                 if (sc > bestScore) { bestScore = sc; best = rows; bestHow = headerLine ? 'text' : 'text-nohdr'; }
               }
 
-              // 3) fallback: linhas com ≥4 td e CTRB em alguma célula
               if (bestScore < 40) {
                 for (const tb of tables) {
                   const rows = Array.from(tb.querySelectorAll('tr')).map((tr) =>
@@ -1069,13 +1047,13 @@ def _extract_grid_from_page(page) -> dict:
                   ).filter((r) => r.length >= 3 && r.some(Boolean));
                   const data = rows.filter(r => ctrbRe.test(r.join(' ').toUpperCase()));
                   if (data.length < 1) continue;
-                  const built = [['CTRB/OS','Tipo','Desti','Veículo','Propriedade','Operação','Sit','Emissão','Proprie','Mot','Total CTRE'], ...data];
+                  const built = [[
+                    'CTRB/OS','Tipo','Destino','Veículo','Propriedade','Operação','Situação',
+                    'Emissão','Proprietário','Motorista','Total CTRB/OS','Retenções','Adiantamento',
+                    'A Receber','Pedágio','Saldo CCF','Conta Bancária','CIOT','Vale pedagio'
+                  ], ...data];
                   const sc = scoreRows(built, 'table-raw');
-                  if (sc > bestScore) {
-                    bestScore = sc;
-                    best = built;
-                    bestHow = 'table-raw';
-                  }
+                  if (sc > bestScore) { bestScore = sc; best = built; bestHow = 'table-raw'; }
                 }
               }
 
@@ -1213,12 +1191,11 @@ def _grid_ok(info: dict) -> bool:
 
 
 def _ler_tela_73(client, context, popup, dest_name: str, key: str, status) -> Path:
-    """073: Relatório/► → grade na tela / nova janela; aceita .sswweb/.csv (não Excel)."""
+    """073: ► mostrar tela (MOS) → copia grade (sem download)."""
     dest = Path(client.download_dir) / Path(dest_name).name
     pages_before = list(context.pages)
     new_page = None
     clicked = ""
-    download = None
     held_pages: list = []
 
     def _on_page(pg) -> None:
@@ -1228,44 +1205,83 @@ def _ler_tela_73(client, context, popup, dest_name: str, key: str, status) -> Pa
         except Exception:
             pass
 
+    def _aviso_texto(pg) -> str:
+        try:
+            return str(
+                pg.evaluate(
+                    """() => {
+                      const em = document.getElementById('errormsglabel');
+                      if (em && em.offsetParent !== null) return (em.innerText || '').trim();
+                      const vis = document.getElementById('errormsg');
+                      if (vis && vis.style && vis.style.visibility === 'visible')
+                        return (vis.innerText || '').trim().slice(0, 200);
+                      return '';
+                    }"""
+                )
+                or ""
+            )
+        except Exception:
+            return ""
+
+    def _dismiss_aviso(pg) -> None:
+        try:
+            pg.evaluate(
+                """() => {
+                  try { if (typeof showmsgonclick === 'function') showmsgonclick(); } catch (e) {}
+                  try { if (typeof ccx === 'function') ccx(); } catch (e2) {}
+                  const a = document.querySelector('#errormsg a.dialog, #errormsg a');
+                  if (a) try { a.click(); } catch (e3) {}
+                  const ep = document.getElementById('errorpanel');
+                  const em = document.getElementById('errormsg');
+                  if (ep) ep.style.visibility = 'hidden';
+                  if (em) em.style.visibility = 'hidden';
+                }"""
+            )
+        except Exception:
+            pass
+
     try:
         context.on("page", _on_page)
     except Exception:
         pass
 
-    # Clique: Relatório pode abrir janela OU baixar .sswweb/.csv (não Excel)
-    try:
-        with popup.expect_download(timeout=5000) as di:
-            clicked = _clicar_relatorio_73(popup)
-            if not clicked:
-                raise RuntimeError("sem clique Relatório")
-            status(f"[73/{key}] clique={clicked}")
-            _safe_wait(popup, 800)
-        download = di.value
-    except Exception as err:
-        if not clicked:
-            clicked = _clicar_relatorio_73(popup)
-            status(f"[73/{key}] clique={clicked or '—'} ({type(err).__name__})")
-            _safe_wait(popup, 1500)
-        else:
-            status(f"[73/{key}] sem download imediato — varrendo telas…")
-            _safe_wait(popup, 800)
+    clicked = _clicar_prosseguir_73(popup)
+    if not clicked:
+        try:
+            context.remove_listener("page", _on_page)
+        except Exception:
+            pass
+        raise RuntimeError(f"073/{key}: botão mostrar tela (MOS / ►) não encontrado")
+    status(f"[73/{key}] clique={clicked} · aguardando grade…")
+    _safe_wait(popup, 1200)
+
+    # Se o SSW pediu unidade / mostrou aviso, corrige SPO e tenta MOS de novo
+    aviso = _aviso_texto(popup)
+    if aviso:
+        status(f"[73/{key}] aviso SSW: {aviso[:80]}")
+        _dismiss_aviso(popup)
+        try:
+            popup.evaluate(
+                """() => {
+                  const el = document.getElementById('unid_orig');
+                  if (el) {
+                    el.value = 'SPO';
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                  }
+                }"""
+            )
+        except Exception:
+            pass
+        clicked = _clicar_prosseguir_73(popup) or clicked
+        status(f"[73/{key}] retry MOS={clicked}")
+        _safe_wait(popup, 1500)
 
     try:
         context.remove_listener("page", _on_page)
     except Exception:
         pass
 
-    if download is not None:
-        suggested = (download.suggested_filename or "").lower()
-        if suggested.endswith((".xlsx", ".xls")) and ".sswweb" not in suggested:
-            status(f"[73/{key}] ignorando Excel ({suggested}) — raspando tela")
-        else:
-            path = _save_named(client, download, dest_name)
-            status(f"[73/{key}] Relatório arquivo → {path.name} ({path.stat().st_size} bytes)")
-            return path
-
-    # nova janela via listener ou diff de pages
     if held_pages:
         new_page = held_pages[-1]
     else:
@@ -1284,66 +1300,73 @@ def _ler_tela_73(client, context, popup, dest_name: str, key: str, status) -> Pa
             pass
         _safe_wait(new_page, 600)
 
-    # espera grade em qualquer página/frame
-    deadline = time.time() + 35
+    deadline = time.time() + 40
     best = {"rows": [], "score": 0, "how": ""}
     while time.time() < deadline:
+        # MOS costuma trocar o HTML da própria popup (não abre janela)
         targets, _ = _scrape_targets(context, popup)
+        # prioriza a popup do 073
+        ordered = []
+        if popup is not None:
+            ordered.append(popup)
+            try:
+                for fr in popup.frames:
+                    if fr != popup.main_frame:
+                        ordered.append(fr)
+            except Exception:
+                pass
         if new_page is not None:
-            targets = [new_page] + [t for t in targets if t is not new_page]
-        for tgt in targets:
+            ordered = [new_page] + ordered
+        for t in targets:
+            if t not in ordered:
+                ordered.append(t)
+        for tgt in ordered:
             info = _extract_grid_from_page(tgt)
             if int(info.get("score") or 0) > int(best.get("score") or 0):
                 best = info
         if _grid_ok(best):
             break
+        # ainda no formulário? aguarda AJAX MOS
+        try:
+            still_form = popup.evaluate(
+                "() => !!document.getElementById('link_mostra_tela') || !!document.getElementById('tp_propriedade')"
+            )
+            if still_form and time.time() > deadline - 25:
+                # tenta MOS outra vez no meio da espera
+                pass
+        except Exception:
+            pass
         try:
             after = [p for p in context.pages if p not in pages_before]
             if after and (new_page is None or new_page not in after):
                 new_page = after[-1]
         except Exception:
             pass
-        time.sleep(0.4)
+        time.sleep(0.45)
 
-    # retry REL / ►
     if not _grid_ok(best):
-        try:
-            popup.bring_to_front()
-        except Exception:
-            pass
-        try:
-            again = popup.evaluate(
-                """() => {
-                  if (typeof ajaxEnvia === 'function') {
-                    try { ajaxEnvia('REL', 0); return 'ajax-REL'; } catch (e) {}
-                  }
-                  const play = document.getElementById('13') || document.querySelector('[id=\"13\"]');
-                  if (play) { play.click(); return 'id13'; }
-                  return '';
-                }"""
-            )
-            if again:
-                status(f"[73/{key}] retry={again}")
-                _safe_wait(popup, 2000)
-                try:
-                    after = [p for p in context.pages if p not in pages_before]
-                    if after:
-                        new_page = after[-1]
-                        _safe_wait(new_page, 1000)
-                except Exception:
-                    pass
-                for tgt in _scrape_targets(context, popup)[0]:
-                    info = _extract_grid_from_page(tgt)
-                    if int(info.get("score") or 0) > int(best.get("score") or 0):
-                        best = info
-        except Exception:
-            pass
+        _dismiss_aviso(popup)
+        again = _clicar_prosseguir_73(popup)
+        if again:
+            status(f"[73/{key}] retry final={again}")
+            _safe_wait(popup, 2500)
+            try:
+                after = [p for p in context.pages if p not in pages_before]
+                if after:
+                    new_page = after[-1]
+                    _safe_wait(new_page, 1000)
+            except Exception:
+                pass
+            for tgt in _scrape_targets(context, popup)[0] + ([popup] if popup else []):
+                info = _extract_grid_from_page(tgt)
+                if int(info.get("score") or 0) > int(best.get("score") or 0):
+                    best = info
 
     rows = best.get("rows") or []
     if not _grid_ok(best):
         _dump_73_debug(popup, context, key, status)
         raise RuntimeError(
-            f"073/{key}: nenhuma tabela CTRB na tela "
+            f"073/{key}: nenhuma tabela CTRB após Prosseguir "
             f"(score={best.get('score')} how={best.get('how')!r} "
             f"tables={best.get('nTables')} body={best.get('bodyLen')} "
             f"hint={best.get('hint')!r} clique={clicked!r})"

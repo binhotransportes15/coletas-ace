@@ -187,27 +187,20 @@ def _grupo_propriedade(
     prop: str, tipo: str = "", fonte: str = "", operacao: str = ""
 ) -> str:
     """Só CARRETEIRO + TRANSFERÊNCIA → contratados."""
-    op_or_tipo = operacao or tipo
-    if _is_carreteiro(prop) and _is_transferencia(op_or_tipo):
-        return "contratados"
-    if _is_carreteiro(prop) and _is_transferencia(tipo):
-        return "contratados"
-    # raspagem: Tipo=CTRB/OS · Operação na coluna própria
+    # Preferência: propriedades + operação explícitas na grade
     if _is_carreteiro(prop) and _is_transferencia(operacao):
         return "contratados"
-    # form já filtrado C+R: prop=CARRETEIRO e Tipo documento (sem coluna operação)
+    if _is_carreteiro(prop) and _is_transferencia(tipo) and not _is_tipo_documento(tipo):
+        return "contratados"
+    # form já filtrado C+R: prop=CARRETEIRO e coluna operação vazia
     if _is_carreteiro(prop) and (not operacao) and (
         not _clean(tipo) or _is_tipo_documento(tipo)
     ):
         return "contratados"
-    # coluna operação TRANSFER + prop vazia
-    if _is_transferencia(operacao) and (not prop or _is_carreteiro(prop)):
-        return "contratados"
-    from_tipo = _grupo_from_tipo_csv(tipo)
-    if from_tipo and (not prop or _is_carreteiro(prop)):
-        return from_tipo
     from_file = _grupo_from_fonte(fonte)
-    if from_file:
+    if from_file and _is_carreteiro(prop):
+        return from_file
+    if from_file and not prop:
         return from_file
     return "outro"
 
@@ -260,7 +253,12 @@ def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
         hmap, "VALOR A PAGAR", "A RECEBER", "ARECEBER", default=COL_VALOR_PAGAR
     )
     i_total = _idx_from_header(
-        hmap, "TOTAL CTRB", "TOTAL CTRE", "TOTAL CTR", default=COL_TOTAL_CTRB
+        hmap,
+        "TOTAL CTRB/OS",
+        "TOTAL CTRB",
+        "TOTAL CTRE",
+        "TOTAL CTR",
+        default=COL_TOTAL_CTRB,
     )
     i_av = _idx_from_header(hmap, "ADIANTAMENTO", "ADIANTAN", default=COL_CUSTO_AV)
     # prefer ADIANTAMENTO puro (não CCF/FORNECEDOR) se existir
