@@ -4686,7 +4686,7 @@
             tabindex="0"
           />
           <div class="arm-titles">
-            <div class="kicker" id="ctrKicker">BINHO · OPERACIONAL · 073→076</div>
+            <div class="kicker" id="ctrKicker">BINHO · OPERACIONAL · CARRETEIRO · TRANSF</div>
             <h1 id="ctrTitle">CONTRATAÇÃO</h1>
           </div>
         </div>
@@ -7322,11 +7322,9 @@
 
         const mix = document.getElementById('ctrMix');
         if (mix) {
-          const agreg = Number(resumo.agregado) || 0;
           const contrat = Number(resumo.contratados) || Number(resumo.terceiro) || 0;
           mix.innerHTML = `
-            <div class="mix-card agregado"><div class="n">${agreg}</div><div class="l">COLETA/EN · agregado</div></div>
-            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">TRANSFERÊNCIA · contratação</div></div>
+            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">CARRETEIRO · TRANSFERÊNCIA</div></div>
           `;
         }
 
@@ -7339,13 +7337,13 @@
             <tr>
               <td class="mono">${esc(v.placa || '—')}</td>
               <td class="mono">${esc(v.carreta || '—')}</td>
-              <td>${esc(({'agregado':'COLETA/EN','contratados':'TRANSFERÊNCIA'}[v.grupo] || v.grupo || v.propriedade || '—'))}</td>
+              <td>${esc(({'contratados':'CARRETEIRO · TRANSF'}[v.grupo] || v.grupo || v.propriedade || '—'))}</td>
               <td class="mono right">${esc(v.qtd_ctrb || '0')}</td>
               <td class="mono right">${esc(fmtCtrMoney(v.custo))}</td>
               <td class="mono right">${esc(fmtCtrMoney(v.frete))}</td>
               <td class="mono right">${esc(fmtCtrPeso(v.peso))}</td>
             </tr>
-          `).join('') || `<tr><td colspan="7" class="muted">Sem veículos — rode \`73\` no ACE</td></tr>`;
+          `).join('') || `<tr><td colspan="7" class="muted">Sem carreteiros (transferência) — rode \`73\` no ACE</td></tr>`;
         }
         if (stamp) lastCtrDataVersion = stamp;
         else if (resumo.atualizado) lastCtrDataVersion = String(resumo.atualizado);

@@ -1,10 +1,9 @@
 """Parser SSW 073 (CSV ssw0332) — CTRBs/OSs · base do painel Contratação.
 
-Pull único: Propriedade=T · Tipo=A · Relatório.
-Mix do painel (coluna TIPO do CSV):
-  COLETA/ENTREGA → agregado
-  TRANSFERÊNCIA  → contratados
-  demais (REMUNERACAO, frota etc.) → ignorados
+Pull: Propriedade=C (carreteiro) · Operação=R (transferência) · Tipo=A · Relatório.
+Painel conta SOMENTE:
+  CARRETEIRO + TRANSFERÊNCIA → contratados
+  (agregado / frota / coleta-entrega / remuneração → ignorados)
 
 Colunas Excel (com tipo de linha na col. A):
   B  CTRB
@@ -150,47 +149,71 @@ def _read_text(path: Path) -> str:
     return raw.decode("latin-1", errors="replace")
 
 
-def _grupo_from_tipo_csv(tipo: str) -> str | None:
-    """Classifica pelo TIPO da linha CSV (não pela propriedade F/A).
+def _is_carreteiro(prop: str) -> bool:
+    p = _clean(prop).upper()
+    if not p:
+        return False
+    if p in {"C", "AC"}:
+        return True
+    return "CARRET" in p
 
-    COLETA/ENTREGA → agregado
-    TRANSFERÊNCIA / TRANSFERE → contratados
-    demais (ex.: REMUNERACAO) → None (ignorado no painel)
-    """
-    t = _clean(tipo).upper()
-    if not t:
-        return None
-    if "COLETA" in t or "ENTREGA" in t:
-        return "agregado"
-    if "TRANSFER" in t:
+
+def _is_transferencia(texto: str) -> bool:
+    t = _clean(texto).upper()
+    return bool(t) and "TRANSFER" in t
+
+
+def _grupo_from_tipo_csv(tipo: str) -> str | None:
+    """Legado: só TRANSFERÊNCIA entra (COLETA/agregado fora)."""
+    if _is_transferencia(tipo):
         return "contratados"
     return None
 
 
 def _grupo_from_fonte(name: str) -> str | None:
-    """Legado: chave do arquivo AC/AO. Arquivo único TA não define grupo."""
+    """Legado: chave do arquivo AC. AO/agregado não entra mais."""
     n = (name or "").upper().replace("-", "_")
-    if "073_TA" in n or "_TA_" in n:
-        return None
     if "073_AC" in n or "_AC_" in n or n.startswith("AC_") or "/AC_" in n:
         return "contratados"
-    if "073_AO" in n or "_AO_" in n or n.startswith("AO_"):
-        return "agregado"
+    if "073_CR" in n or "_CR_" in n:
+        return "contratados"
     return None
 
 
 _GRUPO_RANK = {
-    "agregado": 0,
-    "contratados": 1,
+    "contratados": 0,
     "outro": 9,
 }
 
 
-def _grupo_propriedade(prop: str, tipo: str = "", fonte: str = "") -> str:
-    """agregado (COLETA/EN) | contratados (TRANSFERÊNCIA). Sem frota."""
-    _ = prop  # propriedade do formulário não define o mix do painel
+def _is_tipo_documento(tipo: str) -> bool:
+    """TIPO=CTRB/OS (não é a coluna Operação)."""
+    t = _clean(tipo).upper()
+    return t in {"CTRB", "OS", "CT-E", "CTE", "A", "C", "O"}
+
+
+def _grupo_propriedade(
+    prop: str, tipo: str = "", fonte: str = "", operacao: str = ""
+) -> str:
+    """Só CARRETEIRO + TRANSFERÊNCIA → contratados."""
+    op_or_tipo = operacao or tipo
+    if _is_carreteiro(prop) and _is_transferencia(op_or_tipo):
+        return "contratados"
+    if _is_carreteiro(prop) and _is_transferencia(tipo):
+        return "contratados"
+    # raspagem: Tipo=CTRB/OS · Operação na coluna própria
+    if _is_carreteiro(prop) and _is_transferencia(operacao):
+        return "contratados"
+    # form já filtrado C+R: prop=CARRETEIRO e Tipo documento (sem coluna operação)
+    if _is_carreteiro(prop) and (not operacao) and (
+        not _clean(tipo) or _is_tipo_documento(tipo)
+    ):
+        return "contratados"
+    # coluna operação TRANSFER + prop vazia
+    if _is_transferencia(operacao) and (not prop or _is_carreteiro(prop)):
+        return "contratados"
     from_tipo = _grupo_from_tipo_csv(tipo)
-    if from_tipo:
+    if from_tipo and (not prop or _is_carreteiro(prop)):
         return from_tipo
     from_file = _grupo_from_fonte(fonte)
     if from_file:
@@ -235,11 +258,12 @@ def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
     src = fonte or Path(path).name
     hmap = _header_map(text)
 
-    i_ctrb = _idx_from_header(hmap, "CTRB", default=COL_CTRB)
+    i_ctrb = _idx_from_header(hmap, "CTRB", "CTRB/OS", default=COL_CTRB)
     i_tipo = _idx_from_header(hmap, "TIPO", default=COL_TIPO)
-    i_sit = _idx_from_header(hmap, "SITUACAO", "SITUAÇÃO", default=COL_SITUACAO)
-    i_placa = _idx_from_header(hmap, "PLACA CAVALO", "PLACA", default=COL_PLACA)
+    i_sit = _idx_from_header(hmap, "SITUACAO", "SITUAÇÃO", "SIT", default=COL_SITUACAO)
+    i_placa = _idx_from_header(hmap, "PLACA CAVALO", "PLACA", "VEÍCULO", "VEICULO", default=COL_PLACA)
     i_prop = _idx_from_header(hmap, "PROPRIEDADE", default=COL_PROPRIEDADE)
+    i_oper = _idx_from_header(hmap, "OPERACAO", "OPERAÇÃO", "OPERAC", default=-1)
     i_carreta = _idx_from_header(hmap, "PLACA CARRETA 1", "PLACA CARRETA", default=COL_CARRETA)
     i_pagar = _idx_from_header(hmap, "VALOR A PAGAR", default=COL_VALOR_PAGAR)
     i_total = _idx_from_header(hmap, "TOTAL CTRB", default=COL_TOTAL_CTRB)
@@ -285,6 +309,7 @@ def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
         custo = custo_av if custo_av > 0 else (valor_pagar or total_ctrb)
         prop = _cell(cols, i_prop)
         tipo_doc = _cell(cols, i_tipo)
+        operacao = _cell(cols, i_oper) if i_oper >= 0 else ""
         destino = _cell(cols, i_destino).upper()
         # evita pegar valor monetário por layout errado
         if destino and ("," in destino or destino.replace(".", "", 1).isdigit()):
@@ -293,11 +318,12 @@ def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
             {
                 "ctrb": ctrb,
                 "tipo": tipo_doc,
+                "operacao": operacao,
                 "situacao": _cell(cols, i_sit),
                 "placa": placa,
                 "carreta": _cell(cols, i_carreta).upper(),
                 "propriedade": prop,
-                "grupo": _grupo_propriedade(prop, tipo_doc, src),
+                "grupo": _grupo_propriedade(prop, tipo_doc, src, operacao),
                 "custo": round(custo, 2),
                 "custo_av": round(custo_av, 2),
                 "valor_pagar": round(valor_pagar, 2),
@@ -452,11 +478,11 @@ def analyze_reports_073(
         prev = by_ctrb.get(key)
         if not prev or float(r.get("custo") or 0) >= float(prev.get("custo") or 0):
             by_ctrb[key] = r
-    # Painel: só COLETA/EN (agregado) e TRANSFERÊNCIA (contratados) — ignora frota/REMUNERACAO
+    # Painel: só CARRETEIRO + TRANSFERÊNCIA (contratados)
     ctrbs = [
         r
         for r in by_ctrb.values()
-        if (r.get("grupo") or "") in {"contratados", "agregado"}
+        if (r.get("grupo") or "") == "contratados"
     ]
 
     # agrega por placa (cavalo)
@@ -470,8 +496,8 @@ def analyze_reports_073(
             slot = {
                 "placa": placa,
                 "carreta": r.get("carreta") or "",
-                "propriedade": r.get("propriedade") or "",
-                "grupo": r.get("grupo") or "outro",
+                "propriedade": r.get("propriedade") or "CARRETEIRO",
+                "grupo": "contratados",
                 "qtd_ctrb": 0,
                 "custo": 0.0,
                 "custo_av": 0.0,
@@ -483,12 +509,8 @@ def analyze_reports_073(
             by_placa[placa] = slot
         if r.get("carreta") and not slot["carreta"]:
             slot["carreta"] = r["carreta"]
-        # preferência: agregado (COLETA/EN) > contratados (TRANSFERÊNCIA)
-        g = r.get("grupo") or "outro"
-        if _GRUPO_RANK.get(g, 9) < _GRUPO_RANK.get(slot.get("grupo") or "outro", 9):
-            slot["grupo"] = g
-            if r.get("propriedade"):
-                slot["propriedade"] = r["propriedade"]
+        if r.get("propriedade"):
+            slot["propriedade"] = r["propriedade"]
         slot["qtd_ctrb"] += 1
         slot["custo"] += float(r.get("custo") or 0)
         slot["custo_av"] += float(r.get("custo_av") or 0)
@@ -551,8 +573,8 @@ def analyze_reports_073(
         "frete_fmt": _fmt_money(total_frete),
         "peso": round(total_peso, 3),
         "peso_fmt": _fmt_peso(total_peso),
-        "agregado": grupos.get("agregado", 0),
-        "frota": 0,  # painel Contratação não usa mais frota
+        "agregado": 0,  # retirado — só carreteiro+transferência
+        "frota": 0,
         "contratados": grupos.get("contratados", 0) or grupos.get("terceiro", 0),
         "terceiro": grupos.get("contratados", 0) or grupos.get("terceiro", 0),
     }

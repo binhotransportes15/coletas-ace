@@ -69,8 +69,15 @@ class AceSettings:
     entrega_option: str = DEFAULT_ENTREGA_OPTION
     periodo_modo: str = "diario"  # diario | sexta
     auto_baixar_ao_abrir: bool = True
-    # Intervalo do modo /automatica (texto: 30s, 5m, 1h, 2d)
+    # Intervalo padrão do /automatica (fallback se o setor não tiver tempo próprio)
+    # texto: 30s, 5m, 1h, 2d
     loop_intervalo: str = "5m"
+    # Tempos por setor (vazio = usa loop_intervalo)
+    dist_intervalo: str = ""
+    armazem_intervalo: str = ""
+    pendencia_intervalo: str = ""
+    contratacao_intervalo: str = ""
+    emissao_intervalo: str = ""
     enable_sheets: bool = False
     apps_script_url: str = ""
     apps_script_token: str = ""
@@ -84,16 +91,13 @@ class AceSettings:
     publish_target: str = "auto"
     # URL pública do Google Sites (comando `sites` / piloto)
     google_sites_url: str = ""
-    # Se true, /automatica também captura a tela 078 no fim do ciclo
-    # (Sheets 078 usa a mesma enable_sheets / apps_script_url / token)
-    armazem_in_loop: bool = True
-    # 031 — ofensores/SLA (pode demorar: N códigos × Excel)
-    pendencia_in_loop: bool = True
-    # 455 — Emissão (fretes expedidos/recebidos)
-    emissao_in_loop: bool = False
-    # 073→076+200 por filial destino (ciclo mais longo)
-    contratacao_in_loop: bool = True
-    # /automatica: dist + 078 + 031 + 073 em paralelo (1 browser cada bloco)
+    # O que entra no /automatica
+    dist_in_loop: bool = True  # 50+103(+36)+225
+    armazem_in_loop: bool = True  # 078
+    pendencia_in_loop: bool = True  # 031
+    contratacao_in_loop: bool = True  # 073
+    emissao_in_loop: bool = False  # 455
+    # /automatica: blocos em paralelo (1 browser cada)
     ciclo_paralelo: bool = True
     # Modo local: não envia Sheets/GitHub — só cache CSV + JSON em data/cache/local
     modo_local: bool = False
@@ -142,6 +146,11 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
             payload.get("loop_intervalo") or defaults.loop_intervalo
         ).strip()
         or defaults.loop_intervalo,
+        dist_intervalo=str(payload.get("dist_intervalo") or "").strip(),
+        armazem_intervalo=str(payload.get("armazem_intervalo") or "").strip(),
+        pendencia_intervalo=str(payload.get("pendencia_intervalo") or "").strip(),
+        contratacao_intervalo=str(payload.get("contratacao_intervalo") or "").strip(),
+        emissao_intervalo=str(payload.get("emissao_intervalo") or "").strip(),
         enable_sheets=bool(payload.get("enable_sheets", defaults.enable_sheets)),
         apps_script_url=str(payload.get("apps_script_url") or "").strip(),
         apps_script_token=str(payload.get("apps_script_token") or "").strip(),
@@ -161,6 +170,7 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         .lower()
         or defaults.publish_target,
         google_sites_url=str(payload.get("google_sites_url") or "").strip(),
+        dist_in_loop=bool(payload.get("dist_in_loop", defaults.dist_in_loop)),
         armazem_in_loop=bool(payload.get("armazem_in_loop", defaults.armazem_in_loop)),
         pendencia_in_loop=bool(payload.get("pendencia_in_loop", defaults.pendencia_in_loop)),
         emissao_in_loop=bool(payload.get("emissao_in_loop", defaults.emissao_in_loop)),

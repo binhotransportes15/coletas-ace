@@ -52,12 +52,25 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "user": ("ssw", "str", False),
     "password": ("ssw", "str", True),
     "unit": ("ssw", "str", False),
-    # Automacao
+    # Automacao geral
     "coleta_option": ("auto", "str", False),
     "entrega_option": ("auto", "str", False),
     "periodo_modo": ("auto", "str", False),  # diario | sexta
     "auto_baixar_ao_abrir": ("auto", "bool", False),
-    "loop_intervalo": ("auto", "str", False),  # 30s | 5m | 1h | 2d
+    "loop_intervalo": ("auto", "str", False),  # fallback 30s | 5m | 1h | 2d
+    "ciclo_paralelo": ("auto", "bool", False),
+    "headless": ("auto", "bool", False),
+    # Setores no /automatica (aba Automação do CRT)
+    "dist_in_loop": ("automacao", "bool", False),
+    "dist_intervalo": ("automacao", "str", False),
+    "armazem_in_loop": ("automacao", "bool", False),
+    "armazem_intervalo": ("automacao", "str", False),
+    "pendencia_in_loop": ("automacao", "bool", False),
+    "pendencia_intervalo": ("automacao", "str", False),
+    "contratacao_in_loop": ("automacao", "bool", False),
+    "contratacao_intervalo": ("automacao", "str", False),
+    "emissao_in_loop": ("automacao", "bool", False),
+    "emissao_intervalo": ("automacao", "str", False),
     # Sheets / dashboard
     "enable_sheets": ("cloud", "bool", False),
     "apps_script_url": ("cloud", "str", False),
@@ -69,15 +82,9 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "github_token_env": ("cloud", "str", False),
     "publish_target": ("cloud", "str", False),  # sites | github | local | auto
     "google_sites_url": ("cloud", "str", False),
-    # Armazém 078 (mesmo Sheets da distribuição)
-    "armazem_in_loop": ("armazem", "bool", False),
-    "pendencia_in_loop": ("pendencia", "bool", False),
-    "contratacao_in_loop": ("contratacao", "bool", False),
-    "ciclo_paralelo": ("auto", "bool", False),
     "modo_local": ("local", "bool", False),
     "dashboard_lan": ("local", "bool", False),
     "dashboard_port": ("local", "int", False),
-    "headless": ("auto", "bool", False),
 }
 
 BOOL_TRUE = {"1", "true", "t", "yes", "y", "sim", "s", "on", "ligado"}
@@ -129,6 +136,11 @@ def _save_payload(payload: dict[str, Any]) -> None:
         periodo_modo=str(payload.get("periodo_modo") or "diario"),
         auto_baixar_ao_abrir=bool(payload.get("auto_baixar_ao_abrir", True)),
         loop_intervalo=str(payload.get("loop_intervalo") or "5m"),
+        dist_intervalo=str(payload.get("dist_intervalo") or ""),
+        armazem_intervalo=str(payload.get("armazem_intervalo") or ""),
+        pendencia_intervalo=str(payload.get("pendencia_intervalo") or ""),
+        contratacao_intervalo=str(payload.get("contratacao_intervalo") or ""),
+        emissao_intervalo=str(payload.get("emissao_intervalo") or ""),
         enable_sheets=bool(payload.get("enable_sheets", False)),
         apps_script_url=str(payload.get("apps_script_url") or ""),
         apps_script_token=str(payload.get("apps_script_token") or ""),
@@ -139,9 +151,11 @@ def _save_payload(payload: dict[str, Any]) -> None:
         github_token_env=str(payload.get("github_token_env") or "GH_TOKEN"),
         publish_target=str(payload.get("publish_target") or "auto"),
         google_sites_url=str(payload.get("google_sites_url") or ""),
+        dist_in_loop=bool(payload.get("dist_in_loop", True)),
         armazem_in_loop=bool(payload.get("armazem_in_loop", True)),
         pendencia_in_loop=bool(payload.get("pendencia_in_loop", True)),
         contratacao_in_loop=bool(payload.get("contratacao_in_loop", True)),
+        emissao_in_loop=bool(payload.get("emissao_in_loop", False)),
         ciclo_paralelo=bool(payload.get("ciclo_paralelo", True)),
         modo_local=bool(payload.get("modo_local", False)),
         dashboard_lan=bool(payload.get("dashboard_lan", False)),
@@ -446,6 +460,7 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "interval": "loop_intervalo",
         "tempo": "loop_intervalo",
         "loop": "loop_intervalo",
+        "dist_loop": "dist_in_loop",
         "armazem_loop": "armazem_in_loop",
         "pendencia_loop": "pendencia_in_loop",
         "pend_loop": "pendencia_in_loop",
@@ -453,6 +468,13 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "contratacao_loop": "contratacao_in_loop",
         "ctr_loop": "contratacao_in_loop",
         "73_loop": "contratacao_in_loop",
+        "emissao_loop": "emissao_in_loop",
+        "455_loop": "emissao_in_loop",
+        "dist_tempo": "dist_intervalo",
+        "armazem_tempo": "armazem_intervalo",
+        "pendencia_tempo": "pendencia_intervalo",
+        "contratacao_tempo": "contratacao_intervalo",
+        "emissao_tempo": "emissao_intervalo",
         "paralelo": "ciclo_paralelo",
         "parallel": "ciclo_paralelo",
         "ciclo_paralelo": "ciclo_paralelo",
@@ -535,14 +557,18 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
             if v not in {"diario", "sexta"}:
                 return "periodo_modo deve ser: diario | sexta"
             payload[key] = v
-        elif key == "loop_intervalo":
+        elif key == "loop_intervalo" or key.endswith("_intervalo"):
             from interval_parse import format_duration, parse_duration
 
-            try:
-                sec = parse_duration(raw)
-            except ValueError as err:
-                return str(err)
-            payload[key] = format_duration(sec)
+            text = raw.strip()
+            if not text and key != "loop_intervalo":
+                payload[key] = ""
+            else:
+                try:
+                    sec = parse_duration(text or "5m")
+                except ValueError as err:
+                    return str(err)
+                payload[key] = format_duration(sec)
         elif key == "unit":
             # Aceita varias siglas: SPO,LEO,RIS | * = todas
             payload[key] = raw.strip().upper().replace(" ", "")
@@ -567,11 +593,15 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
 
     _save_payload(payload)
     shown = _mask(str(payload[key]), secret) if typ != "bool" else str(payload[key]).lower()
-    if key == "loop_intervalo":
+    if key == "loop_intervalo" or key.endswith("_intervalo"):
         from interval_parse import format_duration_long, parse_duration
 
         try:
-            shown = f"{payload[key]} ({format_duration_long(parse_duration(str(payload[key])))})"
+            raw_iv = str(payload.get(key) or "").strip()
+            if raw_iv:
+                shown = f"{raw_iv} ({format_duration_long(parse_duration(raw_iv))})"
+            else:
+                shown = "(usa padrão)"
         except ValueError:
             pass
     return f"OK: {key} = {shown}"
@@ -754,9 +784,9 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
         if local_200:
             print(f"  200 local: {', '.join(local_200)}")
     else:
-        print("  073: mês · Relatório · prop=T tipo=A · SPO → por destino: menu + 076(E) + 200(E)")
+        print("  073: mês · Relatório · prop=C(carreteiro) op=R(transf) tipo=A · SPO")
     if skip_076:
-        print("  modo: sem 076")
+      print("  modo: sem 076")
     if skip_200:
         print("  modo: sem 200")
     result = run_pipeline_contratacao(
@@ -1158,16 +1188,28 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
         flags = 0
         if os.name == "nt":
             flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-        subprocess.Popen(
+        try:
+            from ace_stop import clear_stop, write_loop_pid
+
+            clear_stop()
+        except Exception:
+            pass
+        proc = subprocess.Popen(
             args,
             cwd=str(Path(__file__).resolve().parent),
             creationflags=flags,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+        try:
+            from ace_stop import write_loop_pid
+
+            write_loop_pid(proc.pid)
+        except Exception:
+            pass
         return (
-            f"Atualização contínua iniciada em segundo plano ({iv or 'intervalo config'}). "
-            "Acompanhe no histórico do painel · digite parar no CRT se iniciou por lá.",
+            f"Atualização contínua iniciada em segundo plano (pid={proc.pid}, {iv or 'intervalo config'}). "
+            "No CRT use Parar / digite parar para encerrar.",
             payload,
         )
     if cmd in {"8", "status", "/status", "git", "/git"}:

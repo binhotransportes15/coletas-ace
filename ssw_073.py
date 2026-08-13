@@ -1,8 +1,10 @@
 """Download SSW 073 (ssw0332) — Consulta de CTRBs e OSs → Relatório.
 
 Fluxo Contratação (Unidade = SPO · período = mês até hoje):
-  1) 1 login · 1 tela 073 (Propriedade=T · Tipo=A) · Relatório (sem Excel)
-  2) Parser: COLETA/EN = agregado · TRANSFERÊNCIA = contratação (sem frota)
+  1) 1 login · 1 tela 073
+     Propriedade=C (carreteiro) · Operação=R (transferência) · Tipo=A
+     → Relatório (sem Arquivo Excel)
+  2) Parser: só CARRETEIRO + TRANSFERÊNCIA (= contratados)
   3) Para cada DESTINO: troca menu → 076+200 · merge frete
 """
 from __future__ import annotations
@@ -20,21 +22,23 @@ from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
 
-# Um único pull: Propriedade T (todas) · Tipo A (ambos) — sem frota F/AC/AO
+# Contratação: só carreteiro + transferência
 JOBS_073: tuple[dict[str, str], ...] = (
-    {"key": "TA", "propriedade": "T", "tipo": "A", "label": "T+A"},
+    {"key": "CR", "propriedade": "C", "tipo": "A", "label": "carreteiro+transf"},
 )
+OPERACAO_073_DEFAULT = "R"  # R-transferência
 PROPRIEDADE_LABEL = {
     "T": "todas",
     "TA": "agregado",
     "A": "agregado",
     "F": "frota",
     "C": "carreteiro",
+    "CR": "carreteiro+transf",
     "AC": "contratados",
     "AO": "agregados",
 }
 # legado
-PROPRIEDADES_073 = ("T", "A", "F", "C")
+PROPRIEDADES_073 = ("C",)
 
 # Programa 073
 SSW_073_MARKERS = (
@@ -82,11 +86,11 @@ def _resolve_jobs_073(
     tipos: tuple[str, ...] | None,
     propriedade: str | None,
 ) -> list[dict[str, str]]:
-    """Monta a lista de jobs. Default = 1x Propriedade T + Tipo A."""
+    """Monta a lista de jobs. Default = carreteiro (C) + Tipo A."""
     _ = tipos  # legado
-    # override: uma propriedade + um tipo (T = todas ainda é válido)
+    # override: uma propriedade + um tipo
     if propriedades is None and propriedade and str(propriedade).strip():
-        prop = str(propriedade).strip().upper()[:1] or "T"
+        prop = str(propriedade).strip().upper()[:1] or "C"
         tipo_doc = str(tipo or "A").strip().upper()[:1] or "A"
         return [
             {
@@ -111,7 +115,7 @@ def download_reports_073(
     propriedades: tuple[str, ...] | list[str] | None = None,
     tipo: str | None = None,
     unidade_emissora: str = "SPO",
-    operacao: str = "T",
+    operacao: str = OPERACAO_073_DEFAULT,
     considerar: str = "T",
     headless: bool | None = None,
     on_status: StatusCallback | None = None,
@@ -200,7 +204,7 @@ def download_reports_073(
 
     missing = [q["key"] for q in queued if q["key"] not in paths]
     for k in missing:
-        errors.setdefault(k, "sem download do Excel")
+        errors.setdefault(k, "sem download do Relatório")
 
     if not paths and errors:
         raise RuntimeError("073 falhou: " + "; ".join(f"{k}: {v}" for k, v in errors.items()))
@@ -305,7 +309,7 @@ def download_contratacao_ssw(
                 ini=ini,
                 fim=fim,
                 unidade=unidade,
-                operacao="T",
+                operacao=OPERACAO_073_DEFAULT,
                 considerar="T",
                 ts=ts,
                 status=status,
@@ -886,9 +890,11 @@ def _preencher_73(
             "considerar": considerar,
         },
     )
-    status(f"[73/{key}·{lab}] form {filled} · prop={propriedade} tipo={tipo} uni={unidade}")
+    status(f"[73/{key}·{lab}] form {filled} · prop={propriedade} op={operacao} tipo={tipo} uni={unidade}")
     if not filled.get("okProp"):
         raise RuntimeError(f"073: não achei campo Propriedade ({filled})")
+    if not filled.get("okOp"):
+        raise RuntimeError(f"073: não achei campo Operação ({filled})")
     if not filled.get("okTipo"):
         status(f"[73/{key}·{lab}] aviso: Tipo pode não ter preenchido")
     if not filled.get("okUni"):
@@ -995,7 +1001,8 @@ def _scrape_relatorio_to_sswweb(popup, dest: Path, status, key: str) -> Path:
             const head = (rows[0] || []).join(' ').toUpperCase();
             let score = rows.length;
             if (head.includes('CTRB') || head.includes('PLACA')) score += 50;
-            if (head.includes('TIPO') || head.includes('PROPRIEDADE')) score += 20;
+            if (head.includes('OPERAC') || head.includes('TRANSFER')) score += 30;
+            if (head.includes('TIPO') || head.includes('PROPRIEDADE') || head.includes('CARRET')) score += 20;
             if (score > bestScore) { bestScore = score; best = rows; }
           }
           return { body: body.slice(0, 500), rows: best || [], score: bestScore };

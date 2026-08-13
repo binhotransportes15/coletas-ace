@@ -4,7 +4,7 @@ BINHO · ACE CRT — painel de gestão widescreen (cara de CMD).
 Layout:
   esq  → cubos animados + CPU/MEM/GPU + status
   centro → atalhos + log + prompt de comandos
-  dir  → abas Configuração | Local | TV | Gestão
+  dir  → abas Configuração | Automação | Local | TV | Gestão
 
   python ace_crt.py
   ace.bat crt
@@ -510,8 +510,8 @@ _FIELD_LABELS: dict[str, str] = {
     "entrega_option": "Opção de entrega",
     "periodo_modo": "Tipo de período",
     "auto_baixar_ao_abrir": "Baixar ao abrir",
-    "loop_intervalo": "Intervalo da atualização",
-    "ciclo_paralelo": "Ciclo em paralelo",
+    "loop_intervalo": "Intervalo padrão (fallback)",
+    "ciclo_paralelo": "Rodar setores juntos (paralelo)",
     "modo_local": "Modo local (sem planilha)",
     "dashboard_lan": "Dashboard na rede (LAN)",
     "dashboard_port": "Porta do dashboard",
@@ -525,9 +525,16 @@ _FIELD_LABELS: dict[str, str] = {
     "github_repo": "Pasta do site",
     "github_branch": "Linha do site",
     "github_token_env": "Nome da chave do site",
-    "armazem_in_loop": "Incluir armazém no ciclo",
-    "pendencia_in_loop": "Incluir pendência no ciclo",
-    "contratacao_in_loop": "Incluir contratação no ciclo",
+    "dist_in_loop": "Distribuição no automático",
+    "dist_intervalo": "Tempo · distribuição",
+    "armazem_in_loop": "Armazém no automático",
+    "armazem_intervalo": "Tempo · armazém",
+    "pendencia_in_loop": "Pendência no automático",
+    "pendencia_intervalo": "Tempo · pendência",
+    "contratacao_in_loop": "Contratação no automático",
+    "contratacao_intervalo": "Tempo · contratação",
+    "emissao_in_loop": "Emissão no automático",
+    "emissao_intervalo": "Tempo · emissão",
     "headless": "Ocultar navegador",
 }
 
@@ -642,6 +649,7 @@ class AutoLoopWorker(QThread):
 
     finished_ok = Signal(str)
     failed = Signal(str)
+    status = Signal(str)
 
     def __init__(self, interval_arg: str | None = None) -> None:
         super().__init__()
@@ -650,24 +658,41 @@ class AutoLoopWorker(QThread):
 
     def request_stop(self) -> None:
         self._stop = True
+        try:
+            from ace_stop import request_stop
+
+            request_stop(force_browsers=True)
+        except Exception:
+            pass
 
     def run(self) -> None:
         try:
             from ace_loop import resolve_interval_sec, run_loop
+            from ace_stop import clear_stop, stop_requested
             from config import load_settings
 
+            clear_stop()
+            self._stop = False
             cfg = load_settings()
             sec = resolve_interval_sec(self.interval_arg, settings_intervalo=cfg.loop_intervalo)
             code = run_loop(
                 interval_sec=sec,
-                should_stop=lambda: self._stop,
+                should_stop=lambda: self._stop or stop_requested(),
                 quiet_banner=True,
             )
-            if self._stop:
+            if self._stop or stop_requested():
                 self.finished_ok.emit("Atualização contínua parada.")
             else:
                 self.finished_ok.emit(f"Loop encerrado (código {code}).")
         except Exception as err:  # noqa: BLE001
+            try:
+                from ace_stop import stop_requested
+
+                if self._stop or stop_requested():
+                    self.finished_ok.emit("Atualização contínua parada.")
+                    return
+            except Exception:
+                pass
             self.failed.emit(f"ERRO no loop: {err}\n{traceback.format_exc(limit=4)}")
 
 
@@ -901,6 +926,7 @@ class AceCrtConsole(QWidget):
     def _build_right(self) -> QWidget:
         tabs = QTabWidget()
         tabs.addTab(self._build_config_tab(), "Configuração")
+        tabs.addTab(self._build_automacao_tab(), "Automação")
         tabs.addTab(self._build_local_tab(), "Local")
         tabs.addTab(self._build_tv_tab(), "TV")
         tabs.addTab(self._build_gestao_tab(), "Gestão")
@@ -929,9 +955,15 @@ class AceCrtConsole(QWidget):
             "armazem": "Armazém",
             "pendencia": "Pendência",
             "contratacao": "Contratação",
+            "automacao": "Automação",
         }
-        # headless: controlado só pelo “Mostrar navegador”
-        skip_keys = {"headless"}
+        # headless / automação: abas próprias
+        skip_keys = {
+            "headless",
+            "loop_intervalo",
+            "ciclo_paralelo",
+            *(k for k, (g, *_r) in EDITABLE.items() if g == "automacao"),
+        }
         current_group = None
         for key, (group, typ, secret) in EDITABLE.items():
             if key in skip_keys:
@@ -984,6 +1016,153 @@ class AceCrtConsole(QWidget):
         row.addWidget(btn_save)
         outer.addLayout(row)
         return wrap
+
+    def _build_automacao_tab(self) -> QWidget:
+        """Define o que entra no automático e o tempo de cada setor."""
+        wrap = QWidget()
+        outer = QVBoxLayout(wrap)
+        outer.setContentsMargins(10, 10, 10, 10)
+        outer.setSpacing(8)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        body = QWidget()
+        lay = QVBoxLayout(body)
+        lay.setSpacing(10)
+
+        tip = QLabel(
+            "Marque os setores do modo automático e defina o tempo de cada um "
+            "(ex.: 5m, 30m, 1h). Em branco = usa o intervalo padrão."
+        )
+        tip.setObjectName("hint")
+        tip.setWordWrap(True)
+        lay.addWidget(tip)
+
+        lay.addWidget(self._section("Intervalo padrão"))
+        self._fields["loop_intervalo"] = QLineEdit()
+        self._fields["loop_intervalo"].setPlaceholderText("ex.: 5m")
+        row_fb = QHBoxLayout()
+        row_fb.addWidget(QLabel("Fallback"))
+        row_fb.addWidget(self._fields["loop_intervalo"], 1)
+        lay.addLayout(row_fb)
+
+        self._fields["ciclo_paralelo"] = QCheckBox("Rodar setores juntos quando vencerem ao mesmo tempo")
+        lay.addWidget(self._fields["ciclo_paralelo"])
+
+        sectors = (
+            ("dist", "Distribuição", "50 · 103 · 36 · 225", "dist_in_loop", "dist_intervalo"),
+            ("78", "Armazém", "078 · descarga", "armazem_in_loop", "armazem_intervalo"),
+            ("31", "Pendência", "031 · ofensores/SLA", "pendencia_in_loop", "pendencia_intervalo"),
+            ("73", "Contratação", "073 → 076+200", "contratacao_in_loop", "contratacao_intervalo"),
+            ("455", "Emissão", "455 · fretes do dia", "emissao_in_loop", "emissao_intervalo"),
+        )
+        lay.addWidget(self._section("Setores no automático"))
+        for _sid, title, desc, flag_key, iv_key in sectors:
+            box = QFrame()
+            box.setObjectName("panel")
+            bl = QVBoxLayout(box)
+            bl.setContentsMargins(10, 8, 10, 8)
+            bl.setSpacing(4)
+            chk = QCheckBox(title)
+            chk.setToolTip(desc)
+            self._fields[flag_key] = chk
+            bl.addWidget(chk)
+            meta = QLabel(desc)
+            meta.setObjectName("hint")
+            bl.addWidget(meta)
+            row = QHBoxLayout()
+            row.addWidget(QLabel("A cada"))
+            iv = QLineEdit()
+            iv.setPlaceholderText("vazio = padrão")
+            iv.setMaximumWidth(120)
+            self._fields[iv_key] = iv
+            row.addWidget(iv)
+            row.addWidget(QLabel("(30s · 5m · 1h · 2d)"))
+            row.addStretch(1)
+            bl.addLayout(row)
+            lay.addWidget(box)
+
+        lay.addWidget(self._section("Controle"))
+        row_ctrl = QHBoxLayout()
+        btn_save = QPushButton("Salvar")
+        btn_save.setObjectName("primary")
+        btn_save.clicked.connect(self._save_config)
+        btn_start = QPushButton("Iniciar automático")
+        btn_start.clicked.connect(self._start_auto_from_tab)
+        btn_stop = QPushButton("Parar")
+        btn_stop.clicked.connect(self._stop_auto)
+        row_ctrl.addWidget(btn_save)
+        row_ctrl.addWidget(btn_start)
+        row_ctrl.addWidget(btn_stop)
+        lay.addLayout(row_ctrl)
+
+        self.auto_status = QLabel("Automático parado.")
+        self.auto_status.setObjectName("hint")
+        self.auto_status.setWordWrap(True)
+        lay.addWidget(self.auto_status)
+
+        lay.addStretch(1)
+        scroll.setWidget(body)
+        outer.addWidget(scroll, 1)
+        return wrap
+
+    def _start_auto_from_tab(self) -> None:
+        # salva antes de iniciar para o loop ler a config nova
+        self._save_config_silent()
+        self._start_automatica(None)
+        if hasattr(self, "auto_status"):
+            p = self.payload or {}
+            parts = []
+            for flag, label, ivk in (
+                ("dist_in_loop", "Dist", "dist_intervalo"),
+                ("armazem_in_loop", "Armazém", "armazem_intervalo"),
+                ("pendencia_in_loop", "Pendência", "pendencia_intervalo"),
+                ("contratacao_in_loop", "Contratação", "contratacao_intervalo"),
+                ("emissao_in_loop", "Emissão", "emissao_intervalo"),
+            ):
+                if p.get(flag, flag == "dist_in_loop"):
+                    iv = (p.get(ivk) or p.get("loop_intervalo") or "5m")
+                    parts.append(f"{label} {iv}")
+            self.auto_status.setText(
+                "Automático ligado · " + (" · ".join(parts) if parts else "nenhum setor")
+            )
+
+    def _save_config_silent(self) -> bool:
+        """Salva config sem popup (usado ao iniciar o automático)."""
+        from ace_cmd import EDITABLE, _save_payload
+
+        try:
+            for key, (_g, typ, _secret) in EDITABLE.items():
+                w = self._fields.get(key)
+                if w is None:
+                    continue
+                if isinstance(w, QCheckBox):
+                    self.payload[key] = w.isChecked()
+                elif isinstance(w, QComboBox):
+                    data = w.currentData()
+                    self.payload[key] = str(data if data is not None else w.currentText()).strip()
+                elif isinstance(w, QLineEdit):
+                    text = w.text().strip()
+                    if typ == "int":
+                        self.payload[key] = int(text or "0")
+                    elif key == "loop_intervalo" or key.endswith("_intervalo"):
+                        if not text and key != "loop_intervalo":
+                            self.payload[key] = ""
+                        else:
+                            from interval_parse import format_duration, parse_duration
+
+                            self.payload[key] = format_duration(parse_duration(text or "5m"))
+                    else:
+                        self.payload[key] = text
+            self.payload["headless"] = not self.chk_viz.isChecked()
+            self.payload["crt_theme"] = self._theme_id
+            _save_payload(self.payload)
+            self.payload = __import__("ace_cmd", fromlist=["_load_payload"])._load_payload()
+            self._update_meta()
+            return True
+        except Exception as err:  # noqa: BLE001
+            self._append_log("erro", f"Falha ao salvar automação: {err}")
+            return False
 
     def _build_local_tab(self) -> QWidget:
         """Modo local: escolhe telas e abre várias janelas internas (sem GitHub)."""
@@ -1477,29 +1656,41 @@ class AceCrtConsole(QWidget):
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
             lay.addWidget(b)
 
-        # Intervalo padrão vem da Configuração (loop_intervalo); aqui só liga/para
+        # Automático: preferir aba Automação (tempos por setor)
         lay.addWidget(self._section("Atualização contínua"))
-        tip = QLabel("Intervalo padrão: Configuração → Intervalo da atualização")
+        tip = QLabel("Tempos e setores: aba Automação · aqui só liga/para rápido")
         tip.setObjectName("hint")
         tip.setWordWrap(True)
         lay.addWidget(tip)
         row = QHBoxLayout()
         self.auto_iv = QLineEdit()
-        self.auto_iv.setPlaceholderText("opcional · ex.: 5m (vazio = config)")
+        self.auto_iv.setPlaceholderText("opcional · força fallback (ex.: 5m)")
         btn_auto = QPushButton("Iniciar")
         btn_auto.setObjectName("primary")
         btn_auto.clicked.connect(self._start_auto)
         btn_stop = QPushButton("Parar")
         btn_stop.clicked.connect(self._stop_auto)
+        btn_goto = QPushButton("Abrir Automação")
+        btn_goto.clicked.connect(self._goto_automacao_tab)
         row.addWidget(self.auto_iv, 1)
         row.addWidget(btn_auto)
         row.addWidget(btn_stop)
         lay.addLayout(row)
+        lay.addWidget(btn_goto)
 
         lay.addStretch(1)
         scroll.setWidget(body)
         outer.addWidget(scroll)
         return wrap
+
+    def _goto_automacao_tab(self) -> None:
+        tabs = getattr(self, "_right_tabs", None)
+        if tabs is None:
+            return
+        for i in range(tabs.count()):
+            if tabs.tabText(i).lower().startswith("autom"):
+                tabs.setCurrentIndex(i)
+                return
 
     def _section(self, text: str) -> QLabel:
         lab = QLabel(text)
@@ -1610,6 +1801,16 @@ class AceCrtConsole(QWidget):
                             self.payload[key] = int(text or "0")
                         except ValueError:
                             raise ValueError(f"{key} deve ser número (ex.: 8787)") from None
+                    elif key == "loop_intervalo" or key.endswith("_intervalo"):
+                        if not text and key != "loop_intervalo":
+                            self.payload[key] = ""
+                        else:
+                            from interval_parse import format_duration, parse_duration
+
+                            try:
+                                self.payload[key] = format_duration(parse_duration(text or "5m"))
+                            except ValueError as err:
+                                raise ValueError(f"{_field_label(key)}: {err}") from err
                     else:
                         self.payload[key] = text
             self.payload["headless"] = not self.chk_viz.isChecked()
@@ -1634,16 +1835,18 @@ class AceCrtConsole(QWidget):
             dest = resolve_publish_target(load_settings())
         except Exception:
             dest = str(p.get("publish_target") or "auto")
-        arm = "armazém no ciclo" if p.get("armazem_in_loop", True) else "armazém fora do ciclo"
-        pend = "pendência no ciclo" if p.get("pendencia_in_loop", True) else "pendência fora do ciclo"
-        ctr = "contratação no ciclo" if p.get("contratacao_in_loop", True) else "contratação fora do ciclo"
+        arm = "armazém on" if p.get("armazem_in_loop", True) else "armazém off"
+        pend = "pendência on" if p.get("pendencia_in_loop", True) else "pendência off"
+        ctr = "contratação on" if p.get("contratacao_in_loop", True) else "contratação off"
+        emi = "emissão on" if p.get("emissao_in_loop", False) else "emissão off"
+        dist = "dist on" if p.get("dist_in_loop", True) else "dist off"
         modo = str(p.get("periodo_modo") or "diario")
         modo_txt = "diário" if modo == "diario" else "a partir da sexta"
         self.meta.setText(
             f"usuário {p.get('user') or '—'}  ·  unidades {p.get('unit') or '—'}\n"
             f"{sheets}  ·  TV={dest}  ·  {viz}\n"
-            f"{arm}  ·  {pend}  ·  {ctr}\n"
-            f"a cada {p.get('loop_intervalo') or '5m'}  ·  {modo_txt}"
+            f"auto: {dist} · {arm} · {pend} · {ctr} · {emi}\n"
+            f"padrão {p.get('loop_intervalo') or '5m'}  ·  {modo_txt}"
         )
 
     def _submit_prompt(self) -> None:
@@ -1658,12 +1861,34 @@ class AceCrtConsole(QWidget):
         self._start_automatica(iv or None)
 
     def _stop_auto(self) -> None:
-        if self._auto_worker and self._auto_worker.isRunning():
+        running = bool(self._auto_worker and self._auto_worker.isRunning())
+        try:
+            from ace_stop import request_stop, stop_external_loop_process
+
+            request_stop(force_browsers=True)
+            ext = stop_external_loop_process()
+        except Exception:
+            ext = False
+        if running:
             self._auto_worker.request_stop()
-            self._append_log("sistema", "Pedindo parada da atualização contínua…")
+            self.mode.setText("STOP")
+            if hasattr(self, "auto_status"):
+                self.auto_status.setText("Parando… fechando navegadores do ciclo.")
+            self._append_log(
+                "sistema",
+                "Parar: sinal enviado — interrompe a espera e corta o Chromium em andamento.",
+            )
             publish(online=True, label="STOP", pct=0, detail="parando loop", mode="RUN")
+        elif ext:
+            self.mode.setText("STOP")
+            self._append_log("sistema", "Parar: encerrou loop em segundo plano.")
+            publish(online=True, label="STOP", pct=0, detail="loop externo parado", mode="OK")
+            if hasattr(self, "auto_status"):
+                self.auto_status.setText("Automático parado.")
         else:
             self._append_log("sistema", "Nenhuma atualização contínua em andamento.")
+            if hasattr(self, "auto_status"):
+                self.auto_status.setText("Automático parado.")
 
     def _start_automatica(self, interval_arg: str | None = None) -> None:
         if self._auto_worker and self._auto_worker.isRunning():
@@ -1685,11 +1910,15 @@ class AceCrtConsole(QWidget):
         self._append_log("ok", msg)
         self.mode.setText("OK")
         publish(online=True, label="ONLINE", pct=100, detail=msg[:100], mode="OK")
+        if hasattr(self, "auto_status"):
+            self.auto_status.setText(msg)
 
     def _on_auto_fail(self, msg: str) -> None:
         self._append_log("erro", msg)
         self.mode.setText("ERR")
         publish(online=False, label="ERR", pct=0, detail=msg[:100], mode="ERR")
+        if hasattr(self, "auto_status"):
+            self.auto_status.setText(msg[:160])
 
     def run_command(self, raw: str) -> None:
         raw = _resolve_friendly_cmd(raw)

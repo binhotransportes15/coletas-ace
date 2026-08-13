@@ -613,6 +613,7 @@ def run_dual_cycle(
         getattr(cfg, "armazem_in_loop", False)
         or getattr(cfg, "pendencia_in_loop", False)
         or getattr(cfg, "contratacao_in_loop", False)
+        or getattr(cfg, "emissao_in_loop", False)
     )
     if (
         run_extras
@@ -935,6 +936,7 @@ def run_dual_cycle(
     result_78: dict[str, Any] = {}
     result_31: dict[str, Any] = {}
     result_73: dict[str, Any] = {}
+    result_455: dict[str, Any] = {}
     if run_extras:
         if getattr(cfg, "armazem_in_loop", False):
             emit("078 / Armazem sequencial apos distribuicao...")
@@ -978,12 +980,36 @@ def run_dual_cycle(
                 errors["73"] = str(err)
                 emit(f"073 FALHOU: {err}")
 
-    if errors and not result_50 and not result_103 and not result_36 and not result_225 and not result_78 and not result_31 and not result_73:
+        if getattr(cfg, "emissao_in_loop", False):
+            emit("455 / Emissao sequencial...")
+            try:
+                result_455 = run_pipeline_455(
+                    credentials=creds,
+                    settings=cfg,
+                    headless=use_headless,
+                    on_status=lambda m: emit(f"[455] {m}"),
+                    clean_downloads=False,
+                )
+                emit("455 concluido.")
+            except Exception as err:  # noqa: BLE001
+                errors["455"] = str(err)
+                emit(f"455 FALHOU: {err}")
+
+    if errors and not result_50 and not result_103 and not result_36 and not result_225 and not result_78 and not result_31 and not result_73 and not result_455:
         raise RuntimeError("; ".join(f"{k}: {v}" for k, v in errors.items()))
 
     return {
         "ok": not errors
-        or bool(result_50 or result_103 or result_36 or result_225 or result_78 or result_31 or result_73),
+        or bool(
+            result_50
+            or result_103
+            or result_36
+            or result_225
+            or result_78
+            or result_31
+            or result_73
+            or result_455
+        ),
         "errors": errors,
         "period_50": format_period(ini50, fim50),
         "period_103": format_period(ini103, fim103),
@@ -996,6 +1022,7 @@ def run_dual_cycle(
         "78": result_78,
         "31": result_31,
         "73": result_73,
+        "455": result_455,
         "sheets_50": sheets50,
         "sheets_103": sheets103,
         "sheets_36": sheets36,
@@ -1014,16 +1041,33 @@ def run_parallel_cycle(
     headless: bool | None = None,
     on_status: StatusCallback | None = None,
     sync: bool = True,
+    jobs: list[str] | None = None,
+    should_stop: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     """
-    Roda distribuição (50+103+36+225) + 078 + 031 + 073 ao mesmo tempo.
+    Roda setores escolhidos ao mesmo tempo (1 Chromium por bloco).
 
-    Cada bloco usa seu próprio Chromium/login SSW. Limpeza de downloads
-    acontece só no início (workers não apagam arquivos uns dos outros).
+    jobs: lista entre dist | 78 | 31 | 73 | 455.
+    Se None, monta a partir das flags *_in_loop.
+    should_stop: se True, interrompe assim que um bloco terminar (e sinaliza LoopStopped).
     """
     status = on_status or _noop
 
+    def _stopped() -> bool:
+        try:
+            from ace_stop import stop_requested
+
+            if stop_requested():
+                return True
+        except Exception:
+            pass
+        return bool(should_stop and should_stop())
+
     def emit(msg: str) -> None:
+        if _stopped():
+            from ace_stop import LoopStopped
+
+            raise LoopStopped("parado pelo usuário")
         with _STATUS_LOCK:
             status(msg)
             _log_file(msg)
@@ -1032,13 +1076,32 @@ def run_parallel_cycle(
     creds = credentials or load_credentials()
     use_headless = cfg.headless if headless is None else bool(headless)
 
-    jobs: list[str] = ["dist"]
-    if getattr(cfg, "armazem_in_loop", False):
-        jobs.append("78")
-    if getattr(cfg, "pendencia_in_loop", False):
-        jobs.append("31")
-    if getattr(cfg, "contratacao_in_loop", False):
-        jobs.append("73")
+    if jobs is None:
+        # Sync / ciclo completo: sempre distribuição + extras ligados
+        jobs = ["dist"]
+        if getattr(cfg, "armazem_in_loop", False):
+            jobs.append("78")
+        if getattr(cfg, "pendencia_in_loop", False):
+            jobs.append("31")
+        if getattr(cfg, "contratacao_in_loop", False):
+            jobs.append("73")
+        if getattr(cfg, "emissao_in_loop", False):
+            jobs.append("455")
+    else:
+        jobs = [str(j).strip().lower() for j in jobs if str(j).strip()]
+        # aliases
+        alias = {"078": "78", "031": "31", "073": "73", "076": "73", "emissao": "455", "armazem": "78"}
+        jobs = [alias.get(j, j) for j in jobs]
+
+    if not jobs:
+        emit("CICLO: nenhum setor habilitado no automático.")
+        return {
+            "ok": True,
+            "errors": {},
+            "skipped": True,
+            "parallel_jobs": [],
+            "headless": use_headless,
+        }
 
     emit(
         f"CICLO paralelo | {len(jobs)} bloco(s) simultâneos: "
@@ -1087,28 +1150,69 @@ def run_parallel_cycle(
             clean_downloads=False,
         )
 
+    def _run_455() -> dict[str, Any]:
+        return run_pipeline_455(
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=lambda m: emit(f"[455] {m}"),
+            clean_downloads=False,
+        )
+
     workers = {
         "dist": _run_dist,
         "78": _run_78,
         "31": _run_31,
         "73": _run_73,
+        "455": _run_455,
     }
+    unknown = [j for j in jobs if j not in workers]
+    if unknown:
+        raise ValueError(f"setor(es) inválido(s): {', '.join(unknown)}")
 
     with ThreadPoolExecutor(max_workers=max(1, len(jobs)), thread_name_prefix="ace") as pool:
         futures = {pool.submit(workers[name]): name for name in jobs}
+        stopped = False
         for fut in as_completed(futures):
             name = futures[fut]
             try:
                 results[name] = fut.result()
                 emit(f"[{name}] bloco OK")
             except Exception as err:  # noqa: BLE001
-                errors[name] = str(err)
-                results[name] = {}
-                emit(f"[{name}] bloco FALHOU: {err}")
+                from ace_stop import LoopStopped
+
+                if isinstance(err, LoopStopped) or _stopped():
+                    stopped = True
+                    errors[name] = "parado"
+                    results[name] = {}
+                else:
+                    errors[name] = str(err)
+                    results[name] = {}
+                    try:
+                        emit(f"[{name}] bloco FALHOU: {err}")
+                    except Exception:
+                        pass
+            if _stopped() or stopped:
+                stopped = True
+                # cancela pendentes e derruba Chromium dos workers ainda vivos
+                for other in futures:
+                    other.cancel()
+                try:
+                    from ace_stop import kill_child_browsers, close_registered_browsers
+
+                    close_registered_browsers()
+                    kill_child_browsers()
+                except Exception:
+                    pass
+                break
+
+    if stopped or _stopped():
+        from ace_stop import LoopStopped
+
+        raise LoopStopped("parado pelo usuário")
 
     dist = results.get("dist") or {}
     dist_errors = dict(dist.get("errors") or {})
-    # erros do bloco dist já vêm tipados (50/103/…); bloco inteiro falhou → "dist"
     merged_errors = {**dist_errors, **{k: v for k, v in errors.items() if k != "dist"}}
     if "dist" in errors:
         merged_errors["dist"] = errors["dist"]
@@ -1116,6 +1220,7 @@ def run_parallel_cycle(
     result_78 = results.get("78") or {}
     result_31 = results.get("31") or {}
     result_73 = results.get("73") or {}
+    result_455 = results.get("455") or {}
     result_50 = dist.get("50") or {}
     result_103 = dist.get("103") or {}
     result_36 = dist.get("36") or {}
@@ -1129,6 +1234,7 @@ def run_parallel_cycle(
         or result_78
         or result_31
         or result_73
+        or result_455
     )
     if merged_errors and not any_ok:
         raise RuntimeError("; ".join(f"{k}: {v}" for k, v in merged_errors.items()))
@@ -1152,6 +1258,7 @@ def run_parallel_cycle(
         "78": result_78,
         "31": result_31,
         "73": result_73,
+        "455": result_455,
         "sheets_50": dist.get("sheets_50") or {"ok": False, "skipped": True},
         "sheets_103": dist.get("sheets_103") or {"ok": False, "skipped": True},
         "sheets_36": dist.get("sheets_36") or {"ok": False, "skipped": True},
