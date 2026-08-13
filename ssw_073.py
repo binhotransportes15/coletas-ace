@@ -2,7 +2,7 @@
 
 Fluxo Contratação (Unidade = SPO · período = mês até hoje):
   1) 1 login · 1 tela 073
-     Propriedade=C (carreteiro) · Operação=R (transferência) · Tipo=A
+     Propriedade=T · Operação=T · Tipo=A · Considerar=T · Unidade=SPO
      → clica ► mostrar tela (ajaxEnvia MOS) e copia a grade (sem baixar nada)
   2) Parser: só CARRETEIRO + TRANSFERÊNCIA (= contratados)
   3) Para cada DESTINO: troca menu → 076+200 · merge frete
@@ -22,13 +22,15 @@ from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
 
-# Contratação: só carreteiro + transferência
+# Form SSW: T/T/A — filtro carreteiro+transf fica no parser
 JOBS_073: tuple[dict[str, str], ...] = (
-    {"key": "CR", "propriedade": "C", "tipo": "A", "label": "carreteiro+transf"},
+    {"key": "TT", "propriedade": "T", "tipo": "A", "label": "todos"},
 )
-OPERACAO_073_DEFAULT = "R"  # R-transferência
+OPERACAO_073_DEFAULT = "T"  # T-todos (filtra no parser)
+CONSIDERAR_073_DEFAULT = "T"
 PROPRIEDADE_LABEL = {
-    "T": "todas",
+    "T": "todos",
+    "TT": "todos",
     "TA": "agregado",
     "A": "agregado",
     "F": "frota",
@@ -38,7 +40,7 @@ PROPRIEDADE_LABEL = {
     "AO": "agregados",
 }
 # legado
-PROPRIEDADES_073 = ("C",)
+PROPRIEDADES_073 = ("T",)
 
 # Programa 073
 SSW_073_MARKERS = (
@@ -84,11 +86,11 @@ def _resolve_jobs_073(
     tipos: tuple[str, ...] | None,
     propriedade: str | None,
 ) -> list[dict[str, str]]:
-    """Monta a lista de jobs. Default = carreteiro (C) + Tipo A."""
+    """Monta a lista de jobs. Default = Propriedade T · Tipo A."""
     _ = tipos  # legado
     # override: uma propriedade + um tipo
     if propriedades is None and propriedade and str(propriedade).strip():
-        prop = str(propriedade).strip().upper()[:1] or "C"
+        prop = str(propriedade).strip().upper()[:1] or "T"
         tipo_doc = str(tipo or "A").strip().upper()[:1] or "A"
         return [
             {
@@ -114,7 +116,7 @@ def download_reports_073(
     tipo: str | None = None,
     unidade_emissora: str = "SPO",
     operacao: str = OPERACAO_073_DEFAULT,
-    considerar: str = "T",
+    considerar: str = CONSIDERAR_073_DEFAULT,
     headless: bool | None = None,
     on_status: StatusCallback | None = None,
     credentials: SswCredentials | None = None,
@@ -308,7 +310,7 @@ def download_contratacao_ssw(
                 fim=fim,
                 unidade=unidade,
                 operacao=OPERACAO_073_DEFAULT,
-                considerar="T",
+                considerar=CONSIDERAR_073_DEFAULT,
                 ts=ts,
                 status=status,
             )
@@ -860,8 +862,8 @@ def _preencher_73(
             "fim": fim,
             "tipo": str(tipo or "A").strip().upper()[:1] or "A",
             "unidade": str(unidade or "SPO").strip().upper()[:3] or "SPO",
-            "propriedade": str(propriedade or "C").strip().upper()[:1] or "C",
-            "operacao": str(operacao or "R").strip().upper()[:1] or "R",
+            "propriedade": str(propriedade or "T").strip().upper()[:1] or "T",
+            "operacao": str(operacao or "T").strip().upper()[:1] or "T",
             "considerar": str(considerar or "T").strip().upper()[:1] or "T",
         },
     )

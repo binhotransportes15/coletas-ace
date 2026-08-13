@@ -1,7 +1,7 @@
 """Parser SSW 073 — CTRBs/OSs · base do painel Contratação.
 
 Fonte: tabela copiada da tela 073 (sem Excel/download).
-Filtro do form: Propriedade=C · Operação=R · Tipo=A.
+Form SSW: Propriedade=T · Operação=T · Tipo=A · Considerar=T.
 Painel conta SOMENTE CARRETEIRO + TRANSFERÊNCIA → contratados.
 """
 from __future__ import annotations
@@ -23,25 +23,38 @@ DESTINOS_073_CSV = CACHE_DIR / "destinos_073.csv"
 
 DASH_CONTRATACAO = DASHBOARD_DIR / "data" / "contratacao"
 
-# Índices 0-based (A=0) conforme planilha SSW
-COL_CTRB = 1          # B
-COL_TIPO = 2          # C
-COL_SITUACAO = 3      # D
-COL_PLACA = 6         # G
-COL_PROPRIEDADE = 7   # H
-COL_CARRETA = 11      # L
-COL_VALOR_PAGAR = 35  # AJ
-COL_TOTAL_CTRB = 40   # AO
-COL_CUSTO_AV = 47     # AV — ADIANTAMENTO
-COL_ORIGEM_CID = 17   # CIDADE/UF ORIGEM
-COL_DESTINO = 18      # UNIDADE DESTINO (sigla — torres)
-COL_DESTINO_CID = 19  # CIDADE/UF DESTINO
-COL_PESO = 68         # BQ
-COL_FRETE = 70        # BS
+# Layout Excel legado (sswweb download) — tela usa cabeçalho nomeado
+COL_CTRB = 1
+COL_TIPO = 2
+COL_SITUACAO = 3
+COL_PLACA = 6
+COL_PROPRIEDADE = 7
+COL_CARRETA = 11
+COL_VALOR_PAGAR = 35
+COL_TOTAL_CTRB = 40
+COL_CUSTO_AV = 47
+COL_ORIGEM_CID = 17
+COL_DESTINO = 18
+COL_DESTINO_CID = 19
+COL_PESO = 68
+COL_FRETE = 70
+
+# Layout da grade na tela (após MOS) — 0=prefixo "2" na linha sswweb
+# CTRB/OS · Tipo · Destino · Veículo · Propriedade · Operação · …
+COL_TELA_CTRB = 1
+COL_TELA_TIPO = 2
+COL_TELA_DESTINO = 3
+COL_TELA_PLACA = 4
+COL_TELA_PROP = 5
+COL_TELA_OPER = 6
+COL_TELA_SIT = 7
+COL_TELA_TOTAL = 11
+COL_TELA_RECEBER = 14
 
 CTRBS_FIELDS = [
     "ctrb",
     "tipo",
+    "operacao",
     "situacao",
     "placa",
     "carreta",
@@ -186,23 +199,22 @@ def _is_tipo_documento(tipo: str) -> bool:
 def _grupo_propriedade(
     prop: str, tipo: str = "", fonte: str = "", operacao: str = ""
 ) -> str:
-    """Só CARRETEIRO + TRANSFERÊNCIA → contratados."""
-    # Preferência: propriedades + operação explícitas na grade
+    """Só CARRETEIRO + TRANSFERÊNCIA → contratados (form traz T/T; filtro aqui)."""
+    _ = fonte
     if _is_carreteiro(prop) and _is_transferencia(operacao):
         return "contratados"
+    # Operação veio na coluna Tipo (layout antigo / mal alinhado)
     if _is_carreteiro(prop) and _is_transferencia(tipo) and not _is_tipo_documento(tipo):
         return "contratados"
-    # form já filtrado C+R: prop=CARRETEIRO e coluna operação vazia
-    if _is_carreteiro(prop) and (not operacao) and (
-        not _clean(tipo) or _is_tipo_documento(tipo)
-    ):
-        return "contratados"
-    from_file = _grupo_from_fonte(fonte)
-    if from_file and _is_carreteiro(prop):
-        return from_file
-    if from_file and not prop:
-        return from_file
     return "outro"
+
+
+def _is_tela_layout(hmap: dict[str, int]) -> bool:
+    """Cabeçalho da grade MOS (Destino + Veículo + Operação)."""
+    keys = " ".join(hmap.keys())
+    return ("DESTINO" in keys or "DESTI" in keys) and (
+        "VEÍCULO" in keys or "VEICULO" in keys
+    ) and ("OPERAC" in keys or "OPERAÇÃO" in keys or "OPERACAO" in keys)
 
 
 def _cell(cols: list[str], idx: int) -> str:
@@ -241,49 +253,74 @@ def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     src = fonte or Path(path).name
     hmap = _header_map(text)
+    tela = _is_tela_layout(hmap)
 
-    i_ctrb = _idx_from_header(hmap, "CTRB", "CTRB/OS", default=COL_CTRB)
-    i_tipo = _idx_from_header(hmap, "TIPO", default=COL_TIPO)
-    i_sit = _idx_from_header(hmap, "SITUACAO", "SITUAÇÃO", "SIT", default=COL_SITUACAO)
-    i_placa = _idx_from_header(hmap, "PLACA CAVALO", "PLACA", "VEÍCULO", "VEICULO", default=COL_PLACA)
-    i_prop = _idx_from_header(hmap, "PROPRIEDADE", default=COL_PROPRIEDADE)
-    i_oper = _idx_from_header(hmap, "OPERACAO", "OPERAÇÃO", "OPERAC", default=-1)
-    i_carreta = _idx_from_header(hmap, "PLACA CARRETA 1", "PLACA CARRETA", default=COL_CARRETA)
-    i_pagar = _idx_from_header(
-        hmap, "VALOR A PAGAR", "A RECEBER", "ARECEBER", default=COL_VALOR_PAGAR
-    )
-    i_total = _idx_from_header(
-        hmap,
-        "TOTAL CTRB/OS",
-        "TOTAL CTRB",
-        "TOTAL CTRE",
-        "TOTAL CTR",
-        default=COL_TOTAL_CTRB,
-    )
-    i_av = _idx_from_header(hmap, "ADIANTAMENTO", "ADIANTAN", default=COL_CUSTO_AV)
-    # prefer ADIANTAMENTO puro (não CCF/FORNECEDOR) se existir
-    for key, idx in hmap.items():
-        if key == "ADIANTAMENTO":
-            i_av = idx
-            break
-    i_peso = _idx_from_header(
-        hmap, "PESO CTRCs(CTRB COLETA/ENTREGA)", "PESO CTRCS", "PESO", default=COL_PESO
-    )
-    i_frete = _idx_from_header(
-        hmap, "FRETE CTRCs(CTRB COLETA/ENTREGA)", "FRETE CTRCS", "FRETE", default=COL_FRETE
-    )
-    i_origem = _idx_from_header(hmap, "CIDADE/UF ORIGEM", "ORIGEM", default=COL_ORIGEM_CID)
-    i_destino = _idx_from_header(hmap, "UNIDADE DESTINO", "DESTI", "DESTINO", default=COL_DESTINO)
-    i_cid_dest = _idx_from_header(
-        hmap, "CIDADE/UF DESTINO", "CIDADE DESTINO", default=COL_DESTINO_CID
-    )
+    if tela:
+        i_ctrb = _idx_from_header(hmap, "CTRB", "CTRB/OS", default=COL_TELA_CTRB)
+        i_tipo = _idx_from_header(hmap, "TIPO", default=COL_TELA_TIPO)
+        i_sit = _idx_from_header(hmap, "SITUACAO", "SITUAÇÃO", "SIT", default=COL_TELA_SIT)
+        i_placa = _idx_from_header(hmap, "VEÍCULO", "VEICULO", "PLACA", default=COL_TELA_PLACA)
+        i_prop = _idx_from_header(hmap, "PROPRIEDADE", default=COL_TELA_PROP)
+        i_oper = _idx_from_header(hmap, "OPERACAO", "OPERAÇÃO", "OPERAC", default=COL_TELA_OPER)
+        i_carreta = _idx_from_header(hmap, "PLACA CARRETA 1", "PLACA CARRETA", default=-1)
+        i_pagar = _idx_from_header(
+            hmap, "A RECEBER", "ARECEBER", "VALOR A PAGAR", default=COL_TELA_RECEBER
+        )
+        i_total = _idx_from_header(
+            hmap, "TOTAL CTRB/OS", "TOTAL CTRB", "TOTAL CTRE", default=COL_TELA_TOTAL
+        )
+        i_av = _idx_from_header(hmap, "ADIANTAMENTO", "ADIANTAN", default=-1)
+        i_peso = _idx_from_header(hmap, "PESO", default=-1)
+        i_frete = _idx_from_header(hmap, "FRETE", default=-1)
+        i_origem = _idx_from_header(hmap, "ORIGEM", default=-1)
+        i_destino = _idx_from_header(
+            hmap, "DESTINO", "DESTI", "UNIDADE DESTINO", default=COL_TELA_DESTINO
+        )
+        i_cid_dest = _idx_from_header(hmap, "CIDADE/UF DESTINO", "CIDADE DESTINO", default=-1)
+    else:
+        i_ctrb = _idx_from_header(hmap, "CTRB", "CTRB/OS", default=COL_CTRB)
+        i_tipo = _idx_from_header(hmap, "TIPO", default=COL_TIPO)
+        i_sit = _idx_from_header(hmap, "SITUACAO", "SITUAÇÃO", "SIT", default=COL_SITUACAO)
+        i_placa = _idx_from_header(
+            hmap, "PLACA CAVALO", "PLACA", "VEÍCULO", "VEICULO", default=COL_PLACA
+        )
+        i_prop = _idx_from_header(hmap, "PROPRIEDADE", default=COL_PROPRIEDADE)
+        i_oper = _idx_from_header(hmap, "OPERACAO", "OPERAÇÃO", "OPERAC", default=-1)
+        i_carreta = _idx_from_header(hmap, "PLACA CARRETA 1", "PLACA CARRETA", default=COL_CARRETA)
+        i_pagar = _idx_from_header(
+            hmap, "VALOR A PAGAR", "A RECEBER", "ARECEBER", default=COL_VALOR_PAGAR
+        )
+        i_total = _idx_from_header(
+            hmap,
+            "TOTAL CTRB/OS",
+            "TOTAL CTRB",
+            "TOTAL CTRE",
+            "TOTAL CTR",
+            default=COL_TOTAL_CTRB,
+        )
+        i_av = _idx_from_header(hmap, "ADIANTAMENTO", "ADIANTAN", default=COL_CUSTO_AV)
+        for key, idx in hmap.items():
+            if key == "ADIANTAMENTO":
+                i_av = idx
+                break
+        i_peso = _idx_from_header(
+            hmap, "PESO CTRCs(CTRB COLETA/ENTREGA)", "PESO CTRCS", "PESO", default=COL_PESO
+        )
+        i_frete = _idx_from_header(
+            hmap, "FRETE CTRCs(CTRB COLETA/ENTREGA)", "FRETE CTRCS", "FRETE", default=COL_FRETE
+        )
+        i_origem = _idx_from_header(hmap, "CIDADE/UF ORIGEM", "ORIGEM", default=COL_ORIGEM_CID)
+        i_destino = _idx_from_header(
+            hmap, "UNIDADE DESTINO", "DESTI", "DESTINO", default=COL_DESTINO
+        )
+        i_cid_dest = _idx_from_header(
+            hmap, "CIDADE/UF DESTINO", "CIDADE DESTINO", default=COL_DESTINO_CID
+        )
 
     for line in text.splitlines():
         if not line.startswith("2;") and not line.startswith("2,"):
-            # alguns exports usam só dados sem prefixo após header
             if not line or line[:2] in {"0;", "1;", "0,", "1,"}:
                 continue
-            # tenta se parece CTRB (SIGLA+numero)
             if not re.match(r"^[A-Z]{2,3}\d", line.split(";")[0] if ";" in line else ""):
                 continue
             cols = ["2"] + line.split(";")
@@ -293,39 +330,43 @@ def parse_ssw073(path: Path | str, *, fonte: str = "") -> list[dict[str, Any]]:
         placa = _cell(cols, i_placa).upper()
         if not ctrb and not placa:
             continue
-        if ctrb.upper() in {"CTRB", "TIPO"}:
+        up_ctrb = ctrb.upper()
+        if up_ctrb in {"CTRB", "TIPO", "TOTAL"} or up_ctrb.startswith("TOTAL("):
             continue
-        custo_av = _parse_money(_cell(cols, i_av))
-        valor_pagar = _parse_money(_cell(cols, i_pagar))
-        total_ctrb = _parse_money(_cell(cols, i_total))
-        # Custo do painel: AV (pedido); se zerado, cai no valor a pagar / total CTRB
+        custo_av = _parse_money(_cell(cols, i_av)) if i_av >= 0 else 0.0
+        valor_pagar = _parse_money(_cell(cols, i_pagar)) if i_pagar >= 0 else 0.0
+        total_ctrb = _parse_money(_cell(cols, i_total)) if i_total >= 0 else 0.0
         custo = custo_av if custo_av > 0 else (valor_pagar or total_ctrb)
         prop = _cell(cols, i_prop)
         tipo_doc = _cell(cols, i_tipo)
         operacao = _cell(cols, i_oper) if i_oper >= 0 else ""
-        destino = _cell(cols, i_destino).upper()
-        # evita pegar valor monetário por layout errado
+        destino = _cell(cols, i_destino).upper() if i_destino >= 0 else ""
         if destino and ("," in destino or destino.replace(".", "", 1).isdigit()):
             destino = ""
+        if destino and not (2 <= len(destino) <= 4 and destino.isalpha()):
+            destino = ""
+        carreta = _cell(cols, i_carreta).upper() if i_carreta >= 0 else ""
+        if carreta and ("," in carreta or carreta.replace(".", "", 1).replace("-", "").isdigit()):
+            carreta = ""
         rows.append(
             {
                 "ctrb": ctrb,
                 "tipo": tipo_doc,
                 "operacao": operacao,
-                "situacao": _cell(cols, i_sit),
+                "situacao": _cell(cols, i_sit) if i_sit >= 0 else "",
                 "placa": placa,
-                "carreta": _cell(cols, i_carreta).upper(),
+                "carreta": carreta,
                 "propriedade": prop,
                 "grupo": _grupo_propriedade(prop, tipo_doc, src, operacao),
                 "custo": round(custo, 2),
                 "custo_av": round(custo_av, 2),
                 "valor_pagar": round(valor_pagar, 2),
                 "total_ctrb": round(total_ctrb, 2),
-                "peso": round(_parse_money(_cell(cols, i_peso)), 3),
-                "frete": round(_parse_money(_cell(cols, i_frete)), 2),
-                "origem": _cell(cols, i_origem),
+                "peso": round(_parse_money(_cell(cols, i_peso)), 3) if i_peso >= 0 else 0.0,
+                "frete": round(_parse_money(_cell(cols, i_frete)), 2) if i_frete >= 0 else 0.0,
+                "origem": _cell(cols, i_origem) if i_origem >= 0 else "",
                 "destino": destino,
-                "cidade_destino": _cell(cols, i_cid_dest),
+                "cidade_destino": _cell(cols, i_cid_dest) if i_cid_dest >= 0 else "",
                 "fonte": src,
             }
         )
