@@ -33,8 +33,11 @@ def publish(
     title: str = "BINHO · ACE",
     mode: str = "STANDBY",
     sectors: list[dict[str, Any]] | None = None,
+    clear_sectors: bool = False,
 ) -> None:
     STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    mode_u = str(mode or "STANDBY").upper()
+    label_u = str(label or "").upper()
     payload: dict[str, Any] = {
         "ts": time.time(),
         "online": bool(online),
@@ -46,8 +49,11 @@ def publish(
     }
     if sectors is not None:
         payload["sectors"] = list(sectors)
+    elif clear_sectors or mode_u in {"MENU", "OK", "STANDBY", "ERR", "STOP"} or label_u == "STOP":
+        # Não herdar barrinhas em 100% de sessão anterior
+        payload["sectors"] = []
     else:
-        # preserva setores já publicados se o caller não mandou
+        # RUN/LOOP: preserva sectors já publicados pelo loop
         try:
             if STATUS_PATH.is_file():
                 old = json.loads(STATUS_PATH.read_text(encoding="utf-8"))

@@ -10,6 +10,8 @@ playwright install chromium
 ace.bat
 ```
 
+Pacotes principais: **PySide6** (+ Addons/WebEngine), **playwright**, **openpyxl**, **Pillow**, **psutil**. Detalhes em [`requirements.txt`](requirements.txt).
+
 `rodar.bat` também abre o painel CRT.
 
 ## Manual

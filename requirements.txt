@@ -1,5 +1,24 @@
-PySide6
-playwright
-openpyxl
-Pillow
-psutil
+# ACE · Analisador Coleta Entrega (BINHO)
+# Instalar:
+#   pip install -r requirements.txt
+#   playwright install chromium
+#
+# Python recomendado: 3.11+ (Windows)
+
+# --- UI (CRT / painéis / preview TV) ---
+# PySide6 puxa Essentials; Addons garante QtWebEngine (telas locais / editor TV)
+PySide6>=6.6.0
+PySide6-Addons>=6.6.0
+PySide6-Essentials>=6.6.0
+
+# --- Automação SSW (Chromium) ---
+playwright>=1.40.0
+
+# --- Planilhas Excel (.xlsx) dos relatórios SSW ---
+openpyxl>=3.1.0
+
+# --- Branding / imagem no terminal (term_brand) ---
+Pillow>=10.0.0
+
+# --- CPU/RAM/GPU no CRT + encerrar processos Playwright ---
+psutil>=5.9.0

@@ -48,17 +48,11 @@ def _log(msg: str) -> None:
         stamp = datetime.now().strftime("%H:%M:%S")
         print(f"  {format_status(msg, hhmmss=stamp)}", flush=True)
         try:
-            from crt_bridge import append_log, publish
+            from crt_bridge import append_log
 
+            # Só espelha no log — NÃO publish(pct=0) (zera a barra principal)
             kind = classify_status_msg(msg)
             append_log(kind, msg, source="cmd")
-            publish(
-                online=kind != "err",
-                label="ONLINE" if kind != "err" else "ERR",
-                pct=0,
-                detail=str(msg)[:100],
-                mode={"ok": "OK", "err": "ERR", "work": "RUN"}.get(kind, "RUN"),
-            )
         except Exception:
             pass
     except Exception:
@@ -93,18 +87,21 @@ _JOB_TAG_ALIAS: dict[str, str] = {
     "emissão": "455",
 }
 
-# Degraus de progresso (só sobe). Ordem: login → download → análise → Sheets → fim
+# Degraus de progresso (só sobe). Keywords curtas/ambíguas causavam 100% cedo.
 _PROGRESS_LADDER: tuple[tuple[float, tuple[str, ...]], ...] = (
-    (5.0, ("iniciando", "ciclo paralelo", "bloco(s)", "cleanup")),
-    (12.0, ("login", "ssw", "credenc", "abrindo", "navegador", "sessão", "sessao")),
-    (28.0, ("download", "baix", "csv", "relatório", "relatorio", "fila 156", "aguardando arquivo")),
-    (45.0, ("analis", "process", "lendo", "parse", "conferent", "ofensor", "sla")),
-    (58.0, ("cache", "dashboard", "public", "json local", "modo local", "persist")),
-    (70.0, ("sheets", "planilha", "apps script", "preparando envio", "ping")),
-    (82.0, ("enviando", "lote", "atualizando", "aba", "batch")),
-    (92.0, ("sheets:", "atualizada", "versão", "versao", "sem mudança", "pulou", "ciclo ok")),
-    (100.0, ("bloco ok", "pipeline ok", "conclu", "sync ok")),
+    (5.0, ("iniciando", "ciclo paralelo", "cleanup", "limpeza downloads")),
+    (12.0, ("efetuando login", "login no ssw", "credenc", "abrindo navegador", "sessão", "sessao")),
+    (18.0, ("login concluido", "login concluído", "já conectada")),
+    (28.0, ("download", "baixando", "relatório", "relatorio", "fila 156", "aguardando arquivo", "gerando", "abrindo opcao", "abrindo programa")),
+    (45.0, ("analisando", "processando", "lendo", "parse", "conferent", "ofensor", "sla")),
+    (58.0, ("cache", "dashboard", "json local", "modo local", "persist")),
+    (70.0, ("sheets", "planilha", "apps script", "preparando envio")),
+    (82.0, ("enviando", "lote", "atualizando aba", "batch")),
+    (92.0, ("sheets:", "atualizada", "sem mudança", "pulou sync")),
+    (100.0, ("bloco ok", "pipeline ok", "sync ok", "automação + sheets")),
 )
+
+_DONE_MARKERS = ("bloco ok", "pipeline ok", "sync ok", "automação + sheets")
 
 
 def parse_job_tag(msg: str) -> tuple[str | None, str]:
@@ -114,6 +111,8 @@ def parse_job_tag(msg: str) -> tuple[str | None, str]:
         tag, rest = text[1:].split("]", 1)
         key = tag.strip().lower()
         sid = _JOB_TAG_ALIAS.get(key)
+        if sid is None and "/" in key:
+            sid = _JOB_TAG_ALIAS.get(key.split("/", 1)[0].strip())
         return sid, rest.strip()
     return None, text
 
@@ -128,9 +127,10 @@ def estimate_job_pct(prev: float, text: str) -> float:
         if any(k in low for k in keys):
             if pct > best:
                 best = pct
-    # micro-avanço se ainda rodando e mensagem nova sem keyword forte
     if best < 95 and low and best > 0:
-        best = min(95.0, best + 0.4)
+        best = min(95.0, best + 0.25)
+    if best >= 100.0 and not any(m in low for m in _DONE_MARKERS):
+        best = min(95.0, best)
     return min(100.0, best)
 
 
@@ -142,7 +142,12 @@ def apply_status_to_progress(
 ) -> None:
     """Atualiza o mapa live de progresso por setor com uma linha de status."""
     sid, body = parse_job_tag(msg)
-    targets = [sid] if sid else list(running or [])
+    if sid:
+        targets = [sid]
+    elif running and len(running) == 1:
+        targets = list(running)
+    else:
+        return
     if not targets:
         return
     low = (body or msg or "").lower()
@@ -153,18 +158,20 @@ def apply_status_to_progress(
         if cur.get("state") in {"off"}:
             continue
         detail = (body or msg or "")[:90]
-        if "bloco ok" in low or "pipeline ok" in low:
+        if any(m in low for m in _DONE_MARKERS):
             cur["pct"] = 100.0
             cur["state"] = "ok"
             cur["detail"] = detail or "concluído · Sheets ok"
             continue
-        if "falhou" in low or "erro" in low:
+        if "falhou" in low or "erro:" in low or low.startswith("erro "):
             cur["state"] = "err"
             cur["pct"] = max(float(cur.get("pct") or 0), 1.0)
             cur["detail"] = detail or "falhou"
             continue
+        # Já concluiu neste ciclo: ignora mensagens posteriores (evita run@100 fantasma)
+        if cur.get("state") == "ok":
+            continue
         if "sheets" in low or "planilha" in low or "apps script" in low:
-            # reforço visual na fase Sheets
             cur["pct"] = max(float(cur.get("pct") or 0), 70.0)
         cur["state"] = "run"
         cur["pct"] = estimate_job_pct(float(cur.get("pct") or 0), detail)
@@ -201,33 +208,37 @@ def build_sector_rows(
             continue
 
         live_row = live.get(sid) or {}
-        if sid in errs:
+        live_state = str(live_row.get("state") or "")
+        if sid in errs or live_state == "err":
             row["state"] = "err"
-            row["pct"] = float(live_row.get("pct") or 100.0)
+            row["pct"] = float(live_row.get("pct") or 0.0)
             row["detail"] = str(errs.get(sid) or live_row.get("detail") or "erro")[:90]
-        elif sid in running_set or live_row.get("state") == "run":
-            row["state"] = "run"
-            row["pct"] = float(live_row.get("pct") or 3.0)
-            row["detail"] = str(live_row.get("detail") or "executando…")[:90]
-        elif live_row.get("state") == "ok" or (
-            sid in last_run and float(live_row.get("pct") or 0) >= 99.0
-        ):
+        elif live_state == "ok":
+            # Preferir ok sobre running_set (job já terminou no paralelo)
             row["state"] = "ok"
-            row["pct"] = 100.0
+            row["pct"] = 100.0 if sid in running_set else 0.0
             rem_hint = ""
             prev = last_run.get(sid)
-            if prev is not None and iv > 0:
+            if prev is not None and iv > 0 and sid not in running_set:
                 rem = max(0.0, float(iv) - (time.time() - prev))
                 if rem > 1:
                     rem_hint = f" · próximo em {format_duration_long(int(rem))}"
-            row["detail"] = str(live_row.get("detail") or f"último ciclo OK{rem_hint}")[:90]
-        elif live_row.get("state") == "err":
-            row["state"] = "err"
-            row["pct"] = float(live_row.get("pct") or 1.0)
-            row["detail"] = str(live_row.get("detail") or "falhou")[:90]
+            row["detail"] = str(
+                live_row.get("detail")
+                or ("concluído" if sid in running_set else f"último ciclo OK{rem_hint}")
+            )[:90]
+        elif sid in running_set or live_state == "run":
+            row["state"] = "run"
+            pct = float(live_row.get("pct") or 0.0)
+            if pct <= 0:
+                pct = 3.0
+            row["pct"] = min(95.0, pct) if pct < 100 else 100.0
+            if live_state != "ok" and pct >= 100:
+                row["pct"] = 95.0
+            row["detail"] = str(live_row.get("detail") or "executando…")[:90]
         elif sid in last_run:
             row["state"] = "ok"
-            row["pct"] = float(live_row.get("pct") or 100.0)
+            row["pct"] = 0.0
             prev = last_run[sid]
             rem = max(0.0, float(iv) - (time.time() - prev))
             row["detail"] = (
@@ -576,7 +587,13 @@ def run_loop(
                 if _want_stop(should_stop):
                     raise LoopStopped("parado pelo usuário")
                 apply_status_to_progress(progress, msg, running=due)
-                _tick_bars(running=due)
+                # Só jobs ainda em "run" (os que já deram bloco OK saem da lista)
+                active = [
+                    s
+                    for s in due
+                    if str((progress.get(s) or {}).get("state") or "") == "run"
+                ]
+                _tick_bars(running=active)
                 _log(msg)
 
             try:
