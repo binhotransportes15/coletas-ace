@@ -106,7 +106,7 @@ class AceSettings:
     # Porta fixa na LAN (0 = automática). Padrão útil: 8787
     dashboard_port: int = 8787
     headless: bool = True
-    # Tema visual do CRT (binho | painel | ops | claro)
+    # Tema visual do CRT (binho | painel | ops | claro | fosco)
     crt_theme: str = "binho"
 
 

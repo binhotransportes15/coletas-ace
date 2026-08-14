@@ -6175,6 +6175,7 @@
       }
       if (syncHash) writeRouteHash({ tv: wantTv, sector: CURRENT_SECTOR });
       applyDashboardChrome();
+      updateAlertaSemSaidaLock();
     }
 
     const ARM_STATUS_RANK = { atrasado: 0, descarregando: 1, chegou: 2, aguardando: 3, finalizado: 4 };
@@ -8686,6 +8687,11 @@
       if (isOpsSector(CURRENT_SECTOR)) applyOpsLiveViews();
     }
 
+    /** Overlay/bip só na Distribuição (coleta/entrega/agendamento), não nos outros setores. */
+    function alertaSemSaidaAllowedHere() {
+      return VIEW === 'live' && isOpsSector(CURRENT_SECTOR);
+    }
+
     function dismissAlertaLock() {
       ALERTA_LOCK_DISMISSED = true;
       ALERTA_LOCK_ON = false;
@@ -8729,9 +8735,9 @@
       }
 
       const snoozed = ALERTA_LOCK_SNOOZE_UNTIL > Date.now();
-      // Overlay só se houver alerta e não estiver em snooze (Continuar / ESC)
-      const ativo = alerts.length > 0 && !snoozed;
-      // Mantém flag alinhada ao snooze (legado / UI)
+      const onDistribuicao = alertaSemSaidaAllowedHere();
+      // Overlay/bip só na Distribuição e fora do snooze
+      const ativo = alerts.length > 0 && !snoozed && onDistribuicao;
       ALERTA_LOCK_DISMISSED = snoozed;
       ALERTA_LOCK_ON = ativo;
       document.body.classList.toggle('alerta-lock', ativo);
@@ -8755,22 +8761,14 @@
       }
 
       if (ativo) {
-        // No TV: pausa o swap e destaca a vista Agendamento (setor continua Distribuição)
+        // No TV: pausa o swap e destaca a vista Agendamento (já estamos em Distribuição)
         if (document.body.classList.contains('tv-mode')) {
           if (swapTimer) { clearInterval(swapTimer); swapTimer = null; }
           if (swapCountdown) { clearInterval(swapCountdown); swapCountdown = null; }
-          if (VIEW === 'live') {
-            if (!isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'agendamento') {
-              setSector('distribuicao', {
-                view: 'agendamento',
-                syncHash: true,
-                forceTv: true,
-              });
-            } else if (CURRENT_VIEW !== 'agendamento') {
-              CURRENT_VIEW = 'agendamento';
-              applyOpsLiveViews();
-              writeRouteHash({ tv: true, sector: 'distribuicao' });
-            }
+          if (VIEW === 'live' && CURRENT_VIEW !== 'agendamento') {
+            CURRENT_VIEW = 'agendamento';
+            applyOpsLiveViews();
+            writeRouteHash({ tv: true, sector: 'distribuicao' });
           }
         }
         startAlertaBeep();
@@ -8956,7 +8954,6 @@
     }
 
     function setView(view) {
-      if (ALERTA_LOCK_ON && view === 'gestao') dismissAlertaLock();
       VIEW = view === 'gestao' ? 'gestao' : 'live';
       if (VIEW === 'gestao' && TV_MODE) setTvMode(false, { syncHash: true });
       document.body.classList.toggle('live-mode', VIEW === 'live');
@@ -8977,6 +8974,7 @@
         else applyOpsLiveViews();
         if (TV_MODE && (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem')) startSwapLoop();
       }
+      updateAlertaSemSaidaLock();
     }
 
     function setRel(rel) {

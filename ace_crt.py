@@ -151,6 +151,30 @@ CRT_THEMES: dict[str, dict[str, object]] = {
         "chunk2": "#38bdf8",
         "scan": False,
     },
+    "fosco": {
+        "label": "Escuro fosco",
+        "bg": "transparent",
+        "panel": "rgba(16, 22, 34, 155)",
+        "line": "rgba(148, 163, 184, 95)",
+        "text": "#e8eef7",
+        "dim": "#9aa8bc",
+        "muted": "#6b7a90",
+        "input_bg": "rgba(8, 12, 20, 170)",
+        "input_text": "#e2e8f0",
+        "btn_bg": "rgba(22, 30, 46, 175)",
+        "btn_hover": "rgba(40, 56, 82, 210)",
+        "btn_press": "rgba(56, 78, 112, 230)",
+        "btn_dis_bd": "rgba(50, 60, 78, 110)",
+        "sel": "rgba(14, 116, 144, 190)",
+        "prog_bg": "rgba(8, 12, 20, 150)",
+        "chunk0": "#0e7490",
+        "chunk1": "#22d3ee",
+        "chunk2": "#a5f3fc",
+        "scan": False,
+        "frost": True,
+        # Windows acrylic: 0xAABBGGRR (alpha + BGR)
+        "acrylic_tint": 0xB0121824,
+    },
 }
 
 DEFAULT_CRT_THEME = "binho"
@@ -165,9 +189,14 @@ class BinhoCubesWidget(QWidget):
         self.setMaximumHeight(168)
         self._t = 0.0
         self._pm = QPixmap(str(_CUBES)) if _CUBES.is_file() else QPixmap()
+        self._fill = QColor("#050505")
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(33)  # ~30 fps
+
+    def set_fill_color(self, color: QColor) -> None:
+        self._fill = QColor(color)
+        self.update()
 
     def _tick(self) -> None:
         self._t += 0.033
@@ -178,8 +207,7 @@ class BinhoCubesWidget(QWidget):
         p.setRenderHint(QPainter.Antialiasing, True)
         p.setRenderHint(QPainter.SmoothPixmapTransform, True)
         w, h = self.width(), self.height()
-        bg = QColor("#050505")
-        p.fillRect(0, 0, w, h, bg)
+        p.fillRect(0, 0, w, h, self._fill)
 
         t = self._t
         bob = math.sin(t * 1.35) * 4.0
@@ -332,11 +360,68 @@ class SysMeterRow(QWidget):
         self._apply_chunk(color)
 
 
+def apply_windows_acrylic(hwnd: int, enable: bool, tint_aabbggrr: int = 0xB0121824) -> bool:
+    """Blur/acrylic no Windows (DWM). Retorna True se aplicou."""
+    if sys.platform != "win32" or not hwnd:
+        return False
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class ACCENTPOLICY(ctypes.Structure):
+            _fields_ = (
+                ("AccentState", ctypes.c_int),
+                ("AccentFlags", ctypes.c_int),
+                ("GradientColor", ctypes.c_uint),
+                ("AnimationId", ctypes.c_int),
+            )
+
+        class WINDOWCOMPOSITIONATTRIBDATA(ctypes.Structure):
+            _fields_ = (
+                ("Attribute", ctypes.c_int),
+                ("Data", ctypes.c_void_p),
+                ("SizeOfData", ctypes.c_size_t),
+            )
+
+        # 3 = blur, 4 = acrylic (Win10+)
+        accent = ACCENTPOLICY()
+        if enable:
+            accent.AccentState = 4
+            accent.AccentFlags = 2
+            accent.GradientColor = int(tint_aabbggrr) & 0xFFFFFFFF
+        else:
+            accent.AccentState = 0
+            accent.AccentFlags = 0
+            accent.GradientColor = 0
+
+        data = WINDOWCOMPOSITIONATTRIBDATA()
+        data.Attribute = 19  # WCA_ACCENT_POLICY
+        data.Data = ctypes.addressof(accent)
+        data.SizeOfData = ctypes.sizeof(accent)
+
+        fn = ctypes.windll.user32.SetWindowCompositionAttribute
+        fn.argtypes = (wintypes.HWND, ctypes.POINTER(WINDOWCOMPOSITIONATTRIBDATA))
+        fn.restype = wintypes.BOOL
+        ok = bool(fn(wintypes.HWND(hwnd), ctypes.byref(data)))
+        if ok:
+            return True
+        if enable:
+            # fallback blur simples
+            accent.AccentState = 3
+            return bool(fn(wintypes.HWND(hwnd), ctypes.byref(data)))
+        return False
+    except Exception:
+        return False
+
+
 def build_crt_stylesheet(theme_id: str = DEFAULT_CRT_THEME) -> str:
     t = CRT_THEMES.get(theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
+    frost = bool(t.get("frost"))
+    radius = "10px" if frost else "0"
+    root_bg = "transparent" if frost else t["bg"]
     return f"""
 QWidget {{
-    background: {t['bg']};
+    background: {root_bg};
     color: {t['text']};
     font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace;
     font-size: 12px;
@@ -344,26 +429,31 @@ QWidget {{
 QFrame#panel, QFrame#side {{
     background: {t['panel']};
     border: 1px solid {t['line']};
+    border-radius: {radius};
 }}
 QLabel#title {{
     color: {t['text']};
     font-size: 14px;
     font-weight: 700;
     letter-spacing: 2px;
+    background: transparent;
 }}
 QLabel#mode {{
     color: {t['dim']};
     font-size: 11px;
     letter-spacing: 1px;
+    background: transparent;
 }}
 QLabel#status {{
     font-size: 26px;
     font-weight: 800;
     letter-spacing: 3px;
+    background: transparent;
 }}
 QLabel#detail, QLabel#hint {{
     color: {t['dim']};
     font-size: 11px;
+    background: transparent;
 }}
 QLabel#section {{
     color: {t['text']};
@@ -371,36 +461,42 @@ QLabel#section {{
     font-weight: 700;
     letter-spacing: 2px;
     padding: 4px 0;
+    background: transparent;
 }}
 QLabel#foot {{
     color: {t['muted']};
     font-size: 10px;
+    background: transparent;
 }}
 QLabel#sysHost {{
     color: {t['text']};
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 1px;
+    background: transparent;
 }}
 QLabel#sysHostSub {{
     color: {t['dim']};
     font-size: 10px;
+    background: transparent;
 }}
 QLabel#sysMeterTitle {{
     color: {t['dim']};
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 1px;
+    background: transparent;
 }}
 QLabel#sysMeterVal {{
     color: {t['text']};
     font-size: 10px;
     font-weight: 700;
+    background: transparent;
 }}
 QProgressBar {{
     background: {t['prog_bg']};
     border: 1px solid {t['line']};
-    border-radius: 0;
+    border-radius: {radius};
     text-align: center;
     color: {t['text']};
     height: 16px;
@@ -409,11 +505,13 @@ QProgressBar {{
 QProgressBar::chunk {{
     background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
         stop:0 {t['chunk0']}, stop:0.55 {t['chunk1']}, stop:1 {t['chunk2']});
+    border-radius: {radius};
 }}
 QPushButton {{
     background: {t['btn_bg']};
     color: {t['text']};
     border: 1px solid {t['line']};
+    border-radius: {radius};
     padding: 7px 10px;
     text-align: left;
 }}
@@ -436,6 +534,7 @@ QLineEdit, QTextEdit, QComboBox {{
     background: {t['input_bg']};
     color: {t['input_text']};
     border: 1px solid {t['line']};
+    border-radius: {radius};
     selection-background-color: {t['sel']};
     padding: 4px 6px;
 }}
@@ -450,12 +549,14 @@ QLineEdit:focus, QTextEdit:focus, QComboBox:focus {{
 QCheckBox {{
     color: {t['dim']};
     spacing: 8px;
+    background: transparent;
 }}
 QCheckBox::indicator {{
     width: 14px;
     height: 14px;
     border: 1px solid {t['line']};
     background: {t['input_bg']};
+    border-radius: 3px;
 }}
 QCheckBox::indicator:checked {{
     background: {t['text']};
@@ -463,11 +564,13 @@ QCheckBox::indicator:checked {{
 QTabWidget::pane {{
     border: 1px solid {t['line']};
     background: {t['panel']};
+    border-radius: {radius};
 }}
 QTabBar::tab {{
     background: {t['input_bg']};
     color: {t['dim']};
     border: 1px solid {t['line']};
+    border-radius: {radius};
     padding: 8px 14px;
     margin-right: 2px;
 }}
@@ -483,6 +586,9 @@ QScrollArea {{
 QSplitter::handle {{
     background: {t['line']};
     width: 2px;
+}}
+QSplitter {{
+    background: transparent;
 }}
 """
 
@@ -1760,6 +1866,18 @@ class AceCrtConsole(QWidget):
         meta = CRT_THEMES[tid]
         if hasattr(self, "_scan"):
             self._scan.set_enabled(bool(meta.get("scan", True)))
+        if hasattr(self, "cubes"):
+            if meta.get("frost"):
+                self.cubes.set_fill_color(QColor(10, 14, 22, 100))
+            elif tid == "claro":
+                self.cubes.set_fill_color(QColor("#e8edf2"))
+            elif tid == "painel":
+                self.cubes.set_fill_color(QColor("#050a14"))
+            elif tid == "ops":
+                self.cubes.set_fill_color(QColor("#080b09"))
+            else:
+                self.cubes.set_fill_color(QColor("#050505"))
+        self._apply_frost_window(bool(meta.get("frost")), int(meta.get("acrylic_tint") or 0xB0121824))
         # sync combos sem loop
         for cmb in (getattr(self, "cmb_theme", None), getattr(self, "cmb_theme_cfg", None)):
             if cmb is None:
@@ -1780,6 +1898,31 @@ class AceCrtConsole(QWidget):
                 self._append_log("config", f"Tema: {lab}")
             except Exception:  # noqa: BLE001
                 pass
+
+    def _apply_frost_window(self, enabled: bool, tint: int = 0xB0121824) -> None:
+        """Fundo transparente + blur fosco (Windows acrylic)."""
+        self.setAttribute(Qt.WA_TranslucentBackground, enabled)
+        # autoFillBackground opaco atrapalha o vidro
+        self.setAutoFillBackground(not enabled)
+        try:
+            hwnd = int(self.winId())
+        except Exception:
+            hwnd = 0
+        if hwnd:
+            apply_windows_acrylic(hwnd, enabled, tint_aabbggrr=tint)
+        self.update()
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        meta = CRT_THEMES.get(self._theme_id) or {}
+        if meta.get("frost"):
+            # winId só fica estável depois do show
+            QTimer.singleShot(
+                0,
+                lambda: self._apply_frost_window(
+                    True, int(meta.get("acrylic_tint") or 0xB0121824)
+                ),
+            )
 
     def _save_config(self) -> None:
         from ace_cmd import EDITABLE, _save_payload
@@ -2099,7 +2242,7 @@ class AceCrtConsole(QWidget):
         t = CRT_THEMES.get(self._theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
         accent = str(t["text"])
         dim = str(t["dim"])
-        warn = WARN if self._theme_id != "claro" else "#b45309"
+        warn = WARN if self._theme_id not in {"claro"} else "#b45309"
         color = {
             "ok": accent,
             "err": ERR,
