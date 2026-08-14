@@ -1,9 +1,9 @@
 """Download SSW 081 — CTRCs disponíveis para entrega (Sem saída).
 
 Regras ACE:
-  Trânsito c/ previsão chegada até = amanhã (NÃO altera a hora do formulário)
-  Excel = S
-  Seguir opção 1: Relacionar as entregas, sem roteirizar
+  Trânsito c/ previsão chegada até = amanhã (NÃO altera a hora)
+  Excel = S (relatorio_excel quando existir)
+  Opção 1: Relacionar as entregas, sem roteirizar
 """
 from __future__ import annotations
 
@@ -31,6 +31,7 @@ SSW_081_MARKERS = (
     "excel",
     "0081",
     "roteir",
+    "relatorio_excel",
 )
 
 
@@ -95,6 +96,7 @@ def download_reports_081(
 
     status(f"SSW 081 | trânsito/previsão até {data_ui} | excel=S | opc.1")
     path: Path | None = None
+    programa = SSW_081_PATH
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
@@ -124,19 +126,35 @@ def download_reports_081(
 
             try:
                 url = (popup.url or "").lower()
+                programa = (popup.url or "").split("?")[0]
             except Exception:
                 url = ""
-            if "blank" in url:
+            # Se blank ou sem marcadores de entrega, tenta path conhecido
+            pronto = False
+            try:
+                pronto = client._popup_pronta(popup, SSW_081_MARKERS)
+            except Exception:
+                pronto = False
+            if "blank" in url or not pronto:
                 status(f"[081] navegando {SSW_081_PATH}…")
                 popup.goto(
                     f"https://sistema.ssw.inf.br{SSW_081_PATH}",
                     wait_until="domcontentloaded",
                 )
                 _safe_wait(popup, 800)
+                try:
+                    programa = (popup.url or "").split("?")[0]
+                except Exception:
+                    pass
 
             status("[081] preenchendo…")
             filled = _preencher_081(popup, data_ddmmyy=data_ddmmyy, on_status=status)
             status(f"[081] form {filled}")
+            if not (filled or {}).get("dateOk"):
+                raise RuntimeError(
+                    "081: não achei o campo de data 'previsão chegada até' "
+                    f"(form={filled})"
+                )
 
             status("[081] opção 1 · relacionar entregas sem roteirizar…")
             _escolher_opcao_1(popup, status)
@@ -175,17 +193,26 @@ def download_reports_081(
         "period": data_ddmmyy,
         "periodo_fmt": data_ui,
         "download_dir": str(DOWNLOAD_DIR),
+        "programa": programa,
     }
 
 
 def _preencher_081(popup, *, data_ddmmyy: str, on_status: StatusCallback | None = None) -> dict[str, Any]:
     """Previsão chegada até = amanhã (hora intacta) + Excel = S."""
     status = on_status or _noop
-    _safe_wait(popup, 400)
+    _safe_wait(popup, 500)
+    try:
+        popup.locator("#relatorio_excel, #t_excel, input").first.wait_for(
+            state="attached", timeout=12000
+        )
+    except Exception:
+        status("[081] aviso: formulário ainda não estável")
+
     result = popup.evaluate(
         """(dataYy) => {
           const norm = (s) => String(s || '').toLowerCase()
-            .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');
+            .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+            .replace(/\\xa0/g, ' ');
           const setVal = (el, val) => {
             if (!el) return false;
             el.focus();
@@ -195,62 +222,102 @@ def _preencher_081(popup, *, data_ddmmyy: str, on_status: StatusCallback | None 
             el.dispatchEvent(new Event('blur', { bubbles: true }));
             return true;
           };
+          const looksHour = (v, idn) => {
+            const s = String(v || '').trim();
+            if (/^\\d{1,2}:\\d{2}(:\\d{2})?$/.test(s)) return true;
+            if (/^\\d{3,4}$/.test(s) && (idn.includes('hora') || idn.includes('hr') || idn.includes('time'))) return true;
+            if (/^\\d{3,4}$/.test(s) && Number(s) <= 2359) return 'maybe';
+            return false;
+          };
+          const looksDate = (v) => {
+            const s = String(v || '').trim();
+            if (!s) return 'empty';
+            if (/\\d{1,2}[\\/.-]\\d{1,2}([\\/.-]\\d{2,4})?/.test(s)) return true;
+            if (/^\\d{4,8}$/.test(s.replace(/\\D/g, ''))) return true;
+            return false;
+          };
+          const looksJunk = (v, idn) => {
+            const s = String(v || '');
+            const id = String(idn || '');
+            if (/sigla|familia|unidade|placa|motor|cliente|destino|origem|roteir/.test(id)) return true;
+            if (/[A-Za-z]{2,}/.test(s) && /\\s/.test(s)) return true;
+            if ((s.match(/[A-Za-z]/g) || []).length >= 3 && !/excel|arquivo/.test(id)) return true;
+            return false;
+          };
 
-          // Excel = S
-          const excelIds = ['t_excel', 'excel', 't_arq', 'arquivo', 't_arquivo'];
           let excelOk = false;
           let excelId = '';
-          for (const id of excelIds) {
+          for (const id of ['relatorio_excel', 't_excel', 'excel', 't_arq', 'arquivo']) {
             const el = document.getElementById(id);
-            if (el) { excelOk = setVal(el, 'S'); excelId = id; break; }
-          }
-          if (!excelOk) {
-            const inputs = Array.from(document.querySelectorAll('input, select'));
-            for (const el of inputs) {
-              const blob = norm((el.id || '') + ' ' + (el.name || ''));
-              if (blob.includes('excel') || blob.includes('arquivo')) {
-                excelOk = setVal(el, 'S');
-                excelId = el.id || el.name || 'near-excel';
-                break;
-              }
-            }
+            if (!el) continue;
+            excelOk = setVal(el, 'S');
+            excelId = id;
+            break;
           }
 
-          // Data: "transito c/ previsao chegada ate" — NÃO muda hora
           const labels = Array.from(document.querySelectorAll('td, label, span, b, font, div'));
-          let dateEl = null;
-          let hourEl = null;
           let labelHit = '';
+          let row = null;
           for (const lab of labels) {
             const t = norm(lab.innerText || lab.textContent || '');
-            if (!t || t.length > 100) continue;
+            if (!t || t.length > 140) continue;
             const hit =
               (t.includes('transito') && t.includes('previs')) ||
               (t.includes('previs') && t.includes('chegad')) ||
               (t.includes('chegada') && t.includes('ate'));
             if (!hit) continue;
-            labelHit = t.slice(0, 70);
-            let row = lab.closest('tr') || lab.parentElement;
-            const pool = [];
-            if (row) pool.push(...Array.from(row.querySelectorAll('input')));
+            labelHit = t.slice(0, 90);
+            row = lab.closest('tr') || lab.parentElement;
+            break;
+          }
+
+          const pool = [];
+          if (row) pool.push(...Array.from(row.querySelectorAll('input')));
+          for (const lab of labels) {
+            const t = norm(lab.innerText || lab.textContent || '');
+            const hit =
+              (t.includes('transito') && t.includes('previs')) ||
+              (t.includes('previs') && t.includes('chegad'));
+            if (!hit) continue;
             let sib = lab.nextElementSibling;
-            for (let i = 0; i < 4 && sib; i++, sib = sib.nextElementSibling) {
+            for (let i = 0; i < 6 && sib; i++, sib = sib.nextElementSibling) {
               if (sib.matches && sib.matches('input')) pool.push(sib);
-              pool.push(...Array.from(sib.querySelectorAll ? sib.querySelectorAll('input') : []));
+              if (sib.querySelectorAll) pool.push(...Array.from(sib.querySelectorAll('input')));
             }
-            const uniq = [...new Set(pool)];
-            for (const inp of uniq) {
-              const v = String(inp.value || '');
-              const dig = v.replace(/\\D/g, '');
-              const idn = norm((inp.id || '') + ' ' + (inp.name || ''));
-              if (/^\\d{1,2}:\\d{2}/.test(v) || idn.includes('hora') || idn.includes('hr') || idn.includes('time')) {
-                hourEl = hourEl || inp; // NÃO alterar
-                continue;
-              }
-              if (dig.length >= 4) dateEl = dateEl || inp;
-              else if (!dateEl) dateEl = inp;
+          }
+          const uniq = [...new Set(pool)];
+          const candidates = [];
+          for (const inp of uniq) {
+            const idn = norm((inp.id || '') + ' ' + (inp.name || ''));
+            const v = String(inp.value || '');
+            if (looksJunk(v, idn)) continue;
+            candidates.push({ inp, idn, v, h: looksHour(v, idn), d: looksDate(v) });
+          }
+
+          let dateEl = null;
+          let hourEl = null;
+          for (const c of candidates) {
+            if (c.h === true) hourEl = hourEl || c.inp;
+          }
+          for (const c of candidates) {
+            if (c.inp === hourEl) continue;
+            if (c.d === true || /\\b(dt|data|prev|cheg)/.test(c.idn)) dateEl = dateEl || c.inp;
+          }
+          if (!dateEl) {
+            const nonHour = candidates.filter((c) => c.inp !== hourEl && c.h !== true);
+            const empties = nonHour.filter((c) => c.d === 'empty');
+            const maybes = nonHour.filter((c) => c.h === 'maybe');
+            if (empties.length && maybes.length && !hourEl) {
+              hourEl = maybes[0].inp;
+              dateEl = empties[0].inp;
+            } else if (empties.length) dateEl = empties[0].inp;
+            else if (nonHour.length) dateEl = nonHour[0].inp;
+          }
+          if (!hourEl) {
+            for (const c of candidates) {
+              if (c.inp === dateEl) continue;
+              if (c.h === 'maybe' || c.h === true) { hourEl = c.inp; break; }
             }
-            if (dateEl) break;
           }
 
           let dateOk = false;
@@ -258,21 +325,25 @@ def _preencher_081(popup, *, data_ddmmyy: str, on_status: StatusCallback | None 
           let dateAfter = '';
           let hourKept = hourEl ? String(hourEl.value || '') : '';
           if (dateEl) {
+            const idn = norm((dateEl.id || '') + ' ' + (dateEl.name || ''));
+            if (looksJunk(String(dateEl.value || ''), idn) || /sigla|familia/.test(idn)) {
+              dateEl = null;
+            }
+          }
+          if (dateEl) {
             dateBefore = String(dateEl.value || '');
-            // se data e hora no mesmo campo, troca só a parte da data
-            const mHour = dateBefore.match(/(\\d{1,2}:\\d{2}(?::\\d{2})?)/);
             let newVal = dataYy;
             if (dateBefore.includes('/')) {
               newVal = dataYy.slice(0, 2) + '/' + dataYy.slice(2, 4) + '/' + dataYy.slice(4, 6);
             }
+            const mHour = dateBefore.match(/(\\d{1,2}:\\d{2}(?::\\d{2})?)/);
             if (mHour) {
-              // mantém hora original no mesmo campo
               newVal = newVal + ' ' + mHour[1];
               hourKept = mHour[1];
             }
             dateOk = setVal(dateEl, newVal);
             dateAfter = String(dateEl.value || '');
-            // reafirma hora separada intacta
+            // NÃO altera hora separada — só reafirma o valor original
             if (hourEl && hourKept) setVal(hourEl, hourKept);
           }
 
@@ -282,62 +353,42 @@ def _preencher_081(popup, *, data_ddmmyy: str, on_status: StatusCallback | None 
             dateOk,
             labelHit,
             dateId: dateEl ? (dateEl.id || dateEl.name || '') : '',
+            hourId: hourEl ? (hourEl.id || hourEl.name || '') : '',
             dateBefore,
             dateAfter,
             hourKept,
             url: location.pathname || '',
+            pool: uniq.map((i) => (i.id || i.name || '')).slice(0, 12),
           };
         }""",
         data_ddmmyy,
     )
     if not (result or {}).get("excelOk"):
-        status("[081] aviso: Excel=S não confirmado")
+        status("[081] forçando Excel=S")
         popup.evaluate(
             """() => {
-              for (const id of ['t_excel','35','arquivo','t_arq']) {
+              for (const id of ['relatorio_excel','t_excel','arquivo','t_arq']) {
                 const el = document.getElementById(id);
                 if (!el) continue;
                 el.value = 'S';
                 el.dispatchEvent(new Event('change', { bubbles: true }));
-              }
-            }"""
-        )
-    if not (result or {}).get("dateOk"):
-        status("[081] aviso: data previsão não localizada — tentando padrões")
-        popup.evaluate(
-            """(dataYy) => {
-              const ids = ['t_dt_prev','t_previsao','t_dt_ate','t_data_ate','t_dt_cheg','9','10','13','14'];
-              for (const id of ids) {
-                const el = document.getElementById(id);
-                if (!el) continue;
-                const prev = String(el.value || '');
-                const m = prev.match(/(\\d{1,2}:\\d{2}(?::\\d{2})?)/);
-                let v = dataYy;
-                if (prev.includes('/')) v = dataYy.slice(0,2)+'/'+dataYy.slice(2,4)+'/'+dataYy.slice(4,6);
-                if (m) v = v + ' ' + m[1];
-                el.value = v;
-                el.dispatchEvent(new Event('change', { bubbles: true }));
                 return true;
               }
               return false;
-            }""",
-            data_ddmmyy,
+            }"""
         )
     _safe_wait(popup, 300)
     return result or {}
 
 
 def _escolher_opcao_1(popup, status: StatusCallback) -> None:
-    """1. Relacionar as entregas, sem roteirizar."""
     clicked = popup.evaluate(
         """() => {
-          // radio / option value 1
-          const radios = Array.from(document.querySelectorAll('input[type=radio], select, input[type=checkbox]'));
+          const radios = Array.from(document.querySelectorAll('input[type=radio], select'));
           for (const el of radios) {
-            const blob = ((el.value || '') + ' ' + (el.id || '') + ' ' + (el.name || '')).toLowerCase();
             const lab = el.closest('label') || el.parentElement;
             const labT = ((lab && (lab.innerText || lab.textContent)) || '').toLowerCase();
-            if (el.value === '1' || /sem\\s*roteir|relacionar.*entrega/.test(labT) || blob === '1') {
+            if (el.value === '1' || /sem\\s*roteir|relacionar.*entrega/.test(labT)) {
               if (el.tagName === 'SELECT') {
                 el.value = '1';
                 el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -349,7 +400,6 @@ def _escolher_opcao_1(popup, status: StatusCallback) -> None:
               return 'radio:' + (el.id || el.name || '1');
             }
           }
-          // links/botões com texto da opção 1
           const nodes = Array.from(document.querySelectorAll('a, button, td, span, font, label'));
           for (const n of nodes) {
             const t = ((n.innerText || n.textContent || '')).toLowerCase();
@@ -357,11 +407,6 @@ def _escolher_opcao_1(popup, status: StatusCallback) -> None:
               n.click();
               return 'text:' + t.slice(0, 50);
             }
-          }
-          // ajaxEnvia comum
-          if (typeof ajaxEnvia === 'function') {
-            try { ajaxEnvia('1', 0); return 'ajax:1'; } catch (e) {}
-            try { ajaxEnvia('OPC1', 0); return 'ajax:OPC1'; } catch (e2) {}
           }
           return '';
         }"""
@@ -376,27 +421,31 @@ def _escolher_opcao_1(popup, status: StatusCallback) -> None:
 def _gerar_download_081(popup, dest_name: str, status: StatusCallback) -> Path:
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
     dest = DOWNLOAD_DIR / dest_name
+    before = {p.resolve() for p in DOWNLOAD_DIR.glob("*") if p.is_file()}
 
     def _click_gerar() -> str:
         return popup.evaluate(
             """() => {
-              if (typeof ajaxEnvia === 'function') {
-                for (const code of ['REL', 'REL2', 'E1', 'EXCEL', 'GER', '1']) {
-                  try { ajaxEnvia(code, 0); return 'ajax:' + code; } catch (e) {}
-                  try { ajaxEnvia(code, 1); return 'ajax:' + code + ':1'; } catch (e2) {}
+              const nodes = Array.from(document.querySelectorAll(
+                'a, button, input[type=button], input[type=submit], img[onclick], span[onclick]'
+              ));
+              for (const a of nodes) {
+                const oc = (a.getAttribute('onclick') || '');
+                const t = ((a.innerText || a.value || a.title || '') + ' ' + oc).toLowerCase();
+                if (/ajaxenvia\\(['\"]rel/i.test(oc) || /gerar|excel|relat|confirmar|relacionar|\\u25ba|\\u25b6/.test(t)) {
+                  a.click();
+                  return 'click:' + (a.id || a.innerText || oc).slice(0, 60);
                 }
               }
-              const btnIds = ['btn_env_periodo','btn_gerar','btn_ok','act_rel','40'];
+              const btnIds = ['btn_env_periodo','btn_gerar','btn_ok','act_rel','40','btn_rel'];
               for (const id of btnIds) {
                 const el = document.getElementById(id);
                 if (el) { el.click(); return 'id:' + id; }
               }
-              const links = Array.from(document.querySelectorAll('a, button, input[type=button], input[type=submit]'));
-              for (const a of links) {
-                const t = ((a.innerText || a.value || '') + ' ' + (a.getAttribute('onclick') || '')).toLowerCase();
-                if (/gerar|excel|relat|confirmar|relacionar|\\u25ba|\\u25b6|>/.test(t) || /ajaxEnvia/.test(a.getAttribute('onclick') || '')) {
-                  a.click();
-                  return 'click:' + (a.id || a.innerText || '').slice(0, 40);
+              if (typeof ajaxEnvia === 'function') {
+                for (const code of ['REL', 'REL2', 'E1', 'EXCEL', 'GER', '1']) {
+                  try { ajaxEnvia(code, 0); return 'ajax:' + code; } catch (e) {}
+                  try { ajaxEnvia(code, 1); return 'ajax:' + code + ':1'; } catch (e2) {}
                 }
               }
               return '';
@@ -404,7 +453,7 @@ def _gerar_download_081(popup, dest_name: str, status: StatusCallback) -> Path:
         )
 
     try:
-        with popup.expect_download(timeout=180000) as di:
+        with popup.expect_download(timeout=120000) as di:
             clicked = _click_gerar()
             if not clicked:
                 raise RuntimeError("081: botão gerar não encontrado")
@@ -412,8 +461,8 @@ def _gerar_download_081(popup, dest_name: str, status: StatusCallback) -> Path:
         download = di.value
     except Exception as err:
         status(f"[081] expect_download: {err} — varrendo pasta…")
-        _safe_wait(popup, 2000)
-        candid = _latest_download(DOWNLOAD_DIR)
+        _safe_wait(popup, 3000)
+        candid = _latest_new_download(DOWNLOAD_DIR, before)
         if candid is None:
             raise RuntimeError(f"081: download falhou ({err})") from err
         dest = DOWNLOAD_DIR / dest_name
@@ -437,13 +486,22 @@ def _gerar_download_081(popup, dest_name: str, status: StatusCallback) -> Path:
     return dest
 
 
-def _latest_download(folder: Path) -> Path | None:
+def _latest_new_download(folder: Path, before: set[Path]) -> Path | None:
     if not folder.is_dir():
         return None
     cands = []
     for pat in ("*.xlsx", "*.xls", "*.csv", "*.sswweb"):
-        cands.extend(folder.glob(pat))
+        for p in folder.glob(pat):
+            if p.resolve() in before:
+                continue
+            cands.append(p)
     if not cands:
-        return None
+        allc = []
+        for pat in ("*.xlsx", "*.xls", "*.csv", "*.sswweb"):
+            allc.extend(folder.glob(pat))
+        if not allc:
+            return None
+        allc.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        return allc[0]
     cands.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return cands[0]

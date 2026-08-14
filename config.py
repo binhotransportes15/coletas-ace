@@ -16,8 +16,8 @@ GOOGLE_SA_PATH = SECRETS_DIR / "google_service_account.json"
 
 SSW_LOGIN_URL = "https://sistema.ssw.inf.br/bin/ssw0422"
 SSW_78_PATH = "/bin/ssw1257"  # 078 - Descarga de Veículos
-SSW_019_PATH = "/bin/ssw0019"  # 019 - CTRCs disponíveis (reciclagem)
-SSW_081_PATH = "/bin/ssw0081"  # 081 - CTRCs disponíveis para entrega
+SSW_019_PATH = "/bin/ssw0036"  # 019 - CTRCs disponíveis (reciclagem)
+SSW_081_PATH = "/bin/ssw0081"  # 081 - CTRCs disponíveis para entrega (confirmar no Playwright)
 
 DEFAULT_COLETA_OPTION = "50"
 DEFAULT_ENTREGA_OPTION = "36"

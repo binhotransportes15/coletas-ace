@@ -1,26 +1,26 @@
 """Download SSW 019 — CTRCs disponíveis (Transferência / Sem transferência).
 
+Tela real: /bin/ssw0036
 Regras ACE:
-  CTRCs emitidos até = hoje (mantém a hora já presente no formulário)
-  Excel = S
+  CTRCs emitidos até = hoje (mantém a hora do formulário)
+  Excel (relatorio_excel) = S
   Gera e baixa o relatório
 """
 from __future__ import annotations
 
 import os
-import re
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import to_ssw_ddmmyy
 from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
 
-SSW_019_PATH = "/bin/ssw0019"
+# Confirmado na corrida CRT 14/08/2026 (action do menu 19)
+SSW_019_PATH = "/bin/ssw0036"
 SSW_019_MARKERS = (
     "019",
     "19",
@@ -29,7 +29,8 @@ SSW_019_MARKERS = (
     "transfer",
     "emitid",
     "excel",
-    "0019",
+    "0036",
+    "relatorio_excel",
 )
 
 
@@ -63,7 +64,7 @@ def download_reports_019(
     settings: AceSettings | None = None,
     clean_downloads: bool = True,
 ) -> dict[str, Any]:
-    """1 login · 019 · emitidos até hoje · Excel=S → download."""
+    """1 login · 019 (ssw0036) · emitidos até hoje · Excel=S → download."""
     status = on_status or _noop
     ensure_dirs()
     _ensure_playwright_path()
@@ -121,12 +122,11 @@ def download_reports_019(
             except Exception:
                 pass
 
-            # fallback path se blank
             try:
                 url = (popup.url or "").lower()
             except Exception:
                 url = ""
-            if "blank" in url:
+            if "blank" in url or "ssw0036" not in url:
                 status(f"[019] navegando {SSW_019_PATH}…")
                 popup.goto(
                     f"https://sistema.ssw.inf.br{SSW_019_PATH}",
@@ -137,6 +137,11 @@ def download_reports_019(
             status("[019] preenchendo…")
             filled = _preencher_019(popup, data_ddmmyy=data_ddmmyy, on_status=status)
             status(f"[019] form {filled}")
+            if not (filled or {}).get("dateOk"):
+                raise RuntimeError(
+                    "019: não achei o campo de data 'CTRCs emitidos até' "
+                    f"(form={filled})"
+                )
 
             dest_name = f"reciclagem_019_{ts}.xlsx"
             status("[019] gerando Excel…")
@@ -172,17 +177,28 @@ def download_reports_019(
         "period": data_ddmmyy,
         "periodo_fmt": data_ui,
         "download_dir": str(DOWNLOAD_DIR),
+        "programa": SSW_019_PATH,
     }
 
 
 def _preencher_019(popup, *, data_ddmmyy: str, on_status: StatusCallback | None = None) -> dict[str, Any]:
-    """Define data 'emitidos até' = hoje (mantém hora) e Excel = S."""
+    """Define data 'emitidos até' = hoje (mantém hora) e Excel = S.
+
+    IDs reais observados: relatorio_excel; NÃO tocar em l_siglas_familia.
+    """
     status = on_status or _noop
-    _safe_wait(popup, 400)
+    _safe_wait(popup, 500)
+    # Espera o campo Excel conhecido
+    try:
+        popup.locator("#relatorio_excel").wait_for(state="attached", timeout=12000)
+    except Exception:
+        status("[019] aviso: #relatorio_excel ainda não visível")
+
     result = popup.evaluate(
         """(dataYy) => {
           const norm = (s) => String(s || '').toLowerCase()
-            .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');
+            .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+            .replace(/\\xa0/g, ' ');
           const setVal = (el, val) => {
             if (!el) return false;
             el.focus();
@@ -192,84 +208,168 @@ def _preencher_019(popup, *, data_ddmmyy: str, on_status: StatusCallback | None 
             el.dispatchEvent(new Event('blur', { bubbles: true }));
             return true;
           };
-          // Excel = S (vários ids comuns)
-          const excelIds = ['t_excel', 'excel', 't_arq', 'arquivo', 't_arquivo'];
+          const looksHour = (v, idn) => {
+            const s = String(v || '').trim();
+            if (/^\\d{1,2}:\\d{2}(:\\d{2})?$/.test(s)) return true;
+            if (/^\\d{3,4}$/.test(s) && (idn.includes('hora') || idn.includes('hr') || idn.includes('time'))) return true;
+            // campo hora curto típico SSW (hhmm) ao lado da data
+            if (/^\\d{3,4}$/.test(s) && Number(s) <= 2359) return 'maybe';
+            return false;
+          };
+          const looksDate = (v) => {
+            const s = String(v || '').trim();
+            if (!s) return 'empty';
+            if (/\\d{1,2}[\\/.-]\\d{1,2}([\\/.-]\\d{2,4})?/.test(s)) return true;
+            if (/^\\d{4,8}$/.test(s.replace(/\\D/g, ''))) return true;
+            return false;
+          };
+          const looksJunk = (v, idn) => {
+            const s = String(v || '');
+            const id = String(idn || '');
+            if (/sigla|familia|unidade|placa|motor|cliente|destino|origem/.test(id)) return true;
+            // várias siglas: "RIS FTB CPQ..."
+            if (/[A-Za-z]{2,}/.test(s) && /\\s/.test(s)) return true;
+            if ((s.match(/[A-Za-z]/g) || []).length >= 3 && !/excel|arquivo/.test(id)) return true;
+            return false;
+          };
+
+          // Excel = S
           let excelOk = false;
           let excelId = '';
-          for (const id of excelIds) {
+          for (const id of ['relatorio_excel', 't_excel', 'excel', 't_arq', 'arquivo']) {
             const el = document.getElementById(id);
-            if (el) { excelOk = setVal(el, 'S'); excelId = id; break; }
+            if (!el) continue;
+            excelOk = setVal(el, 'S');
+            excelId = id;
+            break;
           }
-          if (!excelOk) {
-            const inputs = Array.from(document.querySelectorAll('input, select'));
-            for (const el of inputs) {
-              const blob = norm((el.id || '') + ' ' + (el.name || '') + ' ' + (el.previousSibling && el.previousSibling.textContent || ''));
-              if (blob.includes('excel') || blob.includes('arquivo')) {
-                excelOk = setVal(el, 'S');
-                excelId = el.id || el.name || 'near-excel';
-                break;
-              }
+
+          // Localiza rótulo "CTRCs emitidos até"
+          const labels = Array.from(document.querySelectorAll('td, label, span, b, font, div'));
+          let labelHit = '';
+          let row = null;
+          let labEl = null;
+          for (const lab of labels) {
+            const t = norm(lab.innerText || lab.textContent || '');
+            if (!t || t.length > 120) continue;
+            if (!(t.includes('emitid') && t.includes('ate'))) continue;
+            labelHit = t.slice(0, 80);
+            labEl = lab;
+            row = lab.closest('tr') || lab.parentElement;
+            break;
+          }
+
+          let dateEl = null;
+          let hourEl = null;
+          const pool = [];
+          const addInputs = (root) => {
+            if (!root) return;
+            if (root.matches && root.matches('input')) pool.push(root);
+            if (root.querySelectorAll) pool.push(...Array.from(root.querySelectorAll('input')));
+          };
+          if (row) {
+            addInputs(row);
+            // linha seguinte (SSW às vezes quebra dia/hora)
+            let n = row.nextElementSibling;
+            for (let i = 0; i < 2 && n; i++, n = n.nextElementSibling) addInputs(n);
+          }
+          if (labEl) {
+            let sib = labEl.nextElementSibling;
+            for (let i = 0; i < 8 && sib; i++, sib = sib.nextElementSibling) addInputs(sib);
+            // td seguinte na mesma tr
+            const td = labEl.closest('td');
+            if (td) {
+              let tdn = td.nextElementSibling;
+              for (let i = 0; i < 4 && tdn; i++, tdn = tdn.nextElementSibling) addInputs(tdn);
+            }
+          }
+          // varredura ampla: inputs com id/name de data perto do texto emitidos
+          for (const inp of Array.from(document.querySelectorAll('input'))) {
+            const idn = norm((inp.id || '') + ' ' + (inp.name || ''));
+            if (/emit|emi_dt|dt_emi|data_emi|dt_ate|data_ate/.test(idn)) pool.push(inp);
+          }
+          const uniq = [...new Set(pool)];
+
+          // 1ª passagem: classificar
+          const candidates = [];
+          for (const inp of uniq) {
+            const idn = norm((inp.id || '') + ' ' + (inp.name || ''));
+            const v = String(inp.value || '');
+            if (looksJunk(v, idn)) continue;
+            const h = looksHour(v, idn);
+            const d = looksDate(v);
+            candidates.push({ inp, idn, v, h, d });
+          }
+
+          // hora: preferência explícita
+          for (const c of candidates) {
+            if (c.h === true) { hourEl = hourEl || c.inp; }
+          }
+          // data: valor que parece data, ou id com dt/data/emi
+          for (const c of candidates) {
+            if (c.inp === hourEl) continue;
+            if (c.d === true || /\\b(dt|data|emi|emit)/.test(c.idn)) {
+              dateEl = dateEl || c.inp;
+            }
+          }
+          // fallback: primeiro não-hora / não-junk; se sobrar um 'maybe' hour e um empty, empty=data
+          if (!dateEl) {
+            const nonHour = candidates.filter((c) => c.inp !== hourEl && c.h !== true);
+            // se há um maybe-hour e um empty, empty é data
+            const empties = nonHour.filter((c) => c.d === 'empty');
+            const maybes = nonHour.filter((c) => c.h === 'maybe');
+            if (empties.length && maybes.length && !hourEl) {
+              hourEl = maybes[0].inp;
+              dateEl = empties[0].inp;
+            } else if (empties.length) {
+              dateEl = empties[0].inp;
+            } else if (nonHour.length) {
+              dateEl = nonHour[0].inp;
+            }
+          }
+          if (!hourEl) {
+            for (const c of candidates) {
+              if (c.inp === dateEl) continue;
+              if (c.h === 'maybe' || c.h === true) { hourEl = c.inp; break; }
             }
           }
 
-          // Campo data: rótulo contendo emitid / ctrcs emitidos
-          const labels = Array.from(document.querySelectorAll('td, label, span, b, font, div'));
-          let dateEl = null;
-          let hourEl = null;
-          let labelHit = '';
-          for (const lab of labels) {
-            const t = norm(lab.innerText || lab.textContent || '');
-            if (!t || t.length > 80) continue;
-            if (!(t.includes('emitid') || (t.includes('ctrc') && t.includes('ate')))) continue;
-            labelHit = t.slice(0, 60);
-            // inputs na mesma linha / próximos
-            let row = lab.closest('tr') || lab.parentElement;
-            const pool = [];
-            if (row) pool.push(...Array.from(row.querySelectorAll('input')));
-            let sib = lab.nextElementSibling;
-            for (let i = 0; i < 4 && sib; i++, sib = sib.nextElementSibling) {
-              if (sib.matches && sib.matches('input')) pool.push(sib);
-              pool.push(...Array.from(sib.querySelectorAll ? sib.querySelectorAll('input') : []));
+          // Varredura global se ainda falhou (ids típicos)
+          if (!dateEl) {
+            for (const id of ['t_dt_emi', 't_emitidos', 't_dt_ate', 't_data_ate', 'dt_emi', 'data_emi']) {
+              const el = document.getElementById(id);
+              if (el && !looksJunk(el.value, id)) { dateEl = el; break; }
             }
-            const uniq = [...new Set(pool)];
-            for (const inp of uniq) {
-              const v = String(inp.value || '');
-              const dig = v.replace(/\\D/g, '');
-              // hora hh:mm ou hhmm
-              if (/^\\d{1,2}:\\d{2}/.test(v) || (dig.length <= 4 && /hora|hr|time/.test(norm(inp.id + ' ' + inp.name)))) {
-                hourEl = hourEl || inp;
-                continue;
-              }
-              if (dig.length >= 4) {
-                dateEl = dateEl || inp;
-              } else if (!dateEl) {
-                dateEl = inp;
-              }
-            }
-            if (dateEl) break;
           }
 
           let dateOk = false;
           let dateBefore = '';
           let dateAfter = '';
-          let hourKept = '';
+          let hourKept = hourEl ? String(hourEl.value || '') : '';
           if (dateEl) {
             dateBefore = String(dateEl.value || '');
-            // preserva hora se estiver no mesmo campo (ex.: DDMMYY HH:MM)
-            const m = dateBefore.match(/(\\d{1,2}:\\d{2}(?::\\d{2})?)/);
-            const hourPart = m ? m[1] : '';
-            let newVal = dataYy;
-            // se o campo usa DD/MM/YY
-            if (dateBefore.includes('/')) {
-              const yy = dataYy.slice(4, 6);
-              newVal = dataYy.slice(0, 2) + '/' + dataYy.slice(2, 4) + '/' + yy;
+            // Nunca escrever em campo de siglas
+            const idn = norm((dateEl.id || '') + ' ' + (dateEl.name || ''));
+            if (looksJunk(dateBefore, idn) || /sigla|familia/.test(idn)) {
+              dateEl = null;
             }
-            if (hourPart && /\\d/.test(dateBefore) && dateBefore.length > 6) {
-              newVal = newVal + ' ' + hourPart;
+          }
+          if (dateEl) {
+            dateBefore = String(dateEl.value || '');
+            let newVal = dataYy;
+            if (dateBefore.includes('/')) {
+              newVal = dataYy.slice(0, 2) + '/' + dataYy.slice(2, 4) + '/' + dataYy.slice(4, 6);
+            }
+            // se data+hora no mesmo campo, preserva hora
+            const mHour = dateBefore.match(/(\\d{1,2}:\\d{2}(?::\\d{2})?)/);
+            if (mHour) {
+              newVal = newVal + ' ' + mHour[1];
+              hourKept = mHour[1];
             }
             dateOk = setVal(dateEl, newVal);
             dateAfter = String(dateEl.value || '');
-            if (hourEl) hourKept = String(hourEl.value || '');
+            // reafirma hora separada (não altera)
+            if (hourEl && hourKept) setVal(hourEl, hourKept);
           }
 
           return {
@@ -278,94 +378,77 @@ def _preencher_019(popup, *, data_ddmmyy: str, on_status: StatusCallback | None 
             dateOk,
             labelHit,
             dateId: dateEl ? (dateEl.id || dateEl.name || '') : '',
+            hourId: hourEl ? (hourEl.id || hourEl.name || '') : '',
             dateBefore,
             dateAfter,
             hourKept,
             url: location.pathname || '',
+            pool: uniq.map((i) => (i.id || i.name || '')).slice(0, 12),
           };
         }""",
         data_ddmmyy,
     )
     if not (result or {}).get("excelOk"):
-        status("[019] aviso: Excel=S não confirmado — tentando ids extras")
+        status("[019] forçando Excel=S em #relatorio_excel")
         popup.evaluate(
             """() => {
-              for (const id of ['t_excel','35','arquivo','t_arq']) {
-                const el = document.getElementById(id);
-                if (!el) continue;
-                el.value = 'S';
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-              }
+              const el = document.getElementById('relatorio_excel');
+              if (!el) return false;
+              el.value = 'S';
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+              return true;
             }"""
-        )
-    if not (result or {}).get("dateOk"):
-        status("[019] aviso: data emitidos não localizada por rótulo — tentando padrões")
-        popup.evaluate(
-            """(dataYy) => {
-              const ids = ['t_dt_emi','t_dt_emit','t_emitidos','t_dt_ate','t_data_ate','9','10'];
-              for (const id of ids) {
-                const el = document.getElementById(id);
-                if (!el) continue;
-                const prev = String(el.value || '');
-                const m = prev.match(/(\\d{1,2}:\\d{2}(?::\\d{2})?)/);
-                let v = dataYy;
-                if (prev.includes('/')) v = dataYy.slice(0,2)+'/'+dataYy.slice(2,4)+'/'+dataYy.slice(4,6);
-                if (m) v = v + ' ' + m[1];
-                el.value = v;
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-                return true;
-              }
-              return false;
-            }""",
-            data_ddmmyy,
         )
     _safe_wait(popup, 300)
     return result or {}
 
 
 def _gerar_download_019(popup, dest_name: str, status: StatusCallback) -> Path:
-    """Clica gerar e salva o download (Excel=S costuma ser direto)."""
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
     dest = DOWNLOAD_DIR / dest_name
 
     def _click_gerar() -> str:
         return popup.evaluate(
             """() => {
+              // Preferir botões/links explícitos antes de ajax genérico
+              const nodes = Array.from(document.querySelectorAll(
+                'a, button, input[type=button], input[type=submit], img[onclick], span[onclick]'
+              ));
+              for (const a of nodes) {
+                const oc = (a.getAttribute('onclick') || '');
+                const t = ((a.innerText || a.value || a.title || '') + ' ' + oc).toLowerCase();
+                if (/ajaxenvia\\(['\"]rel/i.test(oc) || /gerar|excel|relat|confirmar|\\u25ba|\\u25b6/.test(t)) {
+                  a.click();
+                  return 'click:' + (a.id || a.innerText || oc).slice(0, 60);
+                }
+              }
+              const btnIds = ['btn_env_periodo','btn_gerar','btn_ok','act_rel','40','btn_rel'];
+              for (const id of btnIds) {
+                const el = document.getElementById(id);
+                if (el) { el.click(); return 'id:' + id; }
+              }
               if (typeof ajaxEnvia === 'function') {
                 for (const code of ['REL', 'REL2', 'E1', 'EXCEL', 'GER']) {
                   try { ajaxEnvia(code, 0); return 'ajax:' + code; } catch (e) {}
                   try { ajaxEnvia(code, 1); return 'ajax:' + code + ':1'; } catch (e2) {}
                 }
               }
-              const btnIds = ['btn_env_periodo','btn_gerar','btn_ok','act_rel','40'];
-              for (const id of btnIds) {
-                const el = document.getElementById(id);
-                if (el) { el.click(); return 'id:' + id; }
-              }
-              const links = Array.from(document.querySelectorAll('a, button, input[type=button], input[type=submit]'));
-              for (const a of links) {
-                const t = ((a.innerText || a.value || '') + ' ' + (a.getAttribute('onclick') || '')).toLowerCase();
-                if (/gerar|excel|relat|confirmar|\\u25ba|\\u25b6|>/.test(t) || /ajaxEnvia/.test(a.getAttribute('onclick') || '')) {
-                  a.click();
-                  return 'click:' + (a.id || a.innerText || '').slice(0, 40);
-                }
-              }
               return '';
             }"""
         )
 
+    before = {p.resolve() for p in DOWNLOAD_DIR.glob("*") if p.is_file()}
     try:
-        with popup.expect_download(timeout=180000) as di:
+        with popup.expect_download(timeout=120000) as di:
             clicked = _click_gerar()
             if not clicked:
                 raise RuntimeError("019: botão gerar não encontrado")
             status(f"[019] gerar → {clicked}")
         download = di.value
     except Exception as err:
-        # às vezes o arquivo cai na pasta sem expect_download
         status(f"[019] expect_download: {err} — varrendo pasta…")
-        _safe_wait(popup, 2000)
-        candid = _latest_download(DOWNLOAD_DIR)
+        _safe_wait(popup, 3000)
+        candid = _latest_new_download(DOWNLOAD_DIR, before)
         if candid is None:
             raise RuntimeError(f"019: download falhou ({err})") from err
         dest = DOWNLOAD_DIR / dest_name
@@ -389,13 +472,23 @@ def _gerar_download_019(popup, dest_name: str, status: StatusCallback) -> Path:
     return dest
 
 
-def _latest_download(folder: Path) -> Path | None:
+def _latest_new_download(folder: Path, before: set[Path]) -> Path | None:
     if not folder.is_dir():
         return None
     cands = []
     for pat in ("*.xlsx", "*.xls", "*.csv", "*.sswweb"):
-        cands.extend(folder.glob(pat))
+        for p in folder.glob(pat):
+            if p.resolve() in before:
+                continue
+            cands.append(p)
     if not cands:
-        return None
+        # fallback: mais recente qualquer
+        allc = []
+        for pat in ("*.xlsx", "*.xls", "*.csv", "*.sswweb"):
+            allc.extend(folder.glob(pat))
+        if not allc:
+            return None
+        allc.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        return allc[0]
     cands.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return cands[0]
