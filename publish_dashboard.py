@@ -183,7 +183,7 @@ def publish_emissao_local(*, on_status: StatusCallback | None = None) -> dict[st
 def _copy_reciclagem_to_dashboard() -> dict[str, str]:
     """Espelha JSON/CSVs de reciclagem no dashboard (TV local)."""
     from local_store import persist_sector
-    from parser_ssw019 import RESUMO_019_CSV, TOP_CLIENTE_019_CSV, TOP_CTE_019_CSV
+    from parser_ssw019 import POR_FILIAL_019_CSV, RESUMO_019_CSV, TOP_CTE_019_CSV
     from parser_ssw081 import RESUMO_081_CSV, TOP_CLIENTE_081_CSV, TOP_CTE_081_CSV
 
     data_dir = DASHBOARD_DIR / "data" / "reciclagem"
@@ -199,7 +199,7 @@ def _copy_reciclagem_to_dashboard() -> dict[str, str]:
     for src, name in (
         (RESUMO_019_CSV, "resumo_019.csv"),
         (TOP_CTE_019_CSV, "top_cte_019.csv"),
-        (TOP_CLIENTE_019_CSV, "top_cliente_019.csv"),
+        (POR_FILIAL_019_CSV, "por_filial_019.csv"),
         (RESUMO_081_CSV, "resumo_081.csv"),
         (TOP_CTE_081_CSV, "top_cte_081.csv"),
         (TOP_CLIENTE_081_CSV, "top_cliente_081.csv"),

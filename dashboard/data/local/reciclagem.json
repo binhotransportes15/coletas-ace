@@ -1,11 +1,11 @@
 {
   "setor": "reciclagem",
-  "updated_at": "2026-08-14T16:49:47",
+  "updated_at": "2026-08-14T17:08:07",
   "sem_transferencia": {
     "programa": "019",
     "titulo": "SEM TRANSFERÊNCIA",
     "resumo": {
-      "atualizado": "14/08/2026 16:47",
+      "atualizado": "14/08/2026 17:08",
       "periodo": "14/08/2026",
       "qtd": 260,
       "frete": 239605.87000000055,
@@ -13,117 +13,228 @@
       "peso": 227321.147,
       "peso_fmt": "227.321"
     },
-    "top_cte": [
+    "por_filial": [
       {
-        "ctrc": "N",
-        "cliente": "",
-        "dias_atraso": 0,
-        "ultima_ocorrencia": ""
+        "cidade": "ANAPOLIS",
+        "uf": "GO",
+        "cidade_uf": "ANAPOLIS/GO",
+        "filial": "APS",
+        "qtd": 27,
+        "frete": 26371.699999999997,
+        "peso": 26414.789999999997,
+        "dias_max": 0
       },
       {
-        "ctrc": "N",
-        "cliente": "",
-        "dias_atraso": 0,
-        "ultima_ocorrencia": ""
+        "cidade": "GOIANIA",
+        "uf": "GO",
+        "cidade_uf": "GOIANIA/GO",
+        "filial": "GYN",
+        "qtd": 22,
+        "frete": 13949.360000000002,
+        "peso": 8470.348,
+        "dias_max": 60
       },
       {
-        "ctrc": "N",
-        "cliente": "",
-        "dias_atraso": 0,
-        "ultima_ocorrencia": ""
+        "cidade": "ITATIAIA",
+        "uf": "RJ",
+        "cidade_uf": "ITATIAIA/RJ",
+        "filial": "TCT",
+        "qtd": 16,
+        "frete": 3347.01,
+        "peso": 121.11199999999998,
+        "dias_max": 10
       },
       {
-        "ctrc": "N",
-        "cliente": "",
-        "dias_atraso": 0,
-        "ultima_ocorrencia": ""
+        "cidade": "ALTAMIRA",
+        "uf": "PA",
+        "cidade_uf": "ALTAMIRA/PA",
+        "filial": "ATM",
+        "qtd": 16,
+        "frete": 7913.9000000000015,
+        "peso": 2796.331,
+        "dias_max": 0
       },
       {
-        "ctrc": "N",
-        "cliente": "",
-        "dias_atraso": 0,
-        "ultima_ocorrencia": ""
+        "cidade": "MARABA",
+        "uf": "PA",
+        "cidade_uf": "MARABA/PA",
+        "filial": "MAB",
+        "qtd": 13,
+        "frete": 10575.619999999999,
+        "peso": 3656.2700000000004,
+        "dias_max": 0
       },
       {
-        "ctrc": "N",
-        "cliente": "",
-        "dias_atraso": 0,
-        "ultima_ocorrencia": ""
+        "cidade": "SALTO",
+        "uf": "SP",
+        "cidade_uf": "SALTO/SP",
+        "filial": "LEO",
+        "qtd": 11,
+        "frete": 7818.500000000001,
+        "peso": 7410.184,
+        "dias_max": 129
       },
       {
-        "ctrc": "N",
-        "cliente": "",
-        "dias_atraso": 0,
-        "ultima_ocorrencia": ""
+        "cidade": "HORTOLANDIA",
+        "uf": "SP",
+        "cidade_uf": "HORTOLANDIA/SP",
+        "filial": "LEO",
+        "qtd": 10,
+        "frete": 4147.1900000000005,
+        "peso": 4928.791,
+        "dias_max": 63
       },
       {
-        "ctrc": "N",
-        "cliente": "",
-        "dias_atraso": 0,
-        "ultima_ocorrencia": ""
+        "cidade": "ITUPEVA",
+        "uf": "SP",
+        "cidade_uf": "ITUPEVA/SP",
+        "filial": "LEO",
+        "qtd": 10,
+        "frete": 5018.860000000002,
+        "peso": 11578.09,
+        "dias_max": 4
       },
       {
-        "ctrc": "N",
-        "cliente": "",
-        "dias_atraso": 0,
-        "ultima_ocorrencia": ""
+        "cidade": "CAMPO GRANDE",
+        "uf": "MS",
+        "cidade_uf": "CAMPO GRANDE/MS",
+        "filial": "KMS",
+        "qtd": 9,
+        "frete": 8962.48,
+        "peso": 4062.017,
+        "dias_max": 0
       },
       {
-        "ctrc": "N",
-        "cliente": "",
-        "dias_atraso": 0,
-        "ultima_ocorrencia": ""
+        "cidade": "JARINU",
+        "uf": "SP",
+        "cidade_uf": "JARINU/SP",
+        "filial": "LEO",
+        "qtd": 8,
+        "frete": 11940.660000000002,
+        "peso": 20603.999999999996,
+        "dias_max": 157
+      },
+      {
+        "cidade": "GUARULHOS",
+        "uf": "SP",
+        "cidade_uf": "GUARULHOS/SP",
+        "filial": "SPL",
+        "qtd": 6,
+        "frete": 1043.85,
+        "peso": 578.0029999999999,
+        "dias_max": 43
+      },
+      {
+        "cidade": "CARIACICA",
+        "uf": "ES",
+        "cidade_uf": "CARIACICA/ES",
+        "filial": "VIX",
+        "qtd": 5,
+        "frete": 4579.63,
+        "peso": 2944.5050000000006,
+        "dias_max": 2
       }
     ],
-    "top_cliente": [
+    "top_cte": [
       {
-        "cliente": "(sem cliente)",
-        "dias_max": 0,
-        "qtd": 241,
-        "frete": 231027.1100000005,
-        "peso": 215060.432
+        "ctrc": "GYN059644-2",
+        "filial": "CPQ",
+        "cidade": "BRAGANCA PAULISTA",
+        "uf": "SP",
+        "cidade_uf": "BRAGANCA PAULISTA/SP",
+        "cliente": "ELAINE TAVELLA DE OLIVEIRA TAV",
+        "dias_atraso": 185,
+        "ultima_ocorrencia": "CHEGADA NA UNIDADE"
       },
       {
-        "cliente": "TRN",
-        "dias_max": 0,
-        "qtd": 9,
-        "frete": 0.09,
-        "peso": 3932.040000000001
+        "ctrc": "VIX006059-3",
+        "filial": "RIS",
+        "cidade": "JARINU",
+        "uf": "SP",
+        "cidade_uf": "JARINU/SP",
+        "cliente": "ESSITY DO BRASIL INDUSTRIA E C",
+        "dias_atraso": 157,
+        "ultima_ocorrencia": "AGUARDANDO AGENDAMENTO DO CLIENTE"
       },
       {
-        "cliente": "CGB",
-        "dias_max": 0,
-        "qtd": 4,
-        "frete": 0.04,
-        "peso": 1058.0900000000001
+        "ctrc": "GYN061042-9",
+        "filial": "RIS",
+        "cidade": "SOCORRO",
+        "uf": "SP",
+        "cidade_uf": "SOCORRO/SP",
+        "cliente": "LOJAS UNIAO LTDA",
+        "dias_atraso": 135,
+        "ultima_ocorrencia": "ENTREGA AGENDADA"
       },
       {
-        "cliente": "XUFVD",
-        "dias_max": 0,
-        "qtd": 2,
-        "frete": 8273.0,
-        "peso": 7176.095
+        "ctrc": "SPO309655-6",
+        "filial": "LEO",
+        "cidade": "SALTO",
+        "uf": "SP",
+        "cidade_uf": "SALTO/SP",
+        "cliente": "DECOR COLORS TINTAS LTDA",
+        "dias_atraso": 129,
+        "ultima_ocorrencia": "ENTREGA PREJUDICADA PELO HORARIO"
       },
       {
-        "cliente": "BSB",
-        "dias_max": 0,
-        "qtd": 2,
-        "frete": 0.02,
-        "peso": 3.01
+        "ctrc": "SPO310909-7",
+        "filial": "LEO",
+        "cidade": "SAO JOAO DA BOA VISTA",
+        "uf": "SP",
+        "cidade_uf": "SAO JOAO DA BOA VISTA/SP",
+        "cliente": "MANTIQUEIRA DISTR.PROD DE HIGI",
+        "dias_atraso": 123,
+        "ultima_ocorrencia": "LIBERADO PELO CR"
       },
       {
-        "cliente": "PAA",
-        "dias_max": 0,
-        "qtd": 1,
-        "frete": 0.01,
-        "peso": 0.01
+        "ctrc": "SPO311765-1",
+        "filial": "LEO",
+        "cidade": "JARINU",
+        "uf": "SP",
+        "cidade_uf": "JARINU/SP",
+        "cliente": "ESSITY DO BRASIL INDUSTRIA E C",
+        "dias_atraso": 109,
+        "ultima_ocorrencia": "FALTA COM BUSCA / RECONFERENCIA"
       },
       {
-        "cliente": "CROSS",
-        "dias_max": 0,
-        "qtd": 1,
-        "frete": 305.6,
-        "peso": 91.47
+        "ctrc": "SPO311764-2",
+        "filial": "LEO",
+        "cidade": "JARINU",
+        "uf": "SP",
+        "cidade_uf": "JARINU/SP",
+        "cliente": "ESSITY DO BRASIL INDUSTRIA E C",
+        "dias_atraso": 109,
+        "ultima_ocorrencia": "FALTA COM BUSCA / RECONFERENCIA"
+      },
+      {
+        "ctrc": "SPO311559-3",
+        "filial": "LEO",
+        "cidade": "SOCORRO",
+        "uf": "SP",
+        "cidade_uf": "SOCORRO/SP",
+        "cliente": "LOJAS UNIAO LTDA",
+        "dias_atraso": 109,
+        "ultima_ocorrencia": "IMAGENS OPERACIONAIS CARGA & DESCARGA / OUTROS"
+      },
+      {
+        "ctrc": "SPO300602-6",
+        "filial": "FEC",
+        "cidade": "SAO BERNARDO DO CAMPO",
+        "uf": "SP",
+        "cidade_uf": "SAO BERNARDO DO CAMPO/SP",
+        "cliente": "EVER GREEN IND E COM LTDA",
+        "dias_atraso": 108,
+        "ultima_ocorrencia": "IMAGENS OPERACIONAIS CARGA & DESCARGA / OUTROS"
+      },
+      {
+        "ctrc": "SPO312713-3",
+        "filial": "LEO",
+        "cidade": "SALTO",
+        "uf": "SP",
+        "cidade_uf": "SALTO/SP",
+        "cliente": "LOJAS CEM S/A",
+        "dias_atraso": 106,
+        "ultima_ocorrencia": "DOCUMENTO DE TRANSPORTE EMITIDO"
       }
     ]
   },

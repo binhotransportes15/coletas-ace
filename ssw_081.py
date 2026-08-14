@@ -347,174 +347,132 @@ def _preencher_081(popup, *, data_ddmmyy: str, on_status: StatusCallback | None 
     return result or {}
 
 
-def _inspect_opcao1(popup) -> dict[str, Any]:
-    """Descobre se a opção 1 é radio (seleção) ou link (já dispara)."""
-    try:
-        return popup.evaluate(
-            """() => {
-              const norm = (s) => String(s || '').toLowerCase()
-                .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
-                .replace(/\\xa0/g, ' ');
-              // radio / checkbox
-              for (const el of Array.from(document.querySelectorAll('input[type=radio], input[type=checkbox]'))) {
-                const lab = el.closest('label') || el.parentElement;
-                const labT = norm((lab && (lab.innerText || lab.textContent)) || '');
-                if (el.value === '1' || /sem\\s*roteir|relacionar.*entrega/.test(labT)) {
-                  return {
-                    kind: 'radio',
-                    id: el.id || el.name || '',
-                    value: el.value || '',
-                  };
-                }
-              }
-              // link / âncora com texto da opção 1
-              for (const n of Array.from(document.querySelectorAll('a, span, font, td, button'))) {
-                const t = norm(n.innerText || n.textContent || '');
-                if (!/1\\s*[.\\-)].*relacionar|relacionar as entregas.*sem roteir|sem roteirizar/.test(t)) {
-                  continue;
-                }
-                return {
-                  kind: 'link',
-                  id: n.id || '',
-                  tag: n.tagName || '',
-                  onclick: (n.getAttribute('onclick') || '').slice(0, 120),
-                  text: t.slice(0, 60),
-                };
-              }
-              return { kind: 'none' };
-            }"""
-        ) or {"kind": "none"}
-    except Exception:
-        return {"kind": "none"}
-
-
-def _select_opcao1_radio(popup) -> bool:
-    return bool(
-        popup.evaluate(
-            """() => {
-              const norm = (s) => String(s || '').toLowerCase()
-                .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');
-              for (const el of Array.from(document.querySelectorAll('input[type=radio], input[type=checkbox]'))) {
-                const lab = el.closest('label') || el.parentElement;
-                const labT = norm((lab && (lab.innerText || lab.textContent)) || '');
-                if (el.value === '1' || /sem\\s*roteir|relacionar.*entrega/.test(labT)) {
-                  el.checked = true;
-                  el.dispatchEvent(new Event('change', { bubbles: true }));
-                  return true;
-                }
-              }
-              return false;
-            }"""
-        )
-    )
-
-
-def _click_opcao1_link(popup) -> str:
-    return str(
-        popup.evaluate(
-            """() => {
-              const norm = (s) => String(s || '').toLowerCase()
-                .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
-                .replace(/\\xa0/g, ' ');
-              for (const n of Array.from(document.querySelectorAll('a, span, font, td, button'))) {
-                const t = norm(n.innerText || n.textContent || '');
-                if (!/1\\s*[.\\-)].*relacionar|relacionar as entregas.*sem roteir|sem roteirizar/.test(t)) {
-                  continue;
-                }
-                n.click();
-                return 'opcao1:' + t.slice(0, 50);
-              }
-              return '';
-            }"""
-        )
-        or ""
-    )
-
-
-def _click_btn_envia(popup) -> str:
-    return str(
-        popup.evaluate(
-            """() => {
-              const btn = document.getElementById('btn_envia');
-              if (btn) { btn.click(); return 'btn_envia'; }
-              for (const id of ['btn_env_periodo','btn_gerar','btn_ok','act_rel','btn_rel']) {
-                const el = document.getElementById(id);
-                if (el) { el.click(); return id; }
-              }
-              if (typeof ajaxEnvia === 'function') {
-                try { ajaxEnvia('REL', 0); return 'ajax:REL'; } catch (e) {}
-              }
-              return '';
-            }"""
-        )
-        or ""
-    )
-
-
-def _save_download_obj(download, dest: Path) -> Path:
-    suggested = (download.suggested_filename or "").lower()
-    out = dest
-    if suggested.endswith(".csv"):
-        out = dest.with_suffix(".csv")
-    elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
-        out = dest.with_suffix(".xls")
-    elif suggested.endswith(".sswweb"):
-        out = dest.with_suffix(".sswweb")
-    elif suggested.endswith(".xlsx"):
-        out = dest.with_suffix(".xlsx")
-    download.save_as(str(out))
-    return out
-
-
 def _baixar_081_opcao1(popup, *, context, dest_name: str, status: StatusCallback) -> Path:
-    """Na 081, a opção 1 (link) costuma disparar o Excel — NÃO clicar btn_envia depois.
+    """081: #btn_envia = opção 1 = ajaxEnvia('ENV',0).
 
-    O hang anterior era: clicar opção 1 (já gera) e depois esperar download no btn_envia.
+    O download vem no CONTEXT (igual coleta 50), não em popup.expect_download —
+    por isso ficava minutos parado.
     """
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
     dest = DOWNLOAD_DIR / dest_name
     before = {p.resolve() for p in DOWNLOAD_DIR.glob("*") if p.is_file()}
-    info = _inspect_opcao1(popup)
-    status(f"[081] opção 1 tipo={info}")
+    before_mtime = {p.name: p.stat().st_mtime for p in DOWNLOAD_DIR.glob("*") if p.is_file()}
 
-    def _from_folder_or_raise(err: Exception) -> Path:
-        status(f"[081] expect_download: {err} — varrendo pasta…")
-        _safe_wait(popup, 2500)
-        candid = _latest_new_download(DOWNLOAD_DIR, before)
-        if candid is None:
-            raise RuntimeError(f"081: download falhou ({err})") from err
+    def _trigger() -> str:
+        # Confirmado no CRT: btn_envia onclick = ajaxEnvia('ENV', 0)
+        return str(
+            popup.evaluate(
+                """() => {
+                  if (typeof ajaxEnvia === 'function') {
+                    try { ajaxEnvia('ENV', 0); return 'ajax:ENV'; } catch (e) {}
+                  }
+                  const btn = document.getElementById('btn_envia');
+                  if (btn) { btn.click(); return 'btn_envia'; }
+                  const norm = (s) => String(s || '').toLowerCase()
+                    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+                    .replace(/\\xa0/g, ' ');
+                  for (const n of Array.from(document.querySelectorAll('a, button, span, font'))) {
+                    const t = norm(n.innerText || n.textContent || '');
+                    const oc = n.getAttribute('onclick') || '';
+                    if (/ajaxenvia\\(['\"]env/i.test(oc)) {
+                      n.click();
+                      return 'click:ENV';
+                    }
+                    if (/1\\s*[.\\-)].*relacionar|sem roteirizar/.test(t)) {
+                      n.click();
+                      return 'opcao1:' + t.slice(0, 40);
+                    }
+                  }
+                  return '';
+                }"""
+            )
+            or ""
+        )
+
+    def _poll(wait_s: float) -> Path | None:
+        deadline = time.time() + wait_s
+        while time.time() < deadline:
+            for p in DOWNLOAD_DIR.glob("*"):
+                if not p.is_file():
+                    continue
+                if p.suffix.lower() not in {".xlsx", ".xls", ".csv", ".sswweb"}:
+                    continue
+                mtime = p.stat().st_mtime
+                if p.resolve() in before and mtime <= before_mtime.get(p.name, 0) + 0.2:
+                    continue
+                if p.stat().st_size < 32:
+                    continue
+                out = dest.with_suffix(p.suffix.lower())
+                try:
+                    if p.resolve() != out.resolve():
+                        if out.exists():
+                            out.unlink()
+                        p.replace(out)
+                    return out
+                except Exception:
+                    return p
+            time.sleep(0.4)
+        return None
+
+    def _save(download) -> Path:
+        suggested = (download.suggested_filename or "").lower()
         out = dest
-        if candid.suffix.lower() in {".xlsx", ".xls", ".csv", ".sswweb"}:
-            out = dest.with_suffix(candid.suffix.lower() if candid.suffix else ".xlsx")
-        try:
-            if candid.resolve() != out.resolve():
-                candid.replace(out)
-            return out
-        except Exception:
-            return candid
+        if suggested.endswith(".csv"):
+            out = dest.with_suffix(".csv")
+        elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
+            out = dest.with_suffix(".xls")
+        elif suggested.endswith(".sswweb"):
+            out = dest.with_suffix(".sswweb")
+        elif suggested.endswith(".xlsx"):
+            out = dest.with_suffix(".xlsx")
+        download.save_as(str(out))
+        return out
 
-    def _try_btn_envia(pg, *, label: str, timeout_ms: int = 120000) -> Path | None:
-        try:
-            with pg.expect_download(timeout=timeout_ms) as di:
-                clicked = _click_btn_envia(pg)
-                if not clicked:
-                    return None
-                status(f"[081] gerar → {label}:{clicked}")
-            return _save_download_obj(di.value, dest)
-        except Exception:
-            return None
+    status("[081] opção 1 = ENV → download no context")
+    try:
+        with context.expect_event("download", timeout=90000) as di:
+            how = _trigger()
+            if not how:
+                raise RuntimeError("081: btn_envia / ENV não encontrado")
+            status(f"[081] gerar → {how} (aguardando arquivo…)")
+        path = _save(di.value)
+        status(f"[081] download OK · {path.name}")
+        return path
+    except Exception as err:
+        status(f"[081] sem evento download ({err}) — poll/aba…")
+        got = _poll(3.0)
+        if got:
+            status(f"[081] arquivo no disco · {got.name}")
+            return got
 
-    def _scan_other_pages() -> Path | None:
-        for pg in list(context.pages):
-            if pg is popup:
-                continue
-            try:
-                got = _try_btn_envia(pg, label="aba", timeout_ms=20000)
-                if got is not None:
-                    return got
-                with pg.expect_download(timeout=10000) as di2:
-                    pg.evaluate(
+    pages_before = list(context.pages)
+    new_page = None
+    try:
+        with context.expect_page(timeout=12000) as pi:
+            how = _trigger()
+            status(f"[081] re-gerar(aba) → {how}")
+        new_page = pi.value
+    except Exception:
+        after = [p for p in context.pages if p not in pages_before]
+        if after:
+            new_page = after[-1]
+
+    if new_page is not None:
+        try:
+            new_page.wait_for_load_state("domcontentloaded", timeout=15000)
+        except Exception:
+            pass
+        try:
+            with context.expect_event("download", timeout=30000) as di:
+                # se a aba já disparou, só espera; senão tenta ENV de novo na aba
+                try:
+                    new_page.evaluate(
                         """() => {
+                          if (typeof ajaxEnvia === 'function') {
+                            try { ajaxEnvia('ENV', 0); return true; } catch (e) {}
+                          }
+                          const b = document.getElementById('btn_envia');
+                          if (b) { b.click(); return true; }
                           const a = document.querySelector(
                             'a[href*=\".xls\"], a[href*=\".csv\"], a[href*=\".sswweb\"], a[download]'
                           );
@@ -522,56 +480,26 @@ def _baixar_081_opcao1(popup, *, context, dest_name: str, status: StatusCallback
                           return false;
                         }"""
                     )
-                return _save_download_obj(di2.value, dest)
+                except Exception:
+                    pass
+            path = _save(di.value)
+            try:
+                new_page.close()
             except Exception:
-                continue
-        return None
+                pass
+            return path
+        except Exception:
+            try:
+                new_page.close()
+            except Exception:
+                pass
 
-    # Radio: marca e gera com btn_envia (padrão 019)
-    if info.get("kind") == "radio":
-        _select_opcao1_radio(popup)
-        status("[081] opção 1 marcada (radio) → btn_envia")
-        got = _try_btn_envia(popup, label="radio")
-        if got is not None:
-            return got
-        other = _scan_other_pages()
-        if other is not None:
-            return other
-        return _from_folder_or_raise(RuntimeError("081: timeout radio/btn_envia"))
-
-    # Link / none: captura o download NO clique da opção 1 (não no btn_envia)
-    if info.get("kind") == "link":
-        status("[081] opção 1 é link → download nesse clique (sem btn_envia)")
-        try:
-            with popup.expect_download(timeout=120000) as di:
-                clicked = _click_opcao1_link(popup)
-                if not clicked:
-                    raise RuntimeError("081: link opção 1 não encontrado")
-                status(f"[081] gerar → {clicked}")
-            return _save_download_obj(di.value, dest)
-        except Exception as err:
-            # Opção 1 pode só navegar p/ outra tela — aí sim btn_envia
-            status(f"[081] sem download no link ({err}) — tentando btn_envia na tela atual")
-            candid = _latest_new_download(DOWNLOAD_DIR, before)
-            if candid is not None:
-                return _from_folder_or_raise(err)
-            got = _try_btn_envia(popup, label="pos-link")
-            if got is not None:
-                return got
-            other = _scan_other_pages()
-            if other is not None:
-                return other
-            return _from_folder_or_raise(err)
-
-    # Nenhum controle óbvio: só btn_envia
-    status("[081] opção 1 não detectada → btn_envia direto")
-    got = _try_btn_envia(popup, label="direto")
-    if got is not None:
+    status("[081] última varredura na pasta de downloads…")
+    got = _poll(10.0)
+    if got:
+        status(f"[081] arquivo no disco · {got.name}")
         return got
-    other = _scan_other_pages()
-    if other is not None:
-        return other
-    return _from_folder_or_raise(RuntimeError("081: opção 1/btn_envia sem download"))
+    raise RuntimeError("081: timeout sem download (ENV)")
 
 
 def _latest_new_download(folder: Path, before: set[Path]) -> Path | None:

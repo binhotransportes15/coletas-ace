@@ -1,35 +1,43 @@
 """Parser Excel SSW 019 — CTRCs disponíveis (Sem transferência).
 
-Colunas fixas (Excel):
-  C=CTRC · H=CLIENTE · N=DATA PREVISTA · Z=ULTIMA OCORRENCIA
-Frete/peso: descobertos pelo cabeçalho quando existirem.
+Layout real (sswweb / Excel):
+  A=DESTINO · B=CTRC · E=PREV DE ENTREGA · L=DESTINATARIO · M=CIDADE · N=UF · X=OCORRENCIA
+Torres: agrega por CIDADE/UF (não pela sigla).
+Frete/peso: descobertos pelo cabeçalho.
 """
 from __future__ import annotations
 
 import csv
 import json
 import re
-from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 from config import BASE_DIR, ensure_dirs
+from siglas_filiais import label_origem, normalizar_sigla
 
 CACHE_DIR = BASE_DIR / "data" / "cache"
 ITENS_019_CSV = CACHE_DIR / "itens_019.csv"
 RESUMO_019_CSV = CACHE_DIR / "resumo_019.csv"
 TOP_CTE_019_CSV = CACHE_DIR / "top_cte_019.csv"
-TOP_CLIENTE_019_CSV = CACHE_DIR / "top_cliente_019.csv"
+POR_FILIAL_019_CSV = CACHE_DIR / "por_filial_019.csv"
 LAST_019_JSON = CACHE_DIR / "last_run_019.json"
 
-COL_CTRC = "C"
-COL_CLIENTE = "H"
-COL_PREVISTA = "N"
-COL_OCORRENCIA = "Z"
+COL_FILIAL = "A"
+COL_CTRC = "B"
+COL_PREVISTA = "E"
+COL_CLIENTE = "L"
+COL_CIDADE = "M"
+COL_UF = "N"
+COL_OCORRENCIA = "X"
 
 ITEM_FIELDS = [
     "ctrc",
+    "filial",
+    "cidade",
+    "uf",
+    "cidade_uf",
     "cliente",
     "data_prevista",
     "dias_atraso",
@@ -46,10 +54,20 @@ RESUMO_FIELDS = [
     "peso",
     "peso_fmt",
 ]
-TOP_CTE_FIELDS = ["ctrc", "cliente", "dias_atraso", "ultima_ocorrencia"]
-TOP_CLIENTE_FIELDS = ["cliente", "dias_max", "qtd", "frete", "peso"]
+TOP_CTE_FIELDS = [
+    "ctrc",
+    "filial",
+    "cidade",
+    "uf",
+    "cidade_uf",
+    "cliente",
+    "dias_atraso",
+    "ultima_ocorrencia",
+]
+POR_FILIAL_FIELDS = ["cidade", "uf", "cidade_uf", "filial", "qtd", "frete", "peso", "dias_max"]
 
 TOP_N = 10
+TOP_CIDADES = 12
 
 
 def _col_letter_to_idx(letters: str) -> int:
@@ -142,14 +160,39 @@ def _norm_header(h: Any) -> str:
     return re.sub(r"[^a-z0-9]+", " ", t).strip()
 
 
-def _find_metric_cols(headers: list[Any]) -> dict[str, int]:
-    """Frete/peso pelo cabeçalho (fallback se letras não forem confiáveis)."""
-    out: dict[str, int] = {}
+def _find_cols(headers: list[Any]) -> dict[str, int]:
+    out: dict[str, int] = {
+        "filial": _col_letter_to_idx(COL_FILIAL),
+        "ctrc": _col_letter_to_idx(COL_CTRC),
+        "prevista": _col_letter_to_idx(COL_PREVISTA),
+        "cliente": _col_letter_to_idx(COL_CLIENTE),
+        "cidade": _col_letter_to_idx(COL_CIDADE),
+        "uf": _col_letter_to_idx(COL_UF),
+        "ocorrencia": _col_letter_to_idx(COL_OCORRENCIA),
+    }
+    prev_from_entreg = False
     for i, h in enumerate(headers):
         n = _norm_header(h)
         if not n:
             continue
-        if "frete" in n or n in {"vlr frete", "valor frete", "vl frete"}:
+        if n in {"destino", "filial", "unidade", "unid"} or n.startswith("destino"):
+            out["filial"] = i
+        elif "ctrc" in n or n.startswith("ctrc") or "gai" in n:
+            out["ctrc"] = i
+        elif "prev" in n and "entreg" in n:
+            out["prevista"] = i
+            prev_from_entreg = True
+        elif (not prev_from_entreg) and "prev" in n and ("cheg" in n or n.startswith("prev")):
+            out["prevista"] = i
+        elif n in {"destinatario", "cliente", "recebedor"} or "destinat" in n:
+            out["cliente"] = i
+        elif n == "cidade" or n.startswith("cidade"):
+            out["cidade"] = i
+        elif n in {"uf", "estado"}:
+            out["uf"] = i
+        elif "ocorr" in n:
+            out["ocorrencia"] = i
+        elif "frete" in n or n in {"vlr frete", "valor frete", "vl frete"}:
             out.setdefault("frete", i)
         elif n == "peso" or n.startswith("peso ") or "peso real" in n or "peso taxado" in n:
             out.setdefault("peso", i)
@@ -173,7 +216,6 @@ def _parse_date(value: Any) -> date | None:
     text = _clean(value)
     if not text:
         return None
-    # extrai dd/mm/yyyy ou dd/mm/yy
     m = re.search(r"(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})", text)
     if m:
         dd, mm, yy = int(m.group(1)), int(m.group(2)), int(m.group(3))
@@ -201,8 +243,33 @@ def _dias_atraso(prevista: date | None, hoje: date | None = None) -> int:
     if prevista is None:
         return 0
     ref = hoje or date.today()
-    delta = (ref - prevista).days
-    return max(0, int(delta))
+    return max(0, int((ref - prevista).days))
+
+
+def _looks_ctrc(value: str) -> bool:
+    t = str(value or "").strip().upper()
+    if not t or t in {"N", "S", "X", "T", "CTRC", "CTRC/GAI/PAL"}:
+        return False
+    if re.match(r"^[A-Z]{2,4}\d{4,}(-\d)?$", t):
+        return True
+    if re.search(r"\d{5,}", t) and len(t) >= 6:
+        return True
+    return False
+
+
+def _cidade_uf(cidade: str, uf: str, filial: str = "") -> str:
+    c = _clean(cidade).upper()
+    u = _clean(uf).upper()
+    if c and u:
+        return f"{c}/{u}"
+    if c:
+        return c
+    if u:
+        return u
+    lab = label_origem(filial)
+    if lab and u:
+        return f"{lab}/{u}"
+    return lab or filial or "—"
 
 
 def _write_csv(path: Path, fields: list[str], rows: list[dict[str, Any]]) -> None:
@@ -225,6 +292,50 @@ def parse_excel_019(path: Path | str) -> list[dict[str, Any]]:
     return _parse_text_019(p)
 
 
+def _row_to_item(cells: list[Any], cols: dict[str, int], hoje: date) -> dict[str, Any] | None:
+    def _at(key: str) -> Any:
+        idx = cols.get(key, -1)
+        if idx is None or idx < 0 or idx >= len(cells):
+            return ""
+        return cells[idx]
+
+    ctrc = _clean(_at("ctrc"))
+    if not _looks_ctrc(ctrc):
+        return None
+    filial = normalizar_sigla(_clean(_at("filial")))
+    if not filial:
+        m = re.match(r"^([A-Z]{2,4})\d", ctrc.upper())
+        filial = m.group(1) if m else ""
+    cidade = _clean(_at("cidade")).upper()
+    uf = _clean(_at("uf")).upper()
+    if not cidade:
+        cidade = (label_origem(filial) or "").upper()
+    cidade_uf = _cidade_uf(cidade, uf, filial)
+    cliente = _clean(_at("cliente"))
+    raw_prev = _at("prevista")
+    prevista = _parse_date(raw_prev)
+    ocorr = _clean(_at("ocorrencia"))
+    frete = _num(_at("frete")) if "frete" in cols else 0.0
+    peso = _num(_at("peso")) if "peso" in cols else 0.0
+    if isinstance(raw_prev, (date, datetime)) and prevista:
+        data_prevista = prevista.strftime("%d/%m/%Y")
+    else:
+        data_prevista = _clean(raw_prev)
+    return {
+        "ctrc": ctrc,
+        "filial": filial,
+        "cidade": cidade,
+        "uf": uf,
+        "cidade_uf": cidade_uf,
+        "cliente": cliente,
+        "data_prevista": data_prevista,
+        "dias_atraso": _dias_atraso(prevista, hoje),
+        "ultima_ocorrencia": ocorr,
+        "frete": frete,
+        "peso": peso,
+    }
+
+
 def _parse_xlsx_019(path: Path) -> list[dict[str, Any]]:
     from openpyxl import load_workbook
 
@@ -236,37 +347,15 @@ def _parse_xlsx_019(path: Path) -> list[dict[str, Any]]:
             headers = list(next(rows_iter) or ())
         except StopIteration:
             return []
-        metric = _find_metric_cols(headers)
-        out: list[dict[str, Any]] = []
+        cols = _find_cols(headers)
         hoje = date.today()
+        out: list[dict[str, Any]] = []
         for row in rows_iter:
             if not row:
                 continue
-            cells = list(row)
-            ctrc = _clean(_cell_by_letter(cells, COL_CTRC))
-            if not ctrc:
-                continue
-            cliente = _clean(_cell_by_letter(cells, COL_CLIENTE))
-            raw_prev = _cell_by_letter(cells, COL_PREVISTA)
-            prevista = _parse_date(raw_prev)
-            ocorr = _clean(_cell_by_letter(cells, COL_OCORRENCIA))
-            frete = 0.0
-            peso = 0.0
-            if "frete" in metric and metric["frete"] < len(cells):
-                frete = _num(cells[metric["frete"]])
-            if "peso" in metric and metric["peso"] < len(cells):
-                peso = _num(cells[metric["peso"]])
-            out.append(
-                {
-                    "ctrc": ctrc,
-                    "cliente": cliente,
-                    "data_prevista": _clean(raw_prev) if not isinstance(raw_prev, (date, datetime)) else prevista.strftime("%d/%m/%Y") if prevista else "",
-                    "dias_atraso": _dias_atraso(prevista, hoje),
-                    "ultima_ocorrencia": ocorr,
-                    "frete": frete,
-                    "peso": peso,
-                }
-            )
+            item = _row_to_item(list(row), cols, hoje)
+            if item:
+                out.append(item)
         return out
     finally:
         wb.close()
@@ -290,36 +379,15 @@ def _parse_text_019(path: Path) -> list[dict[str, Any]]:
     if not rows:
         return []
     headers = rows[0]
-    metric = _find_metric_cols(headers)
+    cols = _find_cols(headers)
     hoje = date.today()
     out: list[dict[str, Any]] = []
     for row in rows[1:]:
         if not row:
             continue
-        ctrc = _clean(_cell_by_letter(row, COL_CTRC))
-        if not ctrc:
-            continue
-        cliente = _clean(_cell_by_letter(row, COL_CLIENTE))
-        raw_prev = _cell_by_letter(row, COL_PREVISTA)
-        prevista = _parse_date(raw_prev)
-        ocorr = _clean(_cell_by_letter(row, COL_OCORRENCIA))
-        frete = 0.0
-        peso = 0.0
-        if "frete" in metric and metric["frete"] < len(row):
-            frete = _num(row[metric["frete"]])
-        if "peso" in metric and metric["peso"] < len(row):
-            peso = _num(row[metric["peso"]])
-        out.append(
-            {
-                "ctrc": ctrc,
-                "cliente": cliente,
-                "data_prevista": _clean(raw_prev),
-                "dias_atraso": _dias_atraso(prevista, hoje),
-                "ultima_ocorrencia": ocorr,
-                "frete": frete,
-                "peso": peso,
-            }
-        )
+        item = _row_to_item(row, cols, hoje)
+        if item:
+            out.append(item)
     return out
 
 
@@ -355,6 +423,10 @@ def analyze_reports_019(
     top_cte_out = [
         {
             "ctrc": r.get("ctrc") or "",
+            "filial": r.get("filial") or "",
+            "cidade": r.get("cidade") or "",
+            "uf": r.get("uf") or "",
+            "cidade_uf": r.get("cidade_uf") or "",
             "cliente": r.get("cliente") or "",
             "dias_atraso": int(r.get("dias_atraso") or 0),
             "ultima_ocorrencia": r.get("ultima_ocorrencia") or "",
@@ -362,21 +434,33 @@ def analyze_reports_019(
         for r in top_cte
     ]
 
-    by_cli: dict[str, dict[str, Any]] = {}
+    # Torres: CTRCs por CIDADE/UF
+    by_cid: dict[str, dict[str, Any]] = {}
     for r in rows:
-        cli = str(r.get("cliente") or "").strip() or "(sem cliente)"
-        slot = by_cli.setdefault(
-            cli, {"cliente": cli, "dias_max": 0, "qtd": 0, "frete": 0.0, "peso": 0.0}
+        key = str(r.get("cidade_uf") or "").strip() or "—"
+        slot = by_cid.setdefault(
+            key,
+            {
+                "cidade": r.get("cidade") or "",
+                "uf": r.get("uf") or "",
+                "cidade_uf": key,
+                "filial": r.get("filial") or "",
+                "qtd": 0,
+                "frete": 0.0,
+                "peso": 0.0,
+                "dias_max": 0,
+            },
         )
         slot["qtd"] += 1
-        slot["dias_max"] = max(int(slot["dias_max"]), int(r.get("dias_atraso") or 0))
         slot["frete"] += float(r.get("frete") or 0)
         slot["peso"] += float(r.get("peso") or 0)
-    top_cli = sorted(
-        by_cli.values(),
-        key=lambda x: (int(x["dias_max"]), int(x["qtd"])),
+        slot["dias_max"] = max(int(slot["dias_max"]), int(r.get("dias_atraso") or 0))
+
+    por_filial = sorted(
+        by_cid.values(),
+        key=lambda x: (int(x["qtd"]), int(x["dias_max"])),
         reverse=True,
-    )[:TOP_N]
+    )[:TOP_CIDADES]
 
     agora = datetime.now().strftime("%d/%m/%Y %H:%M")
     resumo = {
@@ -393,7 +477,7 @@ def analyze_reports_019(
     _write_csv(ITENS_019_CSV, ITEM_FIELDS, rows)
     _write_csv(RESUMO_019_CSV, RESUMO_FIELDS, [resumo])
     _write_csv(TOP_CTE_019_CSV, TOP_CTE_FIELDS, top_cte_out)
-    _write_csv(TOP_CLIENTE_019_CSV, TOP_CLIENTE_FIELDS, top_cli)
+    _write_csv(POR_FILIAL_019_CSV, POR_FILIAL_FIELDS, por_filial)
 
     payload = {
         "ok": True,
@@ -401,10 +485,13 @@ def analyze_reports_019(
         "view": "sem_transferencia",
         "resumo": resumo,
         "top_cte": top_cte_out,
-        "top_cliente": top_cli,
+        "por_filial": por_filial,
         "itens": rows,
         "total": qtd,
     }
     LAST_019_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    status(f"[019] OK · CTRCs={qtd} frete={resumo['frete_fmt']} peso={resumo['peso_fmt']}")
+    status(
+        f"[019] OK · CTRCs={qtd} cidades={len(by_cid)} "
+        f"frete={resumo['frete_fmt']} peso={resumo['peso_fmt']}"
+    )
     return payload

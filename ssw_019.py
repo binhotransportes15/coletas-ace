@@ -145,7 +145,7 @@ def download_reports_019(
 
             dest_name = f"reciclagem_019_{ts}.xlsx"
             status("[019] gerando Excel…")
-            path = _gerar_download_019(popup, dest_name, status)
+            path = _gerar_download_019(popup, context=context, dest_name=dest_name, status=status)
             status(f"[019] OK {path.name} ({path.stat().st_size} bytes)")
         finally:
             try:
@@ -403,73 +403,143 @@ def _preencher_019(popup, *, data_ddmmyy: str, on_status: StatusCallback | None 
     return result or {}
 
 
-def _gerar_download_019(popup, dest_name: str, status: StatusCallback) -> Path:
+def _gerar_download_019(popup, *, context, dest_name: str, status: StatusCallback) -> Path:
+    """Gera Excel 019 via ENV/btn_envia — download no CONTEXT (como coleta 50)."""
     DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
     dest = DOWNLOAD_DIR / dest_name
+    before = {p.resolve() for p in DOWNLOAD_DIR.glob("*") if p.is_file()}
+    before_mtime = {p.name: p.stat().st_mtime for p in DOWNLOAD_DIR.glob("*") if p.is_file()}
 
-    def _click_gerar() -> str:
-        return popup.evaluate(
-            """() => {
-              // Preferir botões/links explícitos antes de ajax genérico
-              const nodes = Array.from(document.querySelectorAll(
-                'a, button, input[type=button], input[type=submit], img[onclick], span[onclick]'
-              ));
-              for (const a of nodes) {
-                const oc = (a.getAttribute('onclick') || '');
-                const t = ((a.innerText || a.value || a.title || '') + ' ' + oc).toLowerCase();
-                if (/ajaxenvia\\(['\"]rel/i.test(oc) || /gerar|excel|relat|confirmar|\\u25ba|\\u25b6/.test(t)) {
-                  a.click();
-                  return 'click:' + (a.id || a.innerText || oc).slice(0, 60);
-                }
-              }
-              const btnIds = ['btn_env_periodo','btn_gerar','btn_ok','act_rel','40','btn_rel'];
-              for (const id of btnIds) {
-                const el = document.getElementById(id);
-                if (el) { el.click(); return 'id:' + id; }
-              }
-              if (typeof ajaxEnvia === 'function') {
-                for (const code of ['REL', 'REL2', 'E1', 'EXCEL', 'GER']) {
-                  try { ajaxEnvia(code, 0); return 'ajax:' + code; } catch (e) {}
-                  try { ajaxEnvia(code, 1); return 'ajax:' + code + ':1'; } catch (e2) {}
-                }
-              }
-              return '';
-            }"""
+    def _trigger() -> str:
+        return str(
+            popup.evaluate(
+                """() => {
+                  const btn = document.getElementById('btn_envia');
+                  if (btn) { btn.click(); return 'btn_envia'; }
+                  if (typeof ajaxEnvia === 'function') {
+                    for (const code of ['ENV', 'REL', 'REL2', 'E1', 'EXCEL', 'GER']) {
+                      try { ajaxEnvia(code, 0); return 'ajax:' + code; } catch (e) {}
+                    }
+                  }
+                  for (const id of ['btn_env_periodo','btn_gerar','act_rel','btn_rel']) {
+                    const el = document.getElementById(id);
+                    if (el) { el.click(); return 'id:' + id; }
+                  }
+                  const nodes = Array.from(document.querySelectorAll(
+                    'a, button, input[type=button], input[type=submit]'
+                  ));
+                  for (const a of nodes) {
+                    const oc = (a.getAttribute('onclick') || '');
+                    const t = ((a.innerText || a.value || '') + ' ' + oc).toLowerCase();
+                    if (/ajaxenvia\\(['\"]env/i.test(oc) || /ajaxenvia\\(['\"]rel/i.test(oc)) {
+                      a.click();
+                      return 'click:' + (a.id || oc).slice(0, 40);
+                    }
+                    if (/gerar|excel|relat|confirmar/.test(t)) {
+                      a.click();
+                      return 'click:' + (a.id || a.innerText || '').slice(0, 40);
+                    }
+                  }
+                  return '';
+                }"""
+            )
+            or ""
         )
 
-    before = {p.resolve() for p in DOWNLOAD_DIR.glob("*") if p.is_file()}
-    try:
-        with popup.expect_download(timeout=120000) as di:
-            clicked = _click_gerar()
-            if not clicked:
-                raise RuntimeError("019: botão gerar não encontrado")
-            status(f"[019] gerar → {clicked}")
-        download = di.value
-    except Exception as err:
-        status(f"[019] expect_download: {err} — varrendo pasta…")
-        _safe_wait(popup, 3000)
-        candid = _latest_new_download(DOWNLOAD_DIR, before)
-        if candid is None:
-            raise RuntimeError(f"019: download falhou ({err})") from err
-        dest = DOWNLOAD_DIR / dest_name
-        if candid.suffix.lower() in {".xlsx", ".xls", ".csv", ".sswweb"}:
-            dest = dest.with_suffix(candid.suffix.lower() if candid.suffix else ".xlsx")
-        try:
-            if candid.resolve() != dest.resolve():
-                candid.replace(dest)
-            return dest
-        except Exception:
-            return candid
+    def _poll(wait_s: float) -> Path | None:
+        deadline = time.time() + wait_s
+        while time.time() < deadline:
+            for p in DOWNLOAD_DIR.glob("*"):
+                if not p.is_file():
+                    continue
+                if p.suffix.lower() not in {".xlsx", ".xls", ".csv", ".sswweb"}:
+                    continue
+                mtime = p.stat().st_mtime
+                if p.resolve() in before and mtime <= before_mtime.get(p.name, 0) + 0.2:
+                    continue
+                if p.stat().st_size < 32:
+                    continue
+                out = dest.with_suffix(p.suffix.lower())
+                try:
+                    if p.resolve() != out.resolve():
+                        if out.exists():
+                            out.unlink()
+                        p.replace(out)
+                    return out
+                except Exception:
+                    return p
+            time.sleep(0.4)
+        return None
 
-    suggested = (download.suggested_filename or "").lower()
-    if suggested.endswith(".csv"):
-        dest = dest.with_suffix(".csv")
-    elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
-        dest = dest.with_suffix(".xls")
-    elif suggested.endswith(".sswweb"):
-        dest = dest.with_suffix(".sswweb")
-    download.save_as(str(dest))
-    return dest
+    def _save(download) -> Path:
+        suggested = (download.suggested_filename or "").lower()
+        out = dest
+        if suggested.endswith(".csv"):
+            out = dest.with_suffix(".csv")
+        elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
+            out = dest.with_suffix(".xls")
+        elif suggested.endswith(".sswweb"):
+            out = dest.with_suffix(".sswweb")
+        elif suggested.endswith(".xlsx"):
+            out = dest.with_suffix(".xlsx")
+        download.save_as(str(out))
+        return out
+
+    # 1) download no context (ENV pode fechar/navegar a popup)
+    try:
+        with context.expect_event("download", timeout=90000) as di:
+            how = _trigger()
+            if not how:
+                raise RuntimeError("019: botão gerar não encontrado")
+            status(f"[019] gerar → {how} (aguardando arquivo…)")
+        path = _save(di.value)
+        status(f"[019] download OK · {path.name}")
+        return path
+    except Exception as err:
+        status(f"[019] sem evento download ({err}) — poll/aba…")
+        got = _poll(3.0)
+        if got:
+            status(f"[019] arquivo no disco · {got.name}")
+            return got
+
+    # 2) nova aba
+    pages_before = list(context.pages)
+    new_page = None
+    try:
+        with context.expect_page(timeout=12000) as pi:
+            how = _trigger()
+            status(f"[019] re-gerar(aba) → {how}")
+        new_page = pi.value
+    except Exception:
+        after = [p for p in context.pages if p not in pages_before]
+        if after:
+            new_page = after[-1]
+
+    if new_page is not None:
+        try:
+            new_page.wait_for_load_state("domcontentloaded", timeout=15000)
+        except Exception:
+            pass
+        try:
+            with new_page.expect_download(timeout=30000) as di:
+                pass
+            path = _save(di.value)
+            try:
+                new_page.close()
+            except Exception:
+                pass
+            return path
+        except Exception:
+            try:
+                new_page.close()
+            except Exception:
+                pass
+
+    got = _poll(8.0)
+    if got:
+        status(f"[019] arquivo no disco · {got.name}")
+        return got
+    raise RuntimeError("019: timeout sem download")
 
 
 def _latest_new_download(folder: Path, before: set[Path]) -> Path | None:
@@ -482,7 +552,6 @@ def _latest_new_download(folder: Path, before: set[Path]) -> Path | None:
                 continue
             cands.append(p)
     if not cands:
-        # fallback: mais recente qualquer
         allc = []
         for pat in ("*.xlsx", "*.xls", "*.csv", "*.sswweb"):
             allc.extend(folder.glob(pat))

@@ -127,8 +127,8 @@ def build_reciclagem_snapshot() -> dict[str, Any]:
     """Snapshot unificado 019 (sem transferência) + 081 (sem saída para entrega)."""
     from parser_ssw019 import (
         LAST_019_JSON,
+        POR_FILIAL_019_CSV,
         RESUMO_019_CSV,
-        TOP_CLIENTE_019_CSV,
         TOP_CTE_019_CSV,
     )
     from parser_ssw081 import (
@@ -147,9 +147,9 @@ def build_reciclagem_snapshot() -> dict[str, Any]:
             "programa": "019",
             "titulo": "SEM TRANSFERÊNCIA",
             "resumo": last19.get("resumo") or _read_csv_first(RESUMO_019_CSV),
+            "por_filial": last19.get("por_filial")
+            or _read_csv_rows(POR_FILIAL_019_CSV, limit=12),
             "top_cte": last19.get("top_cte") or _read_csv_rows(TOP_CTE_019_CSV, limit=10),
-            "top_cliente": last19.get("top_cliente")
-            or _read_csv_rows(TOP_CLIENTE_019_CSV, limit=10),
         },
         "sem_saida": {
             "programa": "081",

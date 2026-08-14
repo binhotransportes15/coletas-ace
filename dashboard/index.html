@@ -3198,7 +3198,7 @@
     .pen-torres .t-of7 .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
     .pen-torres .t-of7 .pin { background: #ef4444; }
 
-    /* Reciclagem — torres horizontais */
+    /* Reciclagem — 019 torres verticais · 081 torres horizontais */
     .rec-wrap {
       display: flex;
       flex-direction: column;
@@ -3219,15 +3219,144 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: clamp(8px, 1vmin, 14px);
     }
-    .rec-towers-grid {
+    /* 019 — KPIs · torres por filial · CTRCs atrasados */
+    .rec-view-019 {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(220px, 1.45fr) minmax(140px, 0.85fr);
+      gap: clamp(10px, 1.2vmin, 16px);
+    }
+    body[data-sector="reciclagem"][data-view="sem_transferencia"] .rec-view-019 {
       display: grid;
+    }
+    body[data-sector="reciclagem"][data-view="sem_saida"] .rec-view-081 {
+      display: grid;
+    }
+    .rec-view-019 .rec-filial-card,
+    .rec-view-019 .rec-atrasados-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: clamp(10px, 1.2vmin, 16px);
+      background: rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .rec-view-019 .rec-filial-card > header,
+    .rec-view-019 .rec-atrasados-card > header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px 12px;
+      margin-bottom: 8px;
+      flex: 0 0 auto;
+    }
+    .rec-view-019 h2 {
+      margin: 0;
+      font-size: clamp(14px, 1.6vmin, 18px);
+      letter-spacing: 0.04em;
+      font-weight: 700;
+    }
+    .rec-towers-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: 4px 6px 2px;
+      overflow: hidden;
+    }
+    .torres.rec-torres {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: clamp(8px, 1.2vw, 18px);
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      max-height: none;
+      overflow: hidden;
+    }
+    .torres.rec-torres .torre {
+      width: min(96px, 11vw);
+      max-width: none;
+      flex: 0 0 auto;
+    }
+    .torres.rec-torres .barra {
+      min-height: 36px !important;
+      max-height: none !important;
+    }
+    .torres.rec-torres .base .lbl {
+      font-size: clamp(11px, 1.15vw, 14px);
+      line-height: 1.15;
+      white-space: normal;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .torres.rec-torres .t-d0 .barra { background: linear-gradient(180deg, #fbbf24, #d97706); }
+    .torres.rec-torres .t-d0 .pin { background: #f59e0b; }
+    .torres.rec-torres .t-d1 .barra { background: linear-gradient(180deg, #38bdf8, #0284c7); }
+    .torres.rec-torres .t-d1 .pin { background: #0ea5e9; }
+    .torres.rec-torres .t-d2 .barra { background: linear-gradient(180deg, #4ade80, #15803d); }
+    .torres.rec-torres .t-d2 .pin { background: #22c55e; }
+    .torres.rec-torres .t-d3 .barra { background: linear-gradient(180deg, #fb923c, #c2410c); }
+    .torres.rec-torres .t-d3 .pin { background: #f97316; }
+    .torres.rec-torres .t-d4 .barra { background: linear-gradient(180deg, #a78bfa, #6d28d9); }
+    .torres.rec-torres .t-d4 .pin { background: #8b5cf6; }
+    .torres.rec-torres .t-d5 .barra { background: linear-gradient(180deg, #f472b6, #be185d); }
+    .torres.rec-torres .t-d5 .pin { background: #ec4899; }
+    .torres.rec-torres .t-d6 .barra { background: linear-gradient(180deg, #94a3b8, #475569); }
+    .torres.rec-torres .t-d6 .pin { background: #64748b; }
+    .torres.rec-torres .t-d7 .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
+    .torres.rec-torres .t-d7 .pin { background: #ef4444; }
+    .rec-atrasados-card .arm-table-wrap {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+    .rec-atrasados-card table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: clamp(12px, 1.35vmin, 15px);
+    }
+    .rec-atrasados-card th,
+    .rec-atrasados-card td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    }
+    .rec-atrasados-card th {
+      color: #94a3b8;
+      font-size: 0.85em;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      position: sticky;
+      top: 0;
+      background: rgba(15, 23, 42, 0.92);
+    }
+    .rec-atrasados-card td.mono { font-variant-numeric: tabular-nums; font-weight: 700; }
+    .rec-atrasados-card td.atraso { color: #fbbf24; font-weight: 700; text-align: right; }
+    .rec-atrasados-card td.fil { color: #7dd3fc; font-weight: 700; }
+    .rec-towers-grid {
+      display: none;
       grid-template-columns: 1fr 1fr;
       gap: clamp(12px, 1.5vmin, 22px);
       flex: 1;
       min-height: 0;
     }
+    .rec-view-081 { display: none; }
     @media (max-width: 900px) {
       .rec-towers-grid { grid-template-columns: 1fr; }
+      .rec-view-019 {
+        grid-template-rows: minmax(180px, 1fr) minmax(160px, 1fr);
+      }
     }
     .rec-htowers-card {
       display: flex;
@@ -3310,8 +3439,16 @@
       background: #67e8f9; box-shadow: 0 0 8px rgba(103, 232, 249, 0.6);
     }
     body.tv-mode #panel-reciclagem .rec-wrap { padding: clamp(4px, 0.8vmin, 10px); }
-    body.tv-mode #panel-reciclagem .rec-htowers-card {
+    body.tv-mode #panel-reciclagem .rec-htowers-card,
+    body.tv-mode #panel-reciclagem .rec-filial-card,
+    body.tv-mode #panel-reciclagem .rec-atrasados-card {
       background: rgba(2, 6, 23, 0.45);
+    }
+    body.tv-mode .torres.rec-torres .barra {
+      max-height: none !important;
+    }
+    body.tv-mode .rec-view-019 {
+      grid-template-rows: minmax(0, 1.5fr) minmax(0, 0.75fr) !important;
     }
 
     body.tv-mode .pen-wrap {
@@ -4921,7 +5058,42 @@
           <div class="arm-kpi peso"><div class="lbl">Peso</div><div class="val" id="recPeso">0</div></div>
           <div class="arm-kpi atrasado"><div class="lbl">CTRCs</div><div class="val" id="recQtd">0</div></div>
         </div>
-        <div class="rec-towers-grid dash-block" data-block="chart">
+
+        <!-- 019 Sem transferência: torres verticais por cidade/UF + CTRCs atrasados -->
+        <div class="rec-view-019" id="recView019">
+          <section class="rec-filial-card dash-block" data-block="chart">
+            <header>
+              <h2>CTRCs por cidade / UF</h2>
+              <div class="meta" id="recFilialMeta">quantidade tratada</div>
+            </header>
+            <div class="rec-towers-wrap">
+              <div class="torres rec-torres" id="recTorresFilial" aria-label="Torres verticais por cidade e UF"></div>
+            </div>
+          </section>
+          <section class="rec-atrasados-card dash-block" data-block="tabela">
+            <header>
+              <h2>CTRCs mais atrasados</h2>
+              <div class="meta" id="recAtrasoMeta">top por dias de atraso</div>
+            </header>
+            <div class="arm-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>CTRC</th>
+                    <th>Cidade/UF</th>
+                    <th>Cliente</th>
+                    <th>Ocorrência</th>
+                    <th style="text-align:right">Atraso</th>
+                  </tr>
+                </thead>
+                <tbody id="recAtrasadosBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- 081 Sem saída: torres horizontais -->
+        <div class="rec-towers-grid rec-view-081" id="recView081">
           <section class="rec-htowers-card">
             <header>
               <h2>CTEs mais atrasados</h2>
@@ -7354,6 +7526,76 @@
       }).join('');
     }
 
+    function alturaTorreRec(valor, max) {
+      const wrap = document.querySelector('#recView019 .rec-towers-wrap')
+        || document.querySelector('.rec-towers-wrap');
+      const tv = document.body.classList.contains('tv-mode');
+      const pin = tv ? 64 : 52;
+      const base = tv ? 52 : 44;
+      const pad = tv ? 20 : 16;
+      let avail = wrap && wrap.clientHeight > 60 ? wrap.clientHeight : 0;
+      if (!avail) {
+        const chart = document.querySelector('#recView019 [data-block="chart"]');
+        avail = chart && chart.clientHeight > 100
+          ? Math.round(chart.clientHeight * 0.78)
+          : Math.round((window.innerHeight || 800) * (tv ? 0.32 : 0.38));
+      }
+      const maxH = Math.max(tv ? 72 : 64, Math.round(avail - pin - base - pad));
+      const minH = Math.max(tv ? 36 : 32, Math.round(maxH * 0.16));
+      if (!max || max <= 0) return minH;
+      const t = Math.max(0, Number(valor) || 0) / max;
+      return Math.round(minH + t * (maxH - minH));
+    }
+
+    function renderRecTorresCidade(rows) {
+      const host = document.getElementById('recTorresFilial');
+      if (!host) return;
+      const items = (Array.isArray(rows) ? rows : []).slice(0, 12);
+      if (!items.length) {
+        host.innerHTML = '<div class="arm-rank-empty">Sem CTRCs — rode `reciclagem`</div>';
+        return;
+      }
+      const max = Math.max(...items.map((d) => Number(d.qtd) || 0), 1);
+      const total = items.reduce((s, d) => s + (Number(d.qtd) || 0), 0) || 1;
+      host.innerHTML = items.map((d, i) => {
+        const qtd = Number(d.qtd) || 0;
+        const pct = Math.round((qtd / total) * 100);
+        const skin = 't-d' + (i % 8);
+        const lab = esc(String(d.cidade_uf || d.filial_label || d.filial || '—').trim() || '—');
+        const tip = esc(
+          `${d.cidade_uf || '—'} · ${qtd} CTRCs`
+          + (d.dias_max ? ` · máx ${d.dias_max}d` : '')
+        );
+        const h = alturaTorreRec(qtd, max);
+        return `<div class="torre ${skin}" title="${tip}">
+          <div class="pin"><span class="${qtd >= 100 ? 'pin-lg' : ''}">${qtd}</span></div>
+          <div class="barra" style="height:${h}px"><strong>${pct}<span class="pct-sign">%</span></strong></div>
+          <div class="base"><div class="lbl">${lab}</div></div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderRecAtrasados(rows) {
+      const tb = document.getElementById('recAtrasadosBody');
+      if (!tb) return;
+      const list = (Array.isArray(rows) ? rows : []).slice(0, 10);
+      if (!list.length) {
+        tb.innerHTML = '<tr><td colspan="5" class="meta">Sem CTRCs atrasados</td></tr>';
+        return;
+      }
+      tb.innerHTML = list.map((r) => {
+        const dias = Number(r.dias_atraso || 0) || 0;
+        const cid = esc(r.cidade_uf || [r.cidade, r.uf].filter(Boolean).join('/') || r.filial || '—');
+        return `<tr>
+          <td class="mono">${esc(r.ctrc || '—')}</td>
+          <td class="fil">${cid}</td>
+          <td>${esc(r.cliente || '—')}</td>
+          <td>${esc(r.ultima_ocorrencia || '—')}</td>
+          <td class="atraso">${dias}d</td>
+        </tr>`;
+      }).join('');
+    }
+
     function paintReciclagemFromCache() {
       const data = lastGoodRecData || {};
       const key = CURRENT_VIEW === 'sem_saida' ? 'sem_saida' : 'sem_transferencia';
@@ -7363,6 +7605,18 @@
       setRecText('recPeso', resumo.peso_fmt || fmtRecPeso(resumo.peso));
       setRecText('recQtd', resumo.qtd != null ? String(resumo.qtd) : '0');
       setRecText('recAtualizado', 'atualizado ' + (resumo.atualizado || data.updated_at || '—'));
+
+      if (key === 'sem_transferencia') {
+        const filMeta = document.getElementById('recFilialMeta');
+        const atrMeta = document.getElementById('recAtrasoMeta');
+        const nCid = (block.por_filial || []).length;
+        if (filMeta) filMeta.textContent = `${block.titulo || 'SEM TRANSFERÊNCIA'} · ${nCid} cidades`;
+        if (atrMeta) atrMeta.textContent = 'top 10 por dias de atraso';
+        renderRecTorresCidade(block.por_filial || []);
+        renderRecAtrasados(block.top_cte || []);
+        return;
+      }
+
       const cteMeta = document.getElementById('recCteMeta');
       const cliMeta = document.getElementById('recCliMeta');
       if (cteMeta) cteMeta.textContent = `${block.titulo || REC_VIEW_LABELS[key] || key} · top CTE`;

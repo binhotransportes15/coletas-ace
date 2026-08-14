@@ -143,6 +143,7 @@ def _save_payload(payload: dict[str, Any]) -> None:
         pendencia_intervalo=str(payload.get("pendencia_intervalo") or ""),
         contratacao_intervalo=str(payload.get("contratacao_intervalo") or ""),
         emissao_intervalo=str(payload.get("emissao_intervalo") or ""),
+        reciclagem_intervalo=str(payload.get("reciclagem_intervalo") or "30m"),
         enable_sheets=bool(payload.get("enable_sheets", False)),
         apps_script_url=str(payload.get("apps_script_url") or ""),
         apps_script_token=str(payload.get("apps_script_token") or ""),
@@ -158,6 +159,7 @@ def _save_payload(payload: dict[str, Any]) -> None:
         pendencia_in_loop=bool(payload.get("pendencia_in_loop", True)),
         contratacao_in_loop=bool(payload.get("contratacao_in_loop", True)),
         emissao_in_loop=bool(payload.get("emissao_in_loop", False)),
+        reciclagem_in_loop=bool(payload.get("reciclagem_in_loop", False)),
         ciclo_paralelo=bool(payload.get("ciclo_paralelo", True)),
         modo_local=bool(payload.get("modo_local", False)),
         dashboard_lan=bool(payload.get("dashboard_lan", False)),
@@ -241,6 +243,8 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     arm_on = bool(payload.get("armazem_in_loop", True))
     pend_on = bool(payload.get("pendencia_in_loop", True))
     ctr_on = bool(payload.get("contratacao_in_loop", True))
+    emi_on = bool(payload.get("emissao_in_loop", False))
+    rec_on = bool(payload.get("reciclagem_in_loop", False))
     para_on = bool(payload.get("ciclo_paralelo", True))
     local_on = bool(payload.get("modo_local", False))
 
@@ -251,6 +255,8 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
         f"{status_online('078') if arm_on else status_idle('078·OFF')}  "
         f"{status_online('031') if pend_on else status_idle('031·OFF')}  "
         f"{status_online('073') if ctr_on else status_idle('073·OFF')}  "
+        f"{status_online('455') if emi_on else status_idle('455·OFF')}  "
+        f"{status_online('019') if rec_on else status_idle('019·OFF')}  "
         f"{status_online('PARA') if para_on else status_idle('SEQ')}  "
         f"{status_online('LOCAL') if local_on else status_idle('CLOUD')}"
     )
@@ -322,6 +328,14 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print(f"    {muted('pendencia_in_loop'.ljust(18))} {str(pend_on).lower()}")
     print(f"  {g('[CONTRATACAO 073]', bold=True)}")
     print(f"    {muted('contratacao_in_loop'.ljust(18))} {str(ctr_on).lower()}")
+    print(f"  {g('[EMISSAO 455]', bold=True)}")
+    print(f"    {muted('emissao_in_loop'.ljust(18))} {str(emi_on).lower()}")
+    print(f"  {g('[RECICLAGEM 019·081]', bold=True)}")
+    print(f"    {muted('reciclagem_in_loop'.ljust(18))} {str(rec_on).lower()}")
+    print(
+        f"    {muted('reciclagem_intervalo'.ljust(18))} "
+        f"{payload.get('reciclagem_intervalo') or '30m'}"
+    )
     print(f"  {g('[PARALELO]', bold=True)}")
     print(f"    {muted('ciclo_paralelo'.ljust(18))} {str(para_on).lower()}")
     print(f"  {g('[MODO LOCAL]', bold=True)}")
@@ -478,6 +492,10 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "73_loop": "contratacao_in_loop",
         "emissao_loop": "emissao_in_loop",
         "455_loop": "emissao_in_loop",
+        "reciclagem_loop": "reciclagem_in_loop",
+        "recicla_loop": "reciclagem_in_loop",
+        "019_loop": "reciclagem_in_loop",
+        "081_loop": "reciclagem_in_loop",
         "dist_tempo": "dist_intervalo",
         "armazem_tempo": "armazem_intervalo",
         "pendencia_tempo": "pendencia_intervalo",
@@ -1102,6 +1120,8 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
             "armazem_in_loop": cfg.armazem_in_loop,
             "pendencia_in_loop": getattr(cfg, "pendencia_in_loop", True),
             "contratacao_in_loop": getattr(cfg, "contratacao_in_loop", True),
+            "emissao_in_loop": getattr(cfg, "emissao_in_loop", False),
+            "reciclagem_in_loop": getattr(cfg, "reciclagem_in_loop", False),
             "ciclo_paralelo": getattr(cfg, "ciclo_paralelo", True),
             "loop_intervalo": cfg.loop_intervalo,
             "unit": getattr(load_credentials(), "unit", ""),
@@ -1123,8 +1143,17 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
         print(f"  {status_online('073')} Contratação no loop (filiais 200)")
     else:
         print(f"  {status_idle('073')} fora do loop (rode `73` sob demanda)")
+    if getattr(cfg, "emissao_in_loop", False):
+        print(f"  {status_online('455')} Emissão no loop")
+    else:
+        print(f"  {status_idle('455')} fora do loop (rode `455` sob demanda)")
+    if getattr(cfg, "reciclagem_in_loop", False):
+        iv = getattr(cfg, "reciclagem_intervalo", None) or "30m"
+        print(f"  {status_online('019')} Reciclagem no loop (019·081 · {iv})")
+    else:
+        print(f"  {status_idle('019')} fora do loop (rode `reciclagem` sob demanda)")
     if getattr(cfg, "ciclo_paralelo", True):
-        print(f"  {status_online('PARA')} ciclo paralelo (dist · 078 · 031 · 073 juntos)")
+        print(f"  {status_online('PARA')} ciclo paralelo (setores juntos)")
     else:
         print(f"  {status_idle('SEQ')} ciclo sequencial (/e ciclo_paralelo true)")
     print(f"  {rule()}")
