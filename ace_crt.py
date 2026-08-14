@@ -153,27 +153,29 @@ CRT_THEMES: dict[str, dict[str, object]] = {
     },
     "fosco": {
         "label": "Escuro fosco",
+        # Vidro escuro tipo terminal (blur no Windows)
         "bg": "transparent",
-        "panel": "rgba(16, 22, 34, 155)",
-        "line": "rgba(148, 163, 184, 95)",
-        "text": "#e8eef7",
-        "dim": "#9aa8bc",
-        "muted": "#6b7a90",
-        "input_bg": "rgba(8, 12, 20, 170)",
-        "input_text": "#e2e8f0",
-        "btn_bg": "rgba(22, 30, 46, 175)",
-        "btn_hover": "rgba(40, 56, 82, 210)",
-        "btn_press": "rgba(56, 78, 112, 230)",
-        "btn_dis_bd": "rgba(50, 60, 78, 110)",
-        "sel": "rgba(14, 116, 144, 190)",
-        "prog_bg": "rgba(8, 12, 20, 150)",
-        "chunk0": "#0e7490",
-        "chunk1": "#22d3ee",
-        "chunk2": "#a5f3fc",
+        "panel": "rgba(18, 22, 28, 165)",
+        "line": "rgba(120, 140, 160, 70)",
+        "text": "#f0f4f8",
+        "dim": "#9aa8b8",
+        "muted": "#6a7888",
+        "input_bg": "rgba(10, 14, 20, 185)",
+        "input_text": "#e8eef5",
+        "btn_bg": "rgba(28, 34, 44, 180)",
+        "btn_hover": "rgba(48, 62, 82, 210)",
+        "btn_press": "rgba(64, 86, 112, 230)",
+        "btn_dis_bd": "rgba(50, 58, 70, 100)",
+        "sel": "rgba(56, 120, 160, 160)",
+        "prog_bg": "rgba(8, 12, 18, 160)",
+        "chunk0": "#2dd4a8",
+        "chunk1": "#5eead4",
+        "chunk2": "#99f6e4",
         "scan": False,
         "frost": True,
-        # Windows acrylic: 0xAABBGGRR (alpha + BGR)
-        "acrylic_tint": 0xB0121824,
+        # Windows acrylic: 0xAABBGGRR — tint escuro fosco
+        "acrylic_tint": 0xC010141A,
+        "meter_h": 18,
     },
 }
 
@@ -297,46 +299,55 @@ class BinhoCubesWidget(QWidget):
 
 
 class SysMeterRow(QWidget):
-    """Barra CPU / MEM / GPU estilo gerenciador de tarefas."""
+    """Barra CPU / MEM / GPU estilo terminal (barra + % à direita, sem texto duplicado)."""
 
     def __init__(self, title: str, accent: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         lay = QHBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(8)
+        lay.setSpacing(10)
         self._title = QLabel(title)
         self._title.setObjectName("sysMeterTitle")
-        self._title.setFixedWidth(54)
+        self._title.setFixedWidth(44)
         self._bar = QProgressBar()
         self._bar.setObjectName("sysMeter")
         self._bar.setRange(0, 1000)
         self._bar.setValue(0)
-        self._bar.setTextVisible(True)
-        self._bar.setFormat("—")
-        self._bar.setFixedHeight(14)
+        # % só no label da direita — evita texto duplicado / fantasma no fosco
+        self._bar.setTextVisible(False)
+        self._bar.setFixedHeight(16)
         self._val = QLabel("—")
         self._val.setObjectName("sysMeterVal")
-        self._val.setFixedWidth(42)
+        self._val.setFixedWidth(48)
         self._val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lay.addWidget(self._title)
         lay.addWidget(self._bar, 1)
         lay.addWidget(self._val)
         self._accent = accent
+        self._track = "rgba(0, 0, 0, 140)"
+        self._track_border = "rgba(255, 255, 255, 28)"
         self._apply_chunk(accent)
+
+    def apply_chrome(self, *, height: int = 16, track: str = "rgba(0,0,0,140)", border: str = "rgba(255,255,255,28)") -> None:
+        self._bar.setFixedHeight(max(12, int(height)))
+        self._track = track
+        self._track_border = border
+        self._apply_chunk(self._accent)
 
     def _apply_chunk(self, accent: str) -> None:
         self._bar.setStyleSheet(
             f"""
             QProgressBar#sysMeter {{
-                background: #0a0a0a;
-                border: 1px solid #222;
-                border-radius: 2px;
+                background: {self._track};
+                border: 1px solid {self._track_border};
+                border-radius: 6px;
                 text-align: center;
-                color: #bbb;
-                font-size: 9px;
+                color: transparent;
+                font-size: 1px;
             }}
             QProgressBar#sysMeter::chunk {{
                 background: {accent};
+                border-radius: 5px;
             }}
             """
         )
@@ -344,13 +355,11 @@ class SysMeterRow(QWidget):
     def set_pct(self, pct: float | None, warn: float = 75.0, crit: float = 90.0) -> None:
         if pct is None:
             self._bar.setValue(0)
-            self._bar.setFormat("—")
             self._val.setText("—")
             self._apply_chunk(self._accent)
             return
         v = max(0.0, min(100.0, float(pct)))
         self._bar.setValue(int(round(v * 10)))
-        self._bar.setFormat(f"{v:.0f}%")
         self._val.setText(f"{v:.0f}%")
         color = self._accent
         if v >= crit:
@@ -417,15 +426,31 @@ def apply_windows_acrylic(hwnd: int, enable: bool, tint_aabbggrr: int = 0xB01218
 def build_crt_stylesheet(theme_id: str = DEFAULT_CRT_THEME) -> str:
     t = CRT_THEMES.get(theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
     frost = bool(t.get("frost"))
-    radius = "10px" if frost else "0"
-    root_bg = "transparent" if frost else t["bg"]
-    return f"""
+    radius = "12px" if frost else "0"
+    # No fosco: só a raiz fica transparente (blur atrás). Painéis/inputs opacos
+    # evitam texto fantasma / duplicado do WA_TranslucentBackground.
+    if frost:
+        root_rule = """
+QWidget#crtRoot, QSplitter, QScrollArea, QScrollArea > QWidget > QWidget {
+    background: transparent;
+}
+QWidget {
+    color: %s;
+    font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+    font-size: 12px;
+}
+""" % (t["text"],)
+    else:
+        root_rule = f"""
 QWidget {{
-    background: {root_bg};
+    background: {t['bg']};
     color: {t['text']};
     font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace;
     font-size: 12px;
 }}
+"""
+    return f"""
+{root_rule}
 QFrame#panel, QFrame#side {{
     background: {t['panel']};
     border: 1px solid {t['line']};
@@ -489,9 +514,10 @@ QLabel#sysMeterTitle {{
 }}
 QLabel#sysMeterVal {{
     color: {t['text']};
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     background: transparent;
+    font-variant-numeric: tabular-nums;
 }}
 QProgressBar {{
     background: {t['prog_bg']};
@@ -499,7 +525,7 @@ QProgressBar {{
     border-radius: {radius};
     text-align: center;
     color: {t['text']};
-    height: 16px;
+    height: {"18px" if frost else "16px"};
     font-size: 10px;
 }}
 QProgressBar::chunk {{
@@ -542,6 +568,7 @@ QComboBox QAbstractItemView {{
     background: {t['input_bg']};
     color: {t['input_text']};
     selection-background-color: {t['sel']};
+    border: 1px solid {t['line']};
 }}
 QLineEdit:focus, QTextEdit:focus, QComboBox:focus {{
     border-color: {t['text']};
@@ -805,6 +832,7 @@ class AutoLoopWorker(QThread):
 class AceCrtConsole(QWidget):
     def __init__(self) -> None:
         super().__init__()
+        self.setObjectName("crtRoot")
         self.setWindowTitle("BINHO · Gestão")
         self.resize(1180, 680)
         self.setMinimumSize(980, 560)
@@ -1866,9 +1894,10 @@ class AceCrtConsole(QWidget):
         meta = CRT_THEMES[tid]
         if hasattr(self, "_scan"):
             self._scan.set_enabled(bool(meta.get("scan", True)))
+            self._scan.setVisible(bool(meta.get("scan", True)))
         if hasattr(self, "cubes"):
             if meta.get("frost"):
-                self.cubes.set_fill_color(QColor(10, 14, 22, 100))
+                self.cubes.set_fill_color(QColor(12, 16, 22, 90))
             elif tid == "claro":
                 self.cubes.set_fill_color(QColor("#e8edf2"))
             elif tid == "painel":
@@ -1877,7 +1906,21 @@ class AceCrtConsole(QWidget):
                 self.cubes.set_fill_color(QColor("#080b09"))
             else:
                 self.cubes.set_fill_color(QColor("#050505"))
-        self._apply_frost_window(bool(meta.get("frost")), int(meta.get("acrylic_tint") or 0xB0121824))
+        # Barras de recurso: mais grossas no fosco, % só à direita
+        meter_h = int(meta.get("meter_h") or (18 if meta.get("frost") else 14))
+        track = "rgba(0,0,0,120)" if meta.get("frost") else "#0a0a0a"
+        border = "rgba(255,255,255,30)" if meta.get("frost") else "#222"
+        for meter in (
+            getattr(self, "meter_cpu", None),
+            getattr(self, "meter_mem", None),
+            getattr(self, "meter_gpu", None),
+        ):
+            if meter is not None:
+                meter.apply_chrome(height=meter_h, track=track, border=border)
+        if hasattr(self, "bar"):
+            self.bar.setTextVisible(True)
+            self.bar.setFixedHeight(meter_h + 2 if meta.get("frost") else 16)
+        self._apply_frost_window(bool(meta.get("frost")), int(meta.get("acrylic_tint") or 0xC010141A))
         # sync combos sem loop
         for cmb in (getattr(self, "cmb_theme", None), getattr(self, "cmb_theme_cfg", None)):
             if cmb is None:
@@ -1899,11 +1942,15 @@ class AceCrtConsole(QWidget):
             except Exception:  # noqa: BLE001
                 pass
 
-    def _apply_frost_window(self, enabled: bool, tint: int = 0xB0121824) -> None:
+    def _apply_frost_window(self, enabled: bool, tint: int = 0xC010141A) -> None:
         """Fundo transparente + blur fosco (Windows acrylic)."""
         self.setAttribute(Qt.WA_TranslucentBackground, enabled)
-        # autoFillBackground opaco atrapalha o vidro
         self.setAutoFillBackground(not enabled)
+        # Evita repaint fantasma em alguns drivers
+        try:
+            self.setAttribute(Qt.WA_OpaquePaintEvent, not enabled)
+        except Exception:
+            pass
         try:
             hwnd = int(self.winId())
         except Exception:

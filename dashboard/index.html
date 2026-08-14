@@ -2050,6 +2050,14 @@
       background: rgba(0, 0, 0, 0.72);
     }
     body.alerta-lock #alertaLock { display: flex; }
+    /* Nunca mostrar/bipar fora da Distribuição (falha-segura de CSS) */
+    body:not([data-sector="distribuicao"]) #alertaLock,
+    body:not([data-sector="distribuicao"]).alerta-lock #alertaLock {
+      display: none !important;
+    }
+    body:not([data-sector="distribuicao"]).alerta-lock .swap-nav {
+      display: grid !important;
+    }
     body.alerta-lock .swap-nav { display: none !important; }
     body.alerta-lock { overflow: hidden; }
     /* No PC o overlay nao engole cliques do menu: so o card do alerta */
@@ -4071,8 +4079,6 @@
   <button type="button" class="swap-nav prev" id="btnSwapPrev" title="Tela anterior (←)" aria-label="Tela anterior">‹</button>
   <button type="button" class="swap-nav next" id="btnSwapNext" title="Próxima tela (→)" aria-label="Próxima tela">›</button>
 
-  <div id="panel-operacao" class="sector-root">
-  <div class="tv-hint" id="tvHint">Modo TV · F ou ESC para sair · ideal para televisão</div>
   <div id="alertaLock" role="alertdialog" aria-modal="true" aria-labelledby="alertaLockTitle" hidden>
     <div class="alerta-lock-box">
       <div class="siren-big" aria-hidden="true">!</div>
@@ -4087,6 +4093,9 @@
       </div>
     </div>
   </div>
+
+  <div id="panel-operacao" class="sector-root">
+  <div class="tv-hint" id="tvHint">Modo TV · F ou ESC para sair · ideal para televisão</div>
   <div class="board">
     <header class="topbar">
       <div class="brand">
@@ -6110,6 +6119,11 @@
       }
       document.body.setAttribute('data-sector', CURRENT_SECTOR);
       document.body.setAttribute('data-view', CURRENT_VIEW);
+
+      // Fora da Distribuição: corta bip/overlay na hora (não espera o update)
+      if (CURRENT_SECTOR !== 'distribuicao') {
+        silenceAlertaSemSaidaUi();
+      }
 
       const shownPanel = panelIdForSector(CURRENT_SECTOR);
       document.querySelectorAll('.sector-root').forEach((panel) => {
@@ -8614,6 +8628,11 @@
     }
 
     function playAlertaBeepOnce() {
+      // Guarda em todo bip: se saiu da Distribuição, mata o timer
+      if (!alertaSemSaidaAllowedHere()) {
+        stopAlertaBeep();
+        return;
+      }
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
@@ -8639,6 +8658,10 @@
     }
 
     function startAlertaBeep() {
+      if (!alertaSemSaidaAllowedHere()) {
+        stopAlertaBeep();
+        return;
+      }
       if (alertaBeepTimer) return;
       playAlertaBeepOnce();
       alertaBeepTimer = setInterval(playAlertaBeepOnce, ALERTA_BEEP_MS);
@@ -8687,15 +8710,28 @@
       if (isOpsSector(CURRENT_SECTOR)) applyOpsLiveViews();
     }
 
-    /** Overlay/bip só na Distribuição (coleta/entrega/agendamento), não nos outros setores. */
+    /** Overlay/bip somente com Distribuição visível (nunca em armazém/contratação/etc). */
     function alertaSemSaidaAllowedHere() {
-      return VIEW === 'live' && isOpsSector(CURRENT_SECTOR);
+      if (VIEW !== 'live') return false;
+      if (String(CURRENT_SECTOR || '') !== 'distribuicao') return false;
+      if (document.body.getAttribute('data-sector') !== 'distribuicao') return false;
+      const panel = document.getElementById('panel-operacao');
+      if (panel && panel.hidden) return false;
+      // TV de parede/slot amarrada a outro setor: silêncio total
+      if (
+        TV_MODE
+        && TV_EFFECTIVE
+        && TV_EFFECTIVE.sector
+        && String(TV_EFFECTIVE.sector) !== 'distribuicao'
+        && (TV_EFFECTIVE.mosaic || /tv\/slot/i.test(location.hash || ''))
+      ) {
+        return false;
+      }
+      return true;
     }
 
-    function dismissAlertaLock() {
-      ALERTA_LOCK_DISMISSED = true;
+    function silenceAlertaSemSaidaUi() {
       ALERTA_LOCK_ON = false;
-      ALERTA_LOCK_SNOOZE_UNTIL = Date.now() + ALERTA_SNOOZE_MS;
       stopAlertaBeep();
       document.body.classList.remove('alerta-lock');
       const lock = document.getElementById('alertaLock');
@@ -8703,6 +8739,12 @@
         lock.hidden = true;
         lock.style.display = 'none';
       }
+    }
+
+    function dismissAlertaLock() {
+      ALERTA_LOCK_DISMISSED = true;
+      ALERTA_LOCK_SNOOZE_UNTIL = Date.now() + ALERTA_SNOOZE_MS;
+      silenceAlertaSemSaidaUi();
       repairDistribuicaoAfterAlerta();
       scheduleAlertaSnoozeWake();
       if (VIEW === 'live' && !swapTimer) restartSwapTimer();
@@ -8739,11 +8781,28 @@
       // Overlay/bip só na Distribuição e fora do snooze
       const ativo = alerts.length > 0 && !snoozed && onDistribuicao;
       ALERTA_LOCK_DISMISSED = snoozed;
-      ALERTA_LOCK_ON = ativo;
-      document.body.classList.toggle('alerta-lock', ativo);
+
+      if (!ativo) {
+        silenceAlertaSemSaidaUi();
+        if (
+          CURRENT_SECTOR === 'agendamento'
+          || document.body.getAttribute('data-sector') === 'agendamento'
+        ) {
+          repairDistribuicaoAfterAlerta();
+        }
+        if (VIEW === 'live' && TV_MODE && (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem') && !swapTimer) {
+          restartSwapTimer();
+        }
+        // Ainda atualiza contadores/lista mesmo fora da Dist (sem overlay)
+        if (countEl) countEl.textContent = String(alerts.length);
+        return;
+      }
+
+      ALERTA_LOCK_ON = true;
+      document.body.classList.add('alerta-lock');
       if (lock) {
-        lock.hidden = !ativo;
-        lock.style.display = ativo ? 'flex' : 'none';
+        lock.hidden = false;
+        lock.style.display = 'flex';
       }
       if (countEl) countEl.textContent = String(alerts.length);
       if (hintEl) {
@@ -8760,33 +8819,19 @@
           </div>`).join('');
       }
 
-      if (ativo) {
-        // No TV: pausa o swap e destaca a vista Agendamento (já estamos em Distribuição)
-        if (document.body.classList.contains('tv-mode')) {
-          if (swapTimer) { clearInterval(swapTimer); swapTimer = null; }
-          if (swapCountdown) { clearInterval(swapCountdown); swapCountdown = null; }
-          if (VIEW === 'live' && CURRENT_VIEW !== 'agendamento') {
-            CURRENT_VIEW = 'agendamento';
-            applyOpsLiveViews();
-            writeRouteHash({ tv: true, sector: 'distribuicao' });
-          }
-        }
-        startAlertaBeep();
-        const tick = document.getElementById('agendaTick');
-        if (tick) tick.textContent = `ALERTA · SEM SAÍDA (${alerts.length}) · bipa 10s`;
-      } else {
-        stopAlertaBeep();
-        // Auto-cura do bug antigo (setor = "agendamento" apagava coleta/entrega)
-        if (
-          CURRENT_SECTOR === 'agendamento'
-          || document.body.getAttribute('data-sector') === 'agendamento'
-        ) {
-          repairDistribuicaoAfterAlerta();
-        }
-        if (VIEW === 'live' && TV_MODE && (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem') && !swapTimer) {
-          restartSwapTimer();
+      // No TV: pausa o swap e destaca a vista Agendamento (já estamos em Distribuição)
+      if (document.body.classList.contains('tv-mode')) {
+        if (swapTimer) { clearInterval(swapTimer); swapTimer = null; }
+        if (swapCountdown) { clearInterval(swapCountdown); swapCountdown = null; }
+        if (VIEW === 'live' && CURRENT_VIEW !== 'agendamento') {
+          CURRENT_VIEW = 'agendamento';
+          applyOpsLiveViews();
+          writeRouteHash({ tv: true, sector: 'distribuicao' });
         }
       }
+      startAlertaBeep();
+      const tick = document.getElementById('agendaTick');
+      if (tick) tick.textContent = `ALERTA · SEM SAÍDA (${alerts.length}) · bipa 10s`;
     }
 
     function opsViewIndex() {
@@ -9370,6 +9415,9 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && TV_MODE) requestWakeLock();
       else if (document.visibilityState === 'visible') ensureTvKeepAliveVideo();
+      // Aba em segundo plano / outra TV: não fica bipando
+      if (document.visibilityState !== 'visible') stopAlertaBeep();
+      else updateAlertaSemSaidaLock();
     });
     window.addEventListener('hashchange', () => applyRouteFromHash());
 
