@@ -1158,10 +1158,62 @@
     }
     body.tv-mode .agenda-layout:not(.has-blocks) {
       display: grid !important;
-      grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr) !important;
-      grid-template-rows: auto minmax(0, 1fr) minmax(160px, 0.4fr) !important;
-      gap: clamp(8px, 1.1vmin, 14px) !important;
+      grid-template-columns: minmax(0, 1.55fr) minmax(200px, 0.65fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) minmax(120px, 0.32fr) !important;
+      gap: clamp(6px, 0.9vmin, 12px) !important;
       height: 100% !important;
+      min-height: 0 !important;
+      flex: 1 1 auto !important;
+      overflow: hidden !important;
+    }
+    /* TV: agendamento — pizza/torres cabem na tela (sem empilhar por min-height) */
+    body.tv-mode .agenda-arena {
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode .agenda-layout .dash-block {
+      min-height: 0 !important;
+    }
+    body.tv-mode .agenda-chart-stage {
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode .torres.agenda-torres,
+    body.tv-mode.dash-scale-large .torres.agenda-torres,
+    body.tv-mode.dash-scale-small .torres.agenda-torres {
+      min-height: 0 !important;
+      height: 100% !important;
+      max-height: 100% !important;
+      flex-wrap: nowrap !important;
+    }
+    body.tv-mode .torres.agenda-torres .torre {
+      flex-direction: column !important;
+    }
+    body.tv-mode .torres.agenda-torres .barra,
+    body.tv-mode .torres.agenda-torres .torre .barra {
+      max-height: none !important;
+    }
+    body.tv-mode .agenda-pizza-wrap {
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode .agenda-pizza {
+      width: min(100%, 100%) !important;
+      height: min(100%, 92%) !important;
+      max-height: 100% !important;
+    }
+    body.dash-hide-status .agenda-layout:not(.has-blocks) [data-block="chart"] {
+      grid-column: 1 / -1;
+    }
+    body.dash-hide-amanha .agenda-layout:not(.has-blocks) {
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    body.dash-hide-amanha .agenda-layout:not(.has-blocks) [data-block="amanha"] {
+      display: none !important;
     }
     /* TV: painéis de setor — coluna flex estável (evita layout bugado) */
     body.tv-mode #panel-armazem:not([hidden]),
@@ -1958,7 +2010,10 @@
       min-height: clamp(64px, 8vh, 96px);
     }
     body.dash-scale-large .torres.agenda-torres {
-      min-height: clamp(280px, 48vh, 520px);
+      min-height: clamp(220px, 36vh, 420px);
+    }
+    body.tv-mode.dash-scale-large .torres.agenda-torres {
+      min-height: 0 !important;
     }
     body.dash-scale-large .torres.agenda-torres .barra strong {
       font-size: clamp(36px, 5vw, 72px);
@@ -2293,8 +2348,9 @@
     html.tv-in-frame .agenda-layout:not(.has-blocks),
     body.tv-mode .agenda-layout:not(.has-blocks) {
       display: grid !important;
-      grid-template-columns: minmax(0, 1.4fr) minmax(200px, 0.7fr) !important;
-      grid-template-rows: auto minmax(0, 1fr) minmax(140px, 0.4fr) !important;
+      grid-template-columns: minmax(0, 1.55fr) minmax(180px, 0.6fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) minmax(110px, 0.3fr) !important;
+      overflow: hidden !important;
     }
     html.tv-in-frame .agenda-layout:not(.has-blocks) [data-block="kpis"],
     body.tv-mode .agenda-layout:not(.has-blocks) [data-block="kpis"] {
@@ -2305,17 +2361,25 @@
     body.tv-mode .agenda-layout:not(.has-blocks) [data-block="chart"] {
       grid-column: 1 !important;
       grid-row: 2 !important;
+      min-height: 0 !important;
     }
     html.tv-in-frame .agenda-layout:not(.has-blocks) [data-block="status"],
     body.tv-mode .agenda-layout:not(.has-blocks) [data-block="status"] {
       grid-column: 2 !important;
       grid-row: 2 !important;
       max-height: none !important;
+      min-height: 0 !important;
+      overflow: auto !important;
     }
     html.tv-in-frame .agenda-layout:not(.has-blocks) [data-block="amanha"],
     body.tv-mode .agenda-layout:not(.has-blocks) [data-block="amanha"] {
       grid-column: 1 / -1 !important;
       grid-row: 3 !important;
+      min-height: 0 !important;
+    }
+    html.tv-in-frame body.dash-hide-status .agenda-layout:not(.has-blocks) [data-block="chart"],
+    body.tv-mode.dash-hide-status .agenda-layout:not(.has-blocks) [data-block="chart"] {
+      grid-column: 1 / -1 !important;
     }
     html.tv-in-frame .agenda-kpis,
     body.tv-mode .agenda-kpis {
@@ -3345,9 +3409,9 @@
     body.live-mode:not(.tv-mode) .resumo-single .resumo-stats b {
       font-size: clamp(22px, 2.6vw, 36px);
     }
-    /* Entrega sem blocos CRT: faixas ocupam 2 colunas */
+    /* Entrega sem blocos CRT: pizza grande + pendências laterais */
     #opsLayoutEntrega:not(.has-blocks) {
-      grid-template-columns: minmax(300px, 1.55fr) minmax(180px, 0.85fr);
+      grid-template-columns: minmax(320px, 1.7fr) minmax(180px, 0.75fr);
     }
     #opsLayoutEntrega:not(.has-blocks) > [data-block="banners"] {
       grid-column: 1;
@@ -3357,6 +3421,63 @@
       grid-column: 2;
       grid-row: 2;
     }
+    body.tv-mode #opsLayoutEntrega:not(.has-blocks) {
+      grid-template-columns: minmax(380px, 1.85fr) minmax(180px, 0.7fr) !important;
+    }
+    .entrega-pizza-wrap {
+      display: none;
+      place-items: center;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    .entrega-pizza-wrap[hidden] { display: none !important; }
+    body.dash-chart-pizza #entregaPizzaWrap {
+      display: grid !important;
+    }
+    body.dash-chart-pizza #entregaCylWrap {
+      display: none !important;
+    }
+    body.dash-chart-towers #entregaPizzaWrap,
+    body.dash-chart-bars #entregaPizzaWrap {
+      display: none !important;
+    }
+    body.dash-chart-towers #entregaCylWrap,
+    body.dash-chart-bars #entregaCylWrap {
+      display: grid !important;
+    }
+    .entrega-pizza {
+      width: min(100%, 1100px);
+      height: 100%;
+      max-height: 100%;
+    }
+    body.live-mode .entrega-pizza {
+      width: min(100%, 1200px);
+    }
+    body.tv-mode .entrega-pizza {
+      width: 100% !important;
+      height: min(100%, 96%) !important;
+    }
+    body.tv-mode #opsLayoutEntrega .ops-col-banners {
+      display: flex !important;
+      flex-direction: column !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode #opsLayoutEntrega .ops-col-banners .col-sub {
+      flex: 0 0 auto;
+    }
+    body.live-mode .entrega-pizza .callout-pct { font-size: 56px; }
+    body.live-mode .entrega-pizza .callout-lab { font-size: 20px; }
+    body.live-mode .entrega-pizza .callout-count { font-size: 18px; }
+    body.tv-mode.live-mode .entrega-pizza .callout-pct { font-size: 72px; }
+    body.tv-mode.live-mode .entrega-pizza .callout-lab { font-size: 24px; }
+    body.tv-mode.live-mode .entrega-pizza .callout-count { font-size: 22px; }
+    .agenda-pizza .slice.s-real { fill: #22c55e; }
+    .agenda-pizza .slice-depth.s-real { fill: #15803d; }
+    .agenda-pizza .callout-dot.s-real { fill: #22c55e; }
     .ops-layout.has-blocks {
       display: grid;
       grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -4192,8 +4313,11 @@
           </div>
 
           <div class="ops-col dash-block ops-col-banners" data-block="banners">
-            <div class="col-sub">Faixas %</div>
-            <div class="cyl-wrap" aria-label="Resumo de entregas">
+            <div class="col-sub" id="entChartSub">Entregas</div>
+            <div class="entrega-pizza-wrap" id="entregaPizzaWrap" hidden>
+              <svg id="entregaPizza" class="agenda-pizza entrega-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de entregas"></svg>
+            </div>
+            <div class="cyl-wrap" id="entregaCylWrap" aria-label="Resumo de entregas">
               <div class="cyl">
                 <div class="cyl-seg c-real" id="cylSegReal" style="flex-grow:1"></div>
                 <div class="cyl-seg c-rota" id="cylSegRota" style="flex-grow:1"></div>
@@ -5138,6 +5262,7 @@
         if (sEl) sEl.textContent = String(val);
       });
       lastCountsEnt = counts;
+      renderEntregaPizza(counts.realizada || 0, counts.em_rota || 0, counts.parado || 0);
     }
 
     function situacaoNorm50(c) {
@@ -5762,7 +5887,13 @@
         const views = defaults.views || {};
         ui = views[v] || views.patio || ui || {};
       }
-      const chart = String(ui.chart || (sec === 'distribuicao' && (view || CURRENT_VIEW) === 'agendamento' ? 'towers' : 'towers')).toLowerCase();
+      const chart = String(ui.chart || (
+        sec === 'distribuicao' && (view || CURRENT_VIEW) === 'agendamento'
+          ? 'pizza'
+          : sec === 'distribuicao' && (view || CURRENT_VIEW) === 'entrega'
+            ? 'pizza'
+            : 'towers'
+      )).toLowerCase();
       const scale = String(ui.scale || 'large').toLowerCase();
       let fontZoom = Number(ui.fontZoom);
       if (!Number.isFinite(fontZoom)) fontZoom = 1;
@@ -5837,6 +5968,12 @@
       const towersWrap = document.getElementById('agendaTowersWrap');
       if (pizzaWrap) pizzaWrap.hidden = ui.chart !== 'pizza';
       if (towersWrap) towersWrap.hidden = ui.chart !== 'towers';
+      const entPizza = document.getElementById('entregaPizzaWrap');
+      const entCyl = document.getElementById('entregaCylWrap');
+      const entSub = document.getElementById('entChartSub');
+      if (entPizza) entPizza.hidden = ui.chart !== 'pizza';
+      if (entCyl) entCyl.hidden = ui.chart === 'pizza';
+      if (entSub) entSub.textContent = ui.chart === 'pizza' ? 'Pizza · entregas' : 'Faixas %';
 
       document.documentElement.style.setProperty('--dash-font', String(ui.fontZoom || 1));
 
@@ -8385,22 +8522,34 @@
     }
 
     function renderAgendaPizza(rota, parado, ok) {
-      const svg = document.getElementById('agendaPizza');
-      if (!svg) return;
-      const parts = [
+      renderStatusPizza('agendaPizza', [
         { cls: 's-rota', label: 'EM ROTA', desc: 'Saída para entrega', value: Number(rota) || 0 },
         { cls: 's-par', label: 'PARADO', desc: 'No armazém / agendado', value: Number(parado) || 0 },
         { cls: 's-ok', label: 'CONCLUÍDO', desc: 'Entrega realizada', value: Number(ok) || 0 },
-      ].filter(p => p.value > 0);
+      ]);
+    }
+
+    function renderEntregaPizza(real, rota, par) {
+      renderStatusPizza('entregaPizza', [
+        { cls: 's-real', label: 'REALIZADA', desc: 'Entregas concluídas', value: Number(real) || 0 },
+        { cls: 's-rota', label: 'EM ROTA', desc: 'Em deslocamento', value: Number(rota) || 0 },
+        { cls: 's-par', label: 'PENDÊNCIA', desc: 'Aguardando solução', value: Number(par) || 0 },
+      ]);
+    }
+
+    function renderStatusPizza(svgId, partsIn) {
+      const svg = document.getElementById(svgId);
+      if (!svg) return;
+      const parts = (partsIn || []).filter(p => p.value > 0);
       const total = parts.reduce((s, p) => s + p.value, 0);
       const W = 900, H = 520;
-      const cx = 450, cy = 268, r = 168, explode = 20, depthY = 14;
+      const cx = 450, cy = 268, r = 178, explode = 18, depthY = 14;
       if (!total) {
         svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#1e293b"/><text x="${cx}" y="${cy}" text-anchor="middle" fill="#64748b" font-size="14" font-weight="700">Sem dados</text>`;
         return;
       }
 
-      let angle = -10; // leve giro visual
+      let angle = -10;
       const slices = [];
       const depths = [];
       const callouts = [];
@@ -8436,7 +8585,7 @@
           <text class="callout-pct" x="${lx}" y="${ly - 10}" text-anchor="${anchorText}">${pct}%</text>
           <line class="callout-rule" x1="${ruleX1}" y1="${ly - 2}" x2="${ruleX2}" y2="${ly - 2}" />
           <text class="callout-lab" x="${lx}" y="${ly + 16}" text-anchor="${anchorText}">${p.label}</text>
-          <text class="callout-count" x="${lx}" y="${ly + 34}" text-anchor="${anchorText}">${p.value} CTRC · ${p.desc}</text>
+          <text class="callout-count" x="${lx}" y="${ly + 34}" text-anchor="${anchorText}">${p.value} · ${p.desc}</text>
         `);
         angle = end;
       });

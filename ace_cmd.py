@@ -163,10 +163,10 @@ def _save_payload(payload: dict[str, Any]) -> None:
         headless=bool(payload.get("headless", True)),
         crt_theme=str(payload.get("crt_theme") or "binho").strip() or "binho",
         crt_frost_alpha=max(
-            0, min(100, int(payload.get("crt_frost_alpha", 40) or 0))
+            0, min(100, int(payload.get("crt_frost_alpha", 55) or 0))
         ),
         crt_frost_blur=max(
-            0, min(100, int(payload.get("crt_frost_blur", 65) or 0))
+            0, min(100, int(payload.get("crt_frost_blur", 70) or 0))
         ),
     )
     save_all(creds, settings)

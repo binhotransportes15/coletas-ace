@@ -109,8 +109,8 @@ class AceSettings:
     # Tema visual do CRT (binho | painel | ops | claro | fosco)
     crt_theme: str = "binho"
     # Tema fosco: transparência 0–100 (ver fundo) e blur 0–100 (fosco Windows)
-    crt_frost_alpha: int = 40
-    crt_frost_blur: int = 65
+    crt_frost_alpha: int = 55
+    crt_frost_blur: int = 70
 
 
 def ensure_dirs() -> None:

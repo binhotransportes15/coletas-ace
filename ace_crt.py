@@ -217,8 +217,8 @@ CRT_THEMES: dict[str, dict[str, object]] = {
         "log_bg": "#0a0e14",
         "scan": False,
         "frost": True,
-        # Fallback neutro AABBGGRR (cinza, sem matiz)
-        "acrylic_tint": 0x70141414,
+        # Fallback neutro AABBGGRR (cinza, sem matiz) — AA baixo = vê o desktop
+        "acrylic_tint": 0x381A1A1A,
         "meter_h": 18,
     },
 }
@@ -228,27 +228,28 @@ def frost_params(
     alpha_pct: int | None = None, blur_pct: int | None = None
 ) -> dict[str, int]:
     """Transparência/fosco → tint Windows + opacidades de painel."""
-    a = 40 if alpha_pct is None else max(0, min(100, int(alpha_pct)))
-    b = 65 if blur_pct is None else max(0, min(100, int(blur_pct)))
-    # AA alto = mais opaco; transparência alta → AA baixo
-    aa = int(round(0xD0 - (0xD0 - 0x28) * (a / 100.0)))
-    # BBGGRR neutro 20,20,20 (sem verde)
-    tint = (aa << 24) | 0x141414
+    a = 55 if alpha_pct is None else max(0, min(100, int(alpha_pct)))
+    b = 70 if blur_pct is None else max(0, min(100, int(blur_pct)))
+    # AA do acrylic (AABBGGRR): alto = tela preta; baixo = desktop aparece
+    # Transparência 0 → ~0x55 · 55 → ~0x2A · 100 → ~0x0C
+    aa = int(round(0x55 - (0x55 - 0x0C) * (a / 100.0)))
+    tint = (aa << 24) | 0x1A1A1A
     if b <= 0:
         state = 2  # transparente sem blur
-    elif b < 40:
-        state = 3  # blur simples
+    elif b < 35:
+        state = 3  # blur clássico
     else:
         state = 4  # acrylic
-    panel_a = int(round(235 - 155 * (a / 100.0)))
-    label_a = int(round(245 - 90 * (a / 100.0)))
+    # Painéis: deixam o blur do Windows aparecer entre/através deles
+    panel_a = int(round(120 - 95 * (a / 100.0)))
+    label_a = int(round(170 - 90 * (a / 100.0)))
     return {
         "alpha": a,
         "blur": b,
         "tint": tint,
         "state": state,
-        "panel_a": panel_a,
-        "label_a": label_a,
+        "panel_a": max(28, panel_a),
+        "label_a": max(80, label_a),
     }
 
 DEFAULT_CRT_THEME = "binho"
@@ -538,9 +539,13 @@ class SectorMeterRow(QWidget):
         v = max(0.0, min(100.0, pct))
         self._bar.setValue(int(round(v * 10)))
         if state == "run":
-            self._val.setText("RUN")
+            self._val.setText(f"{v:.0f}%")
         elif state == "due":
-            self._val.setText("DUE")
+            self._val.setText("0%")
+        elif state == "ok":
+            self._val.setText("100%")
+        elif state == "err":
+            self._val.setText("ERR")
         else:
             self._val.setText(f"{v:.0f}%")
         suffix = f" · {interval}" if interval else ""
@@ -551,15 +556,26 @@ class SectorMeterRow(QWidget):
 def apply_windows_acrylic(
     hwnd: int,
     enable: bool,
-    tint_aabbggrr: int = 0xB0141414,
+    tint_aabbggrr: int = 0x401A1A1A,
     accent_state: int = 4,
 ) -> bool:
-    """Blur/acrylic no Windows (DWM). Retorna True se aplicou."""
+    """Blur/acrylic no Windows (DWM backdrop + AccentPolicy)."""
     if sys.platform != "win32" or not hwnd:
         return False
     try:
         import ctypes
         from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        dwmapi = ctypes.windll.dwmapi
+
+        class MARGINS(ctypes.Structure):
+            _fields_ = (
+                ("cxLeftWidth", ctypes.c_int),
+                ("cxRightWidth", ctypes.c_int),
+                ("cyTopHeight", ctypes.c_int),
+                ("cyBottomHeight", ctypes.c_int),
+            )
 
         class ACCENTPOLICY(ctypes.Structure):
             _fields_ = (
@@ -576,11 +592,32 @@ def apply_windows_acrylic(
                 ("SizeOfData", ctypes.c_size_t),
             )
 
-        # 2 = transparente, 3 = blur, 4 = acrylic (Win10+)
+        hwnd_w = wintypes.HWND(hwnd)
+        margins = MARGINS(-1, -1, -1, -1) if enable else MARGINS(0, 0, 0, 0)
+        try:
+            dwmapi.DwmExtendFrameIntoClientArea(hwnd_w, ctypes.byref(margins))
+        except Exception:
+            pass
+
+        # Win11 SYSTEMBACKDROP + AccentPolicy juntos costumam virar preto sólido.
+        # Desliga backdrop e usa só AccentPolicy (tint/AA controláveis).
+        try:
+            DWMWA_SYSTEMBACKDROP_TYPE = 38
+            backdrop = ctypes.c_int(1)  # DWMSBT_NONE
+            dwmapi.DwmSetWindowAttribute(
+                hwnd_w,
+                DWMWA_SYSTEMBACKDROP_TYPE,
+                ctypes.byref(backdrop),
+                ctypes.sizeof(backdrop),
+            )
+        except Exception:
+            pass
+
         accent = ACCENTPOLICY()
         if enable:
             accent.AccentState = int(accent_state)
-            accent.AccentFlags = 2
+            # AllBorders + allow tint (flags usados pelo Fluent/acrylic clássico)
+            accent.AccentFlags = 0x20 | 0x40 | 0x80 | 0x100
             accent.GradientColor = int(tint_aabbggrr) & 0xFFFFFFFF
         else:
             accent.AccentState = 0
@@ -592,17 +629,30 @@ def apply_windows_acrylic(
         data.Data = ctypes.addressof(accent)
         data.SizeOfData = ctypes.sizeof(accent)
 
-        fn = ctypes.windll.user32.SetWindowCompositionAttribute
+        fn = user32.SetWindowCompositionAttribute
         fn.argtypes = (wintypes.HWND, ctypes.POINTER(WINDOWCOMPOSITIONATTRIBDATA))
         fn.restype = wintypes.BOOL
-        ok = bool(fn(wintypes.HWND(hwnd), ctypes.byref(data)))
-        if ok:
-            return True
-        if enable and int(accent_state) != 3:
-            # fallback blur simples
+        ok = bool(fn(hwnd_w, ctypes.byref(data)))
+        if enable and not ok:
+            # Fallback: blur clássico (Win10/11)
             accent.AccentState = 3
-            return bool(fn(wintypes.HWND(hwnd), ctypes.byref(data)))
-        return False
+            ok = bool(fn(hwnd_w, ctypes.byref(data)))
+        if enable and not ok:
+            # Último recurso: Win11 acrylic backdrop (sem tint fino)
+            try:
+                backdrop = ctypes.c_int(3)  # DWMSBT_TRANSIENTWINDOW / acrylic
+                ok = (
+                    dwmapi.DwmSetWindowAttribute(
+                        hwnd_w,
+                        38,
+                        ctypes.byref(backdrop),
+                        ctypes.sizeof(backdrop),
+                    )
+                    == 0
+                )
+            except Exception:
+                pass
+        return ok
     except Exception:
         return False
 
@@ -636,7 +686,7 @@ def build_crt_stylesheet(
     # para não deixarem resíduo de texto ao atualizar.
     if frost:
         root_rule = f"""
-QWidget#crtRoot, QSplitter {{
+QWidget#crtRoot, QSplitter, QSplitter::handle {{
     background: transparent;
 }}
 QWidget {{
@@ -644,6 +694,10 @@ QWidget {{
     font-family: {font_stack};
     font-size: 13px;
     letter-spacing: 0.4px;
+    background: transparent;
+}}
+QTabWidget, QTabWidget::pane, QScrollArea, QAbstractScrollArea,
+QAbstractScrollArea > QWidget > QWidget {{
     background: transparent;
 }}
 QLabel {{
@@ -938,6 +992,9 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "barra": "/bars",
     "/bars": "/bars",
     "/barras": "/bars",
+    "tela cheia": "tela cheia",
+    "tela": "tela cheia",
+    "fullscreen": "tela cheia",
 }
 
 
@@ -1126,13 +1183,6 @@ class AceCrtConsole(QWidget):
         self.cmb_theme.currentIndexChanged.connect(self._on_theme_combo)
         head.addWidget(lab_theme)
         head.addWidget(self.cmb_theme)
-        head.addSpacing(8)
-        self.btn_fullscreen = QPushButton("Tela cheia")
-        self.btn_fullscreen.setObjectName("primary")
-        self.btn_fullscreen.setToolTip("Alternar tela cheia (F11 · Esc para sair)")
-        self.btn_fullscreen.setFixedWidth(100)
-        self.btn_fullscreen.clicked.connect(self.toggle_fullscreen)
-        head.addWidget(self.btn_fullscreen)
         head.addSpacing(12)
         head.addWidget(self.mode)
         root.addLayout(head)
@@ -1316,7 +1366,9 @@ class AceCrtConsole(QWidget):
             self._sector_meters[sid] = meter
             bars_lay.addWidget(meter)
         bars_lay.addStretch(1)
-        tip_bars = QLabel("Barrinhas = progresso até o próximo ciclo · digite /log para ver o console")
+        tip_bars = QLabel(
+            "Barrinhas = % da automação + envio Sheets · digite /log para o console detalhado"
+        )
         tip_bars.setObjectName("hint")
         tip_bars.setWordWrap(True)
         bars_lay.addWidget(tip_bars)
@@ -1344,7 +1396,7 @@ class AceCrtConsole(QWidget):
         lay.addLayout(prompt_row)
 
         hint = QLabel(
-            "Console · /log ou /bars alterna a vista · “parar” corta QUALQUER comando · F11 tela cheia"
+            "Console · /log ou /bars alterna a vista · “parar” corta QUALQUER comando · digite “tela cheia”"
         )
         hint.setObjectName("hint")
         lay.addWidget(hint)
@@ -1372,11 +1424,11 @@ class AceCrtConsole(QWidget):
             else:
                 if hasattr(self, "sector_status"):
                     self.sector_status.setText(
-                        "Vista BARRAS · progresso por setor · digite /log para o console"
+                        "Vista BARRAS · % automação + Sheets · digite /log para o console"
                     )
                 self._append_log(
                     "sistema",
-                    "Vista BARRAS · progresso por setor. Digite /log para o console detalhado.",
+                    "Vista BARRAS · progresso da automação e Sheets. Digite /log para o console.",
                     mirror=False,
                 )
     def _build_right(self) -> QWidget:
@@ -1463,10 +1515,10 @@ class AceCrtConsole(QWidget):
         frost_hint.setObjectName("hint")
         form.addRow(frost_hint)
 
-        self.lbl_frost_alpha = QLabel("40%")
+        self.lbl_frost_alpha = QLabel("55%")
         self.sld_frost_alpha = QSlider(Qt.Horizontal)
         self.sld_frost_alpha.setRange(0, 100)
-        self.sld_frost_alpha.setValue(40)
+        self.sld_frost_alpha.setValue(55)
         self.sld_frost_alpha.setToolTip("0 = mais opaco · 100 = bem transparente")
         self.sld_frost_alpha.valueChanged.connect(self._on_frost_alpha)
         row_a = QHBoxLayout()
@@ -1476,10 +1528,10 @@ class AceCrtConsole(QWidget):
         wrap_a.setLayout(row_a)
         form.addRow("Transparência", wrap_a)
 
-        self.lbl_frost_blur = QLabel("65%")
+        self.lbl_frost_blur = QLabel("70%")
         self.sld_frost_blur = QSlider(Qt.Horizontal)
         self.sld_frost_blur.setRange(0, 100)
-        self.sld_frost_blur.setValue(65)
+        self.sld_frost_blur.setValue(70)
         self.sld_frost_blur.setToolTip("0 = sem blur · 100 = fosco máximo (Windows)")
         self.sld_frost_blur.valueChanged.connect(self._on_frost_blur)
         row_b = QHBoxLayout()
@@ -2238,28 +2290,28 @@ class AceCrtConsole(QWidget):
         if hasattr(self, "sld_frost_alpha"):
             return int(self.sld_frost_alpha.value())
         try:
-            return max(0, min(100, int((self.payload or {}).get("crt_frost_alpha", 40))))
+            return max(0, min(100, int((self.payload or {}).get("crt_frost_alpha", 55))))
         except Exception:
-            return 40
+            return 55
 
     def _frost_blur_val(self) -> int:
         if hasattr(self, "sld_frost_blur"):
             return int(self.sld_frost_blur.value())
         try:
-            return max(0, min(100, int((self.payload or {}).get("crt_frost_blur", 65))))
+            return max(0, min(100, int((self.payload or {}).get("crt_frost_blur", 70))))
         except Exception:
-            return 65
+            return 70
 
     def _load_frost_sliders_from_payload(self) -> None:
         p = self.payload or {}
         try:
-            a = max(0, min(100, int(p.get("crt_frost_alpha", 40))))
+            a = max(0, min(100, int(p.get("crt_frost_alpha", 55))))
         except Exception:
-            a = 40
+            a = 55
         try:
-            b = max(0, min(100, int(p.get("crt_frost_blur", 65))))
+            b = max(0, min(100, int(p.get("crt_frost_blur", 70))))
         except Exception:
-            b = 65
+            b = 70
         for sld, val, lbl, suf in (
             (getattr(self, "sld_frost_alpha", None), a, getattr(self, "lbl_frost_alpha", None), "%"),
             (getattr(self, "sld_frost_blur", None), b, getattr(self, "lbl_frost_blur", None), "%"),
@@ -2289,12 +2341,40 @@ class AceCrtConsole(QWidget):
             self.lbl_frost_alpha.setText(f"{int(value)}%")
         if getattr(self, "_theme_id", "") == "fosco":
             self._apply_theme("fosco", persist=False)
+            self._schedule_frost_refresh()
 
     def _on_frost_blur(self, value: int) -> None:
         if hasattr(self, "lbl_frost_blur"):
             self.lbl_frost_blur.setText(f"{int(value)}%")
         if getattr(self, "_theme_id", "") == "fosco":
             self._apply_theme("fosco", persist=False)
+            self._schedule_frost_refresh()
+
+    def _schedule_frost_refresh(self) -> None:
+        """Reaplica acrylic após o stylesheet (Windows às vezes “come” o blur)."""
+        try:
+            self._frost_refresh_token = int(getattr(self, "_frost_refresh_token", 0)) + 1
+            token = self._frost_refresh_token
+            rebuild = bool(getattr(self, "_frost_needs_rebuild", False))
+            self._frost_needs_rebuild = False
+
+            def _go(force: bool = False) -> None:
+                if token != getattr(self, "_frost_refresh_token", 0):
+                    return
+                if getattr(self, "_theme_id", "") != "fosco":
+                    return
+                fp = frost_params(self._frost_alpha_val(), self._frost_blur_val())
+                self._apply_frost_window(
+                    True,
+                    int(fp["tint"]),
+                    int(fp["state"]),
+                    force_rebuild=force,
+                )
+
+            QTimer.singleShot(40, lambda: _go(rebuild))
+            QTimer.singleShot(220, lambda: _go(False))
+        except Exception:
+            pass
 
     def _store_frost_into_payload(self) -> None:
         if not isinstance(getattr(self, "payload", None), dict):
@@ -2326,7 +2406,8 @@ class AceCrtConsole(QWidget):
         if hasattr(self, "cubes"):
             self.cubes.set_green_glow(not frost and tid == "binho")
             if frost:
-                self.cubes.set_fill_color(QColor(10, 14, 20, 90))
+                cube_a = max(18, min(110, 130 - fa))
+                self.cubes.set_fill_color(QColor(10, 14, 20, cube_a))
             elif tid == "claro":
                 self.cubes.set_fill_color(QColor("#e8edf2"))
             elif tid == "painel":
@@ -2355,9 +2436,18 @@ class AceCrtConsole(QWidget):
             self.bar.setFixedHeight(meter_h + 2 if frost else 16)
         self._harden_frost_widgets(frost)
         fp = frost_params(fa, fb) if frost else None
-        tint = int(fp["tint"]) if fp else int(meta.get("acrylic_tint") or 0x70141414)
+        tint = int(fp["tint"]) if fp else int(meta.get("acrylic_tint") or 0x401A1A1A)
         state = int(fp["state"]) if fp else 4
-        self._apply_frost_window(frost, tint, state)
+        # Trocar tema fosco ↔ sólido precisa recriar TranslucentBackground
+        prev = getattr(self, "_frost_active", False)
+        if frost != prev:
+            self._frost_needs_rebuild = True
+        self._frost_active = frost
+        rebuild = bool(getattr(self, "_frost_needs_rebuild", False))
+        self._frost_needs_rebuild = False
+        self._apply_frost_window(frost, tint, state, force_rebuild=rebuild)
+        if frost:
+            self._schedule_frost_refresh()
         self._sync_frost_controls_enabled()
         for cmb in (getattr(self, "cmb_theme", None), getattr(self, "cmb_theme_cfg", None)):
             if cmb is None:
@@ -2381,11 +2471,12 @@ class AceCrtConsole(QWidget):
                 pass
 
     def _harden_frost_widgets(self, frost: bool) -> None:
-        """Labels/log que atualizam precisam limpar o fundo (sem resíduo de texto)."""
+        """Evita fantasma de texto sem tapar o blur (painéis ficam translúcidos)."""
+        # Labels que atualizam: fundo via stylesheet; NÃO forçar fill opaco preto
         widgets = []
         for name in (
             "title", "mode", "status", "detail", "foot", "meta",
-            "sys_host", "sys_host_sub", "log",
+            "sys_host", "sys_host_sub",
         ):
             w = getattr(self, name, None)
             if w is not None:
@@ -2408,19 +2499,21 @@ class AceCrtConsole(QWidget):
         for w in widgets:
             try:
                 w.setAttribute(Qt.WA_StyledBackground, True)
-                w.setAttribute(Qt.WA_OpaquePaintEvent, frost)
-                w.setAutoFillBackground(frost)
+                # OpaquePaintEvent + AutoFillBackground = preto sólido (mata o fosco)
+                w.setAttribute(Qt.WA_OpaquePaintEvent, False)
+                w.setAutoFillBackground(False)
             except Exception:
                 pass
-        # Painéis também: limpam o miolo ao redesenhar
+        # Painéis: só stylesheet rgba — deixa o acrylic aparecer
         for fr in self.findChildren(QFrame):
             try:
                 if fr.objectName() in {"panel", "side"}:
                     fr.setAttribute(Qt.WA_StyledBackground, True)
-                    fr.setAttribute(Qt.WA_OpaquePaintEvent, frost)
-                    fr.setAutoFillBackground(frost)
+                    fr.setAttribute(Qt.WA_OpaquePaintEvent, False)
+                    fr.setAutoFillBackground(False)
             except Exception:
                 pass
+        # Log: opaco de propósito (texto não pode fantasma)
         if hasattr(self, "log"):
             log_bg = QColor("#0a0e14")
             try:
@@ -2454,17 +2547,58 @@ class AceCrtConsole(QWidget):
     def _apply_frost_window(
         self,
         enabled: bool,
-        tint: int = 0x70141414,
+        tint: int = 0x401A1A1A,
         accent_state: int = 4,
+        *,
+        force_rebuild: bool = False,
     ) -> None:
         """Fundo transparente + blur fosco (Windows acrylic)."""
-        self.setAttribute(Qt.WA_TranslucentBackground, enabled)
-        self.setAttribute(Qt.WA_NoSystemBackground, enabled)
-        self.setAutoFillBackground(not enabled)
+        have = bool(self.testAttribute(Qt.WA_TranslucentBackground))
+        need_rebuild = force_rebuild or (bool(enabled) != have)
+        if need_rebuild:
+            # WA_TranslucentBackground só vale se o HWND nascer com o atributo.
+            # hide/show NÃO recria a janela no Windows — precisa destroy/create.
+            vis = self.isVisible()
+            geom = self.geometry()
+            was_max = self.isMaximized()
+            if vis:
+                self.hide()
+            try:
+                self.destroy()
+            except Exception:
+                pass
+            self.setAttribute(Qt.WA_TranslucentBackground, bool(enabled))
+            self.setAttribute(Qt.WA_NoSystemBackground, bool(enabled))
+            try:
+                self.createWinId()
+            except Exception:
+                pass
+            self.setGeometry(geom)
+            if was_max:
+                self.showMaximized()
+            elif vis:
+                self.show()
+
+        self.setAutoFillBackground(False)
         try:
             self.setAttribute(Qt.WA_OpaquePaintEvent, False)
         except Exception:
             pass
+
+        pal = self.palette()
+        clear = QColor(0, 0, 0, 0)
+        if enabled:
+            pal.setColor(QPalette.Window, clear)
+            pal.setColor(QPalette.Base, clear)
+            pal.setBrush(QPalette.Window, QBrush(clear))
+            pal.setBrush(QPalette.Base, QBrush(clear))
+        self.setPalette(pal)
+
+        try:
+            QApplication.processEvents()
+        except Exception:
+            pass
+
         try:
             hwnd = int(self.winId())
         except Exception:
@@ -2479,13 +2613,8 @@ class AceCrtConsole(QWidget):
         super().showEvent(event)
         meta = CRT_THEMES.get(self._theme_id) or {}
         if meta.get("frost"):
-            fp = frost_params(self._frost_alpha_val(), self._frost_blur_val())
-            QTimer.singleShot(
-                0,
-                lambda: self._apply_frost_window(
-                    True, int(fp["tint"]), int(fp["state"])
-                ),
-            )
+            # Reaplica acrylic no HWND atual (sem destroy — evita loop com showEvent)
+            self._schedule_frost_refresh()
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         key = event.key()
@@ -2499,51 +2628,21 @@ class AceCrtConsole(QWidget):
             return
         super().keyPressEvent(event)
 
-    def changeEvent(self, event) -> None:  # noqa: N802
-        super().changeEvent(event)
-        try:
-            from PySide6.QtCore import QEvent
-
-            if event.type() == QEvent.WindowStateChange:
-                self._sync_fullscreen_button()
-        except Exception:
-            pass
-
     def toggle_fullscreen(self, force: bool | None = None) -> None:
-        """Liga/desliga tela cheia do CRT."""
+        """Liga/desliga tela cheia do CRT (comando `tela cheia` / F11)."""
         want = (not self.isFullScreen()) if force is None else bool(force)
         if want:
             self.showFullScreen()
-            self._append_log("sistema", "Tela cheia · F11 ou Esc para sair")
+            self._append_log("sistema", "Tela cheia · digite `tela cheia` de novo ou Esc para sair")
         else:
             self.showNormal()
-            # volta a um tamanho confortável se a janela ficou minúscula
             if self.width() < 900 or self.height() < 500:
                 self.resize(1180, 680)
                 self.showMaximized()
             self._append_log("sistema", "Saiu da tela cheia")
-        self._sync_fullscreen_button()
-        # reaplicar acrylic se tema fosco (winId/estado mudou)
         meta = CRT_THEMES.get(self._theme_id) or {}
         if meta.get("frost"):
-            fp = frost_params(self._frost_alpha_val(), self._frost_blur_val())
-            QTimer.singleShot(
-                50,
-                lambda: self._apply_frost_window(
-                    True, int(fp["tint"]), int(fp["state"])
-                ),
-            )
-
-    def _sync_fullscreen_button(self) -> None:
-        btn = getattr(self, "btn_fullscreen", None)
-        if btn is None:
-            return
-        if self.isFullScreen():
-            btn.setText("Sair tela")
-            btn.setToolTip("Sair da tela cheia (Esc ou F11)")
-        else:
-            btn.setText("Tela cheia")
-            btn.setToolTip("Alternar tela cheia (F11 · Esc para sair)")
+            self._schedule_frost_refresh()
 
     def _save_config(self) -> None:
         from ace_cmd import EDITABLE, _save_payload

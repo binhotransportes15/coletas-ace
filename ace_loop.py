@@ -11,7 +11,6 @@ Ctrl+C / Parar no CRT para encerrar.
 from __future__ import annotations
 
 import argparse
-import math
 import os
 import sys
 import time
@@ -66,24 +65,128 @@ def _log(msg: str) -> None:
         print(f"[{datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
+# Alias de tag no log → id do setor
+_JOB_TAG_ALIAS: dict[str, str] = {
+    "dist": "dist",
+    "distribuicao": "dist",
+    "distribuição": "dist",
+    "50": "dist",
+    "103": "dist",
+    "36": "dist",
+    "225": "dist",
+    "78": "78",
+    "078": "78",
+    "armazem": "78",
+    "armazém": "78",
+    "31": "31",
+    "031": "31",
+    "pendencia": "31",
+    "pendência": "31",
+    "73": "73",
+    "073": "73",
+    "076": "73",
+    "200": "73",
+    "contratacao": "73",
+    "contratação": "73",
+    "455": "455",
+    "emissao": "455",
+    "emissão": "455",
+}
+
+# Degraus de progresso (só sobe). Ordem: login → download → análise → Sheets → fim
+_PROGRESS_LADDER: tuple[tuple[float, tuple[str, ...]], ...] = (
+    (5.0, ("iniciando", "ciclo paralelo", "bloco(s)", "cleanup")),
+    (12.0, ("login", "ssw", "credenc", "abrindo", "navegador", "sessão", "sessao")),
+    (28.0, ("download", "baix", "csv", "relatório", "relatorio", "fila 156", "aguardando arquivo")),
+    (45.0, ("analis", "process", "lendo", "parse", "conferent", "ofensor", "sla")),
+    (58.0, ("cache", "dashboard", "public", "json local", "modo local", "persist")),
+    (70.0, ("sheets", "planilha", "apps script", "preparando envio", "ping")),
+    (82.0, ("enviando", "lote", "atualizando", "aba", "batch")),
+    (92.0, ("sheets:", "atualizada", "versão", "versao", "sem mudança", "pulou", "ciclo ok")),
+    (100.0, ("bloco ok", "pipeline ok", "conclu", "sync ok")),
+)
+
+
+def parse_job_tag(msg: str) -> tuple[str | None, str]:
+    """Extrai [dist]/[78]/… do início da mensagem."""
+    text = str(msg or "").strip()
+    if text.startswith("[") and "]" in text:
+        tag, rest = text[1:].split("]", 1)
+        key = tag.strip().lower()
+        sid = _JOB_TAG_ALIAS.get(key)
+        return sid, rest.strip()
+    return None, text
+
+
+def estimate_job_pct(prev: float, text: str) -> float:
+    """Estima % do job (automação + Sheets) a partir da mensagem de status."""
+    low = (text or "").lower()
+    best = max(0.0, float(prev or 0.0))
+    if any(x in low for x in ("falhou", "erro:", "traceback", "exception")):
+        return best
+    for pct, keys in _PROGRESS_LADDER:
+        if any(k in low for k in keys):
+            if pct > best:
+                best = pct
+    # micro-avanço se ainda rodando e mensagem nova sem keyword forte
+    if best < 95 and low and best > 0:
+        best = min(95.0, best + 0.4)
+    return min(100.0, best)
+
+
+def apply_status_to_progress(
+    progress: dict[str, dict[str, Any]],
+    msg: str,
+    *,
+    running: list[str] | None = None,
+) -> None:
+    """Atualiza o mapa live de progresso por setor com uma linha de status."""
+    sid, body = parse_job_tag(msg)
+    targets = [sid] if sid else list(running or [])
+    if not targets:
+        return
+    low = (body or msg or "").lower()
+    for tid in targets:
+        if tid not in progress:
+            continue
+        cur = progress[tid]
+        if cur.get("state") in {"off"}:
+            continue
+        detail = (body or msg or "")[:90]
+        if "bloco ok" in low or "pipeline ok" in low:
+            cur["pct"] = 100.0
+            cur["state"] = "ok"
+            cur["detail"] = detail or "concluído · Sheets ok"
+            continue
+        if "falhou" in low or "erro" in low:
+            cur["state"] = "err"
+            cur["pct"] = max(float(cur.get("pct") or 0), 1.0)
+            cur["detail"] = detail or "falhou"
+            continue
+        if "sheets" in low or "planilha" in low or "apps script" in low:
+            # reforço visual na fase Sheets
+            cur["pct"] = max(float(cur.get("pct") or 0), 70.0)
+        cur["state"] = "run"
+        cur["pct"] = estimate_job_pct(float(cur.get("pct") or 0), detail)
+        cur["detail"] = detail or "executando…"
+
+
 def build_sector_rows(
     cfg: AceSettings,
     last_run: dict[str, float],
     *,
-    now: float | None = None,
+    progress: dict[str, dict[str, Any]] | None = None,
     running: list[str] | None = None,
-    run_detail: str = "",
     errors: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Estado das barrinhas: wait (até próximo), run, off, ok, err."""
-    now = time.time() if now is None else float(now)
+    """Barrinhas = % real da automação/Sheets (não countdown)."""
     running_set = set(running or [])
     errs = errors or {}
+    live = progress or {}
     rows: list[dict[str, Any]] = []
     for sid, flag, _iv, label in SECTOR_SPECS:
         enabled = bool(getattr(cfg, flag, sid == "dist"))
         iv = sector_interval_sec(cfg, sid) if enabled else 0
-        prev = last_run.get(sid)
         row: dict[str, Any] = {
             "id": sid,
             "label": label,
@@ -96,31 +199,46 @@ def build_sector_rows(
         if not enabled:
             rows.append(row)
             continue
-        if sid in running_set:
-            row["state"] = "run"
-            # pulso suave enquanto roda
-            pulse = 55.0 + 35.0 * (0.5 + 0.5 * math.sin(now * 2.2))
-            row["pct"] = pulse
-            row["detail"] = (run_detail or "executando…")[:90]
-        elif sid in errs:
+
+        live_row = live.get(sid) or {}
+        if sid in errs:
             row["state"] = "err"
+            row["pct"] = float(live_row.get("pct") or 100.0)
+            row["detail"] = str(errs.get(sid) or live_row.get("detail") or "erro")[:90]
+        elif sid in running_set or live_row.get("state") == "run":
+            row["state"] = "run"
+            row["pct"] = float(live_row.get("pct") or 3.0)
+            row["detail"] = str(live_row.get("detail") or "executando…")[:90]
+        elif live_row.get("state") == "ok" or (
+            sid in last_run and float(live_row.get("pct") or 0) >= 99.0
+        ):
+            row["state"] = "ok"
             row["pct"] = 100.0
-            row["detail"] = str(errs.get(sid) or "erro")[:90]
-        elif prev is None:
-            row["state"] = "due"
-            row["pct"] = 100.0
-            row["detail"] = "na fila · primeiro ciclo"
+            rem_hint = ""
+            prev = last_run.get(sid)
+            if prev is not None and iv > 0:
+                rem = max(0.0, float(iv) - (time.time() - prev))
+                if rem > 1:
+                    rem_hint = f" · próximo em {format_duration_long(int(rem))}"
+            row["detail"] = str(live_row.get("detail") or f"último ciclo OK{rem_hint}")[:90]
+        elif live_row.get("state") == "err":
+            row["state"] = "err"
+            row["pct"] = float(live_row.get("pct") or 1.0)
+            row["detail"] = str(live_row.get("detail") or "falhou")[:90]
+        elif sid in last_run:
+            row["state"] = "ok"
+            row["pct"] = float(live_row.get("pct") or 100.0)
+            prev = last_run[sid]
+            rem = max(0.0, float(iv) - (time.time() - prev))
+            row["detail"] = (
+                f"último OK · próximo em {format_duration_long(int(rem))}"
+                if rem > 1
+                else "último OK · na fila"
+            )
         else:
-            elapsed = max(0.0, now - prev)
-            pct = min(100.0, (elapsed / max(1.0, float(iv))) * 100.0)
-            rem = max(0.0, float(iv) - elapsed)
-            row["pct"] = pct
-            if rem <= 0.5:
-                row["state"] = "due"
-                row["detail"] = "vencido · na fila"
-            else:
-                row["state"] = "wait"
-                row["detail"] = f"próximo em {format_duration_long(int(rem))}"
+            row["state"] = "due"
+            row["pct"] = 0.0
+            row["detail"] = "na fila · aguardando 1º ciclo"
         rows.append(row)
     return rows
 
@@ -129,8 +247,8 @@ def publish_sector_bars(
     cfg: AceSettings,
     last_run: dict[str, float],
     *,
+    progress: dict[str, dict[str, Any]] | None = None,
     running: list[str] | None = None,
-    run_detail: str = "",
     errors: dict[str, Any] | None = None,
     label: str = "LOOP",
     mode: str = "RUN",
@@ -141,14 +259,17 @@ def publish_sector_bars(
         rows = build_sector_rows(
             cfg,
             last_run,
+            progress=progress,
             running=running,
-            run_detail=run_detail,
             errors=errors,
         )
         ons = [r for r in rows if r.get("enabled")]
-        if running:
-            detail = f"rodando: {', '.join(running)}"
-            pct = 55.0
+        running_rows = [r for r in ons if r.get("state") == "run"]
+        if running_rows:
+            pct = sum(float(r.get("pct") or 0) for r in running_rows) / len(running_rows)
+            detail = " · ".join(
+                f"{r['label'][:4]} {float(r.get('pct') or 0):.0f}%" for r in running_rows[:4]
+            )
         elif ons:
             pct = sum(float(r.get("pct") or 0) for r in ons) / max(1, len(ons))
             detail = " · ".join(
@@ -349,14 +470,15 @@ def run_loop(
 
     last_run: dict[str, float] = {}
     ciclo = 0
-    run_detail_box: dict[str, str] = {"text": ""}
+    # progresso live por setor: {sid: {pct, detail, state}}
+    progress: dict[str, dict[str, Any]] = {}
 
     def _tick_bars(running: list[str] | None = None, errors: dict | None = None) -> None:
         publish_sector_bars(
             cfg,
             last_run,
+            progress=progress,
             running=running,
-            run_detail=run_detail_box.get("text") or "",
             errors=errors,
             label="LOOP" if running else "WAIT",
             mode="RUN" if running else "STANDBY",
@@ -442,13 +564,18 @@ def run_loop(
                 f"50={format_period(ini50, fim50)} | 103={format_period(ini103, fim103)} ==="
             )
             t0 = time.time()
-            run_detail_box["text"] = f"ciclo {ciclo} · {','.join(due)}"
+            for sid in due:
+                progress[sid] = {
+                    "pct": 3.0,
+                    "detail": f"ciclo {ciclo} · iniciando…",
+                    "state": "run",
+                }
             _tick_bars(running=due)
 
             def _status_guard(msg: str) -> None:
                 if _want_stop(should_stop):
                     raise LoopStopped("parado pelo usuário")
-                run_detail_box["text"] = str(msg or "")[:90]
+                apply_status_to_progress(progress, msg, running=due)
                 _tick_bars(running=due)
                 _log(msg)
 
@@ -468,7 +595,11 @@ def run_loop(
                     for job in due:
                         if _want_stop(should_stop):
                             raise LoopStopped("parado pelo usuário")
-                        run_detail_box["text"] = f"setor {job}"
+                        progress[job] = {
+                            "pct": 3.0,
+                            "detail": f"setor {job} · iniciando…",
+                            "state": "run",
+                        }
                         _tick_bars(running=[job])
                         part = run_parallel_cycle(
                             credentials=creds,
@@ -483,6 +614,12 @@ def run_loop(
                         if errs:
                             result["errors"].update(errs)
                             result["ok"] = False
+                        else:
+                            progress[job] = {
+                                "pct": 100.0,
+                                "detail": "concluído · automação + Sheets",
+                                "state": "ok",
+                            }
                 elapsed = time.time() - t0
                 err = result.get("errors") or {}
                 _log(
@@ -492,7 +629,18 @@ def run_loop(
                 stamp = time.time()
                 for sid in due:
                     last_run[sid] = stamp
-                run_detail_box["text"] = ""
+                    if sid in err:
+                        progress[sid] = {
+                            "pct": float((progress.get(sid) or {}).get("pct") or 1.0),
+                            "detail": str(err.get(sid) or "erro")[:90],
+                            "state": "err",
+                        }
+                    else:
+                        progress[sid] = {
+                            "pct": 100.0,
+                            "detail": "concluído · automação + Sheets",
+                            "state": "ok",
+                        }
                 _tick_bars(errors=err if err else None)
             except LoopStopped:
                 elapsed = time.time() - t0
@@ -507,7 +655,11 @@ def run_loop(
                 stamp = time.time()
                 for sid in due:
                     last_run[sid] = stamp
-                run_detail_box["text"] = ""
+                    progress[sid] = {
+                        "pct": float((progress.get(sid) or {}).get("pct") or 1.0),
+                        "detail": str(err)[:90],
+                        "state": "err",
+                    }
                 _tick_bars(errors={sid: str(err) for sid in due})
 
             if once:

@@ -1,5 +1,5 @@
 {
-  "version": 16,
+  "version": 17,
   "updatedAt": "2026-08-07T10:54:08",
   "rows": 2,
   "cols": 3,
@@ -35,7 +35,7 @@
           "blocks": []
         },
         "entrega": {
-          "chart": "towers",
+          "chart": "pizza",
           "scale": "large",
           "fontZoom": 1.2,
           "showKpis": true,
@@ -46,9 +46,9 @@
           "blocks": []
         },
         "agendamento": {
-          "chart": "towers",
+          "chart": "pizza",
           "scale": "large",
-          "fontZoom": 1.4,
+          "fontZoom": 1.2,
           "showKpis": true,
           "showChart": true,
           "showAmanha": true,
