@@ -83,7 +83,7 @@ MENU_PROGRAM = {
     "455": "/bin/ssw0230",  # 455 - Fretes Expedidos/Recebidos - CTRCs (Emissão)
     "156": "/bin/ssw1440",  # 156 - Fila de processamento em lotes
     "19": "/bin/ssw0036",  # 019 - CTRCs disponíveis p/ transferência (reciclagem)
-    "81": "/bin/ssw0081",  # 081 - CTRCs disponíveis p/ entrega (reciclagem; path a confirmar)
+    "81": "/bin/ssw0052",  # 081 - CTRCs disponíveis p/ entrega (reciclagem)
 }
 
 _PATCH_CREATE_NEW_DOC = """
