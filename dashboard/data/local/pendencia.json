@@ -1,59 +1,52 @@
 {
   "setor": "pendencia",
-  "updated_at": "2026-08-14T15:20:01",
+  "updated_at": "2026-08-14T15:45:47",
   "resumo_31": {
     "periodo": "01/08/26 – 14/08/26",
-    "atualizado": "14/08/2026 15:20:01",
-    "total_ctrcs": "312",
-    "total_codigos": "6",
+    "atualizado": "14/08/2026 15:45:47",
+    "total_ctrcs": "281",
+    "total_codigos": "5",
     "solucionadas": "105",
-    "abertas": "207",
-    "sla_pct": "33,7",
+    "abertas": "176",
+    "sla_pct": "37,4",
     "topo_codigo": "60",
     "topo_label": "FALTA COM BUSCA / RECONFERENCIA",
-    "topo_qtd": "113"
+    "topo_qtd": "114"
   },
   "ofensores": [
     {
       "codigo": "63",
       "label": "PENDENCIA SOLUCIONADA",
       "qtd": "105",
-      "pct": "33,7",
+      "pct": "37,4",
       "polaridade": "pos"
     },
     {
       "codigo": "60",
       "label": "FALTA COM BUSCA / RECONFERENCIA",
-      "qtd": "113",
-      "pct": "36,2",
+      "qtd": "114",
+      "pct": "40,6",
       "polaridade": "neg"
     },
     {
       "codigo": "50",
       "label": "NOTA FISCAL DE DEVOLUCAO",
-      "qtd": "44",
-      "pct": "14,1",
-      "polaridade": "neg"
-    },
-    {
-      "codigo": "33",
-      "label": "MERCADORIA AVARIADA",
-      "qtd": "33",
-      "pct": "10,6",
+      "qtd": "45",
+      "pct": "16,0",
       "polaridade": "neg"
     },
     {
       "codigo": "80",
       "label": "PENDENCIA EM TRATATIVA",
       "qtd": "16",
-      "pct": "5,1",
+      "pct": "5,7",
       "polaridade": "neg"
     },
     {
       "codigo": "61",
       "label": "LJJR",
       "qtd": "1",
-      "pct": "0,3",
+      "pct": "0,4",
       "polaridade": "neg"
     }
   ]

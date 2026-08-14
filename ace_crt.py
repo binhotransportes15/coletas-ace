@@ -1007,6 +1007,8 @@ _FIELD_LABELS: dict[str, str] = {
     "contratacao_intervalo": "Tempo · contratação",
     "emissao_in_loop": "Emissão no automático",
     "emissao_intervalo": "Tempo · emissão",
+    "reciclagem_in_loop": "Reciclagem no automático",
+    "reciclagem_intervalo": "Tempo · reciclagem",
     "headless": "Ocultar navegador",
 }
 
@@ -1031,6 +1033,10 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "pendências": "31",
     "contratacao": "73",
     "contratação": "73",
+    "reciclagem": "reciclagem",
+    "recicla": "reciclagem",
+    "019": "reciclagem",
+    "081": "reciclagem",
     "atualizar tudo": "sync",
     "sincronizar": "sync",
     "planilha": "sync",
@@ -1490,6 +1496,7 @@ class AceCrtConsole(QWidget):
             ("Armazém", "78"),
             ("Pendência", "31"),
             ("Contratação", "73"),
+            ("Reciclagem", "reciclagem"),
             ("Atualizar tudo", "sync"),
             ("Atualizar dados", "dash"),
             ("Telas locais", "local"),
@@ -1528,6 +1535,7 @@ class AceCrtConsole(QWidget):
             ("31", "Pendência"),
             ("73", "Contratação"),
             ("455", "Emissão"),
+            ("reciclagem", "Reciclagem"),
         ):
             meter = SectorMeterRow(sid, title)
             self._sector_meters[sid] = meter
@@ -1832,6 +1840,7 @@ class AceCrtConsole(QWidget):
             ("31", "Pendência", "031 · ofensores/SLA", "pendencia_in_loop", "pendencia_intervalo"),
             ("73", "Contratação", "073 → 200", "contratacao_in_loop", "contratacao_intervalo"),
             ("455", "Emissão", "455 · fretes do dia", "emissao_in_loop", "emissao_intervalo"),
+            ("reciclagem", "Reciclagem", "019 · 081", "reciclagem_in_loop", "reciclagem_intervalo"),
         )
         lay.addWidget(self._section("Setores no automático"))
         for _sid, title, desc, flag_key, iv_key in sectors:
@@ -1896,6 +1905,7 @@ class AceCrtConsole(QWidget):
                 ("pendencia_in_loop", "Pendência", "pendencia_intervalo"),
                 ("contratacao_in_loop", "Contratação", "contratacao_intervalo"),
                 ("emissao_in_loop", "Emissão", "emissao_intervalo"),
+                ("reciclagem_in_loop", "Reciclagem", "reciclagem_intervalo"),
             ):
                 if p.get(flag, flag == "dist_in_loop"):
                     iv = (p.get(ivk) or p.get("loop_intervalo") or "5m")
@@ -2409,6 +2419,14 @@ class AceCrtConsole(QWidget):
         for label, cmd in (
             ("Puxar pendência (10 códigos · SLA)", "31"),
             ("Enviar só a pendência", "sync31"),
+        ):
+            b = QPushButton(label)
+            b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
+            lay.addWidget(b)
+
+        lay.addWidget(self._section("Reciclagem"))
+        for label, cmd in (
+            ("Puxar reciclagem (019 · 081)", "reciclagem"),
         ):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
@@ -2981,13 +2999,14 @@ class AceCrtConsole(QWidget):
         pend = "pendência on" if p.get("pendencia_in_loop", True) else "pendência off"
         ctr = "contratação on" if p.get("contratacao_in_loop", True) else "contratação off"
         emi = "emissão on" if p.get("emissao_in_loop", False) else "emissão off"
+        rec = "reciclagem on" if p.get("reciclagem_in_loop", False) else "reciclagem off"
         dist = "dist on" if p.get("dist_in_loop", True) else "dist off"
         modo = str(p.get("periodo_modo") or "diario")
         modo_txt = "diário" if modo == "diario" else "a partir da sexta"
         self.meta.setText(
             f"usuário {p.get('user') or '—'}  ·  unidades {p.get('unit') or '—'}\n"
             f"{sheets}  ·  TV={dest}  ·  {viz}\n"
-            f"auto: {dist} · {arm} · {pend} · {ctr} · {emi}\n"
+            f"auto: {dist} · {arm} · {pend} · {ctr} · {emi} · {rec}\n"
             f"padrão {p.get('loop_intervalo') or '5m'}  ·  {modo_txt}"
         )
 
@@ -3546,6 +3565,7 @@ class AceCrtConsole(QWidget):
             ("31", "Pendência", "pendencia_in_loop", "pendencia_intervalo"),
             ("73", "Contratação", "contratacao_in_loop", "contratacao_intervalo"),
             ("455", "Emissão", "emissao_in_loop", "emissao_intervalo"),
+            ("reciclagem", "Reciclagem", "reciclagem_in_loop", "reciclagem_intervalo"),
         )
         fallback = str(p.get("loop_intervalo") or "5m")
         rows: list[dict] = []

@@ -129,7 +129,7 @@
       },
       "views": {}
     },
-    "rastreamento": {
+    "reciclagem": {
       "showLogo": true,
       "margins": "normal",
       "ui": {
@@ -143,7 +143,30 @@
         "locked": true,
         "blocks": []
       },
-      "views": {}
+      "views": {
+        "sem_transferencia": {
+          "chart": "towers",
+          "scale": "large",
+          "fontZoom": 1.2,
+          "showKpis": true,
+          "showChart": true,
+          "showAmanha": true,
+          "showStatus": true,
+          "locked": true,
+          "blocks": []
+        },
+        "sem_saida": {
+          "chart": "towers",
+          "scale": "large",
+          "fontZoom": 1.2,
+          "showKpis": true,
+          "showChart": true,
+          "showAmanha": true,
+          "showStatus": true,
+          "locked": true,
+          "blocks": []
+        }
+      }
     },
     "emissao": {
       "showLogo": true,
@@ -217,9 +240,9 @@
       "id": 6,
       "row": 1,
       "col": 2,
-      "sector": "rastreamento",
-      "mode": "fixed",
-      "view": "coleta",
+      "sector": "reciclagem",
+      "mode": "rotate",
+      "view": "sem_transferencia",
       "showLogo": null,
       "margins": null
     }

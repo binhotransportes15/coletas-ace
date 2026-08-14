@@ -3197,6 +3197,123 @@
     .pen-torres .t-of6 .pin { background: #64748b; }
     .pen-torres .t-of7 .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
     .pen-torres .t-of7 .pin { background: #ef4444; }
+
+    /* Reciclagem — torres horizontais */
+    .rec-wrap {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+      padding: clamp(8px, 1.2vmin, 16px);
+      gap: clamp(8px, 1vmin, 14px);
+    }
+    .rec-layout {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      gap: clamp(10px, 1.2vmin, 16px);
+    }
+    .rec-kpis {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(8px, 1vmin, 14px);
+    }
+    .rec-towers-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(12px, 1.5vmin, 22px);
+      flex: 1;
+      min-height: 0;
+    }
+    @media (max-width: 900px) {
+      .rec-towers-grid { grid-template-columns: 1fr; }
+    }
+    .rec-htowers-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: clamp(10px, 1.2vmin, 16px);
+      background: rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+    }
+    .rec-htowers-card header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px 12px;
+      margin-bottom: 10px;
+    }
+    .rec-htowers-card h2 {
+      margin: 0;
+      font-size: clamp(14px, 1.6vmin, 18px);
+      letter-spacing: 0.04em;
+      font-weight: 700;
+    }
+    .rec-htowers {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: auto;
+      flex: 1;
+      min-height: 0;
+    }
+    .rec-hbar {
+      display: grid;
+      grid-template-columns: minmax(72px, 28%) 1fr auto;
+      align-items: center;
+      gap: 8px 10px;
+    }
+    .rec-hbar .lbl {
+      font-size: clamp(11px, 1.25vmin, 14px);
+      color: #cbd5e1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .rec-hbar .track {
+      position: relative;
+      height: clamp(18px, 2.4vmin, 26px);
+      background: rgba(30, 41, 59, 0.85);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .rec-hbar .fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+      transition: width 0.55s ease;
+    }
+    .rec-hbar.cte .fill { background: linear-gradient(90deg, #38bdf8, #2563eb); }
+    .rec-hbar.cli .fill { background: linear-gradient(90deg, #a78bfa, #7c3aed); }
+    .rec-hbar .val {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      font-size: clamp(12px, 1.4vmin, 15px);
+      color: #f8fafc;
+      min-width: 3.2ch;
+      text-align: right;
+    }
+    .rec-atualizado {
+      font-size: clamp(11px, 1.2vmin, 13px);
+      color: #94a3b8;
+    }
+    body[data-sector="reciclagem"][data-view="sem_transferencia"] #recTitle { color: #fbbf24; }
+    body[data-sector="reciclagem"][data-view="sem_saida"] #recTitle { color: #67e8f9; }
+    body[data-sector="reciclagem"][data-view="sem_transferencia"] #recSwapDot i.d-st {
+      background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+    }
+    body[data-sector="reciclagem"][data-view="sem_saida"] #recSwapDot i.d-ss {
+      background: #67e8f9; box-shadow: 0 0 8px rgba(103, 232, 249, 0.6);
+    }
+    body.tv-mode #panel-reciclagem .rec-wrap { padding: clamp(4px, 0.8vmin, 10px); }
+    body.tv-mode #panel-reciclagem .rec-htowers-card {
+      background: rgba(2, 6, 23, 0.45);
+    }
+
     body.tv-mode .pen-wrap {
       max-width: none !important;
       width: 100% !important;
@@ -4183,10 +4300,10 @@
           <span class="name">Pendência</span>
           <span class="desc">Ocorrências · ofensores · CTRCs</span>
         </button>
-        <button type="button" class="sector-card soon" data-sector="rastreamento" data-soon="1">
-          <span class="tag">Em breve</span>
-          <span class="name">Rastreamento</span>
-          <span class="desc">Em desenvolvimento</span>
+        <button type="button" class="sector-card" data-sector="reciclagem">
+          <span class="tag">019 · 081</span>
+          <span class="name">Reciclagem</span>
+          <span class="desc">Sem transferência · Sem saída</span>
         </button>
         <button type="button" class="sector-card" data-sector="emissao">
           <span class="tag">455</span>
@@ -4772,13 +4889,58 @@
       </div>
     </div>
   </div>
-  <div id="panel-rastreamento" class="sector-root" hidden>
-    <div class="sector-soon-panel"><div class="box">
-      <img class="js-sector-menu" src="logo-binho.png" alt="BINHO Transportes" title="Trocar setor" role="button" tabindex="0" />
-      <div class="tag">Em breve</div>
-      <h1>RASTREAMENTO</h1>
-      <p>Tela reservada para a parede TV. Já pode fixar neste slot pelo CRT · aba TV (#tv/slot/N).</p>
-    </div></div>
+  <div id="panel-reciclagem" class="sector-root" hidden>
+    <div class="rec-wrap">
+      <div class="arm-top rec-top">
+        <div class="arm-brand">
+          <img
+            class="js-sector-menu"
+            src="logo-binho.png"
+            alt="BINHO Transportes"
+            title="Trocar setor"
+            role="button"
+            tabindex="0"
+          />
+          <div class="arm-titles">
+            <div class="kicker" id="recKicker">BINHO · OPERACIONAL · 019</div>
+            <h1 id="recTitle">RECICLAGEM <span class="swap-dot" id="recSwapDot" role="button" tabindex="0" title="Trocar tela" aria-label="Alternar Sem transferência e Sem saída"><i class="d-st"></i><i class="d-ss"></i></span></h1>
+          </div>
+        </div>
+        <nav class="nav">
+          <button type="button" class="nav-btn tv-btn" id="btnTvReciclagem" title="Modo TV / tela inteira (F)">TV</button>
+        </nav>
+        <div class="clock-box">
+          <div class="lbl">Tempo real</div>
+          <div class="time" id="recClock">--:--:--</div>
+          <div class="date" id="recDate">—</div>
+        </div>
+      </div>
+      <div class="rec-layout" id="recLayout">
+        <div class="arm-kpis rec-kpis dash-block" data-block="kpis">
+          <div class="arm-kpi finalizado"><div class="lbl">Frete</div><div class="val" id="recFrete">R$ 0</div></div>
+          <div class="arm-kpi peso"><div class="lbl">Peso</div><div class="val" id="recPeso">0</div></div>
+          <div class="arm-kpi atrasado"><div class="lbl">CTRCs</div><div class="val" id="recQtd">0</div></div>
+        </div>
+        <div class="rec-towers-grid dash-block" data-block="chart">
+          <section class="rec-htowers-card">
+            <header>
+              <h2>CTEs mais atrasados</h2>
+              <div class="meta" id="recCteMeta">top por dias de atraso</div>
+            </header>
+            <div class="rec-htowers" id="recTorresCte" aria-label="Torres horizontais CTE"></div>
+          </section>
+          <section class="rec-htowers-card">
+            <header>
+              <h2>Clientes mais atrasados</h2>
+              <div class="meta" id="recCliMeta">top por atraso máximo</div>
+            </header>
+            <div class="rec-htowers" id="recTorresCli" aria-label="Torres horizontais clientes"></div>
+          </section>
+        </div>
+        <div class="arm-err" id="recErr" hidden></div>
+        <div class="meta rec-atualizado" id="recAtualizado">atualizado —</div>
+      </div>
+    </div>
   </div>
   <div id="panel-emissao" class="sector-root" hidden>
     <div class="emi-wrap">
@@ -4906,6 +5068,8 @@
     let lastGoodEmiExp = [];
     let lastGoodEmiHoras = [];
     let emiRefreshTimer = null;
+    let lastGoodRecData = null;
+    let recRefreshTimer = null;
     const JANELA_MIN = 120;
     const PLACA_VISIBLE = 3;
     const PRAZO_VISIBLE = 4;
@@ -4919,12 +5083,17 @@
     const VIEW_LABELS = { coleta: 'Coleta', entrega: 'Entrega', agendamento: 'Agendamento' };
     const ARM_VIEWS = ['patio', 'conferentes'];
     const ARM_VIEW_LABELS = { patio: 'Armazém', conferentes: 'Melhores da BINHO' };
+    const REC_VIEWS = ['sem_transferencia', 'sem_saida'];
+    const REC_VIEW_LABELS = {
+      sem_transferencia: 'Sem transferência',
+      sem_saida: 'Sem saída para entrega',
+    };
     const SECTORS = {
       distribuicao: { id: 'distribuicao', label: 'Distribuição', ready: true, panel: 'operacao' },
       armazem: { id: 'armazem', label: 'Armazém', ready: true, panel: 'armazem' },
       contratacao: { id: 'contratacao', label: 'Contratação', ready: true, panel: 'contratacao' },
       pendencia: { id: 'pendencia', label: 'Pendência', ready: true, panel: 'pendencia' },
-      rastreamento: { id: 'rastreamento', label: 'Rastreamento', ready: false, panel: 'rastreamento' },
+      reciclagem: { id: 'reciclagem', label: 'Reciclagem', ready: true, panel: 'reciclagem' },
       emissao: { id: 'emissao', label: 'Emissão', ready: true, panel: 'emissao' },
     };
     let CURRENT_SECTOR = 'distribuicao';
@@ -5047,6 +5216,14 @@
       if (emiClock) emiClock.textContent = time;
       if (emiDate) {
         emiDate.textContent = now.toLocaleDateString('pt-BR', {
+          weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+        });
+      }
+      const recClock = document.getElementById('recClock');
+      const recDate = document.getElementById('recDate');
+      if (recClock) recClock.textContent = time;
+      if (recDate) {
+        recDate.textContent = now.toLocaleDateString('pt-BR', {
           weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
         });
       }
@@ -5612,6 +5789,7 @@
         document.getElementById('btnTvPendencia'),
         document.getElementById('btnTvContratacao'),
         document.getElementById('btnTvEmissao'),
+        document.getElementById('btnTvReciclagem'),
       ];
       btns.forEach((btn) => {
         if (btn) btn.textContent = TV_MODE ? 'Sair TV' : 'TV';
@@ -5623,6 +5801,7 @@
         document.body.classList.add('tv-no-margins');
         if (isOpsSector(CURRENT_SECTOR)) setView('live');
         else if (CURRENT_SECTOR === 'armazem') applyArmViews();
+        else if (CURRENT_SECTOR === 'reciclagem') applyRecViews();
         showTvHint();
         bumpTvIdle();
         if (syncHash) writeRouteHash({ tv: true, sector: CURRENT_SECTOR });
@@ -6047,7 +6226,7 @@
     function startTvSyncClock() {
       stopTvSyncClock();
       if (!TV_MODE || !TV_EFFECTIVE) return;
-      if (TV_EFFECTIVE.sector !== 'distribuicao' && TV_EFFECTIVE.sector !== 'armazem') return;
+      if (TV_EFFECTIVE.sector !== 'distribuicao' && TV_EFFECTIVE.sector !== 'armazem' && TV_EFFECTIVE.sector !== 'reciclagem') return;
       if (TV_EFFECTIVE.mode === 'fixed') return;
       if (!TV_EFFECTIVE.syncSwap) return;
       const tick = () => {
@@ -6057,6 +6236,15 @@
           const want = ARM_VIEWS[syncedOpsViewIndex(TV_EFFECTIVE.swapMs) % ARM_VIEWS.length];
           if (want && want !== CURRENT_VIEW) {
             goArmView(want, { restart: false, fromSync: true });
+          } else {
+            paintSyncCountdown();
+          }
+          return;
+        }
+        if (CURRENT_SECTOR === 'reciclagem') {
+          const want = REC_VIEWS[syncedOpsViewIndex(TV_EFFECTIVE.swapMs) % REC_VIEWS.length];
+          if (want && want !== CURRENT_VIEW) {
+            goRecView(want, { restart: false, fromSync: true });
           } else {
             paintSyncCountdown();
           }
@@ -6104,6 +6292,9 @@
       let id = String(raw || 'distribuicao').toLowerCase();
       if (id === 'dist' || id === 'ops' || id === 'operacao') id = 'distribuicao';
       if (id === 'agenda') id = 'agendamento';
+      if (id === 'rastreamento' || id === 'recicla' || id === '019' || id === '081' || id === '19' || id === '81') {
+        id = 'reciclagem';
+      }
       // legado: coleta/entrega/agendamento eram “setores” → agora vistas da Distribuição
       if (isOpsView(id)) id = 'distribuicao';
       return SECTORS[id] ? id : 'distribuicao';
@@ -6119,6 +6310,10 @@
       return ARM_VIEWS.includes(String(id || '').toLowerCase());
     }
 
+    function isRecView(id) {
+      return REC_VIEWS.includes(String(id || '').toLowerCase());
+    }
+
     function normalizeArmView(raw) {
       const id = String(raw || '').toLowerCase();
       if (id === 'armazem' || id === 'descarga' || id === '078' || id === 'veiculos' || id === 'patio') return 'patio';
@@ -6126,14 +6321,27 @@
       return isArmView(id) ? id : 'patio';
     }
 
+    function normalizeRecView(raw) {
+      const id = String(raw || '').toLowerCase();
+      if (id === '019' || id === '19' || id === 'transferencia' || id === 'sem_transferencia' || id === 'sem-transferencia') {
+        return 'sem_transferencia';
+      }
+      if (id === '081' || id === '81' || id === 'saida' || id === 'sem_saida' || id === 'sem-saida' || id === 'sem_saida_entrega') {
+        return 'sem_saida';
+      }
+      return isRecView(id) ? id : 'sem_transferencia';
+    }
+
     function viewsForSector(sector) {
       if (sector === 'armazem') return ARM_VIEWS;
       if (sector === 'distribuicao') return OPS_VIEWS;
+      if (sector === 'reciclagem') return REC_VIEWS;
       return [];
     }
 
     function viewLabelsForSector(sector) {
       if (sector === 'armazem') return ARM_VIEW_LABELS;
+      if (sector === 'reciclagem') return REC_VIEW_LABELS;
       return VIEW_LABELS;
     }
 
@@ -6145,9 +6353,12 @@
       } else if (tv) {
         if (sec === 'armazem' && isArmView(CURRENT_VIEW)) next = `tv/${sec}/${CURRENT_VIEW}`;
         else if (sec === 'distribuicao' && isOpsView(CURRENT_VIEW)) next = `tv/${sec}/${CURRENT_VIEW}`;
+        else if (sec === 'reciclagem' && isRecView(CURRENT_VIEW)) next = `tv/${sec}/${CURRENT_VIEW}`;
         else next = `tv/${sec}`;
       } else if (sec === 'distribuicao') {
         next = '';
+      } else if (sec === 'reciclagem' && isRecView(CURRENT_VIEW)) {
+        next = `${sec}/${CURRENT_VIEW}`;
       } else {
         next = sec;
       }
@@ -6233,6 +6444,43 @@
       else resetSwapCountdown();
     }
 
+    function applyRecViews() {
+      const onSt = CURRENT_VIEW !== 'sem_saida';
+      const title = document.getElementById('recTitle');
+      const kick = document.getElementById('recKicker');
+      const label = onSt ? 'SEM TRANSFERÊNCIA' : 'SEM SAÍDA PARA ENTREGA';
+      if (title) {
+        title.innerHTML = `${label} <span class="swap-dot" id="recSwapDot" role="button" tabindex="0" title="Trocar tela" aria-label="Alternar telas"><i class="d-st"></i><i class="d-ss"></i></span>`;
+        title.title = 'Clique ou ← → para trocar tela';
+        title.style.cursor = 'pointer';
+        title.onclick = () => stepSwap(1);
+      }
+      if (kick) {
+        kick.textContent = onSt
+          ? 'BINHO · OPERACIONAL · 019'
+          : 'BINHO · OPERACIONAL · 081';
+      }
+      document.body.setAttribute('data-view', CURRENT_VIEW);
+      paintReciclagemFromCache();
+    }
+
+    function goRecView(viewId, { restart = true, fromSync = false } = {}) {
+      CURRENT_VIEW = normalizeRecView(viewId);
+      applyRecViews();
+      applyDashboardChrome();
+      writeRouteHash({ tv: TV_MODE, sector: 'reciclagem' });
+      if (fromSync) {
+        paintSyncCountdown();
+        return;
+      }
+      if (TV_MODE && TV_EFFECTIVE && TV_EFFECTIVE.syncSwap && TV_EFFECTIVE.mode !== 'fixed') {
+        startTvSyncClock();
+        return;
+      }
+      if (restart && TV_MODE && !ALERTA_LOCK_ON) restartSwapTimer();
+      else resetSwapCountdown();
+    }
+
     function setSector(sectorId, { syncHash = true, forceTv = null, view = null } = {}) {
       const raw = String(sectorId || '').toLowerCase();
       if (isOpsView(raw)) {
@@ -6241,16 +6489,21 @@
       } else if (isArmView(raw) || raw === 'conferente' || raw === '177' || raw === 'patio') {
         CURRENT_VIEW = normalizeArmView(raw);
         sectorId = 'armazem';
+      } else if (isRecView(raw) || raw === '019' || raw === '081' || raw === '19' || raw === '81') {
+        CURRENT_VIEW = normalizeRecView(raw);
+        sectorId = 'reciclagem';
       }
       const id = normalizeSectorId(sectorId);
       const meta = SECTORS[id] || SECTORS.distribuicao;
       CURRENT_SECTOR = meta.id;
       if (view != null) {
-        CURRENT_VIEW = CURRENT_SECTOR === 'armazem'
-          ? normalizeArmView(view)
-          : normalizeOpsView(view);
+        if (CURRENT_SECTOR === 'armazem') CURRENT_VIEW = normalizeArmView(view);
+        else if (CURRENT_SECTOR === 'reciclagem') CURRENT_VIEW = normalizeRecView(view);
+        else CURRENT_VIEW = normalizeOpsView(view);
       } else if (CURRENT_SECTOR === 'armazem' && !isArmView(CURRENT_VIEW)) {
         CURRENT_VIEW = 'patio';
+      } else if (CURRENT_SECTOR === 'reciclagem' && !isRecView(CURRENT_VIEW)) {
+        CURRENT_VIEW = 'sem_transferencia';
       } else if (CURRENT_SECTOR === 'distribuicao' && !isOpsView(CURRENT_VIEW)) {
         CURRENT_VIEW = 'coleta';
       }
@@ -6289,6 +6542,15 @@
       } else if (penRefreshTimer) {
         clearInterval(penRefreshTimer);
         penRefreshTimer = null;
+      }
+
+      if (CURRENT_SECTOR === 'reciclagem') {
+        applyRecViews();
+        refreshReciclagem();
+        if (!recRefreshTimer) recRefreshTimer = setInterval(refreshReciclagem, 15000);
+      } else if (recRefreshTimer) {
+        clearInterval(recRefreshTimer);
+        recRefreshTimer = null;
       }
 
       if (CURRENT_SECTOR === 'emissao') {
@@ -7043,6 +7305,104 @@
       }
     }
 
+    function setRecText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text == null || text === '' ? '—' : String(text);
+    }
+
+    function fmtRecMoney(v) {
+      if (v == null || v === '') return 'R$ 0';
+      const s = String(v);
+      if (s.includes('R$')) return s;
+      const n = Number(String(s).replace(/\./g, '').replace(',', '.')) || Number(v) || 0;
+      if (!Number.isFinite(n)) return s;
+      return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtRecPeso(v) {
+      if (v == null || v === '') return '0';
+      const s = String(v);
+      if (/kg/i.test(s)) return s;
+      const n = Number(String(s).replace(/\./g, '').replace(',', '.')) || Number(v) || 0;
+      if (!Number.isFinite(n)) return s;
+      return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+    }
+
+    function renderRecHbars(elId, rows, { kind = 'cte', valueKey = 'dias_atraso', labelKey = 'ctrc' } = {}) {
+      const root = document.getElementById(elId);
+      if (!root) return;
+      const list = Array.isArray(rows) ? rows.slice(0, 10) : [];
+      if (!list.length) {
+        root.innerHTML = '<div class="meta">Sem CTRCs neste relatório</div>';
+        return;
+      }
+      const vals = list.map((r) => Number(r[valueKey] || r.dias_max || 0) || 0);
+      const max = Math.max(1, ...vals);
+      root.innerHTML = list.map((r) => {
+        const val = Number(r[valueKey] || r.dias_max || 0) || 0;
+        const pct = Math.max(6, Math.round((val / max) * 100));
+        let label = String(r[labelKey] || r.cliente || r.ctrc || '—');
+        if (kind === 'cte' && r.cliente) label = `${r.ctrc || label}`;
+        const title = kind === 'cte'
+          ? `${r.ctrc || ''} · ${r.cliente || ''} · ${val}d`
+          : `${r.cliente || ''} · máx ${val}d · qtd ${r.qtd || ''}`;
+        return `<div class="rec-hbar ${kind}" title="${title.replace(/"/g, '&quot;')}">
+          <div class="lbl">${label}</div>
+          <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+          <div class="val">${val}d</div>
+        </div>`;
+      }).join('');
+    }
+
+    function paintReciclagemFromCache() {
+      const data = lastGoodRecData || {};
+      const key = CURRENT_VIEW === 'sem_saida' ? 'sem_saida' : 'sem_transferencia';
+      const block = data[key] || {};
+      const resumo = block.resumo || {};
+      setRecText('recFrete', resumo.frete_fmt || fmtRecMoney(resumo.frete));
+      setRecText('recPeso', resumo.peso_fmt || fmtRecPeso(resumo.peso));
+      setRecText('recQtd', resumo.qtd != null ? String(resumo.qtd) : '0');
+      setRecText('recAtualizado', 'atualizado ' + (resumo.atualizado || data.updated_at || '—'));
+      const cteMeta = document.getElementById('recCteMeta');
+      const cliMeta = document.getElementById('recCliMeta');
+      if (cteMeta) cteMeta.textContent = `${block.titulo || REC_VIEW_LABELS[key] || key} · top CTE`;
+      if (cliMeta) cliMeta.textContent = `${block.programa || ''} · top clientes`.trim();
+      renderRecHbars('recTorresCte', block.top_cte || [], { kind: 'cte', valueKey: 'dias_atraso', labelKey: 'ctrc' });
+      renderRecHbars('recTorresCli', block.top_cliente || [], { kind: 'cli', valueKey: 'dias_max', labelKey: 'cliente' });
+    }
+
+    async function refreshReciclagem() {
+      const err = document.getElementById('recErr');
+      try {
+        let data = null;
+        const urls = [
+          'data/local/reciclagem.json',
+          'data/reciclagem/reciclagem.json',
+        ];
+        for (const u of urls) {
+          try {
+            const bust = `?t=${Date.now()}`;
+            const r = await fetch(u + bust, { cache: 'no-store' });
+            if (!r.ok) continue;
+            data = await r.json();
+            if (data && typeof data === 'object') break;
+          } catch (_) { /* next */ }
+        }
+        if (!data || typeof data !== 'object') {
+          if (lastGoodRecData) data = lastGoodRecData;
+          else throw new Error('JSON reciclagem ausente');
+        }
+        lastGoodRecData = data;
+        if (err) err.hidden = true;
+        paintReciclagemFromCache();
+      } catch (e) {
+        if (err) {
+          err.hidden = false;
+          err.textContent = 'Sem dados da Reciclagem (JSON local). ' + e.message;
+        }
+      }
+    }
+
     function setCtrText(id, text) {
       const el = document.getElementById(id);
       if (el) el.textContent = text == null || text === '' ? '—' : String(text);
@@ -7367,9 +7727,13 @@
           } else if (isArmView(rest) || rest === '177' || rest === 'conferente' || rest === 'descarga') {
             sector = 'armazem';
             viewHint = normalizeArmView(rest);
+          } else if (isRecView(rest) || rest === '019' || rest === '081' || rest === '19' || rest === '81') {
+            sector = 'reciclagem';
+            viewHint = normalizeRecView(rest);
           } else {
             sector = normalizeSectorId(rest);
             if (sector === 'armazem' && parts[4]) viewHint = normalizeArmView(parts[4]);
+            else if (sector === 'reciclagem' && parts[4]) viewHint = normalizeRecView(parts[4]);
             else if (sector === 'distribuicao' && parts[4] && (isOpsView(parts[4]) || parts[4] === 'agenda')) {
               viewHint = normalizeOpsView(parts[4] === 'agenda' ? 'agendamento' : parts[4]);
             }
@@ -7382,9 +7746,13 @@
           } else if (isArmView(rest) || rest === '177' || rest === 'conferente' || rest === 'descarga') {
             sector = 'armazem';
             viewHint = normalizeArmView(rest);
+          } else if (isRecView(rest) || rest === '019' || rest === '081' || rest === '19' || rest === '81') {
+            sector = 'reciclagem';
+            viewHint = normalizeRecView(rest);
           } else {
             sector = normalizeSectorId(rest);
             if (sector === 'armazem' && parts[2]) viewHint = normalizeArmView(parts[2]);
+            else if (sector === 'reciclagem' && parts[2]) viewHint = normalizeRecView(parts[2]);
             else if (sector === 'distribuicao' && parts[2] && (isOpsView(parts[2]) || parts[2] === 'agenda')) {
               viewHint = normalizeOpsView(parts[2] === 'agenda' ? 'agendamento' : parts[2]);
             }
@@ -7397,9 +7765,18 @@
         sector = 'distribuicao';
         viewHint = normalizeOpsView(parts[0] === 'agenda' ? 'agendamento' : parts[0]);
         tv = parts[1] === 'tv';
-      } else if (SECTORS[parts[0]]) {
-        sector = normalizeSectorId(parts[0]);
+      } else if (isRecView(parts[0]) || parts[0] === '019' || parts[0] === '081') {
+        sector = 'reciclagem';
+        viewHint = normalizeRecView(parts[0]);
         tv = parts[1] === 'tv';
+      } else if (SECTORS[parts[0]] || parts[0] === 'rastreamento') {
+        sector = normalizeSectorId(parts[0]);
+        if (sector === 'reciclagem' && parts[1] && parts[1] !== 'tv') {
+          viewHint = normalizeRecView(parts[1]);
+          tv = parts[2] === 'tv';
+        } else {
+          tv = parts[1] === 'tv';
+        }
       } else if (['gestao', '50', '103', '36', '225'].includes(parts[0])) {
         sector = 'distribuicao';
         gestao = true;
@@ -7485,6 +7862,7 @@
           forceTv: true,
           view: fixedView
             || (sec === 'armazem' ? (isArmView(CURRENT_VIEW) ? CURRENT_VIEW : 'patio') : null)
+            || (sec === 'reciclagem' ? (isRecView(CURRENT_VIEW) ? CURRENT_VIEW : 'sem_transferencia') : null)
             || (sec === 'distribuicao' ? (isOpsView(CURRENT_VIEW) ? CURRENT_VIEW : null) : null),
         });
       } else if (!TV_MODE && hashTv) {
@@ -9036,6 +9414,20 @@
         goArmView(views[i]);
         return;
       }
+      if (CURRENT_SECTOR === 'reciclagem') {
+        if (TV_EFFECTIVE && TV_EFFECTIVE.sector === 'reciclagem' && TV_EFFECTIVE.mode === 'fixed') return;
+        const views = REC_VIEWS;
+        const n = views.length;
+        let i = Math.max(0, views.indexOf(normalizeRecView(CURRENT_VIEW)));
+        if (dir < 0) i = (i - 1 + n) % n;
+        else i = (i + 1) % n;
+        if (TV_EFFECTIVE && TV_EFFECTIVE.syncSwap) {
+          goRecView(views[i], { restart: false, fromSync: true });
+          return;
+        }
+        goRecView(views[i]);
+        return;
+      }
       if (CURRENT_SECTOR !== 'distribuicao') return;
       if (TV_EFFECTIVE && TV_EFFECTIVE.sector === 'distribuicao' && TV_EFFECTIVE.mode === 'fixed') return;
       const n = OPS_VIEWS.length;
@@ -9052,7 +9444,7 @@
 
     function restartSwapTimer() {
       if (VIEW !== 'live' || ALERTA_LOCK_ON || !TV_MODE) return;
-      if (!isOpsSector(CURRENT_SECTOR) && CURRENT_SECTOR !== 'armazem') return;
+      if (!isOpsSector(CURRENT_SECTOR) && CURRENT_SECTOR !== 'armazem' && CURRENT_SECTOR !== 'reciclagem') return;
       if (TV_EFFECTIVE && TV_EFFECTIVE.mode === 'fixed') {
         stopSwapLoopKeepScreen();
         stopTvSyncClock();
@@ -9117,7 +9509,7 @@
     }
 
     function startSwapLoop() {
-      if (!isOpsSector(CURRENT_SECTOR) && CURRENT_SECTOR !== 'armazem') return;
+      if (!isOpsSector(CURRENT_SECTOR) && CURRENT_SECTOR !== 'armazem' && CURRENT_SECTOR !== 'reciclagem') return;
       if (!TV_MODE) {
         stopSwapLoopKeepScreen();
         return;
@@ -9390,6 +9782,7 @@
     document.getElementById('btnTvPendencia')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvContratacao')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvEmissao')?.addEventListener('click', () => toggleTvMode());
+    document.getElementById('btnTvReciclagem')?.addEventListener('click', () => toggleTvMode());
     document.querySelectorAll('.js-sector-menu').forEach((logo) => {
       logo.addEventListener('click', (e) => {
         e.preventDefault();

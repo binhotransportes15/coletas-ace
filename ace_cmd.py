@@ -71,6 +71,8 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "contratacao_intervalo": ("automacao", "str", False),
     "emissao_in_loop": ("automacao", "bool", False),
     "emissao_intervalo": ("automacao", "str", False),
+    "reciclagem_in_loop": ("automacao", "bool", False),
+    "reciclagem_intervalo": ("automacao", "str", False),
     # Sheets / dashboard
     "enable_sheets": ("cloud", "bool", False),
     "apps_script_url": ("cloud", "str", False),
@@ -334,7 +336,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print(f"    Dist  {g('50')} coleta  {g('103')} torres  {g('36')} entrega  {g('225')} agenda")
     print(f"    Arm   {g('78')} patio   {g('177')} conf.   {g('607')} nomes   {g('sync78')}")
     print(f"    Pend  {g('31')} (10 cod.)  {g('sync31')}   Contr {g('73')}  {g('73 so73')}")
-    print(f"    Emis  {g('455')} / {g('emissao')}  {g('sync455')}   Armaz {g('78')}  {g('sync78')}")
+    print(f"    Emis  {g('455')} / {g('emissao')}  {g('sync455')}   Recic {g('reciclagem')} 019·081")
     print(f"    Sync  {g('sync')} dist   Loop {g('/automatica')}  {g('piloto_sites')}  {g('sites')}")
     print(f"    Local {g('local')}  {g('lan')}  {g('dash')}   Config {g('/e')}  {g('show')}  {g('help')}")
     print(f"    {g('/viz')} on|off   {g('brand')} ANSI   {g('crt')} CRT   {g('sair')}")
@@ -759,6 +761,18 @@ def run_pipeline_455_cmd(extra: list[str] | None = None) -> str:
         f"frete={resumo.get('frete_fmt')} "
         f"dia={resumo.get('dia')} noite={resumo.get('noite')} "
         f"cancel={resumo.get('cancelados')}"
+    )
+
+
+def run_pipeline_reciclagem_cmd(extra: list[str] | None = None) -> str:
+    """`reciclagem` / `019` / `081` — Sem transferência + Sem saída."""
+    from pipeline import run_pipeline_reciclagem
+
+    print("\n=== Pipeline Reciclagem (019 + 081) ===")
+    result = run_pipeline_reciclagem(on_status=_on_status, headless=_cfg_headless())
+    return (
+        f"reciclagem OK · 019={result.get('total_019')} CTRCs · "
+        f"081={result.get('total_081')} CTRCs"
     )
 
 
@@ -1204,6 +1218,20 @@ def _execute_line_body(
         return (run_pipeline_31_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
     if cmd in {"455", "/455", "emissao", "/emissao", "emissão", "/emissão"}:
         return (run_pipeline_455_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
+    if cmd in {
+        "reciclagem",
+        "/reciclagem",
+        "recicla",
+        "019",
+        "/019",
+        "19",
+        "/19",
+        "081",
+        "/081",
+        "81",
+        "/81",
+    }:
+        return (run_pipeline_reciclagem_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
     if cmd in {"73", "/73", "76", "/76", "contratacao", "/contratacao", "contratação"}:
         return (run_pipeline_contratacao_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
     if cmd in {"sync31", "/sync31", "sheets31"}:
@@ -1395,6 +1423,17 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0].lstrip("/").lower() in {"31", "pendencia", "pendencias", "once31"}:
         print(run_pipeline_31_cmd(args[1:] if len(args) > 1 else None))
         return 0
+    if args and args[0].lstrip("/").lower() in {
+        "reciclagem",
+        "recicla",
+        "019",
+        "081",
+        "19",
+        "81",
+        "oncerec",
+    }:
+        print(run_pipeline_reciclagem_cmd(args[1:] if len(args) > 1 else None))
+        return 0
     if args and args[0].lstrip("/").lower() in {"177", "conferentes", "once177"}:
         print(run_pipeline_177_cmd())
         return 0
@@ -1482,6 +1521,19 @@ def main(argv: list[str] | None = None) -> int:
                 message = run_pipeline_31_cmd(parts[1:] if len(parts) > 1 else None)
             elif cmd in {"455", "/455", "emissao", "/emissao", "emissão", "/emissão"}:
                 message = run_pipeline_455_cmd(parts[1:] if len(parts) > 1 else None)
+                payload = _load_payload()
+            elif cmd in {
+                "reciclagem",
+                "/reciclagem",
+                "recicla",
+                "019",
+                "/019",
+                "19",
+                "081",
+                "/081",
+                "81",
+            }:
+                message = run_pipeline_reciclagem_cmd(parts[1:] if len(parts) > 1 else None)
                 payload = _load_payload()
             elif cmd in {"73", "/73", "76", "/76", "contratacao", "/contratacao", "contratação"}:
                 message = run_pipeline_contratacao_cmd(parts[1:] if len(parts) > 1 else None)

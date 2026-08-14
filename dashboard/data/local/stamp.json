@@ -1,21 +1,25 @@
 {
-  "updated_at": "2026-08-14T15:25:07",
+  "updated_at": "2026-08-14T16:25:26",
   "sectors": {
     "distribuicao": {
       "file": "distribuicao.json",
-      "updated_at": "2026-08-14T15:24:52"
+      "updated_at": "2026-08-14T15:51:06"
     },
     "armazem": {
       "file": "armazem.json",
-      "updated_at": "2026-08-14T15:25:00"
+      "updated_at": "2026-08-14T15:49:23"
     },
     "pendencia": {
       "file": "pendencia.json",
-      "updated_at": "2026-08-14T15:20:01"
+      "updated_at": "2026-08-14T15:45:47"
     },
     "contratacao": {
       "file": "contratacao.json",
-      "updated_at": "2026-08-14T15:25:07"
+      "updated_at": "2026-08-14T15:50:33"
+    },
+    "reciclagem": {
+      "file": "reciclagem.json",
+      "updated_at": "2026-08-14T16:25:26"
     }
   },
   "mode": "local_json"

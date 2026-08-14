@@ -180,6 +180,53 @@ def publish_emissao_local(*, on_status: StatusCallback | None = None) -> dict[st
     return {"ok": True, "local": paths}
 
 
+def _copy_reciclagem_to_dashboard() -> dict[str, str]:
+    """Espelha JSON/CSVs de reciclagem no dashboard (TV local)."""
+    from local_store import persist_sector
+    from parser_ssw019 import RESUMO_019_CSV, TOP_CLIENTE_019_CSV, TOP_CTE_019_CSV
+    from parser_ssw081 import RESUMO_081_CSV, TOP_CLIENTE_081_CSV, TOP_CTE_081_CSV
+
+    data_dir = DASHBOARD_DIR / "data" / "reciclagem"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    out: dict[str, str] = {}
+    # garante JSON atualizado
+    try:
+        snap = persist_sector("reciclagem")
+        if snap.get("path"):
+            out["local/reciclagem.json"] = str(snap["path"])
+    except Exception:  # noqa: BLE001
+        pass
+    for src, name in (
+        (RESUMO_019_CSV, "resumo_019.csv"),
+        (TOP_CTE_019_CSV, "top_cte_019.csv"),
+        (TOP_CLIENTE_019_CSV, "top_cliente_019.csv"),
+        (RESUMO_081_CSV, "resumo_081.csv"),
+        (TOP_CTE_081_CSV, "top_cte_081.csv"),
+        (TOP_CLIENTE_081_CSV, "top_cliente_081.csv"),
+    ):
+        dest = data_dir / name
+        if src.exists():
+            shutil.copy2(src, dest)
+            out[f"reciclagem/{name}"] = str(dest)
+    # espelho do JSON também em data/reciclagem/
+    local_json = DASHBOARD_DIR / "data" / "local" / "reciclagem.json"
+    if local_json.is_file():
+        dest = data_dir / "reciclagem.json"
+        try:
+            shutil.copy2(local_json, dest)
+            out["reciclagem/reciclagem.json"] = str(dest)
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
+def publish_reciclagem_local(*, on_status: StatusCallback | None = None) -> dict[str, Any]:
+    status = on_status or _noop
+    paths = _copy_reciclagem_to_dashboard()
+    status(f"Dashboard Reciclagem local: {len(paths)} arquivo(s).")
+    return {"ok": True, "local": paths}
+
+
 def _copy_armazem_to_dashboard() -> dict[str, str]:
     """Copia CSVs 078 para dashboard/data/armazem/ (fallback local do hub)."""
     data_dir = DASHBOARD_DIR / "data" / "armazem"

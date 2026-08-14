@@ -16,6 +16,8 @@ GOOGLE_SA_PATH = SECRETS_DIR / "google_service_account.json"
 
 SSW_LOGIN_URL = "https://sistema.ssw.inf.br/bin/ssw0422"
 SSW_78_PATH = "/bin/ssw1257"  # 078 - Descarga de Veículos
+SSW_019_PATH = "/bin/ssw0019"  # 019 - CTRCs disponíveis (reciclagem)
+SSW_081_PATH = "/bin/ssw0081"  # 081 - CTRCs disponíveis para entrega
 
 DEFAULT_COLETA_OPTION = "50"
 DEFAULT_ENTREGA_OPTION = "36"
@@ -78,6 +80,7 @@ class AceSettings:
     pendencia_intervalo: str = ""
     contratacao_intervalo: str = ""
     emissao_intervalo: str = ""
+    reciclagem_intervalo: str = "30m"
     enable_sheets: bool = False
     apps_script_url: str = ""
     apps_script_token: str = ""
@@ -97,6 +100,7 @@ class AceSettings:
     pendencia_in_loop: bool = True  # 031
     contratacao_in_loop: bool = True  # 073
     emissao_in_loop: bool = False  # 455
+    reciclagem_in_loop: bool = False  # 019 + 081
     # /automatica: blocos em paralelo (1 browser cada)
     ciclo_paralelo: bool = True
     # Modo local: não envia Sheets/GitHub — só cache CSV + JSON em data/cache/local
@@ -123,6 +127,7 @@ def ensure_dirs() -> None:
     (DASHBOARD_DIR / "data" / "pendencia").mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data" / "contratacao").mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data" / "emissao").mkdir(parents=True, exist_ok=True)
+    (DASHBOARD_DIR / "data" / "reciclagem").mkdir(parents=True, exist_ok=True)
     (CACHE_DIR / "local").mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -154,6 +159,10 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         pendencia_intervalo=str(payload.get("pendencia_intervalo") or "").strip(),
         contratacao_intervalo=str(payload.get("contratacao_intervalo") or "").strip(),
         emissao_intervalo=str(payload.get("emissao_intervalo") or "").strip(),
+        reciclagem_intervalo=str(
+            payload.get("reciclagem_intervalo") or defaults.reciclagem_intervalo or "30m"
+        ).strip()
+        or "30m",
         enable_sheets=bool(payload.get("enable_sheets", defaults.enable_sheets)),
         apps_script_url=str(payload.get("apps_script_url") or "").strip(),
         apps_script_token=str(payload.get("apps_script_token") or "").strip(),
@@ -177,6 +186,9 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         armazem_in_loop=bool(payload.get("armazem_in_loop", defaults.armazem_in_loop)),
         pendencia_in_loop=bool(payload.get("pendencia_in_loop", defaults.pendencia_in_loop)),
         emissao_in_loop=bool(payload.get("emissao_in_loop", defaults.emissao_in_loop)),
+        reciclagem_in_loop=bool(
+            payload.get("reciclagem_in_loop", defaults.reciclagem_in_loop)
+        ),
         contratacao_in_loop=bool(
             payload.get("contratacao_in_loop", defaults.contratacao_in_loop)
         ),

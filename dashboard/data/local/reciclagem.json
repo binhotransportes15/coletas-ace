@@ -1,0 +1,18 @@
+{
+  "setor": "reciclagem",
+  "updated_at": "2026-08-14T16:25:26",
+  "sem_transferencia": {
+    "programa": "019",
+    "titulo": "SEM TRANSFERÊNCIA",
+    "resumo": {},
+    "top_cte": [],
+    "top_cliente": []
+  },
+  "sem_saida": {
+    "programa": "081",
+    "titulo": "SEM SAÍDA PARA ENTREGA",
+    "resumo": {},
+    "top_cte": [],
+    "top_cliente": []
+  }
+}

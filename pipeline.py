@@ -937,6 +937,7 @@ def run_dual_cycle(
     result_31: dict[str, Any] = {}
     result_73: dict[str, Any] = {}
     result_455: dict[str, Any] = {}
+    result_reciclagem: dict[str, Any] = {}
     if run_extras:
         if getattr(cfg, "armazem_in_loop", False):
             emit("078 / Armazem sequencial apos distribuicao...")
@@ -995,7 +996,22 @@ def run_dual_cycle(
                 errors["455"] = str(err)
                 emit(f"455 FALHOU: {err}")
 
-    if errors and not result_50 and not result_103 and not result_36 and not result_225 and not result_78 and not result_31 and not result_73 and not result_455:
+        if getattr(cfg, "reciclagem_in_loop", False):
+            emit("Reciclagem / 019+081 sequencial...")
+            try:
+                result_reciclagem = run_pipeline_reciclagem(
+                    credentials=creds,
+                    settings=cfg,
+                    headless=use_headless,
+                    on_status=lambda m: emit(f"[reciclagem] {m}"),
+                    clean_downloads=False,
+                )
+                emit("Reciclagem concluida.")
+            except Exception as err:  # noqa: BLE001
+                errors["reciclagem"] = str(err)
+                emit(f"Reciclagem FALHOU: {err}")
+
+    if errors and not result_50 and not result_103 and not result_36 and not result_225 and not result_78 and not result_31 and not result_73 and not result_455 and not result_reciclagem:
         raise RuntimeError("; ".join(f"{k}: {v}" for k, v in errors.items()))
 
     return {
@@ -1009,6 +1025,7 @@ def run_dual_cycle(
             or result_31
             or result_73
             or result_455
+            or result_reciclagem
         ),
         "errors": errors,
         "period_50": format_period(ini50, fim50),
@@ -1023,6 +1040,7 @@ def run_dual_cycle(
         "31": result_31,
         "73": result_73,
         "455": result_455,
+        "reciclagem": result_reciclagem,
         "sheets_50": sheets50,
         "sheets_103": sheets103,
         "sheets_36": sheets36,
@@ -1047,7 +1065,7 @@ def run_parallel_cycle(
     """
     Roda setores escolhidos ao mesmo tempo (1 Chromium por bloco).
 
-    jobs: lista entre dist | 78 | 31 | 73 | 455.
+    jobs: lista entre dist | 78 | 31 | 73 | 455 | reciclagem.
     Se None, monta a partir das flags *_in_loop.
     should_stop: se True, interrompe assim que um bloco terminar (e sinaliza LoopStopped).
     """
@@ -1087,10 +1105,24 @@ def run_parallel_cycle(
             jobs.append("73")
         if getattr(cfg, "emissao_in_loop", False):
             jobs.append("455")
+        if getattr(cfg, "reciclagem_in_loop", False):
+            jobs.append("reciclagem")
     else:
         jobs = [str(j).strip().lower() for j in jobs if str(j).strip()]
         # aliases
-        alias = {"078": "78", "031": "31", "073": "73", "076": "73", "emissao": "455", "armazem": "78"}
+        alias = {
+            "078": "78",
+            "031": "31",
+            "073": "73",
+            "076": "73",
+            "emissao": "455",
+            "armazem": "78",
+            "019": "reciclagem",
+            "19": "reciclagem",
+            "081": "reciclagem",
+            "81": "reciclagem",
+            "recicla": "reciclagem",
+        }
         jobs = [alias.get(j, j) for j in jobs]
 
     if not jobs:
@@ -1159,12 +1191,22 @@ def run_parallel_cycle(
             clean_downloads=False,
         )
 
+    def _run_reciclagem() -> dict[str, Any]:
+        return run_pipeline_reciclagem(
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=lambda m: emit(f"[reciclagem] {m}"),
+            clean_downloads=False,
+        )
+
     workers = {
         "dist": _run_dist,
         "78": _run_78,
         "31": _run_31,
         "73": _run_73,
         "455": _run_455,
+        "reciclagem": _run_reciclagem,
     }
     unknown = [j for j in jobs if j not in workers]
     if unknown:
@@ -1221,6 +1263,7 @@ def run_parallel_cycle(
     result_31 = results.get("31") or {}
     result_73 = results.get("73") or {}
     result_455 = results.get("455") or {}
+    result_reciclagem = results.get("reciclagem") or {}
     result_50 = dist.get("50") or {}
     result_103 = dist.get("103") or {}
     result_36 = dist.get("36") or {}
@@ -1235,6 +1278,7 @@ def run_parallel_cycle(
         or result_31
         or result_73
         or result_455
+        or result_reciclagem
     )
     if merged_errors and not any_ok:
         raise RuntimeError("; ".join(f"{k}: {v}" for k, v in merged_errors.items()))
@@ -1259,6 +1303,7 @@ def run_parallel_cycle(
         "31": result_31,
         "73": result_73,
         "455": result_455,
+        "reciclagem": result_reciclagem,
         "sheets_50": dist.get("sheets_50") or {"ok": False, "skipped": True},
         "sheets_103": dist.get("sheets_103") or {"ok": False, "skipped": True},
         "sheets_36": dist.get("sheets_36") or {"ok": False, "skipped": True},
@@ -1471,6 +1516,94 @@ def run_pipeline_455(
         "sheets": sheets,
         "publish": pub,
         **analysis,
+    }
+
+
+def run_pipeline_reciclagem(
+    *,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    headless: bool | None = None,
+    on_status: StatusCallback | None = None,
+    clean_downloads: bool = True,
+) -> dict[str, Any]:
+    """SSW 019 + 081 → parsers → JSON local → painel Reciclagem."""
+    status = on_status or _noop
+    ensure_dirs()
+    creds = credentials or load_credentials()
+    cfg = settings or load_settings()
+    from parser_ssw019 import analyze_reports_019
+    from parser_ssw081 import analyze_reports_081
+    from publish_dashboard import publish_reciclagem_local
+    from ssw_019 import download_reports_019
+    from ssw_081 import download_reports_081
+
+    status(f"ACE RECICLAGEM · 019+081 | {datetime.now():%d/%m %H:%M:%S}")
+    use_headless = cfg.headless if headless is None else headless
+
+    try:
+        dl19 = download_reports_019(
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=lambda m: status(f"[019] {m}" if not str(m).startswith("[019]") else m),
+            clean_downloads=clean_downloads,
+        )
+    except Exception as err:
+        from ace_stop import LoopStopped, stop_requested
+
+        if isinstance(err, LoopStopped) or stop_requested() or "parado pelo usuário" in str(err).lower():
+            status("019/reciclagem parado pelo usuário")
+            raise LoopStopped("reciclagem parado pelo usuário") from err
+        raise
+
+    analysis19 = analyze_reports_019(
+        (dl19.get("paths") or {}).get("019") or (dl19.get("files") or [None])[0],
+        periodo=str(dl19.get("periodo_fmt") or dl19.get("period") or ""),
+        on_status=status,
+    )
+
+    try:
+        dl81 = download_reports_081(
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=lambda m: status(f"[081] {m}" if not str(m).startswith("[081]") else m),
+            clean_downloads=False,
+        )
+    except Exception as err:
+        from ace_stop import LoopStopped, stop_requested
+
+        if isinstance(err, LoopStopped) or stop_requested() or "parado pelo usuário" in str(err).lower():
+            status("081/reciclagem parado pelo usuário")
+            raise LoopStopped("reciclagem parado pelo usuário") from err
+        raise
+
+    analysis81 = analyze_reports_081(
+        (dl81.get("paths") or {}).get("081") or (dl81.get("files") or [None])[0],
+        periodo=str(dl81.get("periodo_fmt") or dl81.get("period") or ""),
+        on_status=status,
+    )
+
+    status("Reciclagem analisada — gravando JSON local…")
+    sheets = _persist_local_instead_of_sheets("reciclagem", cfg=cfg, on_status=status)
+    pub = publish_reciclagem_local(on_status=status)
+    r19 = analysis19.get("resumo") or {}
+    r81 = analysis81.get("resumo") or {}
+    status(
+        f"OK · 019={r19.get('qtd')} CTRCs · 081={r81.get('qtd')} CTRCs "
+        f"· frete 019={r19.get('frete_fmt')} · frete 081={r81.get('frete_fmt')}"
+    )
+    return {
+        "download_019": dl19,
+        "download_081": dl81,
+        "analysis_019": analysis19,
+        "analysis_081": analysis81,
+        "sheets": sheets,
+        "publish": pub,
+        "ok": True,
+        "total_019": analysis19.get("total"),
+        "total_081": analysis81.get("total"),
     }
 
 

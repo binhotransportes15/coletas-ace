@@ -37,6 +37,7 @@ SECTOR_SPECS: tuple[tuple[str, str, str, str], ...] = (
     ("31", "pendencia_in_loop", "pendencia_intervalo", "Pendência"),
     ("73", "contratacao_in_loop", "contratacao_intervalo", "Contratação"),
     ("455", "emissao_in_loop", "emissao_intervalo", "Emissão"),
+    ("reciclagem", "reciclagem_in_loop", "reciclagem_intervalo", "Reciclagem"),
 )
 
 
@@ -85,6 +86,12 @@ _JOB_TAG_ALIAS: dict[str, str] = {
     "455": "455",
     "emissao": "455",
     "emissão": "455",
+    "reciclagem": "reciclagem",
+    "recicla": "reciclagem",
+    "019": "reciclagem",
+    "19": "reciclagem",
+    "081": "reciclagem",
+    "81": "reciclagem",
 }
 
 # Degraus de progresso (só sobe). Keywords curtas/ambíguas causavam 100% cedo.

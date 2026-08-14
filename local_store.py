@@ -7,6 +7,7 @@ Pasta: data/cache/local/
   armazem.json
   pendencia.json
   contratacao.json
+  reciclagem.json
 """
 from __future__ import annotations
 
@@ -44,6 +45,16 @@ def _read_csv_rows(path: Path, *, limit: int | None = None) -> list[dict[str, st
 def _read_csv_first(path: Path) -> dict[str, str]:
     rows = _read_csv_rows(path, limit=1)
     return dict(rows[0]) if rows else {}
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:  # noqa: BLE001
+        return {}
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> Path:
@@ -112,6 +123,45 @@ def build_contratacao_snapshot() -> dict[str, Any]:
     }
 
 
+def build_reciclagem_snapshot() -> dict[str, Any]:
+    """Snapshot unificado 019 (sem transferência) + 081 (sem saída para entrega)."""
+    from parser_ssw019 import (
+        LAST_019_JSON,
+        RESUMO_019_CSV,
+        TOP_CLIENTE_019_CSV,
+        TOP_CTE_019_CSV,
+    )
+    from parser_ssw081 import (
+        LAST_081_JSON,
+        RESUMO_081_CSV,
+        TOP_CLIENTE_081_CSV,
+        TOP_CTE_081_CSV,
+    )
+
+    last19 = _read_json(LAST_019_JSON)
+    last81 = _read_json(LAST_081_JSON)
+    return {
+        "setor": "reciclagem",
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+        "sem_transferencia": {
+            "programa": "019",
+            "titulo": "SEM TRANSFERÊNCIA",
+            "resumo": last19.get("resumo") or _read_csv_first(RESUMO_019_CSV),
+            "top_cte": last19.get("top_cte") or _read_csv_rows(TOP_CTE_019_CSV, limit=10),
+            "top_cliente": last19.get("top_cliente")
+            or _read_csv_rows(TOP_CLIENTE_019_CSV, limit=10),
+        },
+        "sem_saida": {
+            "programa": "081",
+            "titulo": "SEM SAÍDA PARA ENTREGA",
+            "resumo": last81.get("resumo") or _read_csv_first(RESUMO_081_CSV),
+            "top_cte": last81.get("top_cte") or _read_csv_rows(TOP_CTE_081_CSV, limit=10),
+            "top_cliente": last81.get("top_cliente")
+            or _read_csv_rows(TOP_CLIENTE_081_CSV, limit=10),
+        },
+    }
+
+
 _BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
     "distribuicao": build_distribuicao_snapshot,
     "50": build_distribuicao_snapshot,
@@ -125,6 +175,11 @@ _BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
     "31": build_pendencia_snapshot,
     "contratacao": build_contratacao_snapshot,
     "73": build_contratacao_snapshot,
+    "reciclagem": build_reciclagem_snapshot,
+    "19": build_reciclagem_snapshot,
+    "019": build_reciclagem_snapshot,
+    "81": build_reciclagem_snapshot,
+    "081": build_reciclagem_snapshot,
 }
 
 _SECTOR_FILE: dict[str, str] = {
@@ -132,6 +187,7 @@ _SECTOR_FILE: dict[str, str] = {
     "armazem": "armazem.json",
     "pendencia": "pendencia.json",
     "contratacao": "contratacao.json",
+    "reciclagem": "reciclagem.json",
 }
 
 
@@ -145,6 +201,8 @@ def _canon_sector(key: str) -> str:
         return "pendencia"
     if k in {"73", "076", "200", "contratacao", "ctr"}:
         return "contratacao"
+    if k in {"19", "019", "81", "081", "reciclagem", "recicla"}:
+        return "reciclagem"
     return k if k in _SECTOR_FILE else "distribuicao"
 
 
@@ -180,7 +238,7 @@ def persist_all(*, on_status: StatusCallback | None = None) -> dict[str, Any]:
     status = on_status or _noop
     status("Local JSON: gravando snapshot interno…")
     out: dict[str, Any] = {"ok": True, "via": "local_json", "sectors": {}}
-    for sid in ("distribuicao", "armazem", "pendencia", "contratacao"):
+    for sid in ("distribuicao", "armazem", "pendencia", "contratacao", "reciclagem"):
         try:
             out["sectors"][sid] = persist_sector(sid, on_status=status)
         except Exception as err:  # noqa: BLE001

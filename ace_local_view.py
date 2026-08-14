@@ -23,6 +23,8 @@ LOCAL_SCREENS: dict[str, tuple[str, str]] = {
     "conferentes": ("Armazém · Conferentes", "tv/armazem/conferentes"),
     "pendencia": ("Pendência", "tv/pendencia"),
     "contratacao": ("Contratação", "tv/contratacao"),
+    "reciclagem": ("Reciclagem", "tv/reciclagem"),
+    "emissao": ("Emissão", "tv/emissao"),
 }
 
 # Ordem na UI (ids canônicos, sem aliases)
@@ -34,6 +36,8 @@ LOCAL_SCREEN_ORDER: tuple[str, ...] = (
     "conferentes",
     "pendencia",
     "contratacao",
+    "reciclagem",
+    "emissao",
 )
 
 _ALIASES: dict[str, str] = {
@@ -57,6 +61,13 @@ _ALIASES: dict[str, str] = {
     "73": "contratacao",
     "contratação": "contratacao",
     "ctr": "contratacao",
+    "19": "reciclagem",
+    "019": "reciclagem",
+    "81": "reciclagem",
+    "081": "reciclagem",
+    "recicla": "reciclagem",
+    "455": "emissao",
+    "emissão": "emissao",
 }
 
 _open_windows: list[Any] = []

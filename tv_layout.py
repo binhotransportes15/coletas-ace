@@ -21,17 +21,18 @@ SECTOR_IDS = (
     "armazem",
     "contratacao",
     "pendencia",
-    "rastreamento",
+    "reciclagem",
     "emissao",
 )
 OPS_VIEWS = ("coleta", "entrega", "agendamento")
 ARM_VIEWS = ("patio", "conferentes")
+REC_VIEWS = ("sem_transferencia", "sem_saida")
 SECTOR_LABELS = {
     "distribuicao": "Distribuição",
     "armazem": "Armazém",
     "contratacao": "Contratação",
     "pendencia": "Pendência",
-    "rastreamento": "Rastreamento",
+    "reciclagem": "Reciclagem",
     "emissao": "Emissão",
 }
 
@@ -128,7 +129,7 @@ def default_layout() -> dict[str, Any]:
         _slot(3, 0, 2, "pendencia"),
         _slot(4, 1, 0, "emissao"),
         _slot(5, 1, 1, "distribuicao"),
-        _slot(6, 1, 2, "rastreamento"),
+        _slot(6, 1, 2, "reciclagem"),
     ]
     return {
         "version": 1,
@@ -156,6 +157,11 @@ def default_layout() -> dict[str, Any]:
                         "conferentes": _default_view_ui("towers"),
                     }
                     if sid == "armazem"
+                    else {
+                        "sem_transferencia": _default_view_ui("towers"),
+                        "sem_saida": _default_view_ui("towers"),
+                    }
+                    if sid == "reciclagem"
                     else {}
                 ),
             }
@@ -177,10 +183,14 @@ def _migrate_legacy_slot(s: dict[str, Any], template: dict[str, Any]) -> dict[st
             mode = "fixed"
     if sector in ("dist", "ops", "operacao", "a", "b", "c"):
         sector = "distribuicao"
+    if sector in ("rastreamento", "recicla", "019", "081", "19", "81"):
+        sector = "reciclagem"
     if sector not in SECTOR_IDS:
         sector = str(template.get("sector") or "distribuicao")
     if mode not in ("rotate", "fixed"):
         mode = "rotate"
+    if sector == "reciclagem" and view not in REC_VIEWS:
+        view = "sem_transferencia"
     if sector == "armazem":
         if view in ("armazem", "descarga", "078", "veiculos"):
             view = "patio"
