@@ -4079,7 +4079,7 @@
       <div class="tag">Alerta operacional</div>
       <h1 id="alertaLockTitle">Agendamento sem saída hoje</h1>
       <div class="count" id="alertaLockCount">0</div>
-      <div class="hint" id="alertaLockHint">Há CTRC agendado hoje sem saída. Atualiza automaticamente.</div>
+      <div class="hint" id="alertaLockHint">Há CTRC agendado hoje sem saída. Bipa a cada 10s · Continuar some por 1 min.</div>
       <div class="alerta-lock-list" id="alertaLockList"></div>
       <div class="alerta-lock-actions">
         <button type="button" id="btnAlertaContinuar">Continuar navegando</button>
@@ -4845,11 +4845,20 @@
     let swapTimer = null;
     let swapCountdown = null;
     let ALERTA_LOCK_ON = false;
-    /** Usuário fechou o overlay; não cobre a tela de novo até o alerta zerar. */
+    /** Usuário fechou o overlay; não cobre de novo até o snooze acabar (ou o alerta zerar). */
     let ALERTA_LOCK_DISMISSED = false;
+    /** Timestamp até quando o overlay fica oculto após Continuar/ESC. */
+    let ALERTA_LOCK_SNOOZE_UNTIL = 0;
+    let alertaSnoozeTimer = null;
+    let alertaBeepTimer = null;
+    let alertaAudioCtx = null;
     const SWAP_MS = 15000;
     /** Alerta “agendamento sem saída”: checagem na tela a cada 1 min */
     const ALERTA_SEM_SAIDA_POLL_MS = 60000;
+    /** Enquanto o overlay está ativo, bipa a cada 10s */
+    const ALERTA_BEEP_MS = 10000;
+    /** Após Continuar, some por 1 minuto e volta se ainda houver alerta */
+    const ALERTA_SNOOZE_MS = 60000;
     let alertaSemSaidaTimer = null;
     let placaCursor = 0;
     let prazoCursor = 0;
@@ -8603,21 +8612,99 @@
       });
     }
 
+    function playAlertaBeepOnce() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!alertaAudioCtx) alertaAudioCtx = new AC();
+        const ctx = alertaAudioCtx;
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        const now = ctx.currentTime;
+        [880, 620].forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'square';
+          o.frequency.value = freq;
+          const t0 = now + i * 0.16;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(0.1, t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start(t0);
+          o.stop(t0 + 0.16);
+        });
+      } catch (_) { /* autoplay / Audio API */ }
+    }
+
+    function startAlertaBeep() {
+      if (alertaBeepTimer) return;
+      playAlertaBeepOnce();
+      alertaBeepTimer = setInterval(playAlertaBeepOnce, ALERTA_BEEP_MS);
+    }
+
+    function stopAlertaBeep() {
+      if (alertaBeepTimer) {
+        clearInterval(alertaBeepTimer);
+        alertaBeepTimer = null;
+      }
+    }
+
+    function clearAlertaSnoozeTimer() {
+      if (alertaSnoozeTimer) {
+        clearTimeout(alertaSnoozeTimer);
+        alertaSnoozeTimer = null;
+      }
+    }
+
+    function scheduleAlertaSnoozeWake() {
+      clearAlertaSnoozeTimer();
+      const left = ALERTA_LOCK_SNOOZE_UNTIL - Date.now();
+      if (left <= 0) return;
+      alertaSnoozeTimer = setTimeout(() => {
+        alertaSnoozeTimer = null;
+        ALERTA_LOCK_DISMISSED = false;
+        ALERTA_LOCK_SNOOZE_UNTIL = 0;
+        updateAlertaSemSaidaLock();
+      }, left + 30);
+    }
+
+    /** Corrige setor legado quebrado (`agendamento` como setor) e reaplica as views. */
+    function repairDistribuicaoAfterAlerta() {
+      if (CURRENT_SECTOR === 'agendamento' || (VIEW === 'live' && !SECTORS[CURRENT_SECTOR] && isOpsView(CURRENT_SECTOR))) {
+        const keepView = isOpsView(CURRENT_VIEW) ? CURRENT_VIEW : (isOpsView(CURRENT_SECTOR) ? CURRENT_SECTOR : 'agendamento');
+        setSector('distribuicao', {
+          view: keepView,
+          syncHash: true,
+          forceTv: TV_MODE ? true : null,
+        });
+        return;
+      }
+      if (document.body.getAttribute('data-sector') === 'agendamento') {
+        document.body.setAttribute('data-sector', 'distribuicao');
+      }
+      if (isOpsSector(CURRENT_SECTOR)) applyOpsLiveViews();
+    }
+
     function dismissAlertaLock() {
       ALERTA_LOCK_DISMISSED = true;
       ALERTA_LOCK_ON = false;
+      ALERTA_LOCK_SNOOZE_UNTIL = Date.now() + ALERTA_SNOOZE_MS;
+      stopAlertaBeep();
       document.body.classList.remove('alerta-lock');
       const lock = document.getElementById('alertaLock');
       if (lock) {
         lock.hidden = true;
         lock.style.display = 'none';
       }
+      repairDistribuicaoAfterAlerta();
+      scheduleAlertaSnoozeWake();
       if (VIEW === 'live' && !swapTimer) restartSwapTimer();
       const tick = document.getElementById('agendaTick');
       const n = listAlertaSemSaida().length;
       if (tick) {
         tick.textContent = n > 0
-          ? `SEM SAÍDA: ${n} · navegação liberada`
+          ? `SEM SAÍDA: ${n} · some 1 min · bipa a cada 10s`
           : '';
       }
     }
@@ -8631,10 +8718,21 @@
       const agAlert = document.getElementById('agAlert');
       if (agAlert) agAlert.textContent = String(alerts.length);
 
-      if (!alerts.length) ALERTA_LOCK_DISMISSED = false;
+      if (!alerts.length) {
+        ALERTA_LOCK_DISMISSED = false;
+        ALERTA_LOCK_SNOOZE_UNTIL = 0;
+        clearAlertaSnoozeTimer();
+      } else if (ALERTA_LOCK_SNOOZE_UNTIL && Date.now() >= ALERTA_LOCK_SNOOZE_UNTIL) {
+        ALERTA_LOCK_DISMISSED = false;
+        ALERTA_LOCK_SNOOZE_UNTIL = 0;
+        clearAlertaSnoozeTimer();
+      }
 
-      // Overlay só se houver alerta e o usuário ainda não fechou
-      const ativo = alerts.length > 0 && !ALERTA_LOCK_DISMISSED;
+      const snoozed = ALERTA_LOCK_SNOOZE_UNTIL > Date.now();
+      // Overlay só se houver alerta e não estiver em snooze (Continuar / ESC)
+      const ativo = alerts.length > 0 && !snoozed;
+      // Mantém flag alinhada ao snooze (legado / UI)
+      ALERTA_LOCK_DISMISSED = snoozed;
       ALERTA_LOCK_ON = ativo;
       document.body.classList.toggle('alerta-lock', ativo);
       if (lock) {
@@ -8644,8 +8742,8 @@
       if (countEl) countEl.textContent = String(alerts.length);
       if (hintEl) {
         hintEl.textContent = document.body.classList.contains('tv-mode')
-          ? 'Modo TV: destaque do alerta. Use Continuar ou ESC para navegar.'
-          : 'Clique em Continuar navegando (ou ESC) para usar o site normalmente.';
+          ? 'Bipa a cada 10s. Continuar ou ESC: some por 1 minuto.'
+          : 'Bipa a cada 10s. Continuar navegando (ou ESC): some por 1 minuto.';
       }
       if (listEl) {
         listEl.innerHTML = alerts.map(r => `
@@ -8657,20 +8755,39 @@
       }
 
       if (ativo) {
-        // No TV: pausa o swap e destaca Agendamento
+        // No TV: pausa o swap e destaca a vista Agendamento (setor continua Distribuição)
         if (document.body.classList.contains('tv-mode')) {
           if (swapTimer) { clearInterval(swapTimer); swapTimer = null; }
           if (swapCountdown) { clearInterval(swapCountdown); swapCountdown = null; }
-          if (VIEW === 'live' && CURRENT_SECTOR !== 'agendamento') {
-            CURRENT_SECTOR = 'agendamento';
-            document.body.setAttribute('data-sector', 'agendamento');
-            applyOpsLiveViews();
+          if (VIEW === 'live') {
+            if (!isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'agendamento') {
+              setSector('distribuicao', {
+                view: 'agendamento',
+                syncHash: true,
+                forceTv: true,
+              });
+            } else if (CURRENT_VIEW !== 'agendamento') {
+              CURRENT_VIEW = 'agendamento';
+              applyOpsLiveViews();
+              writeRouteHash({ tv: true, sector: 'distribuicao' });
+            }
           }
         }
+        startAlertaBeep();
         const tick = document.getElementById('agendaTick');
-        if (tick) tick.textContent = `ALERTA · SEM SAÍDA (${alerts.length})`;
-      } else if (VIEW === 'live' && TV_MODE && (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem') && !swapTimer) {
-        restartSwapTimer();
+        if (tick) tick.textContent = `ALERTA · SEM SAÍDA (${alerts.length}) · bipa 10s`;
+      } else {
+        stopAlertaBeep();
+        // Auto-cura do bug antigo (setor = "agendamento" apagava coleta/entrega)
+        if (
+          CURRENT_SECTOR === 'agendamento'
+          || document.body.getAttribute('data-sector') === 'agendamento'
+        ) {
+          repairDistribuicaoAfterAlerta();
+        }
+        if (VIEW === 'live' && TV_MODE && (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem') && !swapTimer) {
+          restartSwapTimer();
+        }
       }
     }
 
