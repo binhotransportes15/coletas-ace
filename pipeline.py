@@ -1374,14 +1374,22 @@ def run_pipeline_31(
 
     status(f"ACE PENDENCIA · 31 | {datetime.now():%d/%m %H:%M:%S}")
     use_headless = cfg.headless if headless is None else headless
-    dl = download_reports_31(
-        codes=codes,
-        credentials=creds,
-        settings=cfg,
-        headless=use_headless,
-        on_status=status,
-        clean_downloads=clean_downloads,
-    )
+    try:
+        dl = download_reports_31(
+            codes=codes,
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=status,
+            clean_downloads=clean_downloads,
+        )
+    except Exception as err:
+        from ace_stop import LoopStopped, stop_requested
+
+        if isinstance(err, LoopStopped) or stop_requested() or "parado pelo usuário" in str(err).lower():
+            status("031 parado pelo usuário")
+            raise LoopStopped("031 parado pelo usuário") from err
+        raise
     analysis = analyze_reports_31(
         dl.get("paths") or {},
         periodo=str(dl.get("period") or ""),

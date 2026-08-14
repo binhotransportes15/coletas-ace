@@ -108,6 +108,9 @@ class AceSettings:
     headless: bool = True
     # Tema visual do CRT (binho | painel | ops | claro | fosco)
     crt_theme: str = "binho"
+    # Tema fosco: transparência 0–100 (ver fundo) e blur 0–100 (fosco Windows)
+    crt_frost_alpha: int = 40
+    crt_frost_blur: int = 65
 
 
 def ensure_dirs() -> None:
@@ -184,6 +187,14 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         headless=bool(payload.get("headless", defaults.headless)),
         crt_theme=str(payload.get("crt_theme") or defaults.crt_theme).strip()
         or defaults.crt_theme,
+        crt_frost_alpha=max(
+            0,
+            min(100, int(payload.get("crt_frost_alpha", defaults.crt_frost_alpha) or 0)),
+        ),
+        crt_frost_blur=max(
+            0,
+            min(100, int(payload.get("crt_frost_blur", defaults.crt_frost_blur) or 0)),
+        ),
     )
 
 

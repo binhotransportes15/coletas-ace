@@ -149,6 +149,11 @@ def download_reports_200(
     else:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
+        try:
+            from ace_stop import register_browser
+            register_browser(browser)
+        except Exception:
+            pass
             ctx = browser.new_context(accept_downloads=True)
             pg = ctx.new_page()
             pg.set_default_timeout(60000)
@@ -160,7 +165,15 @@ def download_reports_200(
                 own_client._patch_blank_popup_form(pg)
                 empty_note = _run(own_client, ctx, pg) or ""
             finally:
-                browser.close()
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+                try:
+                    from ace_stop import unregister_browser
+                    unregister_browser(browser)
+                except Exception:
+                    pass
 
     if not paths:
         if empty_note:

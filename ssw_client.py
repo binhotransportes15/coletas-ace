@@ -220,6 +220,12 @@ class AceSswClient:
                 if self.headless:
                     launch_kwargs["args"] = ["--disable-dev-shm-usage"]
                 browser = playwright.chromium.launch(**launch_kwargs)
+                try:
+                    from ace_stop import register_browser
+
+                    register_browser(browser)
+                except Exception:
+                    pass
                 context = browser.new_context(accept_downloads=True)
                 page = context.new_page()
                 page.set_default_timeout(30000)
@@ -280,8 +286,20 @@ class AceSswClient:
                         context.close()
                     if browser is not None:
                         browser.close()
+                        try:
+                            from ace_stop import unregister_browser
+
+                            unregister_browser(browser)
+                        except Exception:
+                            pass
 
     def _login(self, page) -> None:
+        try:
+            from ace_stop import check_stop
+
+            check_stop()
+        except Exception:
+            pass
         creds = self.credentials
         self.on_status("Efetuando login no SSW...")
         try:
@@ -855,6 +873,12 @@ class AceSswClient:
                 if self.headless:
                     launch_kwargs["args"] = ["--disable-dev-shm-usage"]
                 browser = playwright.chromium.launch(**launch_kwargs)
+                try:
+                    from ace_stop import register_browser
+
+                    register_browser(browser)
+                except Exception:
+                    pass
                 context = browser.new_context(accept_downloads=True)
                 page = context.new_page()
                 page.set_default_timeout(30000)
@@ -877,6 +901,12 @@ class AceSswClient:
                         context.close()
                     if browser is not None:
                         browser.close()
+                        try:
+                            from ace_stop import unregister_browser
+
+                            unregister_browser(browser)
+                        except Exception:
+                            pass
 
     def _download_report_225(self, page) -> Path:
         """
@@ -1025,6 +1055,12 @@ class AceSswClient:
                 if self.headless:
                     launch_kwargs["args"] = ["--disable-dev-shm-usage"]
                 browser = playwright.chromium.launch(**launch_kwargs)
+                try:
+                    from ace_stop import register_browser
+
+                    register_browser(browser)
+                except Exception:
+                    pass
                 context = browser.new_context(accept_downloads=True)
                 page = context.new_page()
                 page.set_default_timeout(30000)
@@ -1047,6 +1083,12 @@ class AceSswClient:
                         context.close()
                     if browser is not None:
                         browser.close()
+                        try:
+                            from ace_stop import unregister_browser
+
+                            unregister_browser(browser)
+                        except Exception:
+                            pass
 
 
     def _download_report_50(self, page) -> Path:
@@ -1253,6 +1295,12 @@ class AceSswClient:
                 if self.headless:
                     launch_kwargs["args"] = ["--disable-dev-shm-usage"]
                 browser = playwright.chromium.launch(**launch_kwargs)
+                try:
+                    from ace_stop import register_browser
+
+                    register_browser(browser)
+                except Exception:
+                    pass
                 context = browser.new_context(accept_downloads=True)
                 page = context.new_page()
                 page.set_default_timeout(30000)
@@ -1275,6 +1323,12 @@ class AceSswClient:
                         context.close()
                     if browser is not None:
                         browser.close()
+                        try:
+                            from ace_stop import unregister_browser
+
+                            unregister_browser(browser)
+                        except Exception:
+                            pass
 
     def _download_report_103(self, page) -> Path:
         """
@@ -1507,6 +1561,12 @@ class AceSswClient:
                 if self.headless:
                     launch_kwargs["args"] = ["--disable-dev-shm-usage"]
                 browser = playwright.chromium.launch(**launch_kwargs)
+                try:
+                    from ace_stop import register_browser
+
+                    register_browser(browser)
+                except Exception:
+                    pass
                 context = browser.new_context(accept_downloads=True)
                 page = context.new_page()
                 page.set_default_timeout(45000)
@@ -1709,6 +1769,12 @@ class AceSswClient:
                     if browser is not None:
                         try:
                             browser.close()
+                        except Exception:
+                            pass
+                        try:
+                            from ace_stop import unregister_browser
+
+                            unregister_browser(browser)
                         except Exception:
                             pass
 

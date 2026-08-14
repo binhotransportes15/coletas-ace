@@ -162,6 +162,12 @@ def _save_payload(payload: dict[str, Any]) -> None:
         dashboard_port=int(payload.get("dashboard_port") or 8787),
         headless=bool(payload.get("headless", True)),
         crt_theme=str(payload.get("crt_theme") or "binho").strip() or "binho",
+        crt_frost_alpha=max(
+            0, min(100, int(payload.get("crt_frost_alpha", 40) or 0))
+        ),
+        crt_frost_blur=max(
+            0, min(100, int(payload.get("crt_frost_blur", 65) or 0))
+        ),
     )
     save_all(creds, settings)
 
@@ -1130,6 +1136,48 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
     parts = text.split()
     cmd = parts[0].lower()
 
+    # Parar também funciona se digitado no motor CMD (além do CRT)
+    if cmd in {"parar", "stop", "halt"}:
+        try:
+            from ace_stop import close_registered_browsers, kill_child_browsers, request_stop, stop_external_loop_process
+
+            request_stop(force_browsers=True)
+            close_registered_browsers()
+            kill_child_browsers()
+            stop_external_loop_process()
+        except Exception:
+            pass
+        return ("Parado: sinal enviado a qualquer comando/processo ACE.", payload)
+
+    try:
+        from ace_stop import check_stop, clear_stop, LoopStopped
+
+        # Novo comando: limpa flag antiga (exceto se o usuário acabou de pedir parar
+        # no mesmo instante — clear_stop no CmdWorker já cuida disso).
+        clear_stop()
+        check_stop()
+    except Exception:
+        LoopStopped = Exception  # type: ignore
+
+    try:
+        return _execute_line_body(raw, payload, parts, cmd)
+    except Exception as err:
+        try:
+            from ace_stop import LoopStopped as _LS, stop_requested
+
+            if isinstance(err, _LS) or stop_requested() or "parado pelo usuário" in str(err).lower():
+                return ("Parado pelo usuário.", _load_payload())
+        except Exception:
+            pass
+        raise
+
+
+def _execute_line_body(
+    raw: str,
+    payload: dict[str, Any],
+    parts: list[str],
+    cmd: str,
+) -> tuple[str, dict[str, Any]]:
     if cmd in {"sair", "exit", "quit", "q"}:
         return ("Feche a janela CRT para sair do painel.", payload)
     if cmd in {"help", "/help", "?", "h"}:
@@ -1252,7 +1300,7 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
         return (show_config(payload), payload)
     if cmd in {"cls", "clear"}:
         return ("__CLEAR__", payload)
-    return (f"Comando desconhecido: {text}. Digite help", payload)
+    return (f"Comando desconhecido: {raw}. Digite help", payload)
 
 
 def run_git_status() -> str:

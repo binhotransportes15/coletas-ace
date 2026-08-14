@@ -2,7 +2,7 @@
 
 Fluxo:
   1) 1 login · abre N telas 31 · preenche · ► (sem abrir 156)
-  2) Abre a fila 156 UMA vez · espera todos · baixa tudo na mesma aba
+  2) Abre a fila 156 UMA vez · baixa cada arquivo assim que o Baixar aparecer
 """
 from __future__ import annotations
 
@@ -21,6 +21,39 @@ from ocorrencias_pendencia import OCORR_PENDENCIA_CODES, label_ocorrencia
 from ssw_client import AceSswClient, cleanup_downloads
 
 StatusCallback = Callable[[str], None]
+
+
+def _raise_if_stopped(status: StatusCallback | None = None) -> None:
+    try:
+        from ace_stop import LoopStopped, stop_requested
+    except Exception:
+        return
+    if stop_requested():
+        if status:
+            try:
+                status("[31] parado pelo usuário")
+            except Exception:
+                pass
+        raise LoopStopped("31 parado pelo usuário")
+
+
+def _register_browser(browser) -> None:
+    try:
+        from ace_stop import register_browser
+
+        register_browser(browser)
+    except Exception:
+        pass
+
+
+def _unregister_browser(browser) -> None:
+    try:
+        from ace_stop import unregister_browser
+
+        unregister_browser(browser)
+    except Exception:
+        pass
+
 
 # Opção 156 = Fila de processamento em lotes (programa ssw1440)
 SSW_FILA_URL = "https://sistema.ssw.inf.br/bin/ssw1440"
@@ -131,6 +164,7 @@ def download_reports_31(
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
+        _register_browser(browser)
         context = browser.new_context(accept_downloads=True)
         page = context.new_page()
         page.set_default_timeout(60000)
@@ -139,6 +173,7 @@ def download_reports_31(
         screens: list[tuple[str, Any]] = []
         fila = None
         try:
+            _raise_if_stopped(status)
             client._login(page)
             client._ensure_unit(page)
             client._patch_blank_popup_form(page)
@@ -147,6 +182,7 @@ def download_reports_31(
             status(f"[31] fase 1/2 · abrindo {len(code_list)} tela(s) 31 (sem fila 156)…")
 
             for idx, code in enumerate(code_list, start=1):
+                _raise_if_stopped(status)
                 try:
                     status(f"[31/{code}] ({idx}/{len(code_list)}) abrindo tela…")
                     popup = _open_31_rapido(client, context, page, status)
@@ -162,6 +198,7 @@ def download_reports_31(
 
             status(f"[31] preenchendo {len(screens)} tela(s)…")
             for code, popup in screens:
+                _raise_if_stopped(status)
                 if code in errors:
                     continue
                 try:
@@ -178,6 +215,7 @@ def download_reports_31(
             status(f"[31] enviando {len(screens)} relatório(s) pra fila (ainda sem abrir 156)…")
             enqueue_t0 = time.time()
             for idx, (code, popup) in enumerate(screens, start=1):
+                _raise_if_stopped(status)
                 if code in errors:
                     continue
                 try:
@@ -188,7 +226,7 @@ def download_reports_31(
                     status(f"[31/{code}] ► (enfileira; 156 só depois)…")
                     t0 = time.time()
                     _enviar_fila_31(popup, status, code)
-                    _safe_wait(popup, 500)
+                    _safe_wait(popup, 350)
                     queued.append({"code": code, "seq": "", "t": t0, "idx": idx})
                     status(f"[31/{code}] enviado")
                 except Exception as err:  # noqa: BLE001
@@ -251,6 +289,7 @@ def download_reports_31(
                 browser.close()
             except Exception:
                 pass
+            _unregister_browser(browser)
 
     if not paths:
         raise RuntimeError(
@@ -350,19 +389,21 @@ def _baixar_tudo_na_mesma_156(
         return fila
 
     def _poll() -> list[dict[str, Any]]:
+        _raise_if_stopped(status)
         f = _ensure_fila()
         try:
             f.bring_to_front()
         except Exception:
             pass
         _atualizar_fila(f)
-        _safe_wait(f, 900)
+        _safe_wait(f, 400)
         return _ler_jobs_fila(f)
 
-    status(f"[31] 156 aberta · aguardando {want} job(s) 031 desta rodada…")
+    status(f"[31] 156 aberta · baixando assim que aparecer Baixar ({want} job(s))…")
 
     while time.time() < deadline and _done_count() < want:
         try:
+            _raise_if_stopped(status)
             jobs = _poll()
             only = [j for j in jobs if j.get("is0495") and str(j.get("seq") or "")]
             # Jobs desta rodada: por horário OU (fallback) últimas N seqs novas
@@ -396,19 +437,19 @@ def _baixar_tudo_na_mesma_156(
                 if j.get("concluido") and j.get("hasDow"):
                     prontos.append(j)
                     concluido_sem_dow_since.pop(seq, None)
-                elif _job_31_sem_dados(j, since=concluido_sem_dow_since.get(seq) or enqueue_t0):
+                elif _job_31_sem_dados(j, since=concluido_sem_dow_since.get(seq) or enqueue_t0, grace_s=10.0):
                     vazios.append(j)
                 elif j.get("concluido") and not j.get("hasDow"):
                     concluido_sem_dow_since.setdefault(seq, now)
                     # ainda dentro do grace → trata como pendente
-                    if _job_31_sem_dados(j, since=concluido_sem_dow_since[seq], grace_s=28.0):
+                    if _job_31_sem_dados(j, since=concluido_sem_dow_since[seq], grace_s=10.0):
                         vazios.append(j)
                     else:
                         pendentes.append(j)
                 else:
                     pendentes.append(j)
 
-            if now - last_log >= 4:
+            if now - last_log >= 3:
                 last_log = now
                 status(
                     f"[31] 156 · baixados {_done_count()}/{want} · "
@@ -422,27 +463,7 @@ def _baixar_tudo_na_mesma_156(
                         f"baixar={'sim' if j.get('hasDow') else 'nao'}"
                     )
 
-            still_waiting = len(our_seqs) < want or len(pendentes) > 0
-            if still_waiting:
-                if not all_ready_announced:
-                    status(
-                        f"[31] aguardando TODOS na 156 "
-                        f"({len(our_seqs)}/{want} seqs · "
-                        f"{len(pendentes)} processando · "
-                        f"{len(prontos)} Baixar · {len(vazios)} vazios)…"
-                    )
-                _safe_wait(fila, 2200)
-                continue
-
-            if not all_ready_announced:
-                all_ready_announced = True
-                status(
-                    f"[31] todos prontos na 156 · "
-                    f"{len(prontos)} Baixar + {len(vazios)} sem registro — "
-                    f"baixando NA MESMA ABA (sem fechar)…"
-                )
-
-            # Mapear seq → code na ordem FIFO
+            # Mapear seq → code na ordem FIFO — vazios (sem registro)
             for job in vazios:
                 if _done_count() >= want:
                     break
@@ -461,67 +482,87 @@ def _baixar_tudo_na_mesma_156(
                         break
                 status(f"[31/{code}] sem dados · seq={seq} · skip · {msg[:70]}")
 
-            if not prontos:
-                if _done_count() >= want:
-                    break
-                _safe_wait(fila, 1500)
+            # Baixa JÁ o que tiver link Baixar (não espera o resto terminar)
+            if prontos:
+                if not all_ready_announced:
+                    all_ready_announced = True
+                    status(
+                        f"[31] Baixar disponível — baixando na hora "
+                        f"({len(prontos)} pronto(s); {len(pendentes)} ainda processando)…"
+                    )
+                prontos.sort(key=lambda j: _seq_num(str(j.get("seq") or "")))
+                for job in prontos:
+                    _raise_if_stopped(status)
+                    if _done_count() >= want:
+                        break
+                    seq = str(job.get("seq") or "")
+                    if seq in downloaded_seqs or seq in skipped_seqs:
+                        continue
+                    code = _next_code()
+                    if not code:
+                        break
+                    for q in queued:
+                        if q.get("code") == code and not q.get("seq"):
+                            q["seq"] = seq
+                            break
+
+                    dest_name = f"pendencia_31_{code}_{ts}.xlsx"
+                    status(
+                        f"[31/{code}] Baixar · seq={seq} · "
+                        f"{job.get('situacao') or 'Concluído'}"
+                    )
+                    try:
+                        _ensure_fila()
+                        path = _clicar_dow_job(
+                            client, context, fila, job, dest_name, status, code
+                        )
+                        size = path.stat().st_size if path.exists() else 0
+                        if size < 64:
+                            status(f"[31/{code}] arquivo suspeito ({size} bytes) — re-tenta")
+                            try:
+                                path.unlink(missing_ok=True)
+                            except Exception:
+                                pass
+                            _ensure_fila()
+                            _safe_wait(fila, 900)
+                            break
+                        paths[code] = str(path)
+                        downloaded_seqs.add(seq)
+                        status(f"[31/{code}] OK {path.name} ({size} bytes)")
+                        _ensure_fila()
+                        _safe_wait(fila, 350)
+                    except Exception as err:  # noqa: BLE001
+                        status(f"[31/{code}] download falhou: {err}")
+                        _ensure_fila()
+                        _safe_wait(fila, 900)
+                        break
+
+            if _done_count() >= want:
+                break
+
+            # Ainda falta job: poll mais rápido
+            if pendentes or len(our_seqs) < want:
+                _safe_wait(fila, 900)
                 continue
 
-            prontos.sort(key=lambda j: _seq_num(str(j.get("seq") or "")))
-            for job in prontos:
-                if _done_count() >= want:
-                    break
-                seq = str(job.get("seq") or "")
-                if seq in downloaded_seqs or seq in skipped_seqs:
-                    continue
-                code = _next_code()
-                if not code:
-                    break
-                for q in queued:
-                    if q.get("code") == code and not q.get("seq"):
-                        q["seq"] = seq
-                        break
-
-                dest_name = f"pendencia_31_{code}_{ts}.xlsx"
-                status(
-                    f"[31/{code}] Baixar · seq={seq} · "
-                    f"{job.get('situacao') or 'Concluído'}"
-                )
-                try:
-                    _ensure_fila()
-                    path = _clicar_dow_job(
-                        client, context, fila, job, dest_name, status, code
-                    )
-                    size = path.stat().st_size if path.exists() else 0
-                    if size < 64:
-                        status(f"[31/{code}] arquivo suspeito ({size} bytes) — re-tenta")
-                        try:
-                            path.unlink(missing_ok=True)
-                        except Exception:
-                            pass
-                        all_ready_announced = False
-                        _ensure_fila()
-                        _safe_wait(fila, 2000)
-                        break
-                    paths[code] = str(path)
-                    downloaded_seqs.add(seq)
-                    status(f"[31/{code}] OK {path.name} ({size} bytes)")
-                    # após Baixar o SSW às vezes bagunça a página — garante 156
-                    _ensure_fila()
-                    _safe_wait(fila, 800)
-                except Exception as err:  # noqa: BLE001
-                    status(f"[31/{code}] download falhou: {err}")
-                    all_ready_announced = False
-                    _ensure_fila()
-                    _safe_wait(fila, 2000)
-                    break
+            # Sem pendentes e sem prontos novos — pequena pausa e reavalia
+            _safe_wait(fila, 700)
         except Exception as err:  # noqa: BLE001
+            try:
+                from ace_stop import LoopStopped
+
+                if isinstance(err, LoopStopped):
+                    raise
+            except ImportError:
+                pass
+            if "parado pelo usuário" in str(err).lower():
+                raise
             status(f"[31] 156 loop: {err}")
             try:
                 _ensure_fila()
             except Exception:
                 pass
-            time.sleep(2)
+            time.sleep(1.2)
 
     missing = [c for c in codes_order if c not in paths and c not in skipped_codes]
     if skipped_codes:

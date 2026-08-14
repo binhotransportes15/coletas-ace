@@ -11,6 +11,7 @@ Ctrl+C / Parar no CRT para encerrar.
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import sys
 import time
@@ -63,6 +64,109 @@ def _log(msg: str) -> None:
             pass
     except Exception:
         print(f"[{datetime.now():%H:%M:%S}] {msg}", flush=True)
+
+
+def build_sector_rows(
+    cfg: AceSettings,
+    last_run: dict[str, float],
+    *,
+    now: float | None = None,
+    running: list[str] | None = None,
+    run_detail: str = "",
+    errors: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Estado das barrinhas: wait (até próximo), run, off, ok, err."""
+    now = time.time() if now is None else float(now)
+    running_set = set(running or [])
+    errs = errors or {}
+    rows: list[dict[str, Any]] = []
+    for sid, flag, _iv, label in SECTOR_SPECS:
+        enabled = bool(getattr(cfg, flag, sid == "dist"))
+        iv = sector_interval_sec(cfg, sid) if enabled else 0
+        prev = last_run.get(sid)
+        row: dict[str, Any] = {
+            "id": sid,
+            "label": label,
+            "enabled": enabled,
+            "interval": format_duration(iv) if enabled else "",
+            "state": "off",
+            "pct": 0.0,
+            "detail": "fora do automático",
+        }
+        if not enabled:
+            rows.append(row)
+            continue
+        if sid in running_set:
+            row["state"] = "run"
+            # pulso suave enquanto roda
+            pulse = 55.0 + 35.0 * (0.5 + 0.5 * math.sin(now * 2.2))
+            row["pct"] = pulse
+            row["detail"] = (run_detail or "executando…")[:90]
+        elif sid in errs:
+            row["state"] = "err"
+            row["pct"] = 100.0
+            row["detail"] = str(errs.get(sid) or "erro")[:90]
+        elif prev is None:
+            row["state"] = "due"
+            row["pct"] = 100.0
+            row["detail"] = "na fila · primeiro ciclo"
+        else:
+            elapsed = max(0.0, now - prev)
+            pct = min(100.0, (elapsed / max(1.0, float(iv))) * 100.0)
+            rem = max(0.0, float(iv) - elapsed)
+            row["pct"] = pct
+            if rem <= 0.5:
+                row["state"] = "due"
+                row["detail"] = "vencido · na fila"
+            else:
+                row["state"] = "wait"
+                row["detail"] = f"próximo em {format_duration_long(int(rem))}"
+        rows.append(row)
+    return rows
+
+
+def publish_sector_bars(
+    cfg: AceSettings,
+    last_run: dict[str, float],
+    *,
+    running: list[str] | None = None,
+    run_detail: str = "",
+    errors: dict[str, Any] | None = None,
+    label: str = "LOOP",
+    mode: str = "RUN",
+) -> None:
+    try:
+        from crt_bridge import publish_sectors
+
+        rows = build_sector_rows(
+            cfg,
+            last_run,
+            running=running,
+            run_detail=run_detail,
+            errors=errors,
+        )
+        ons = [r for r in rows if r.get("enabled")]
+        if running:
+            detail = f"rodando: {', '.join(running)}"
+            pct = 55.0
+        elif ons:
+            pct = sum(float(r.get("pct") or 0) for r in ons) / max(1, len(ons))
+            detail = " · ".join(
+                f"{r['label'][:4]} {float(r.get('pct') or 0):.0f}%" for r in ons[:4]
+            )
+        else:
+            pct = 0.0
+            detail = "nenhum setor no automático"
+        publish_sectors(
+            rows,
+            online=True,
+            label=label,
+            pct=pct,
+            detail=detail[:100],
+            mode=mode,
+        )
+    except Exception:
+        pass
 
 
 def resolve_interval_sec(
@@ -171,13 +275,22 @@ def _sleep_until(
     *,
     should_stop: Callable[[], bool] | None,
     day_marker: date,
+    on_tick: Callable[[], None] | None = None,
 ) -> tuple[bool, bool]:
     """Espera até `until`. Retorna (stop, day_changed)."""
+    last_tick = 0.0
     while time.time() < until:
         if stop_requested() or (should_stop and should_stop()):
             return True, False
         if date.today() != day_marker:
             return False, True
+        now = time.time()
+        if on_tick and (now - last_tick) >= 0.8:
+            last_tick = now
+            try:
+                on_tick()
+            except Exception:
+                pass
         rem = until - time.time()
         # fatias curtas = Parar responde em ~0,4s
         slice_s = 0.4 if rem <= 30 else 1.0 if rem <= 120 else 2.0
@@ -236,6 +349,18 @@ def run_loop(
 
     last_run: dict[str, float] = {}
     ciclo = 0
+    run_detail_box: dict[str, str] = {"text": ""}
+
+    def _tick_bars(running: list[str] | None = None, errors: dict | None = None) -> None:
+        publish_sector_bars(
+            cfg,
+            last_run,
+            running=running,
+            run_detail=run_detail_box.get("text") or "",
+            errors=errors,
+            label="LOOP" if running else "WAIT",
+            mode="RUN" if running else "STANDBY",
+        )
 
     try:
         while True:
@@ -263,8 +388,12 @@ def run_loop(
             ons = enabled_sectors(cfg)
             if not ons:
                 _log("Nenhum setor no automático — aguardando 30s (configure na aba Automação)…")
+                _tick_bars()
                 stop, day_chg = _sleep_until(
-                    time.time() + 30, should_stop=should_stop, day_marker=day_marker
+                    time.time() + 30,
+                    should_stop=should_stop,
+                    day_marker=day_marker,
+                    on_tick=_tick_bars,
                 )
                 if stop:
                     _log("Atualização contínua interrompida.")
@@ -289,8 +418,12 @@ def run_loop(
                     waits.append(max(1.0, iv - (now - prev)))
                 wait_s = min(waits) if waits else 30.0
                 _log(f"Aguardando {format_duration_long(int(wait_s))} até o próximo setor…")
+                _tick_bars()
                 stop, day_chg = _sleep_until(
-                    time.time() + wait_s, should_stop=should_stop, day_marker=day_marker
+                    time.time() + wait_s,
+                    should_stop=should_stop,
+                    day_marker=day_marker,
+                    on_tick=_tick_bars,
                 )
                 if stop:
                     _log("Atualização contínua interrompida.")
@@ -309,10 +442,14 @@ def run_loop(
                 f"50={format_period(ini50, fim50)} | 103={format_period(ini103, fim103)} ==="
             )
             t0 = time.time()
+            run_detail_box["text"] = f"ciclo {ciclo} · {','.join(due)}"
+            _tick_bars(running=due)
 
             def _status_guard(msg: str) -> None:
                 if _want_stop(should_stop):
                     raise LoopStopped("parado pelo usuário")
+                run_detail_box["text"] = str(msg or "")[:90]
+                _tick_bars(running=due)
                 _log(msg)
 
             try:
@@ -331,6 +468,8 @@ def run_loop(
                     for job in due:
                         if _want_stop(should_stop):
                             raise LoopStopped("parado pelo usuário")
+                        run_detail_box["text"] = f"setor {job}"
+                        _tick_bars(running=[job])
                         part = run_parallel_cycle(
                             credentials=creds,
                             settings=cfg,
@@ -350,6 +489,11 @@ def run_loop(
                     f"CICLO {ciclo} OK em {elapsed:.0f}s | "
                     f"jobs={due} | erros={err or '{}'}"
                 )
+                stamp = time.time()
+                for sid in due:
+                    last_run[sid] = stamp
+                run_detail_box["text"] = ""
+                _tick_bars(errors=err if err else None)
             except LoopStopped:
                 elapsed = time.time() - t0
                 _log(f"CICLO {ciclo} interrompido em {elapsed:.0f}s (Parar).")
@@ -360,10 +504,11 @@ def run_loop(
                     return 0
                 elapsed = time.time() - t0
                 _log(f"CICLO {ciclo} FALHOU em {elapsed:.0f}s: {err}")
-
-            stamp = time.time()
-            for sid in due:
-                last_run[sid] = stamp
+                stamp = time.time()
+                for sid in due:
+                    last_run[sid] = stamp
+                run_detail_box["text"] = ""
+                _tick_bars(errors={sid: str(err) for sid in due})
 
             if once:
                 return 0

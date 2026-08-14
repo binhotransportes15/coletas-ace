@@ -95,6 +95,11 @@ def download_report_177(
             browser = p.chromium.launch(
                 headless=use_headless, slow_mo=0 if use_headless else 40
             )
+        try:
+            from ace_stop import register_browser
+            register_browser(browser)
+        except Exception:
+            pass
             context = browser.new_context(accept_downloads=True)
             page = context.new_page()
             page.set_default_timeout(60000)
@@ -134,7 +139,15 @@ def download_report_177(
                 except Exception:
                     pass
                 context.close()
-                browser.close()
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+                try:
+                    from ace_stop import unregister_browser
+                    unregister_browser(browser)
+                except Exception:
+                    pass
 
         status(f"177 baixado: {path.name} ({path.stat().st_size} bytes)")
         return {"ok": True, "path": str(path), "source": "ssw"}

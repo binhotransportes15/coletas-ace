@@ -32,6 +32,7 @@ def publish(
     detail: str = "",
     title: str = "BINHO · ACE",
     mode: str = "STANDBY",
+    sectors: list[dict[str, Any]] | None = None,
 ) -> None:
     STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
     payload: dict[str, Any] = {
@@ -43,9 +44,40 @@ def publish(
         "title": str(title or "BINHO · ACE"),
         "mode": str(mode or "STANDBY"),
     }
+    if sectors is not None:
+        payload["sectors"] = list(sectors)
+    else:
+        # preserva setores já publicados se o caller não mandou
+        try:
+            if STATUS_PATH.is_file():
+                old = json.loads(STATUS_PATH.read_text(encoding="utf-8"))
+                if isinstance(old.get("sectors"), list):
+                    payload["sectors"] = old["sectors"]
+        except Exception:
+            pass
     tmp = STATUS_PATH.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     tmp.replace(STATUS_PATH)
+
+
+def publish_sectors(
+    sectors: list[dict[str, Any]],
+    *,
+    online: bool = True,
+    label: str = "LOOP",
+    pct: float = 0.0,
+    detail: str = "",
+    mode: str = "RUN",
+) -> None:
+    """Atualiza só as barrinhas por setor (sem spam no log)."""
+    publish(
+        online=online,
+        label=label,
+        pct=pct,
+        detail=detail,
+        mode=mode,
+        sectors=sectors,
+    )
 
 
 def append_log(kind: str, text: str, *, source: str = "cmd") -> dict[str, Any]:

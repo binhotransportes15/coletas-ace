@@ -51,6 +51,11 @@ def capture_ssw78(
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
+        try:
+            from ace_stop import register_browser
+            register_browser(browser)
+        except Exception:
+            pass
         context = browser.new_context(accept_downloads=False)
         page = context.new_page()
         page.set_default_timeout(60000)
@@ -115,7 +120,15 @@ def capture_ssw78(
         except Exception:
             pass
         context.close()
-        browser.close()
+        try:
+            browser.close()
+        except Exception:
+            pass
+        try:
+            from ace_stop import unregister_browser
+            unregister_browser(browser)
+        except Exception:
+            pass
 
     status(f"78 capturada: {len(info.get('tableRows') or [])} linha(s) de tabela")
     return {

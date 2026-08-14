@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 import sys
 import traceback
 from datetime import datetime
@@ -21,7 +22,10 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QThread, QTimer, Signal, QPointF
 from PySide6.QtGui import (
     QColor,
+    QFont,
+    QFontDatabase,
     QPainter,
+    QPalette,
     QPen,
     QPixmap,
     QLinearGradient,
@@ -44,7 +48,9 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QScrollArea,
+    QSlider,
     QSplitter,
+    QStackedWidget,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
@@ -56,6 +62,41 @@ from crt_bridge import append_log, publish, read_log_since, read_status, STATUS_
 _ROOT = Path(__file__).resolve().parent
 _CUBES = _ROOT / "assets" / "cubes-binho.png"
 _LOGO = _ROOT / "assets" / "logo-binho.png"
+_FONT_SHARE_TECH = _ROOT / "assets" / "fonts" / "ShareTechMono-Regular.ttf"
+
+# Fonte robótica/hacker do CRT (Share Tech Mono + fallbacks de terminal)
+CRT_FONT_FAMILY = "Share Tech Mono"
+
+
+def load_crt_font() -> str:
+    """Carrega Share Tech Mono do assets; retorna a família efetiva."""
+    global CRT_FONT_FAMILY
+    try:
+        if _FONT_SHARE_TECH.is_file():
+            fid = QFontDatabase.addApplicationFont(str(_FONT_SHARE_TECH))
+            if fid >= 0:
+                families = QFontDatabase.applicationFontFamilies(fid)
+                if families:
+                    CRT_FONT_FAMILY = str(families[0])
+                    return CRT_FONT_FAMILY
+    except Exception:
+        pass
+    # fallback se o TTF não estiver presente
+    for name in ("Cascadia Mono", "Consolas", "Courier New", "monospace"):
+        if QFontDatabase.hasFamily(name):
+            CRT_FONT_FAMILY = name
+            return CRT_FONT_FAMILY
+    CRT_FONT_FAMILY = "monospace"
+    return CRT_FONT_FAMILY
+
+
+def crt_font(point_size: int = 11, *, bold: bool = False) -> QFont:
+    f = QFont(CRT_FONT_FAMILY, point_size)
+    f.setStyleHint(QFont.Monospace)
+    f.setFixedPitch(True)
+    if bold:
+        f.setBold(True)
+    return f
 
 # Cubos oficiais (fallback animado se PNG sumir)
 _CUBE_COLORS = (
@@ -153,31 +194,62 @@ CRT_THEMES: dict[str, dict[str, object]] = {
     },
     "fosco": {
         "label": "Escuro fosco",
-        # Vidro escuro tipo terminal (blur no Windows)
+        # Neutro (sem verde): blur Windows + painéis cinza
         "bg": "transparent",
-        "panel": "rgba(18, 22, 28, 165)",
-        "line": "rgba(120, 140, 160, 70)",
-        "text": "#f0f4f8",
-        "dim": "#9aa8b8",
-        "muted": "#6a7888",
-        "input_bg": "rgba(10, 14, 20, 185)",
-        "input_text": "#e8eef5",
-        "btn_bg": "rgba(28, 34, 44, 180)",
-        "btn_hover": "rgba(48, 62, 82, 210)",
-        "btn_press": "rgba(64, 86, 112, 230)",
-        "btn_dis_bd": "rgba(50, 58, 70, 100)",
-        "sel": "rgba(56, 120, 160, 160)",
-        "prog_bg": "rgba(8, 12, 18, 160)",
-        "chunk0": "#2dd4a8",
-        "chunk1": "#5eead4",
-        "chunk2": "#99f6e4",
+        "panel": "rgba(14, 18, 24, 160)",
+        "line": "rgba(180, 190, 205, 55)",
+        "text": "#f4f7fb",
+        "dim": "#a8b4c4",
+        "muted": "#7a8798",
+        "input_bg": "rgba(8, 12, 18, 230)",
+        "input_text": "#eef3f8",
+        "btn_bg": "rgba(22, 28, 38, 180)",
+        "btn_hover": "rgba(42, 56, 76, 210)",
+        "btn_press": "rgba(58, 78, 104, 230)",
+        "btn_dis_bd": "rgba(50, 58, 70, 90)",
+        "sel": "rgba(56, 120, 160, 140)",
+        "prog_bg": "rgba(6, 10, 16, 200)",
+        "chunk0": "#38bdf8",
+        "chunk1": "#7dd3fc",
+        "chunk2": "#bae6fd",
+        # Fundo opaco sob texto que atualiza (evita “fantasma”)
+        "label_bg": "rgba(12, 16, 22, 235)",
+        "log_bg": "#0a0e14",
         "scan": False,
         "frost": True,
-        # Windows acrylic: 0xAABBGGRR — tint escuro fosco
-        "acrylic_tint": 0xC010141A,
+        # Fallback neutro AABBGGRR (cinza, sem matiz)
+        "acrylic_tint": 0x70141414,
         "meter_h": 18,
     },
 }
+
+
+def frost_params(
+    alpha_pct: int | None = None, blur_pct: int | None = None
+) -> dict[str, int]:
+    """Transparência/fosco → tint Windows + opacidades de painel."""
+    a = 40 if alpha_pct is None else max(0, min(100, int(alpha_pct)))
+    b = 65 if blur_pct is None else max(0, min(100, int(blur_pct)))
+    # AA alto = mais opaco; transparência alta → AA baixo
+    aa = int(round(0xD0 - (0xD0 - 0x28) * (a / 100.0)))
+    # BBGGRR neutro 20,20,20 (sem verde)
+    tint = (aa << 24) | 0x141414
+    if b <= 0:
+        state = 2  # transparente sem blur
+    elif b < 40:
+        state = 3  # blur simples
+    else:
+        state = 4  # acrylic
+    panel_a = int(round(235 - 155 * (a / 100.0)))
+    label_a = int(round(245 - 90 * (a / 100.0)))
+    return {
+        "alpha": a,
+        "blur": b,
+        "tint": tint,
+        "state": state,
+        "panel_a": panel_a,
+        "label_a": label_a,
+    }
 
 DEFAULT_CRT_THEME = "binho"
 
@@ -192,12 +264,17 @@ class BinhoCubesWidget(QWidget):
         self._t = 0.0
         self._pm = QPixmap(str(_CUBES)) if _CUBES.is_file() else QPixmap()
         self._fill = QColor("#050505")
+        self._green_glow = True
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(33)  # ~30 fps
 
     def set_fill_color(self, color: QColor) -> None:
         self._fill = QColor(color)
+        self.update()
+
+    def set_green_glow(self, on: bool) -> None:
+        self._green_glow = bool(on)
         self.update()
 
     def _tick(self) -> None:
@@ -240,11 +317,12 @@ class BinhoCubesWidget(QWidget):
         for yy in range(y0, h, step):
             p.drawRect(0, yy, w, 1)
 
-        # brilho inferior
-        glow = QLinearGradient(0, h * 0.55, 0, h)
-        glow.setColorAt(0.0, QColor(0, 0, 0, 0))
-        glow.setColorAt(1.0, QColor(140, 198, 63, 35))
-        p.fillRect(0, int(h * 0.55), w, int(h * 0.45), glow)
+        # brilho inferior (só temas BINHO — fosco fica neutro)
+        if self._green_glow:
+            glow = QLinearGradient(0, h * 0.55, 0, h)
+            glow.setColorAt(0.0, QColor(0, 0, 0, 0))
+            glow.setColorAt(1.0, QColor(140, 198, 63, 35))
+            p.fillRect(0, int(h * 0.55), w, int(h * 0.45), glow)
         p.end()
 
     def _paint_fallback_cubes(
@@ -369,7 +447,113 @@ class SysMeterRow(QWidget):
         self._apply_chunk(color)
 
 
-def apply_windows_acrylic(hwnd: int, enable: bool, tint_aabbggrr: int = 0xB0121824) -> bool:
+class SectorMeterRow(QWidget):
+    """Barrinha de automação por setor ( Dist / Armazém / … )."""
+
+    _STATE_COLOR = {
+        "run": "#38bdf8",
+        "wait": "#8cc63f",
+        "due": "#f59e0b",
+        "ok": "#22c55e",
+        "err": "#ef4444",
+        "off": "#64748b",
+    }
+
+    def __init__(self, sector_id: str, title: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.sector_id = sector_id
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 2, 0, 2)
+        root.setSpacing(2)
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
+        top.setSpacing(8)
+        self._title = QLabel(title)
+        self._title.setObjectName("sysMeterTitle")
+        self._title.setFixedWidth(108)
+        self._bar = QProgressBar()
+        self._bar.setObjectName("sysMeter")
+        self._bar.setRange(0, 1000)
+        self._bar.setValue(0)
+        self._bar.setTextVisible(False)
+        self._bar.setFixedHeight(14)
+        self._val = QLabel("—")
+        self._val.setObjectName("sysMeterVal")
+        self._val.setFixedWidth(44)
+        self._val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        top.addWidget(self._title)
+        top.addWidget(self._bar, 1)
+        top.addWidget(self._val)
+        root.addLayout(top)
+        self._detail = QLabel("—")
+        self._detail.setObjectName("hint")
+        self._detail.setWordWrap(False)
+        root.addWidget(self._detail)
+        self._accent = self._STATE_COLOR["off"]
+        self._track = "rgba(0, 0, 0, 140)"
+        self._track_border = "rgba(255, 255, 255, 28)"
+        self._apply_chunk(self._accent)
+
+    def apply_chrome(self, *, height: int = 14, track: str = "rgba(0,0,0,140)", border: str = "rgba(255,255,255,28)") -> None:
+        self._bar.setFixedHeight(max(10, int(height)))
+        self._track = track
+        self._track_border = border
+        self._apply_chunk(self._accent)
+
+    def _apply_chunk(self, accent: str) -> None:
+        self._accent = accent
+        self._bar.setStyleSheet(
+            f"""
+            QProgressBar#sysMeter {{
+                background: {self._track};
+                border: 1px solid {self._track_border};
+                border-radius: 6px;
+                text-align: center;
+                color: transparent;
+                font-size: 1px;
+            }}
+            QProgressBar#sysMeter::chunk {{
+                background: {accent};
+                border-radius: 5px;
+            }}
+            """
+        )
+
+    def set_row(self, row: dict) -> None:
+        state = str(row.get("state") or "off").lower()
+        enabled = bool(row.get("enabled", False))
+        pct = float(row.get("pct") or 0.0)
+        detail = str(row.get("detail") or "")
+        interval = str(row.get("interval") or "")
+        label = str(row.get("label") or self._title.text())
+        self._title.setText(label)
+        if not enabled:
+            self._bar.setValue(0)
+            self._val.setText("off")
+            self._detail.setText(detail or "fora do automático")
+            self._apply_chunk(self._STATE_COLOR["off"])
+            self.setEnabled(False)
+            return
+        self.setEnabled(True)
+        v = max(0.0, min(100.0, pct))
+        self._bar.setValue(int(round(v * 10)))
+        if state == "run":
+            self._val.setText("RUN")
+        elif state == "due":
+            self._val.setText("DUE")
+        else:
+            self._val.setText(f"{v:.0f}%")
+        suffix = f" · {interval}" if interval else ""
+        self._detail.setText((detail + suffix)[:110])
+        self._apply_chunk(self._STATE_COLOR.get(state, self._STATE_COLOR["wait"]))
+
+
+def apply_windows_acrylic(
+    hwnd: int,
+    enable: bool,
+    tint_aabbggrr: int = 0xB0141414,
+    accent_state: int = 4,
+) -> bool:
     """Blur/acrylic no Windows (DWM). Retorna True se aplicou."""
     if sys.platform != "win32" or not hwnd:
         return False
@@ -392,10 +576,10 @@ def apply_windows_acrylic(hwnd: int, enable: bool, tint_aabbggrr: int = 0xB01218
                 ("SizeOfData", ctypes.c_size_t),
             )
 
-        # 3 = blur, 4 = acrylic (Win10+)
+        # 2 = transparente, 3 = blur, 4 = acrylic (Win10+)
         accent = ACCENTPOLICY()
         if enable:
-            accent.AccentState = 4
+            accent.AccentState = int(accent_state)
             accent.AccentFlags = 2
             accent.GradientColor = int(tint_aabbggrr) & 0xFFFFFFFF
         else:
@@ -414,7 +598,7 @@ def apply_windows_acrylic(hwnd: int, enable: bool, tint_aabbggrr: int = 0xB01218
         ok = bool(fn(wintypes.HWND(hwnd), ctypes.byref(data)))
         if ok:
             return True
-        if enable:
+        if enable and int(accent_state) != 3:
             # fallback blur simples
             accent.AccentState = 3
             return bool(fn(wintypes.HWND(hwnd), ctypes.byref(data)))
@@ -423,30 +607,59 @@ def apply_windows_acrylic(hwnd: int, enable: bool, tint_aabbggrr: int = 0xB01218
         return False
 
 
-def build_crt_stylesheet(theme_id: str = DEFAULT_CRT_THEME) -> str:
-    t = CRT_THEMES.get(theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
+def build_crt_stylesheet(
+    theme_id: str = DEFAULT_CRT_THEME,
+    *,
+    frost_alpha: int | None = None,
+    frost_blur: int | None = None,
+) -> str:
+    base = CRT_THEMES.get(theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
+    t = dict(base)
     frost = bool(t.get("frost"))
-    radius = "12px" if frost else "0"
-    # No fosco: só a raiz fica transparente (blur atrás). Painéis/inputs opacos
-    # evitam texto fantasma / duplicado do WA_TranslucentBackground.
+    log_bg = str(t.get("log_bg") or "#0a0e14")
     if frost:
-        root_rule = """
-QWidget#crtRoot, QSplitter, QScrollArea, QScrollArea > QWidget > QWidget {
+        fp = frost_params(frost_alpha, frost_blur)
+        pa, la = fp["panel_a"], fp["label_a"]
+        t["panel"] = f"rgba(14, 18, 24, {pa})"
+        t["label_bg"] = f"rgba(12, 16, 22, {la})"
+        t["input_bg"] = f"rgba(8, 12, 18, {min(255, la + 5)})"
+        t["btn_bg"] = f"rgba(22, 28, 38, {min(255, pa + 20)})"
+        t["prog_bg"] = f"rgba(6, 10, 16, {min(255, la - 10)})"
+        t["_frost_tint"] = fp["tint"]
+        t["_frost_state"] = fp["state"]
+    radius = "12px" if frost else "0"
+    label_bg = str(t.get("label_bg") or ("rgba(12,16,22,235)" if frost else "transparent"))
+    font_stack = (
+        f"'{CRT_FONT_FAMILY}', 'Cascadia Mono', Consolas, 'Courier New', monospace"
+    )
+    # No fosco: raiz transparente (blur). Labels/inputs com fundo próprio
+    # para não deixarem resíduo de texto ao atualizar.
+    if frost:
+        root_rule = f"""
+QWidget#crtRoot, QSplitter {{
     background: transparent;
-}
-QWidget {
-    color: %s;
-    font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
-    font-size: 12px;
-}
-""" % (t["text"],)
+}}
+QWidget {{
+    color: {t['text']};
+    font-family: {font_stack};
+    font-size: 13px;
+    letter-spacing: 0.4px;
+    background: transparent;
+}}
+QLabel {{
+    background: {label_bg};
+    border-radius: 6px;
+    padding: 1px 4px;
+}}
+"""
     else:
         root_rule = f"""
 QWidget {{
     background: {t['bg']};
     color: {t['text']};
-    font-family: Consolas, 'Cascadia Mono', 'Courier New', monospace;
-    font-size: 12px;
+    font-family: {font_stack};
+    font-size: 13px;
+    letter-spacing: 0.4px;
 }}
 """
     return f"""
@@ -458,65 +671,67 @@ QFrame#panel, QFrame#side {{
 }}
 QLabel#title {{
     color: {t['text']};
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
-    letter-spacing: 2px;
-    background: transparent;
+    letter-spacing: 3px;
+    background: {label_bg if frost else 'transparent'};
 }}
 QLabel#mode {{
     color: {t['dim']};
-    font-size: 11px;
-    letter-spacing: 1px;
-    background: transparent;
+    font-size: 12px;
+    letter-spacing: 2px;
+    background: {label_bg if frost else 'transparent'};
 }}
 QLabel#status {{
-    font-size: 26px;
+    font-size: 28px;
     font-weight: 800;
-    letter-spacing: 3px;
-    background: transparent;
+    letter-spacing: 4px;
+    background: {label_bg if frost else 'transparent'};
+    padding: 4px 8px;
 }}
 QLabel#detail, QLabel#hint {{
     color: {t['dim']};
-    font-size: 11px;
-    background: transparent;
+    font-size: 12px;
+    letter-spacing: 0.6px;
+    background: {label_bg if frost else 'transparent'};
 }}
 QLabel#section {{
     color: {t['text']};
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 2px;
-    padding: 4px 0;
-    background: transparent;
+    padding: 4px 6px;
+    background: {label_bg if frost else 'transparent'};
 }}
 QLabel#foot {{
     color: {t['muted']};
     font-size: 10px;
-    background: transparent;
+    background: {label_bg if frost else 'transparent'};
 }}
 QLabel#sysHost {{
     color: {t['text']};
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 1px;
-    background: transparent;
+    background: {label_bg if frost else 'transparent'};
 }}
 QLabel#sysHostSub {{
     color: {t['dim']};
     font-size: 10px;
-    background: transparent;
+    background: {label_bg if frost else 'transparent'};
 }}
 QLabel#sysMeterTitle {{
     color: {t['dim']};
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 1px;
-    background: transparent;
+    background: {label_bg if frost else 'transparent'};
 }}
 QLabel#sysMeterVal {{
     color: {t['text']};
     font-size: 11px;
     font-weight: 700;
-    background: transparent;
+    background: {label_bg if frost else 'transparent'};
     font-variant-numeric: tabular-nums;
 }}
 QProgressBar {{
@@ -563,6 +778,13 @@ QLineEdit, QTextEdit, QComboBox {{
     border-radius: {radius};
     selection-background-color: {t['sel']};
     padding: 4px 6px;
+}}
+QTextEdit {{
+    background: {log_bg if frost else t['input_bg']};
+    color: {t['text']};
+}}
+QAbstractScrollArea::viewport {{
+    background: {log_bg if frost else t['input_bg']};
 }}
 QComboBox QAbstractItemView {{
     background: {t['input_bg']};
@@ -710,6 +932,12 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "publicar no site": "push",
     "parar": "parar",
     "stop": "parar",
+    "log": "/log",
+    "/log": "/log",
+    "barras": "/bars",
+    "barra": "/bars",
+    "/bars": "/bars",
+    "/barras": "/bars",
 }
 
 
@@ -769,11 +997,24 @@ class CmdWorker(QThread):
     def run(self) -> None:
         try:
             from ace_cmd import execute_line
+            from ace_stop import clear_stop, LoopStopped
 
+            clear_stop()
             self.status.emit(f"exec · {self.raw}")
             msg, payload = execute_line(self.raw, self.payload)
             self.finished_ok.emit(msg or "OK", payload)
         except Exception as err:  # noqa: BLE001
+            try:
+                from ace_stop import LoopStopped, stop_requested
+
+                if isinstance(err, LoopStopped) or stop_requested():
+                    self.finished_ok.emit("Parado pelo usuário.", self.payload)
+                    return
+            except Exception:
+                pass
+            if "parado pelo usuário" in str(err).lower():
+                self.finished_ok.emit("Parado pelo usuário.", self.payload)
+                return
             self.failed.emit(f"ERRO: {err}\n{traceback.format_exc(limit=4)}")
 
 
@@ -851,6 +1092,9 @@ class AceCrtConsole(QWidget):
         self._tv_slot_btns: dict[int, QPushButton] = {}
         self._tv_selected: int = 1
         self._tv_loading = False
+        # centro: barras por setor (limpo) ou log CMD detalhado
+        self._cmd_view = "bars"  # bars | log
+        self._sector_meters: dict[str, SectorMeterRow] = {}
 
         # registra PID para spawn_crt não abrir duplicata
         try:
@@ -882,6 +1126,13 @@ class AceCrtConsole(QWidget):
         self.cmb_theme.currentIndexChanged.connect(self._on_theme_combo)
         head.addWidget(lab_theme)
         head.addWidget(self.cmb_theme)
+        head.addSpacing(8)
+        self.btn_fullscreen = QPushButton("Tela cheia")
+        self.btn_fullscreen.setObjectName("primary")
+        self.btn_fullscreen.setToolTip("Alternar tela cheia (F11 · Esc para sair)")
+        self.btn_fullscreen.setFixedWidth(100)
+        self.btn_fullscreen.clicked.connect(self.toggle_fullscreen)
+        head.addWidget(self.btn_fullscreen)
         head.addSpacing(12)
         head.addWidget(self.mode)
         root.addLayout(head)
@@ -1032,15 +1283,57 @@ class AceCrtConsole(QWidget):
             grid.addWidget(btn, i // 4, i % 4)
         lay.addLayout(grid)
 
-        lay.addWidget(self._section("CMD"))
+        head_cmd = QHBoxLayout()
+        self.cmd_section = self._section("AUTO · setores")
+        head_cmd.addWidget(self.cmd_section)
+        head_cmd.addStretch(1)
+        self.btn_toggle_view = QPushButton("/log")
+        self.btn_toggle_view.setToolTip("Alternar barrinhas ↔ log detalhado do CMD")
+        self.btn_toggle_view.setFixedWidth(72)
+        self.btn_toggle_view.clicked.connect(self._toggle_cmd_view)
+        head_cmd.addWidget(self.btn_toggle_view)
+        lay.addLayout(head_cmd)
+
+        self.cmd_stack = QStackedWidget()
+
+        # Página 0 — barrinhas por setor
+        bars_page = QWidget()
+        bars_lay = QVBoxLayout(bars_page)
+        bars_lay.setContentsMargins(0, 0, 0, 0)
+        bars_lay.setSpacing(6)
+        self.sector_status = QLabel("Automático parado · inicie na aba Automação")
+        self.sector_status.setObjectName("hint")
+        self.sector_status.setWordWrap(True)
+        bars_lay.addWidget(self.sector_status)
+        for sid, title in (
+            ("dist", "Distribuição"),
+            ("78", "Armazém"),
+            ("31", "Pendência"),
+            ("73", "Contratação"),
+            ("455", "Emissão"),
+        ):
+            meter = SectorMeterRow(sid, title)
+            self._sector_meters[sid] = meter
+            bars_lay.addWidget(meter)
+        bars_lay.addStretch(1)
+        tip_bars = QLabel("Barrinhas = progresso até o próximo ciclo · digite /log para ver o console")
+        tip_bars.setObjectName("hint")
+        tip_bars.setWordWrap(True)
+        bars_lay.addWidget(tip_bars)
+        self.cmd_stack.addWidget(bars_page)
+
+        # Página 1 — log CMD
         self.log = QTextEdit()
         self.log.setReadOnly(True)
         self.log.setMinimumHeight(220)
-        lay.addWidget(self.log, 1)
+        self.cmd_stack.addWidget(self.log)
+
+        lay.addWidget(self.cmd_stack, 1)
+        self._apply_cmd_view(self._cmd_view, announce=False)
 
         prompt_row = QHBoxLayout()
         self.prompt = QLineEdit()
-        self.prompt.setPlaceholderText("ACE>  digite aqui (ex.: Coletas, ajuda, parar)")
+        self.prompt.setPlaceholderText("ACE>  digite aqui (ex.: Coletas, /log, parar)")
         self.prompt.returnPressed.connect(self._submit_prompt)
         self.btn_run = QPushButton("Enviar")
         self.btn_run.setObjectName("primary")
@@ -1051,12 +1344,41 @@ class AceCrtConsole(QWidget):
         lay.addLayout(prompt_row)
 
         hint = QLabel(
-            "Console · Enter envia · “parar” encerra o loop · Manual: docs/MANUAL.md"
+            "Console · /log ou /bars alterna a vista · “parar” corta QUALQUER comando · F11 tela cheia"
         )
         hint.setObjectName("hint")
         lay.addWidget(hint)
         return box
 
+    def _toggle_cmd_view(self) -> None:
+        nxt = "log" if self._cmd_view != "log" else "bars"
+        self._apply_cmd_view(nxt, announce=True)
+
+    def _apply_cmd_view(self, mode: str, *, announce: bool = True) -> None:
+        mode = "log" if str(mode).lower().strip() in {"log", "/log"} else "bars"
+        self._cmd_view = mode
+        if hasattr(self, "cmd_stack"):
+            self.cmd_stack.setCurrentIndex(1 if mode == "log" else 0)
+        if hasattr(self, "cmd_section"):
+            self.cmd_section.setText("CMD · log" if mode == "log" else "AUTO · setores")
+        if hasattr(self, "btn_toggle_view"):
+            self.btn_toggle_view.setText("/bars" if mode == "log" else "/log")
+        if announce:
+            if mode == "log":
+                self._append_log(
+                    "sistema",
+                    "Vista LOG · mostrando o que o programa está fazendo no CMD. Digite /bars para barrinhas.",
+                )
+            else:
+                if hasattr(self, "sector_status"):
+                    self.sector_status.setText(
+                        "Vista BARRAS · progresso por setor · digite /log para o console"
+                    )
+                self._append_log(
+                    "sistema",
+                    "Vista BARRAS · progresso por setor. Digite /log para o console detalhado.",
+                    mirror=False,
+                )
     def _build_right(self) -> QWidget:
         tabs = QTabWidget()
         tabs.addTab(self._build_config_tab(), "Configuração")
@@ -1136,6 +1458,36 @@ class AceCrtConsole(QWidget):
             self.cmb_theme_cfg.addItem(str(meta["label"]), tid)
         self.cmb_theme_cfg.currentIndexChanged.connect(self._on_theme_combo_cfg)
         form.addRow("Tema do painel", self.cmb_theme_cfg)
+
+        frost_hint = QLabel("Só no tema Escuro fosco · Salvar grava os valores")
+        frost_hint.setObjectName("hint")
+        form.addRow(frost_hint)
+
+        self.lbl_frost_alpha = QLabel("40%")
+        self.sld_frost_alpha = QSlider(Qt.Horizontal)
+        self.sld_frost_alpha.setRange(0, 100)
+        self.sld_frost_alpha.setValue(40)
+        self.sld_frost_alpha.setToolTip("0 = mais opaco · 100 = bem transparente")
+        self.sld_frost_alpha.valueChanged.connect(self._on_frost_alpha)
+        row_a = QHBoxLayout()
+        row_a.addWidget(self.sld_frost_alpha, 1)
+        row_a.addWidget(self.lbl_frost_alpha)
+        wrap_a = QWidget()
+        wrap_a.setLayout(row_a)
+        form.addRow("Transparência", wrap_a)
+
+        self.lbl_frost_blur = QLabel("65%")
+        self.sld_frost_blur = QSlider(Qt.Horizontal)
+        self.sld_frost_blur.setRange(0, 100)
+        self.sld_frost_blur.setValue(65)
+        self.sld_frost_blur.setToolTip("0 = sem blur · 100 = fosco máximo (Windows)")
+        self.sld_frost_blur.valueChanged.connect(self._on_frost_blur)
+        row_b = QHBoxLayout()
+        row_b.addWidget(self.sld_frost_blur, 1)
+        row_b.addWidget(self.lbl_frost_blur)
+        wrap_b = QWidget()
+        wrap_b.setLayout(row_b)
+        form.addRow("Fosco (blur)", wrap_b)
 
         scroll.setWidget(body)
         outer.addWidget(scroll, 1)
@@ -1290,6 +1642,7 @@ class AceCrtConsole(QWidget):
                         self.payload[key] = text
             self.payload["headless"] = not self.chk_viz.isChecked()
             self.payload["crt_theme"] = self._theme_id
+            self._store_frost_into_payload()
             _save_payload(self.payload)
             self.payload = __import__("ace_cmd", fromlist=["_load_payload"])._load_payload()
             self._update_meta()
@@ -1875,9 +2228,79 @@ class AceCrtConsole(QWidget):
         theme = str(self.payload.get("crt_theme") or DEFAULT_CRT_THEME)
         if theme not in CRT_THEMES:
             theme = DEFAULT_CRT_THEME
+        self._load_frost_sliders_from_payload()
         self._apply_theme(theme, persist=False)
+        self._seed_sector_bars_from_config()
         self._update_meta()
         self._append_log("config", "Configuração recarregada.")
+
+    def _frost_alpha_val(self) -> int:
+        if hasattr(self, "sld_frost_alpha"):
+            return int(self.sld_frost_alpha.value())
+        try:
+            return max(0, min(100, int((self.payload or {}).get("crt_frost_alpha", 40))))
+        except Exception:
+            return 40
+
+    def _frost_blur_val(self) -> int:
+        if hasattr(self, "sld_frost_blur"):
+            return int(self.sld_frost_blur.value())
+        try:
+            return max(0, min(100, int((self.payload or {}).get("crt_frost_blur", 65))))
+        except Exception:
+            return 65
+
+    def _load_frost_sliders_from_payload(self) -> None:
+        p = self.payload or {}
+        try:
+            a = max(0, min(100, int(p.get("crt_frost_alpha", 40))))
+        except Exception:
+            a = 40
+        try:
+            b = max(0, min(100, int(p.get("crt_frost_blur", 65))))
+        except Exception:
+            b = 65
+        for sld, val, lbl, suf in (
+            (getattr(self, "sld_frost_alpha", None), a, getattr(self, "lbl_frost_alpha", None), "%"),
+            (getattr(self, "sld_frost_blur", None), b, getattr(self, "lbl_frost_blur", None), "%"),
+        ):
+            if sld is None:
+                continue
+            sld.blockSignals(True)
+            sld.setValue(val)
+            sld.blockSignals(False)
+            if lbl is not None:
+                lbl.setText(f"{val}{suf}")
+        self._sync_frost_controls_enabled()
+
+    def _sync_frost_controls_enabled(self) -> None:
+        on = getattr(self, "_theme_id", "") == "fosco"
+        for w in (
+            getattr(self, "sld_frost_alpha", None),
+            getattr(self, "sld_frost_blur", None),
+            getattr(self, "lbl_frost_alpha", None),
+            getattr(self, "lbl_frost_blur", None),
+        ):
+            if w is not None:
+                w.setEnabled(on)
+
+    def _on_frost_alpha(self, value: int) -> None:
+        if hasattr(self, "lbl_frost_alpha"):
+            self.lbl_frost_alpha.setText(f"{int(value)}%")
+        if getattr(self, "_theme_id", "") == "fosco":
+            self._apply_theme("fosco", persist=False)
+
+    def _on_frost_blur(self, value: int) -> None:
+        if hasattr(self, "lbl_frost_blur"):
+            self.lbl_frost_blur.setText(f"{int(value)}%")
+        if getattr(self, "_theme_id", "") == "fosco":
+            self._apply_theme("fosco", persist=False)
+
+    def _store_frost_into_payload(self) -> None:
+        if not isinstance(getattr(self, "payload", None), dict):
+            self.payload = {}
+        self.payload["crt_frost_alpha"] = self._frost_alpha_val()
+        self.payload["crt_frost_blur"] = self._frost_blur_val()
 
     def _on_theme_combo(self) -> None:
         tid = str(self.cmb_theme.currentData() or DEFAULT_CRT_THEME)
@@ -1890,14 +2313,20 @@ class AceCrtConsole(QWidget):
     def _apply_theme(self, theme_id: str, *, persist: bool = True) -> None:
         tid = theme_id if theme_id in CRT_THEMES else DEFAULT_CRT_THEME
         self._theme_id = tid
-        self.setStyleSheet(build_crt_stylesheet(tid))
+        fa, fb = self._frost_alpha_val(), self._frost_blur_val()
+        self.setStyleSheet(
+            build_crt_stylesheet(tid, frost_alpha=fa, frost_blur=fb)
+        )
         meta = CRT_THEMES[tid]
+        frost = bool(meta.get("frost"))
         if hasattr(self, "_scan"):
-            self._scan.set_enabled(bool(meta.get("scan", True)))
-            self._scan.setVisible(bool(meta.get("scan", True)))
+            on = bool(meta.get("scan", True)) and not frost
+            self._scan.set_enabled(on)
+            self._scan.setVisible(on)
         if hasattr(self, "cubes"):
-            if meta.get("frost"):
-                self.cubes.set_fill_color(QColor(12, 16, 22, 90))
+            self.cubes.set_green_glow(not frost and tid == "binho")
+            if frost:
+                self.cubes.set_fill_color(QColor(10, 14, 20, 90))
             elif tid == "claro":
                 self.cubes.set_fill_color(QColor("#e8edf2"))
             elif tid == "painel":
@@ -1906,10 +2335,9 @@ class AceCrtConsole(QWidget):
                 self.cubes.set_fill_color(QColor("#080b09"))
             else:
                 self.cubes.set_fill_color(QColor("#050505"))
-        # Barras de recurso: mais grossas no fosco, % só à direita
-        meter_h = int(meta.get("meter_h") or (18 if meta.get("frost") else 14))
-        track = "rgba(0,0,0,120)" if meta.get("frost") else "#0a0a0a"
-        border = "rgba(255,255,255,30)" if meta.get("frost") else "#222"
+        meter_h = int(meta.get("meter_h") or (18 if frost else 14))
+        track = "rgba(0,0,0,160)" if frost else "#0a0a0a"
+        border = "rgba(255,255,255,30)" if frost else "#222"
         for meter in (
             getattr(self, "meter_cpu", None),
             getattr(self, "meter_mem", None),
@@ -1917,11 +2345,20 @@ class AceCrtConsole(QWidget):
         ):
             if meter is not None:
                 meter.apply_chrome(height=meter_h, track=track, border=border)
+        for meter in (getattr(self, "_sector_meters", {}) or {}).values():
+            try:
+                meter.apply_chrome(height=max(12, meter_h - 2), track=track, border=border)
+            except Exception:
+                pass
         if hasattr(self, "bar"):
             self.bar.setTextVisible(True)
-            self.bar.setFixedHeight(meter_h + 2 if meta.get("frost") else 16)
-        self._apply_frost_window(bool(meta.get("frost")), int(meta.get("acrylic_tint") or 0xC010141A))
-        # sync combos sem loop
+            self.bar.setFixedHeight(meter_h + 2 if frost else 16)
+        self._harden_frost_widgets(frost)
+        fp = frost_params(fa, fb) if frost else None
+        tint = int(fp["tint"]) if fp else int(meta.get("acrylic_tint") or 0x70141414)
+        state = int(fp["state"]) if fp else 4
+        self._apply_frost_window(frost, tint, state)
+        self._sync_frost_controls_enabled()
         for cmb in (getattr(self, "cmb_theme", None), getattr(self, "cmb_theme_cfg", None)):
             if cmb is None:
                 continue
@@ -1936,19 +2373,96 @@ class AceCrtConsole(QWidget):
 
                 self.payload = _load_payload()
                 self.payload["crt_theme"] = tid
+                self._store_frost_into_payload()
                 _save_payload(self.payload)
                 lab = str(meta.get("label") or tid)
                 self._append_log("config", f"Tema: {lab}")
             except Exception:  # noqa: BLE001
                 pass
 
-    def _apply_frost_window(self, enabled: bool, tint: int = 0xC010141A) -> None:
+    def _harden_frost_widgets(self, frost: bool) -> None:
+        """Labels/log que atualizam precisam limpar o fundo (sem resíduo de texto)."""
+        widgets = []
+        for name in (
+            "title", "mode", "status", "detail", "foot", "meta",
+            "sys_host", "sys_host_sub", "log",
+        ):
+            w = getattr(self, name, None)
+            if w is not None:
+                widgets.append(w)
+        for meter in (
+            getattr(self, "meter_cpu", None),
+            getattr(self, "meter_mem", None),
+            getattr(self, "meter_gpu", None),
+        ):
+            if meter is None:
+                continue
+            widgets.append(meter)
+            for child in (
+                getattr(meter, "_title", None),
+                getattr(meter, "_val", None),
+                getattr(meter, "_bar", None),
+            ):
+                if child is not None:
+                    widgets.append(child)
+        for w in widgets:
+            try:
+                w.setAttribute(Qt.WA_StyledBackground, True)
+                w.setAttribute(Qt.WA_OpaquePaintEvent, frost)
+                w.setAutoFillBackground(frost)
+            except Exception:
+                pass
+        # Painéis também: limpam o miolo ao redesenhar
+        for fr in self.findChildren(QFrame):
+            try:
+                if fr.objectName() in {"panel", "side"}:
+                    fr.setAttribute(Qt.WA_StyledBackground, True)
+                    fr.setAttribute(Qt.WA_OpaquePaintEvent, frost)
+                    fr.setAutoFillBackground(frost)
+            except Exception:
+                pass
+        if hasattr(self, "log"):
+            log_bg = QColor("#0a0e14")
+            try:
+                self.log.setAttribute(Qt.WA_OpaquePaintEvent, True)
+                self.log.setAutoFillBackground(True)
+                self.log.setAttribute(Qt.WA_StyledBackground, True)
+                pal = self.log.palette()
+                pal.setColor(QPalette.Base, log_bg)
+                pal.setColor(QPalette.Window, log_bg)
+                pal.setColor(QPalette.Text, QColor("#eef3f8"))
+                self.log.setPalette(pal)
+                vp = self.log.viewport()
+                vp.setAutoFillBackground(True)
+                vp.setAttribute(Qt.WA_OpaquePaintEvent, True)
+                vpal = vp.palette()
+                vpal.setColor(QPalette.Base, log_bg)
+                vpal.setColor(QPalette.Window, log_bg)
+                vp.setPalette(vpal)
+                if frost:
+                    self.log.document().setDefaultStyleSheet(
+                        "body { background-color: #0a0e14; color: #eef3f8; }"
+                    )
+                    self.log.setStyleSheet(
+                        "QTextEdit { background-color: #0a0e14; color: #eef3f8; }"
+                    )
+                else:
+                    self.log.setStyleSheet("")
+            except Exception:
+                pass
+
+    def _apply_frost_window(
+        self,
+        enabled: bool,
+        tint: int = 0x70141414,
+        accent_state: int = 4,
+    ) -> None:
         """Fundo transparente + blur fosco (Windows acrylic)."""
         self.setAttribute(Qt.WA_TranslucentBackground, enabled)
+        self.setAttribute(Qt.WA_NoSystemBackground, enabled)
         self.setAutoFillBackground(not enabled)
-        # Evita repaint fantasma em alguns drivers
         try:
-            self.setAttribute(Qt.WA_OpaquePaintEvent, not enabled)
+            self.setAttribute(Qt.WA_OpaquePaintEvent, False)
         except Exception:
             pass
         try:
@@ -1956,20 +2470,80 @@ class AceCrtConsole(QWidget):
         except Exception:
             hwnd = 0
         if hwnd:
-            apply_windows_acrylic(hwnd, enabled, tint_aabbggrr=tint)
+            apply_windows_acrylic(
+                hwnd, enabled, tint_aabbggrr=tint, accent_state=accent_state
+            )
         self.update()
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
         meta = CRT_THEMES.get(self._theme_id) or {}
         if meta.get("frost"):
-            # winId só fica estável depois do show
+            fp = frost_params(self._frost_alpha_val(), self._frost_blur_val())
             QTimer.singleShot(
                 0,
                 lambda: self._apply_frost_window(
-                    True, int(meta.get("acrylic_tint") or 0xB0121824)
+                    True, int(fp["tint"]), int(fp["state"])
                 ),
             )
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        key = event.key()
+        if key == Qt.Key_F11:
+            self.toggle_fullscreen()
+            event.accept()
+            return
+        if key == Qt.Key_Escape and self.isFullScreen():
+            self.toggle_fullscreen(force=False)
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def changeEvent(self, event) -> None:  # noqa: N802
+        super().changeEvent(event)
+        try:
+            from PySide6.QtCore import QEvent
+
+            if event.type() == QEvent.WindowStateChange:
+                self._sync_fullscreen_button()
+        except Exception:
+            pass
+
+    def toggle_fullscreen(self, force: bool | None = None) -> None:
+        """Liga/desliga tela cheia do CRT."""
+        want = (not self.isFullScreen()) if force is None else bool(force)
+        if want:
+            self.showFullScreen()
+            self._append_log("sistema", "Tela cheia · F11 ou Esc para sair")
+        else:
+            self.showNormal()
+            # volta a um tamanho confortável se a janela ficou minúscula
+            if self.width() < 900 or self.height() < 500:
+                self.resize(1180, 680)
+                self.showMaximized()
+            self._append_log("sistema", "Saiu da tela cheia")
+        self._sync_fullscreen_button()
+        # reaplicar acrylic se tema fosco (winId/estado mudou)
+        meta = CRT_THEMES.get(self._theme_id) or {}
+        if meta.get("frost"):
+            fp = frost_params(self._frost_alpha_val(), self._frost_blur_val())
+            QTimer.singleShot(
+                50,
+                lambda: self._apply_frost_window(
+                    True, int(fp["tint"]), int(fp["state"])
+                ),
+            )
+
+    def _sync_fullscreen_button(self) -> None:
+        btn = getattr(self, "btn_fullscreen", None)
+        if btn is None:
+            return
+        if self.isFullScreen():
+            btn.setText("Sair tela")
+            btn.setToolTip("Sair da tela cheia (Esc ou F11)")
+        else:
+            btn.setText("Tela cheia")
+            btn.setToolTip("Alternar tela cheia (F11 · Esc para sair)")
 
     def _save_config(self) -> None:
         from ace_cmd import EDITABLE, _save_payload
@@ -2005,6 +2579,7 @@ class AceCrtConsole(QWidget):
                         self.payload[key] = text
             self.payload["headless"] = not self.chk_viz.isChecked()
             self.payload["crt_theme"] = self._theme_id
+            self._store_frost_into_payload()
             _save_payload(self.payload)
             self.payload = __import__("ace_cmd", fromlist=["_load_payload"])._load_payload()
             self._update_meta()
@@ -2051,32 +2626,67 @@ class AceCrtConsole(QWidget):
         self._start_automatica(iv or None)
 
     def _stop_auto(self) -> None:
-        running = bool(self._auto_worker and self._auto_worker.isRunning())
+        """Compat: botões Parar da UI → para tudo (loop + comando)."""
+        self._stop_all()
+
+    def _stop_all(self) -> None:
+        """Para QUALQUER comando/loop/processo ACE em andamento."""
+        self._pending_cmd = None
+        cmd_running = bool(self._worker and self._worker.isRunning())
+        auto_running = bool(self._auto_worker and self._auto_worker.isRunning())
+        killed = 0
+        closed = 0
         try:
-            from ace_stop import request_stop, stop_external_loop_process
+            from ace_stop import (
+                close_registered_browsers,
+                kill_child_browsers,
+                request_stop,
+                stop_external_loop_process,
+            )
 
             request_stop(force_browsers=True)
+            # reforço: mata de novo (alguns drivers sobem atrasados)
+            closed = close_registered_browsers()
+            killed = kill_child_browsers()
             ext = stop_external_loop_process()
         except Exception:
             ext = False
-        if running:
-            self._auto_worker.request_stop()
+
+        if auto_running:
+            try:
+                self._auto_worker.request_stop()
+            except Exception:
+                pass
+
+        if cmd_running or auto_running or ext or killed or closed:
             self.mode.setText("STOP")
+            detail = []
+            if cmd_running:
+                detail.append(f"comando `{self._worker_cmd or 'atual'}`")
+            if auto_running:
+                detail.append("loop contínuo")
+            if ext:
+                detail.append("loop externo")
+            if killed or closed:
+                detail.append(f"navegadores ({closed} fechados · {killed} processos)")
+            msg = (
+                "Parar: interrompe qualquer processo ACE — "
+                + (" · ".join(detail) if detail else "sinal enviado")
+            )
+            self._append_log("sistema", msg)
             if hasattr(self, "auto_status"):
-                self.auto_status.setText("Parando… fechando navegadores do ciclo.")
+                self.auto_status.setText("Parando todos os processos…")
+            publish(online=True, label="STOP", pct=0, detail="parando tudo", mode="RUN")
+            # reabilita prompt mesmo se o worker ainda estiver morrendo
+            try:
+                self.btn_run.setEnabled(True)
+            except Exception:
+                pass
+        else:
             self._append_log(
                 "sistema",
-                "Parar: sinal enviado — interrompe a espera e corta o Chromium em andamento.",
+                "Parar: nada em execução (já parado). Sinal limpo para o próximo comando.",
             )
-            publish(online=True, label="STOP", pct=0, detail="parando loop", mode="RUN")
-        elif ext:
-            self.mode.setText("STOP")
-            self._append_log("sistema", "Parar: encerrou loop em segundo plano.")
-            publish(online=True, label="STOP", pct=0, detail="loop externo parado", mode="OK")
-            if hasattr(self, "auto_status"):
-                self.auto_status.setText("Automático parado.")
-        else:
-            self._append_log("sistema", "Nenhuma atualização contínua em andamento.")
             if hasattr(self, "auto_status"):
                 self.auto_status.setText("Automático parado.")
 
@@ -2089,8 +2699,11 @@ class AceCrtConsole(QWidget):
             return
         tip = interval_arg or "intervalo da config"
         self._append_log("cmd", f"atualização contínua ({tip})")
+        self._apply_cmd_view("bars", announce=False)
         self.mode.setText("LOOP")
         publish(online=True, label="LOOP", pct=5, detail="atualização contínua", mode="RUN")
+        if hasattr(self, "sector_status"):
+            self.sector_status.setText("Automático ligado · sincronizando setores…")
         self._auto_worker = AutoLoopWorker(interval_arg)
         self._auto_worker.finished_ok.connect(self._on_auto_ok)
         self._auto_worker.failed.connect(self._on_auto_fail)
@@ -2119,12 +2732,26 @@ class AceCrtConsole(QWidget):
             self.log.clear()
             return
         if low in {"parar", "stop", "halt"}:
-            self._pending_cmd = None
-            self._stop_auto()
+            self._stop_all()
+            return
+        if low in {"tela", "tela cheia", "fullscreen", "full", "f11"}:
+            self.toggle_fullscreen()
+            return
+        if low in {"log", "/log"}:
+            self._apply_cmd_view("log", announce=True)
+            return
+        if low in {"bars", "/bars", "barras", "/barras", "barra"}:
+            self._apply_cmd_view("bars", announce=True)
             return
 
         parts_probe = raw.split()
         head_probe = parts_probe[0].lower().lstrip("/") if parts_probe else ""
+        if head_probe in {"log"}:
+            self._apply_cmd_view("log", announce=True)
+            return
+        if head_probe in {"bars", "barras", "barra"}:
+            self._apply_cmd_view("bars", announce=True)
+            return
         if head_probe in {"local", "tvlocal", "dashlocal", "telas"}:
             self._open_local_from_cmd(parts_probe[1:])
             return
@@ -2247,7 +2874,12 @@ class AceCrtConsole(QWidget):
                 if w.hasFocus():
                     continue
                 w.setText("" if val is None else str(val))
-        self.chk_viz.setChecked(not bool(self.payload.get("headless", True)))
+        if hasattr(self, "chk_viz"):
+            self.chk_viz.setChecked(not bool(self.payload.get("headless", True)))
+        self._load_frost_sliders_from_payload()
+        theme = str(self.payload.get("crt_theme") or DEFAULT_CRT_THEME)
+        if theme in CRT_THEMES and theme != getattr(self, "_theme_id", None):
+            self._apply_theme(theme, persist=False)
         self._update_meta()
 
     def closeEvent(self, event) -> None:  # noqa: N802
@@ -2289,6 +2921,7 @@ class AceCrtConsole(QWidget):
         t = CRT_THEMES.get(self._theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
         accent = str(t["text"])
         dim = str(t["dim"])
+        muted = str(t.get("muted") or dim)
         warn = WARN if self._theme_id not in {"claro"} else "#b45309"
         color = {
             "ok": accent,
@@ -2316,8 +2949,23 @@ class AceCrtConsole(QWidget):
         prefix = " ⌁" if from_file and src == "cmd" else ""
         safe = (text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         safe = safe.replace("\n", "<br>")
+        # limpa lixo HTML/JS que às vezes vaza do SSW no log
+        for junk in (
+            "onclick=ajaxEnvia",
+            "return(false);",
+            "javascript:",
+        ):
+            if junk.lower() in safe.lower():
+                safe = re.sub(
+                    r"onclick\s*=\s*ajaxEnvia\([^)]*\);\s*return\s*\(\s*false\s*\);?",
+                    "",
+                    safe,
+                    flags=re.IGNORECASE,
+                )
+                safe = re.sub(r"\s{2,}", " ", safe).strip()
+                break
         html = (
-            f'<span style="color:{MUTED}">[{stamp}]</span> '
+            f'<span style="color:{muted}">[{stamp}]</span> '
             f'<span style="color:{color}"><b>███ {tag}</b></span> '
             f'<span style="color:{color}">{safe}{prefix}</span>'
         )
@@ -2351,16 +2999,28 @@ class AceCrtConsole(QWidget):
         pct = float(st.get("pct") or 0.0)
 
         self.status.setText(label[:16])
-        accent = str((CRT_THEMES.get(self._theme_id) or CRT_THEMES[DEFAULT_CRT_THEME])["text"])
+        theme = CRT_THEMES.get(self._theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
+        accent = str(theme["text"])
         color = accent if online and "OFF" not in label and "ERR" not in label else OFF
         if "ERR" in label or mode == "ERR":
             color = ERR
-        self.status.setStyleSheet(
-            f"color: {color}; font-size: 26px; font-weight: 800; letter-spacing: 3px;"
-        )
+        # Sempre incluir background no fosco — senão o texto deixa resíduo
+        lab_bg = str(theme.get("label_bg") or "transparent")
+        if theme.get("frost"):
+            self.status.setStyleSheet(
+                f"color: {color}; font-family: '{CRT_FONT_FAMILY}', monospace; "
+                f"font-size: 28px; font-weight: 800; "
+                f"letter-spacing: 4px; background: {lab_bg}; padding: 4px 8px; border-radius: 6px;"
+            )
+        else:
+            self.status.setStyleSheet(
+                f"color: {color}; font-family: '{CRT_FONT_FAMILY}', monospace; "
+                f"font-size: 28px; font-weight: 800; letter-spacing: 4px; background: transparent;"
+            )
         self.detail.setText(detail[:140] if detail else "—")
         self.bar.setValue(int(round(pct * 10)))
         self.bar.setFormat(f"{pct:5.1f}%")
+        self._refresh_sector_meters(st)
         if not (self._worker and self._worker.isRunning()):
             if mode and mode not in {"RUN", "BOOT"}:
                 self.mode.setText(mode[:18])
@@ -2376,6 +3036,84 @@ class AceCrtConsole(QWidget):
         except Exception:
             pass
 
+    def _refresh_sector_meters(self, st: dict | None = None) -> None:
+        if not getattr(self, "_sector_meters", None):
+            return
+        rows = []
+        if isinstance(st, dict) and isinstance(st.get("sectors"), list):
+            rows = st["sectors"]
+        if not rows:
+            self._seed_sector_bars_from_config()
+            return
+        by_id = {str(r.get("id")): r for r in rows if isinstance(r, dict)}
+        running = False
+        for sid, meter in self._sector_meters.items():
+            row = by_id.get(sid)
+            if row is None:
+                continue
+            meter.set_row(row)
+            if str(row.get("state") or "") == "run":
+                running = True
+        if hasattr(self, "sector_status"):
+            auto_on = bool(self._auto_worker and self._auto_worker.isRunning())
+            if running:
+                self.sector_status.setText(str(st.get("detail") or "Executando setores…")[:120])
+            elif auto_on:
+                self.sector_status.setText(
+                    str(st.get("detail") or "Automático ligado · aguardando próximos ciclos")[:120]
+                )
+            else:
+                self.sector_status.setText("Automático parado · inicie na aba Automação")
+
+    def _seed_sector_bars_from_config(self) -> None:
+        """Barrinhas a partir da config quando o loop ainda não publicou."""
+        if not getattr(self, "_sector_meters", None):
+            return
+        p = self.payload or {}
+        specs = (
+            ("dist", "Distribuição", "dist_in_loop", "dist_intervalo"),
+            ("78", "Armazém", "armazem_in_loop", "armazem_intervalo"),
+            ("31", "Pendência", "pendencia_in_loop", "pendencia_intervalo"),
+            ("73", "Contratação", "contratacao_in_loop", "contratacao_intervalo"),
+            ("455", "Emissão", "emissao_in_loop", "emissao_intervalo"),
+        )
+        fallback = str(p.get("loop_intervalo") or "5m")
+        for sid, label, flag, ivk in specs:
+            enabled = bool(p.get(flag, sid == "dist"))
+            iv = str(p.get(ivk) or "").strip() or fallback
+            meter = self._sector_meters.get(sid)
+            if meter is None:
+                continue
+            if enabled:
+                meter.set_row(
+                    {
+                        "id": sid,
+                        "label": label,
+                        "enabled": True,
+                        "state": "wait",
+                        "pct": 0.0,
+                        "detail": "pronto · aguardando automático",
+                        "interval": iv,
+                    }
+                )
+            else:
+                meter.set_row(
+                    {
+                        "id": sid,
+                        "label": label,
+                        "enabled": False,
+                        "state": "off",
+                        "pct": 0.0,
+                        "detail": "fora do automático",
+                        "interval": "",
+                    }
+                )
+        if hasattr(self, "sector_status"):
+            ons = [lb for _s, lb, fl, _i in specs if p.get(fl, _s == "dist")]
+            self.sector_status.setText(
+                "Setores: " + (" · ".join(ons) if ons else "nenhum") + " · inicie o automático"
+            )
+
 
 def main() -> int:
     # Necessário para QWebEngineView (preview do dashboard no editor TV)
@@ -2385,6 +3123,8 @@ def main() -> int:
         pass
     app = QApplication(sys.argv)
     app.setApplicationName("BINHO ACE Gestão CRT")
+    load_crt_font()
+    app.setFont(crt_font(11))
     w = AceCrtConsole()
     w.show()
     return app.exec()

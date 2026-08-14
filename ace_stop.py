@@ -1,15 +1,17 @@
-"""Parada cooperativa do modo /automatica (CRT + loop + subprocessos).
+"""Parada cooperativa de QUALQUER comando ACE (CRT, loop, pipelines SSW).
 
-- Event em memória (thread do CRT)
+- Event em memória (thread do CRT / CmdWorker)
 - Arquivo flag (subprocesso `ace_cmd automatica`)
-- Fecha Chromium filhos via psutil na parada forçada
+- Fecha Chromium/Playwright registrados + mata filhos do processo
 """
 from __future__ import annotations
 
 import os
 import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Any, Iterator
 
 from config import CACHE_DIR, ensure_dirs
 
@@ -22,7 +24,7 @@ _browsers: list[object] = []
 
 
 class LoopStopped(Exception):
-    """Ciclo interrompido pelo usuário (Parar / stop)."""
+    """Comando/ciclo interrompido pelo usuário (Parar / stop)."""
 
 
 def clear_stop() -> None:
@@ -36,7 +38,7 @@ def clear_stop() -> None:
 
 
 def request_stop(*, force_browsers: bool = True) -> None:
-    """Sinaliza parada imediata (e tenta fechar Chromium em andamento)."""
+    """Sinaliza parada imediata de qualquer comando e corta navegadores."""
     _stop.set()
     try:
         ensure_dirs()
@@ -55,6 +57,12 @@ def stop_requested() -> bool:
         return STOP_FLAG.exists()
     except Exception:
         return False
+
+
+def check_stop(msg: str = "parado pelo usuário") -> None:
+    """Raise LoopStopped se Parar foi pedido (usar em loops longos)."""
+    if stop_requested():
+        raise LoopStopped(msg)
 
 
 def register_browser(browser: object) -> None:
@@ -85,8 +93,19 @@ def close_registered_browsers() -> int:
     return n
 
 
+def _is_browserish_process(name: str, cmdline: str) -> bool:
+    n = (name or "").lower()
+    c = (cmdline or "").lower()
+    if any(x in n for x in ("chrom", "msedge", "playwright", "firefox")):
+        return True
+    # driver Node do Playwright
+    if "node" in n and ("playwright" in c or "driver" in c):
+        return True
+    return False
+
+
 def kill_child_browsers() -> int:
-    """Mata processos chrome/chromium/msedge filhos deste Python."""
+    """Mata Chromium / Edge / Playwright / driver Node filhos deste Python."""
     try:
         import psutil
     except Exception:
@@ -96,8 +115,12 @@ def kill_child_browsers() -> int:
         me = psutil.Process(os.getpid())
         for child in me.children(recursive=True):
             try:
-                name = (child.name() or "").lower()
-                if any(x in name for x in ("chrom", "msedge", "playwright")):
+                name = child.name() or ""
+                try:
+                    cmdline = " ".join(child.cmdline() or [])
+                except Exception:
+                    cmdline = ""
+                if _is_browserish_process(name, cmdline):
                     child.kill()
                     killed += 1
             except Exception:
@@ -105,6 +128,41 @@ def kill_child_browsers() -> int:
     except Exception:
         pass
     return killed
+
+
+def launch_tracked_chromium(playwright: Any, **launch_kwargs: Any) -> Any:
+    """chromium.launch + registro para o Parar fechar o browser."""
+    check_stop("parado antes de abrir o navegador")
+    browser = playwright.chromium.launch(**launch_kwargs)
+    register_browser(browser)
+    return browser
+
+
+def close_tracked_browser(browser: Any, context: Any = None) -> None:
+    try:
+        if context is not None:
+            context.close()
+    except Exception:
+        pass
+    try:
+        if browser is not None:
+            browser.close()
+    except Exception:
+        pass
+    try:
+        if browser is not None:
+            unregister_browser(browser)
+    except Exception:
+        pass
+
+
+@contextmanager
+def tracked_playwright_browser(playwright: Any, **launch_kwargs: Any) -> Iterator[Any]:
+    browser = launch_tracked_chromium(playwright, **launch_kwargs)
+    try:
+        yield browser
+    finally:
+        close_tracked_browser(browser)
 
 
 def write_loop_pid(pid: int | None = None) -> None:
@@ -139,11 +197,14 @@ def stop_external_loop_process() -> bool:
         import psutil
 
         p = psutil.Process(pid)
-        # filhos chrome primeiro
         for child in p.children(recursive=True):
             try:
-                name = (child.name() or "").lower()
-                if any(x in name for x in ("chrom", "msedge", "playwright")):
+                name = child.name() or ""
+                try:
+                    cmdline = " ".join(child.cmdline() or [])
+                except Exception:
+                    cmdline = ""
+                if _is_browserish_process(name, cmdline):
                     child.kill()
             except Exception:
                 pass
@@ -155,7 +216,6 @@ def stop_external_loop_process() -> bool:
         clear_loop_pid()
         return True
     except Exception:
-        # fallback Windows
         if os.name == "nt":
             try:
                 import subprocess
@@ -171,9 +231,3 @@ def stop_external_loop_process() -> bool:
             except Exception:
                 return False
         return False
-
-
-def check_stop(msg: str = "parado pelo usuário") -> None:
-    """Raise LoopStopped se Parar foi pedido."""
-    if stop_requested():
-        raise LoopStopped(msg)

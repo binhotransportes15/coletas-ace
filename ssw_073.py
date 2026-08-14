@@ -174,6 +174,11 @@ def download_reports_073(
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
+        try:
+            from ace_stop import register_browser
+            register_browser(browser)
+        except Exception:
+            pass
         context = browser.new_context(accept_downloads=True)
         page = context.new_page()
         page.set_default_timeout(60000)
@@ -200,7 +205,15 @@ def download_reports_073(
             errors = phase["errors"]
             queued = phase["queued"]
         finally:
-            browser.close()
+            try:
+                browser.close()
+            except Exception:
+                pass
+            try:
+                from ace_stop import unregister_browser
+                unregister_browser(browser)
+            except Exception:
+                pass
 
     missing = [q["key"] for q in queued if q["key"] not in paths]
     for k in missing:
@@ -291,6 +304,11 @@ def download_contratacao_ssw(
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
+        try:
+            from ace_stop import register_browser
+            register_browser(browser)
+        except Exception:
+            pass
         context = browser.new_context(accept_downloads=True)
         page = context.new_page()
         page.set_default_timeout(60000)
@@ -472,7 +490,15 @@ def download_contratacao_ssw(
             except Exception:
                 pass
         finally:
-            browser.close()
+            try:
+                browser.close()
+            except Exception:
+                pass
+            try:
+                from ace_stop import unregister_browser
+                unregister_browser(browser)
+            except Exception:
+                pass
 
     resumo = (
         analysis200.get("resumo")

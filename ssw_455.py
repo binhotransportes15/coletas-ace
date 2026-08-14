@@ -165,6 +165,11 @@ def download_reports_455(
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
+        try:
+            from ace_stop import register_browser
+            register_browser(browser)
+        except Exception:
+            pass
         context = browser.new_context(accept_downloads=True)
         page = context.new_page()
         page.set_default_timeout(60000)
@@ -212,7 +217,15 @@ def download_reports_455(
             except Exception:
                 pass
             try:
-                browser.close()
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+                try:
+                    from ace_stop import unregister_browser
+                    unregister_browser(browser)
+                except Exception:
+                    pass
             except Exception:
                 pass
 
