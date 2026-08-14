@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-14T16:25:26",
+  "updated_at": "2026-08-14T16:49:47",
   "sectors": {
     "distribuicao": {
       "file": "distribuicao.json",
@@ -19,7 +19,7 @@
     },
     "reciclagem": {
       "file": "reciclagem.json",
-      "updated_at": "2026-08-14T16:25:26"
+      "updated_at": "2026-08-14T16:49:47"
     }
   },
   "mode": "local_json"
