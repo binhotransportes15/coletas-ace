@@ -1159,7 +1159,8 @@
     body.tv-mode .agenda-layout:not(.has-blocks) {
       display: grid !important;
       grid-template-columns: minmax(0, 1.55fr) minmax(200px, 0.65fr) !important;
-      grid-template-rows: auto minmax(0, 1fr) minmax(120px, 0.32fr) !important;
+      /* min-content na 1ª linha: KPIs não somem quando chart/amanhã competem por altura */
+      grid-template-rows: minmax(min-content, auto) minmax(0, 1fr) minmax(110px, 0.3fr) !important;
       gap: clamp(6px, 0.9vmin, 12px) !important;
       height: 100% !important;
       min-height: 0 !important;
@@ -1175,6 +1176,12 @@
     }
     body.tv-mode .agenda-layout .dash-block {
       min-height: 0 !important;
+    }
+    body.tv-mode .agenda-layout .dash-block[data-block="kpis"],
+    body.tv-mode .agenda-layout .agenda-kpis.dash-block {
+      display: grid !important;
+      min-height: min-content !important;
+      height: auto !important;
     }
     body.tv-mode .agenda-chart-stage {
       display: flex !important;
@@ -1703,6 +1710,17 @@
       flex-direction: column;
       container-type: size;
       container-name: dashblock;
+    }
+    /* KPIs: NÃO herdar flex-column do dash-block (empilhava 8 cards e a linha auto ia a 0px na TV) */
+    .agenda-layout .dash-block[data-block="kpis"],
+    .agenda-layout .agenda-kpis.dash-block {
+      display: grid !important;
+      flex-direction: unset;
+      min-height: min-content !important;
+      height: auto !important;
+      overflow: hidden;
+      align-content: stretch;
+      container-type: normal;
     }
     .agenda-layout .dash-block[hidden] { display: none !important; }
     /* Layout fixo — blocos filhos diretos (sem display:contents / Sites-safe) */
@@ -2349,7 +2367,7 @@
     body.tv-mode .agenda-layout:not(.has-blocks) {
       display: grid !important;
       grid-template-columns: minmax(0, 1.55fr) minmax(180px, 0.6fr) !important;
-      grid-template-rows: auto minmax(0, 1fr) minmax(110px, 0.3fr) !important;
+      grid-template-rows: minmax(min-content, auto) minmax(0, 1fr) minmax(110px, 0.3fr) !important;
       overflow: hidden !important;
     }
     html.tv-in-frame .agenda-layout:not(.has-blocks) [data-block="kpis"],
@@ -6229,29 +6247,29 @@
       const sec = normalizeSectorId(sector || CURRENT_SECTOR || 'distribuicao');
       const defaults = (lay.sectorDefaults && lay.sectorDefaults[sec]) || {};
       let ui = defaults.ui || {};
+      let viewId = '';
       if (sec === 'distribuicao') {
-        const v = (view || CURRENT_VIEW || 'coleta').toLowerCase();
+        viewId = (view || CURRENT_VIEW || 'coleta').toLowerCase();
         const views = defaults.views || {};
-        ui = views[v] || views.agendamento || ui || {};
+        ui = views[viewId] || views.agendamento || ui || {};
       } else if (sec === 'armazem') {
-        const v = normalizeArmView(view || CURRENT_VIEW || 'patio');
+        viewId = normalizeArmView(view || CURRENT_VIEW || 'patio');
         const views = defaults.views || {};
-        ui = views[v] || views.patio || ui || {};
+        ui = views[viewId] || views.patio || ui || {};
       }
-      const chart = String(ui.chart || (
-        sec === 'distribuicao' && (view || CURRENT_VIEW) === 'agendamento'
-          ? 'pizza'
-          : sec === 'distribuicao' && (view || CURRENT_VIEW) === 'entrega'
-            ? 'pizza'
-            : 'towers'
-      )).toLowerCase();
+      // Entrega + Agendamento: pizza (layout remoto/legado ainda vinha "towers"/faixas)
+      let chart = String(ui.chart || 'towers').toLowerCase();
+      if (sec === 'distribuicao' && (viewId === 'entrega' || viewId === 'agendamento')) {
+        chart = 'pizza';
+      }
+      if (!['towers', 'pizza', 'bars'].includes(chart)) chart = 'towers';
       const scale = String(ui.scale || 'large').toLowerCase();
       let fontZoom = Number(ui.fontZoom);
       if (!Number.isFinite(fontZoom)) fontZoom = 1;
       fontZoom = Math.max(0.7, Math.min(1.6, fontZoom));
       const blocks = Array.isArray(ui.blocks) ? ui.blocks : [];
       return {
-        chart: ['towers', 'pizza', 'bars'].includes(chart) ? chart : 'towers',
+        chart,
         scale: ['small', 'normal', 'large'].includes(scale) ? scale : 'large',
         fontZoom,
         showKpis: ui.showKpis !== false,
@@ -6564,6 +6582,8 @@
       if (live && CURRENT_VIEW === 'agendamento') renderAgendamento();
       document.body.setAttribute('data-view', CURRENT_VIEW);
       updateOpsBrandTitle();
+      // Troca Coleta/Entrega/Agendamento: reaplica pizza vs torres
+      applyDashboardChrome();
       // Recalcula torres depois do layout assentar (desktop + TV)
       if (live) {
         requestAnimationFrame(() => {

@@ -203,9 +203,163 @@ def _on_status(msg: str) -> None:
         label = "ONLINE" if online else "ERR"
         mode = {"ok": "OK", "err": "ERR", "work": "RUN"}.get(kind, "RUN")
         append_log(kind, msg, source="cmd")
-        publish(online=online, label=label, pct=0, detail=msg[:100], mode=mode)
+        # Barrinhas: sobe % do(s) setor(es) em execução manual / tag [78]/[31]/…
+        try:
+            _manual_status_tick(msg, kind=kind)
+        except Exception:
+            publish(online=online, label=label, pct=0, detail=msg[:100], mode=mode)
     except Exception:
         pass
+
+
+# Contexto de execução manual (1+ setores) → barrinhas no CRT
+_MANUAL_RUNNING: list[str] = []
+_MANUAL_PROGRESS: dict[str, dict[str, Any]] = {}
+_MANUAL_LAST_RUN: dict[str, float] = {}
+
+_CMD_TO_SECTOR: dict[str, str] = {
+    "50": "dist",
+    "103": "dist",
+    "36": "dist",
+    "225": "dist",
+    "sync": "dist",
+    "sync50": "dist",
+    "sync103": "dist",
+    "sync36": "dist",
+    "sync225": "dist",
+    "78": "78",
+    "078": "78",
+    "177": "78",
+    "armazem": "78",
+    "sync78": "78",
+    "31": "31",
+    "031": "31",
+    "pendencia": "31",
+    "sync31": "31",
+    "73": "73",
+    "073": "73",
+    "076": "73",
+    "200": "73",
+    "contratacao": "73",
+    "455": "455",
+    "emissao": "455",
+    "sync455": "455",
+    "reciclagem": "reciclagem",
+    "recicla": "reciclagem",
+    "019": "reciclagem",
+    "19": "reciclagem",
+    "081": "reciclagem",
+    "81": "reciclagem",
+}
+
+
+def sectors_for_command(raw: str) -> list[str]:
+    """Mapeia comando digitado → id(s) de barrinha."""
+    parts = (raw or "").strip().split()
+    if not parts:
+        return []
+    head = parts[0].lower().lstrip("/")
+    sid = _CMD_TO_SECTOR.get(head)
+    if sid:
+        return [sid]
+    # atalhos compostos: "atualizar tudo" já resolvido; sync all
+    if head in {"all", "tudo"}:
+        return ["dist", "78", "31", "73", "455", "reciclagem"]
+    return []
+
+
+def begin_manual_sectors(sectors: list[str], *, detail: str = "iniciando…") -> None:
+    """Marca setor(es) como run@3% e publica barrinhas."""
+    global _MANUAL_RUNNING, _MANUAL_PROGRESS
+    from ace_loop import publish_sector_bars
+    from config import load_settings
+
+    sectors = [s for s in sectors if s]
+    if not sectors:
+        _MANUAL_RUNNING = []
+        return
+    _MANUAL_RUNNING = list(dict.fromkeys(sectors))
+    _MANUAL_PROGRESS = {
+        sid: {"pct": 3.0, "state": "run", "detail": detail[:90]}
+        for sid in _MANUAL_RUNNING
+    }
+    try:
+        publish_sector_bars(
+            load_settings(),
+            _MANUAL_LAST_RUN,
+            progress=_MANUAL_PROGRESS,
+            running=list(_MANUAL_RUNNING),
+            label="RUN",
+            mode="RUN",
+        )
+    except Exception:
+        pass
+
+
+def end_manual_sectors(*, ok: bool = True, detail: str = "") -> None:
+    """Fecha progresso manual (100% ou erro) e libera contexto."""
+    global _MANUAL_RUNNING, _MANUAL_PROGRESS
+    from ace_loop import publish_sector_bars
+    from config import load_settings
+    import time as _time
+
+    if not _MANUAL_RUNNING and not _MANUAL_PROGRESS:
+        return
+    now = _time.time()
+    for sid in list(_MANUAL_RUNNING) or list(_MANUAL_PROGRESS.keys()):
+        slot = _MANUAL_PROGRESS.setdefault(sid, {})
+        if ok:
+            slot["pct"] = 100.0
+            slot["state"] = "ok"
+            slot["detail"] = (detail or "concluído")[:90]
+            _MANUAL_LAST_RUN[sid] = now
+        else:
+            slot["state"] = "err"
+            slot["pct"] = max(float(slot.get("pct") or 0), 1.0)
+            slot["detail"] = (detail or "falhou")[:90]
+    try:
+        publish_sector_bars(
+            load_settings(),
+            _MANUAL_LAST_RUN,
+            progress=_MANUAL_PROGRESS,
+            running=[],
+            label="OK" if ok else "ERR",
+            mode="OK" if ok else "ERR",
+        )
+    except Exception:
+        pass
+    _MANUAL_RUNNING = []
+    # mantém progress ok por um tick; próximo idle do CRT pode resetar
+
+
+def _manual_status_tick(msg: str, *, kind: str = "work") -> None:
+    """Atualiza % da(s) barrinha(s) a partir de uma linha de status."""
+    from ace_loop import apply_status_to_progress, publish_sector_bars
+    from config import load_settings
+    from crt_bridge import publish
+
+    if not _MANUAL_RUNNING and not _MANUAL_PROGRESS:
+        # sem contexto: só status principal (não zera barrinhas do loop)
+        online = kind != "err"
+        label = "ONLINE" if online else "ERR"
+        mode = {"ok": "OK", "err": "ERR", "work": "RUN"}.get(kind, "RUN")
+        publish(online=online, label=label, pct=0, detail=msg[:100], mode=mode)
+        return
+
+    # garante slots
+    for sid in _MANUAL_RUNNING:
+        _MANUAL_PROGRESS.setdefault(
+            sid, {"pct": 3.0, "state": "run", "detail": "executando…"}
+        )
+    apply_status_to_progress(_MANUAL_PROGRESS, msg, running=list(_MANUAL_RUNNING))
+    publish_sector_bars(
+        load_settings(),
+        _MANUAL_LAST_RUN,
+        progress=_MANUAL_PROGRESS,
+        running=list(_MANUAL_RUNNING),
+        label="RUN",
+        mode="RUN",
+    )
 
 
 def _crt_boot(*, detail: str = "console pronta") -> None:
@@ -1202,9 +1356,22 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
     except Exception:
         LoopStopped = Exception  # type: ignore
 
+    sectors = sectors_for_command(text)
+    if sectors:
+        begin_manual_sectors(sectors, detail=f"exec · {text[:60]}")
     try:
-        return _execute_line_body(raw, payload, parts, cmd)
+        msg, payload = _execute_line_body(raw, payload, parts, cmd)
+        low = (msg or "").lower()
+        ok = "erro" not in low and "falhou" not in low and msg != ""
+        if sectors:
+            if msg == "__CLEAR__":
+                end_manual_sectors(ok=True, detail="log limpo")
+            else:
+                end_manual_sectors(ok=ok, detail=(msg or "ok")[:90])
+        return (msg, payload)
     except Exception as err:
+        if sectors:
+            end_manual_sectors(ok=False, detail=str(err)[:90])
         try:
             from ace_stop import LoopStopped as _LS, stop_requested
 
@@ -1355,7 +1522,13 @@ def _execute_line_body(
         return ("Painel CRT já está aberto.", payload)
     if cmd in {"6", "show", "/show", "config"}:
         return (show_config(payload), payload)
-    if cmd in {"cls", "clear"}:
+    if cmd in {"cls", "clear", "limpar", "/limpar", "/cls", "/clear"}:
+        try:
+            from crt_bridge import clear_log
+
+            clear_log()
+        except Exception:
+            pass
         return ("__CLEAR__", payload)
     return (f"Comando desconhecido: {raw}. Digite help", payload)
 
@@ -1635,8 +1808,17 @@ def main(argv: list[str] | None = None) -> int:
                 message = "Painel CRT de gestão aberto."
             elif cmd in {"6", "show", "/show", "config"}:
                 message = show_config(payload)
-            elif cmd == "cls" or cmd == "clear":
+            elif cmd in {"cls", "clear", "limpar", "/limpar", "/cls", "/clear"}:
+                try:
+                    from crt_bridge import clear_log
+
+                    clear_log()
+                except Exception:
+                    pass
                 message = ""
+                _clear()
+                draw_menu(payload, message="Log limpo.")
+                continue
             else:
                 message = f"Comando desconhecido: {raw}. Digite help"
         except Exception as err:  # noqa: BLE001

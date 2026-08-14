@@ -1057,6 +1057,9 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "stop": "parar",
     "log": "/log",
     "/log": "/log",
+    "limpar": "limpar",
+    "cls": "cls",
+    "clear": "clear",
     "barras": "/bars",
     "barra": "/bars",
     "/bars": "/bars",
@@ -3169,8 +3172,8 @@ class AceCrtConsole(QWidget):
         if not raw:
             return
         low = raw.lower().strip()
-        if low in {"cls", "clear", "limpar"}:
-            self.log.clear()
+        if low in {"cls", "clear", "limpar", "/limpar", "/cls", "/clear"}:
+            self._clear_cmd_log()
             return
         if low in {"parar", "stop", "halt"}:
             self._stop_all()
@@ -3272,7 +3275,7 @@ class AceCrtConsole(QWidget):
             except Exception:
                 self._update_meta()
         if msg == "__CLEAR__":
-            self.log.clear()
+            self._clear_cmd_log(announce=False)
         else:
             self._append_log("out", msg)
         online = "erro" not in (msg or "").lower() and "falhou" not in (msg or "").lower()
@@ -3349,6 +3352,23 @@ class AceCrtConsole(QWidget):
                 pass
             self._menu_win = None
         super().closeEvent(event)
+
+    def _clear_cmd_log(self, *, announce: bool = True) -> None:
+        """Limpa o painel + arquivo espelhado (limpar/cls/clear)."""
+        try:
+            from crt_bridge import clear_log
+
+            clear_log()
+        except Exception:
+            pass
+        try:
+            self.log.clear()
+        except Exception:
+            pass
+        self._log_seen = set()
+        self._log_offset = 0
+        if announce:
+            self._append_log("sistema", "Log limpo.", mirror=False)
 
     def _append_log(self, kind: str, text: str, *, mirror: bool = True) -> None:
         if mirror:

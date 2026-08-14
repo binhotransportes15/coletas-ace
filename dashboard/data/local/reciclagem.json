@@ -1,17 +1,17 @@
 {
   "setor": "reciclagem",
-  "updated_at": "2026-08-14T17:08:07",
+  "updated_at": "2026-08-14T17:21:51",
   "sem_transferencia": {
     "programa": "019",
     "titulo": "SEM TRANSFERÊNCIA",
     "resumo": {
-      "atualizado": "14/08/2026 17:08",
+      "atualizado": "14/08/2026 17:20",
       "periodo": "14/08/2026",
-      "qtd": 260,
-      "frete": 239605.87000000055,
-      "frete_fmt": "R$ 239.605,87",
-      "peso": 227321.147,
-      "peso_fmt": "227.321"
+      "qtd": 256,
+      "frete": 233526.91000000056,
+      "frete_fmt": "R$ 233.526,91",
+      "peso": 226327.468,
+      "peso_fmt": "226.327"
     },
     "por_filial": [
       {
@@ -242,157 +242,15 @@
     "programa": "081",
     "titulo": "SEM SAÍDA PARA ENTREGA",
     "resumo": {
-      "atualizado": "14/08/2026 16:49",
+      "atualizado": "14/08/2026 17:21",
       "periodo": "15/08/2026",
-      "qtd": 260,
-      "frete": 239605.87000000055,
-      "frete_fmt": "R$ 239.605,87",
-      "peso": 227321.147,
-      "peso_fmt": "227.321"
+      "qtd": 0,
+      "frete": 0,
+      "frete_fmt": "R$ 0,00",
+      "peso": 0,
+      "peso_fmt": "0"
     },
-    "top_cte": [
-      {
-        "ctrc": "GYN059644-2",
-        "cliente": "CASA DO PICA PAU LTDA",
-        "dias_atraso": 185,
-        "cidade_uf": "BRAGANCA PAULISTA/SP",
-        "ultima_ocorrencia": "CHEGADA NA UNIDADE"
-      },
-      {
-        "ctrc": "VIX006059-3",
-        "cliente": "ESSITY DO BRASIL INDUSTRIA E C",
-        "dias_atraso": 157,
-        "cidade_uf": "JARINU/SP",
-        "ultima_ocorrencia": "AGUARDANDO AGENDAMENTO DO CLIENTE"
-      },
-      {
-        "ctrc": "GYN061042-9",
-        "cliente": "EQUILIBRIUM DIST DE MED EIRELL",
-        "dias_atraso": 135,
-        "cidade_uf": "SOCORRO/SP",
-        "ultima_ocorrencia": "ENTREGA AGENDADA"
-      },
-      {
-        "ctrc": "SPO309655-6",
-        "cliente": "DECOR COLORS TINTAS LTDA",
-        "dias_atraso": 129,
-        "cidade_uf": "SALTO/SP",
-        "ultima_ocorrencia": "ENTREGA PREJUDICADA PELO HORARIO"
-      },
-      {
-        "ctrc": "SPO310909-7",
-        "cliente": "MANTIQUEIRA DISTRIBUIDORA DE P",
-        "dias_atraso": 123,
-        "cidade_uf": "SAO JOAO DA BOA VISTA/SP",
-        "ultima_ocorrencia": "LIBERADO PELO CR"
-      },
-      {
-        "ctrc": "SPO311765-1",
-        "cliente": "ESSITY DO BRASIL INDUSTRIA E C",
-        "dias_atraso": 109,
-        "cidade_uf": "JARINU/SP",
-        "ultima_ocorrencia": "FALTA COM BUSCA / RECONFERENCIA"
-      },
-      {
-        "ctrc": "SPO311764-2",
-        "cliente": "ESSITY DO BRASIL INDUSTRIA E C",
-        "dias_atraso": 109,
-        "cidade_uf": "JARINU/SP",
-        "ultima_ocorrencia": "FALTA COM BUSCA / RECONFERENCIA"
-      },
-      {
-        "ctrc": "SPO311559-3",
-        "cliente": "EQUILIBRIUM DIST DE MED EIRELL",
-        "dias_atraso": 109,
-        "cidade_uf": "SOCORRO/SP",
-        "ultima_ocorrencia": "IMAGENS OPERACIONAIS CARGA & DESCARGA / OUTROS"
-      },
-      {
-        "ctrc": "SPO300602-6",
-        "cliente": "EVER GREEN IND E COM LTDA",
-        "dias_atraso": 108,
-        "cidade_uf": "SAO BERNARDO DO CAMPO/SP",
-        "ultima_ocorrencia": "IMAGENS OPERACIONAIS CARGA & DESCARGA / OUTROS"
-      },
-      {
-        "ctrc": "SPO312713-3",
-        "cliente": "ILOG TRANSPORTES LTDA",
-        "dias_atraso": 106,
-        "cidade_uf": "SALTO/SP",
-        "ultima_ocorrencia": "DOCUMENTO DE TRANSPORTE EMITIDO"
-      }
-    ],
-    "top_cliente": [
-      {
-        "cliente": "CASA DO PICA PAU LTDA",
-        "dias_max": 185,
-        "qtd": 1,
-        "frete": 149.24,
-        "peso": 44.34
-      },
-      {
-        "cliente": "ESSITY DO BRASIL INDUSTRIA E C",
-        "dias_max": 157,
-        "qtd": 7,
-        "frete": 11940.650000000001,
-        "peso": 20603.989999999998
-      },
-      {
-        "cliente": "EQUILIBRIUM DIST DE MED EIRELL",
-        "dias_max": 135,
-        "qtd": 8,
-        "frete": 1580.58,
-        "peso": 1429.4299999999998
-      },
-      {
-        "cliente": "DECOR COLORS TINTAS LTDA",
-        "dias_max": 129,
-        "qtd": 10,
-        "frete": 2479.33,
-        "peso": 2166.044
-      },
-      {
-        "cliente": "MANTIQUEIRA DISTRIBUIDORA DE P",
-        "dias_max": 123,
-        "qtd": 1,
-        "frete": 2961.18,
-        "peso": 22224.056
-      },
-      {
-        "cliente": "EVER GREEN IND E COM LTDA",
-        "dias_max": 108,
-        "qtd": 5,
-        "frete": 18365.62,
-        "peso": 17265.8
-      },
-      {
-        "cliente": "ILOG TRANSPORTES LTDA",
-        "dias_max": 106,
-        "qtd": 2,
-        "frete": 8273.0,
-        "peso": 7176.095
-      },
-      {
-        "cliente": "COTY BRASIL COMERCIO S.A",
-        "dias_max": 67,
-        "qtd": 18,
-        "frete": 15637.240000000003,
-        "peso": 31612.924
-      },
-      {
-        "cliente": "SP SUMARE PRODUTOS DE HIGIENE",
-        "dias_max": 63,
-        "qtd": 14,
-        "frete": 4530.010000000001,
-        "peso": 5030.290000000001
-      },
-      {
-        "cliente": "SOFAPE FABRICANTE DE FILTROS S",
-        "dias_max": 43,
-        "qtd": 4,
-        "frete": 1043.83,
-        "peso": 574.9929999999999
-      }
-    ]
+    "top_cte": [],
+    "top_cliente": []
   }
 }

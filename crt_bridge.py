@@ -113,6 +113,20 @@ def append_log(kind: str, text: str, *, source: str = "cmd") -> dict[str, Any]:
     return entry
 
 
+def clear_log() -> None:
+    """Zera o histórico espelhado (crt_log.jsonl) — comando limpar/cls/clear."""
+    STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        LOG_PATH.write_text("", encoding="utf-8")
+    except Exception:
+        try:
+            if LOG_PATH.is_file():
+                LOG_PATH.unlink()
+            LOG_PATH.write_text("", encoding="utf-8")
+        except Exception:
+            pass
+
+
 def read_log_since(offset: int = 0) -> tuple[list[dict[str, Any]], int]:
     """Lê linhas novas do jsonl a partir do offset em bytes. Retorna (entries, novo_offset)."""
     if not LOG_PATH.is_file():

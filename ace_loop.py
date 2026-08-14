@@ -211,8 +211,16 @@ def build_sector_rows(
             "detail": "fora do automático",
         }
         if not enabled:
-            rows.append(row)
-            continue
+            # Run manual: mostra barrinha mesmo se o setor estiver off no automático
+            if sid in running_set or (sid in live and live.get(sid)):
+                enabled = True
+                iv = sector_interval_sec(cfg, sid)
+                row["enabled"] = True
+                row["interval"] = format_duration(iv)
+                row["detail"] = "execução manual"
+            else:
+                rows.append(row)
+                continue
 
         live_row = live.get(sid) or {}
         live_state = str(live_row.get("state") or "")
@@ -223,7 +231,7 @@ def build_sector_rows(
         elif live_state == "ok":
             # Preferir ok sobre running_set (job já terminou no paralelo)
             row["state"] = "ok"
-            row["pct"] = 100.0 if sid in running_set else 0.0
+            row["pct"] = 100.0 if sid in running_set else float(live_row.get("pct") or 100.0)
             rem_hint = ""
             prev = last_run.get(sid)
             if prev is not None and iv > 0 and sid not in running_set:

@@ -148,8 +148,8 @@ def default_layout() -> dict[str, Any]:
                 "views": (
                     {
                         "coleta": _default_view_ui("towers"),
-                        "entrega": _default_view_ui("towers"),
-                        "agendamento": _default_view_ui("towers"),
+                        "entrega": _default_view_ui("pizza"),
+                        "agendamento": _default_view_ui("pizza"),
                     }
                     if sid == "distribuicao"
                     else {
@@ -268,6 +268,10 @@ def normalize_layout(raw: dict[str, Any] | None) -> dict[str, Any]:
                     views_in.get(v),
                     (base_d.get("views") or {}).get(v) or _default_view_ui("towers"),
                 )
+            # Entrega + Agendamento: pizza (legado remoto ainda gravava "towers"/faixas)
+            for v in ("entrega", "agendamento"):
+                if v in views_out:
+                    views_out[v]["chart"] = "pizza"
         elif sid == "armazem":
             for v in ARM_VIEWS:
                 views_out[v] = _normalize_view_ui(
