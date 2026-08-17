@@ -1,11 +1,11 @@
 {
-  "version": 18,
-  "updatedAt": "2026-08-14T17:32:00",
+  "version": 19,
+  "updatedAt": "2026-08-17T14:39:11",
   "rows": 2,
   "cols": 3,
   "syncSwap": false,
   "swapMs": 15000,
-  "mapaRouteMs": 15000,
+  "mapaRouteMs": 30000,
   "wallMode": false,
   "wallSector": "armazem",
   "sectorDefaults": {
