@@ -4166,9 +4166,9 @@
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
-      filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.85))
-              drop-shadow(0 0 10px rgba(0, 240, 255, 0.35))
-              drop-shadow(0 0 18px rgba(255, 46, 207, 0.2));
+      filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.35))
+              drop-shadow(0 0 12px rgba(140, 198, 63, 0.28))
+              drop-shadow(0 0 16px rgba(41, 171, 226, 0.22));
     }
     .mapa-farol-hero::before {
       display: none !important;
@@ -4428,15 +4428,15 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: 900; color: #f8fafc;
     }
-    /* Farol cyberpunk — zonas mais escuras + contorno forte */
+    /* Farol SP — zonas BINHO mais iluminadas */
     #mapaFarolLeaflet path.mapa-zona-neon,
     .mapa-farol-hero path {
-      filter: brightness(0.68) saturate(1.2)
-              drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.95))
-              drop-shadow(0 0 4px rgba(0, 240, 255, 0.55));
-      stroke: #f8fafc !important;
-      stroke-width: 1.55px !important;
-      stroke-opacity: 0.95 !important;
+      filter: brightness(1.18) saturate(1.25) contrast(1.05)
+              drop-shadow(0 0 1px rgba(15, 23, 42, 0.55))
+              drop-shadow(0 0 6px rgba(255, 255, 255, 0.18));
+      stroke: rgba(248, 250, 252, 0.92) !important;
+      stroke-width: 1.35px !important;
+      stroke-opacity: 0.9 !important;
     }
     .leaflet-div-icon.cyber-base-icon {
       background: transparent;
@@ -4606,6 +4606,12 @@
       background: transparent;
       border: none;
     }
+
+    #mapaLeaflet.leaflet-container,
+    #mapaLeaflet .leaflet-tile-pane {
+      filter: brightness(1.12) saturate(1.08) contrast(1.02);
+    }
+
     #mapaLeaflet {
       position: absolute;
       inset: 0;
@@ -10398,7 +10404,7 @@
               weight: 1.4,
               opacity: 0.9,
               fillColor: color,
-              fillOpacity: 0.72,
+              fillOpacity: 0.88,
               className: 'mapa-zona-neon',
             };
           },
@@ -10477,7 +10483,7 @@
         preferCanvas: true,
       });
       mapaLeaflet.setView([base.lat, base.lon], 11);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         subdomains: 'abcd',
       }).addTo(mapaLeaflet);
@@ -10498,7 +10504,7 @@
               weight: 1.2,
               opacity: 0.55,
               fillColor: color,
-              fillOpacity: 0.16,
+              fillOpacity: 0.28,
               className: 'mapa-zona-neon',
             };
           },
