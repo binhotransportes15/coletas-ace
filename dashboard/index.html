@@ -4254,22 +4254,49 @@
       box-shadow: none !important;
       opacity: 0;
       transform: translateY(28px) scale(0.96);
-      transition: opacity 0.45s ease, transform 0.55s cubic-bezier(.2,.8,.2,1), top 0.55s cubic-bezier(.2,.8,.2,1);
+      transition: opacity 0.45s ease, transform 0.55s cubic-bezier(.2,.8,.2,1), top 0.55s cubic-bezier(.2,.8,.2,1), filter 0.35s ease;
       cursor: pointer;
       pointer-events: auto;
       text-shadow: 0 1px 8px rgba(0,0,0,0.9);
     }
     .mapa-placa-pop.show {
-      opacity: 1;
-      transform: translateY(0) scale(1);
+      opacity: 0.42;
+      transform: translateY(0) scale(0.96);
+      filter: grayscale(0.25) brightness(0.85);
     }
     .mapa-placa-pop.leaving {
       opacity: 0;
       transform: translateY(-36px) scale(0.96);
     }
+    .mapa-placa-pop.active.show {
+      opacity: 1;
+      transform: translateY(0) scale(1.06);
+      filter: none;
+      z-index: 5;
+    }
     .mapa-placa-pop.active .name {
       color: #facc15;
-      text-shadow: 0 0 12px rgba(250, 204, 21, 0.45);
+      font-size: clamp(18px, 2.1vmin, 26px);
+      text-shadow:
+        0 0 10px rgba(250, 204, 21, 0.85),
+        0 0 22px rgba(250, 204, 21, 0.45),
+        0 2px 10px rgba(0,0,0,0.9);
+      animation: mapaPlacaActivePulse 1.6s ease-in-out infinite;
+    }
+    .mapa-placa-pop.active .meta {
+      color: #fde68a;
+    }
+    .mapa-placa-pop.active .badge {
+      color: #facc15;
+      text-shadow: 0 0 12px rgba(250, 204, 21, 0.55);
+    }
+    .mapa-placa-pop.active .donut {
+      transform: scale(1.12);
+      filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.55));
+    }
+    @keyframes mapaPlacaActivePulse {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.18); }
     }
     .mapa-placa-pop .name {
       font-weight: 900;
@@ -4279,6 +4306,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      transition: color 0.3s ease, font-size 0.3s ease, text-shadow 0.3s ease;
     }
     .mapa-tipo-pill {
       display: inline-flex;
@@ -10201,9 +10229,7 @@
       }
 
       mapaSelectedPlaca = String(v.placa || '');
-      document.querySelectorAll('.mapa-placa-pop').forEach((row) => {
-        row.classList.toggle('active', row.getAttribute('data-placa') === mapaSelectedPlaca);
-      });
+      syncMapaPlacaHighlight(mapaSelectedPlaca);
       const cap = document.getElementById('mapaRouteCaption');
       if (cap) {
         const tipo = String(v.tipo || 'entrega');
@@ -10215,6 +10241,29 @@
           + (v.distance_km ? ` · ${Number(v.distance_km).toFixed(1)} km` : '')
           + ` · serviço ${pct.toFixed(0)}%</span>`;
       }
+    }
+
+    function syncMapaPlacaHighlight(placa) {
+      const veics = (lastMapaData && lastMapaData.veiculos) || [];
+      const idx = veics.findIndex((x) => String(x.placa) === String(placa));
+      if (idx >= 0 && veics.length > MAPA_PLACA_VISIBLE) {
+        let inView = false;
+        const nVis = Math.min(MAPA_PLACA_VISIBLE, veics.length);
+        for (let i = 0; i < nVis; i++) {
+          if ((mapaPlacaCursor + i) % veics.length === idx) {
+            inView = true;
+            break;
+          }
+        }
+        if (!inView) {
+          mapaPlacaCursor = idx;
+          renderMapaPlacaPops();
+          return;
+        }
+      }
+      document.querySelectorAll('.mapa-placa-pop').forEach((row) => {
+        row.classList.toggle('active', row.getAttribute('data-placa') === String(placa || ''));
+      });
     }
 
     function startMapaRouteCarousel() {
