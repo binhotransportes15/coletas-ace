@@ -3083,11 +3083,39 @@ class AceCrtConsole(QWidget):
     # ── data / actions ─────────────────────────────────────────────
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
-        if hasattr(self, "_scan"):
-            self._scan.setGeometry(self.rect())
-        if hasattr(self, "_circuit_bus"):
-            self._circuit_bus.setGeometry(self.rect())
-            self._circuit_bus.raise_()  # acima das scanlines — linhas visiveis ate as barras
+        self._relayout_chrome()
+
+    def _relayout_chrome(self) -> None:
+        """Reencaixa scanlines + circuitos após resize / sair de tela cheia."""
+        r = self.rect()
+        if hasattr(self, "_scan") and self._scan is not None:
+            self._scan.setGeometry(r)
+            self._scan.update()
+        bus = getattr(self, "_circuit_bus", None)
+        if bus is not None:
+            # Windows + WA_TranslucentBackground: esconder/mostrar limpa fantasma
+            # que sobra ao sair de fullscreen com o overlay no tamanho antigo
+            was = bus.isVisible()
+            if was:
+                bus.hide()
+            bus.setGeometry(r)
+            if was:
+                bus.show()
+            bus.raise_()
+            bus.update()
+        cubes = getattr(self, "cubes", None)
+        if cubes is not None:
+            cubes.update()
+        # força o splitter a recalcular (evita painel esquerdo “esmagado”)
+        try:
+            for sp in self.findChildren(QSplitter):
+                sizes = sp.sizes()
+                if sizes:
+                    sp.setSizes(sizes)
+                sp.updateGeometry()
+                sp.update()
+        except Exception:
+            pass
 
     def _wire_circuit_bus(self) -> None:
         bus = getattr(self, "_circuit_bus", None)
@@ -3572,6 +3600,10 @@ class AceCrtConsole(QWidget):
             from PySide6.QtCore import QEvent
 
             if event.type() == QEvent.WindowStateChange:
+                # overlay/cérebro ficam desalinhados ao sair de tela cheia
+                QTimer.singleShot(0, self._relayout_chrome)
+                QTimer.singleShot(60, self._relayout_chrome)
+                QTimer.singleShot(180, self._wire_circuit_bus)
                 meta = CRT_THEMES.get(self._theme_id) or {}
                 if meta.get("frost"):
                     # Uma reaplicação após maximizar/tela cheia (evita churn)
@@ -3615,10 +3647,17 @@ class AceCrtConsole(QWidget):
                     self.resize(1180, 680)
                     self._center_on_screen()
             self._append_log("sistema", "Modo janela")
+            # relayout atrasado: o Windows ainda reporta tamanho fullscreen no frame seguinte
+            QTimer.singleShot(0, self._relayout_chrome)
+            QTimer.singleShot(50, self._relayout_chrome)
+            QTimer.singleShot(120, self._wire_circuit_bus)
+            QTimer.singleShot(200, self._relayout_chrome)
         meta = CRT_THEMES.get(self._theme_id) or {}
         if meta.get("frost"):
             # Só reaplica DWM — sem destroy (mantém chrome nativo − □ ✕)
             self._schedule_frost_refresh()
+        else:
+            QTimer.singleShot(80, self._relayout_chrome)
 
     def _save_config(self) -> None:
         from ace_cmd import EDITABLE, _save_payload
