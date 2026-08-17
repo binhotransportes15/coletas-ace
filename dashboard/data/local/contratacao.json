@@ -1,37 +1,23 @@
 {
   "setor": "contratacao",
-  "updated_at": "2026-08-14T17:55:06",
+  "updated_at": "2026-08-17T08:49:34",
   "resumo_073": {
-    "periodo": "1408 – 1408",
-    "atualizado": "14/08/2026 17:55:05",
+    "periodo": "1708 – 1708",
+    "atualizado": "17/08/2026 08:49:25",
     "unidade": "SPO",
-    "total_veiculos": "1",
-    "total_ctrbs": "1",
-    "custo": "7928.96",
-    "custo_fmt": "7.928,96",
-    "frete": "0.0",
+    "total_veiculos": "0",
+    "total_ctrbs": "0",
+    "custo": "0",
+    "custo_fmt": "0,00",
+    "frete": "0",
     "frete_fmt": "0,00",
-    "peso": "0.0",
+    "peso": "0",
     "peso_fmt": "0",
     "agregado": "0",
     "frota": "0",
-    "contratados": "1",
-    "terceiro": "1"
+    "contratados": "0",
+    "terceiro": "0"
   },
-  "veiculos_amostra": [
-    {
-      "placa": "OGV0E00",
-      "carreta": "",
-      "propriedade": "CARRETEIRO",
-      "grupo": "contratados",
-      "qtd_ctrb": "1",
-      "custo": "7928.96",
-      "custo_av": "0.0",
-      "valor_pagar": "7928.96",
-      "peso": "0.0",
-      "frete": "0.0",
-      "ctrbs": "SPO 023625-0"
-    }
-  ],
-  "veiculos_total": 1
+  "veiculos_amostra": [],
+  "veiculos_total": 0
 }

@@ -24,7 +24,7 @@
       },
       "views": {
         "coleta": {
-          "chart": "towers",
+          "chart": "bars",
           "scale": "large",
           "fontZoom": 1.2,
           "showKpis": true,

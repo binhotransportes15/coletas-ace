@@ -24,8 +24,250 @@
       --cad-dark: #fbb03b;
       --can: #ed1c24;
       --can-dark: #c1272d;
+      /* Design System — aliases semânticos (não trocam os hex legado) */
+      --ok: var(--col);
+      --ok-dark: var(--col-dark);
+      --run: var(--com);
+      --run-dark: var(--com-dark);
+      --warn: var(--cad-dark);
+      --warn-bright: var(--cad);
+      --crit: var(--can);
+      --crit-dark: var(--can-dark);
+      --neutral: #94a3b8;
+      --ds-header-bg: linear-gradient(180deg, #0f172a, #0b1220);
+      --ds-kpi-bg: var(--panel);
+      --ds-radius: 14px;
+      --ds-gap: clamp(8px, 1vw, 14px);
+      --dash-font: 1;
       font-family: "Segoe UI", system-ui, sans-serif;
     }
+
+    /* ===== DESIGN SYSTEM BINHO (Etapa 2) ===== */
+    .ds-header {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 12px;
+      background: var(--ds-header-bg);
+      border: 1px solid var(--line);
+      border-radius: var(--ds-radius);
+      padding: 8px 14px;
+    }
+    .ds-kpi-row {
+      display: grid;
+      gap: var(--ds-gap);
+      min-width: 0;
+      min-height: min-content;
+    }
+    .ds-kpi {
+      background: var(--ds-kpi-bg);
+      border: 1px solid var(--line);
+      border-radius: var(--ds-radius);
+      padding: 10px 12px 11px;
+      min-width: 0;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+    }
+    .ds-kpi::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: #334155;
+    }
+    .ds-kpi.is-ok::before { background: var(--ok); }
+    .ds-kpi.is-run::before { background: var(--run); }
+    .ds-kpi.is-warn::before { background: var(--warn); }
+    .ds-kpi.is-crit::before { background: var(--crit); }
+    .ds-kpi.is-neutral::before { background: var(--neutral); }
+    .ds-kpi .lbl,
+    .ds-kpi > span:first-child,
+    .ds-kpi-title {
+      display: block;
+      font-size: clamp(10px, 1.1vw, 13px);
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ds-kpi .val,
+    .ds-kpi > b,
+    .ds-kpi-value {
+      display: block;
+      font-size: calc(clamp(22px, 2.8vw, 36px) * var(--dash-font, 1));
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.05;
+      color: var(--text);
+    }
+    .ds-kpi .ctx,
+    .ds-kpi small,
+    .ds-kpi-ctx {
+      display: block;
+      font-size: clamp(10px, 1vw, 12px);
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ds-kpi.is-secondary {
+      opacity: 0.82;
+    }
+    .ds-kpi.is-secondary .val,
+    .ds-kpi.is-secondary > b {
+      font-size: calc(clamp(16px, 2vw, 26px) * var(--dash-font, 1));
+    }
+    .ds-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--ds-radius);
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .ds-alert {
+      border-left: 3px solid var(--crit);
+      background: rgba(237, 28, 36, 0.08);
+    }
+    .ds-status-ok { color: var(--ok) !important; }
+    .ds-status-run { color: var(--run) !important; }
+    .ds-status-warn { color: var(--warn) !important; }
+    .ds-status-crit { color: var(--crit) !important; }
+    .ds-status-neutral { color: var(--neutral) !important; }
+
+    /* Faixas horizontais de status (Coleta / composição) */
+    .ds-hstatus {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: clamp(10px, 1.6vh, 18px);
+      height: 100%;
+      min-height: 0;
+      padding: clamp(8px, 1.2vmin, 16px) clamp(10px, 1.5vmin, 20px);
+    }
+    .ds-hstatus-row {
+      display: grid;
+      grid-template-columns: minmax(88px, 0.9fr) minmax(0, 2.4fr) auto;
+      align-items: center;
+      gap: 10px;
+    }
+    .ds-hstatus-lab {
+      font-size: clamp(12px, 1.4vw, 18px);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .ds-hstatus-lab.is-ok { color: var(--ok); }
+    .ds-hstatus-lab.is-run { color: var(--run); }
+    .ds-hstatus-lab.is-warn { color: var(--warn); }
+    .ds-hstatus-lab.is-crit { color: var(--crit); }
+    .ds-hstatus-track {
+      height: clamp(18px, 2.8vh, 28px);
+      border-radius: 6px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      overflow: hidden;
+    }
+    .ds-hstatus-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 5px;
+      transition: width .45s ease;
+      min-width: 0;
+    }
+    .ds-hstatus-fill.is-ok { background: linear-gradient(90deg, var(--ok-dark), var(--ok)); }
+    .ds-hstatus-fill.is-run { background: linear-gradient(90deg, var(--run-dark), var(--run)); }
+    .ds-hstatus-fill.is-warn { background: linear-gradient(90deg, #9a6210, var(--warn)); }
+    .ds-hstatus-fill.is-crit { background: linear-gradient(90deg, var(--crit-dark), var(--crit)); }
+    .ds-hstatus-meta {
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+      font-size: clamp(14px, 1.6vw, 22px);
+      min-width: 4.5ch;
+      text-align: right;
+    }
+    .ds-pareto {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 100%;
+      min-height: 0;
+      padding: 8px 4px;
+      justify-content: center;
+    }
+    .ds-pareto-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 2fr) auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .ds-pareto-lab {
+      font-size: clamp(11px, 1.2vw, 15px);
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ds-pareto-track {
+      height: 14px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .ds-pareto-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--crit-dark), var(--warn));
+    }
+    .ds-pareto-n, .ds-pareto-acc {
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+      font-size: clamp(12px, 1.3vw, 16px);
+    }
+    .ds-pareto-acc { color: var(--muted); min-width: 3.5ch; text-align: right; }
+    #coletaTorres[hidden],
+    #coletaHStatus[hidden],
+    #penTorres[hidden],
+    #penPareto[hidden] { display: none !important; }
+    #coletaHStatus:not([hidden]) { display: flex; }
+    #penPareto:not([hidden]) { display: flex; flex: 1; min-height: 0; }
+    .pen-towers-wrap { position: relative; }
+
+    body.tv-mode .ds-header,
+    body.tv-mode .topbar.ds-header,
+    body.tv-mode .arm-top.ds-header {
+      border-radius: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 8px 14px !important;
+    }
+    body.tv-mode .ds-kpi,
+    body.tv-mode .arm-kpi.ds-kpi,
+    body.tv-mode .agenda-kpi.ds-kpi {
+      border-radius: 0 !important;
+      border: none !important;
+      background: #0a121e !important;
+      box-shadow: none !important;
+    }
+    body.tv-mode .ds-kpi .val,
+    body.tv-mode .ds-kpi > b,
+    body.tv-mode .arm-kpi.ds-kpi .val,
+    body.tv-mode .agenda-kpi.ds-kpi b {
+      font-size: calc(clamp(28px, 3.6vmin, 48px) * var(--dash-font, 1)) !important;
+    }
+    body.tv-mode .ds-hstatus-lab { font-size: clamp(16px, 2vmin, 24px); }
+    body.tv-mode .ds-hstatus-meta { font-size: clamp(18px, 2.4vmin, 28px); }
+    body.tv-mode .ds-hstatus-track { height: clamp(22px, 3.2vmin, 34px); }
+    body.tv-mode .ds-panel { border-radius: 0 !important; border: none !important; }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body {
@@ -221,7 +463,10 @@
       min-width: 0;
     }
     .resumo-stats.stats-3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .resumo-single .resumo-stats:not(.stats-3) {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
     }
     .resumo-stats div {
       display: flex;
@@ -242,6 +487,7 @@
     .resumo-stats .s-rota b { color: var(--com); }
     .resumo-stats .s-par b { color: var(--cad); }
     .resumo-stats .s-can b { color: var(--can); }
+    .resumo-stats .s-pct b { color: var(--ok); }
     .zone {
       min-height: 0;
       min-width: 0;
@@ -1276,7 +1522,7 @@
       height: auto !important;
       overflow: visible !important;
       display: grid !important;
-      grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+      grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
       gap: clamp(6px, 0.8vmin, 10px) !important;
       align-self: start !important;
       flex-shrink: 0 !important;
@@ -1311,14 +1557,17 @@
     }
     body.tv-mode #armLayoutConferentes:not(.has-blocks) {
       grid-template-columns: 1fr !important;
-      grid-template-rows: minmax(0, 1fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+      gap: clamp(6px, 0.9vmin, 12px) !important;
     }
     body.tv-mode #armLayoutConferentes:not(.has-blocks) [data-block="kpis"] {
-      display: none !important;
+      display: grid !important;
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+      min-height: min-content !important;
     }
     body.tv-mode #armLayoutConferentes:not(.has-blocks) [data-block="chart"] {
       grid-column: 1 !important;
-      grid-row: 1 !important;
+      grid-row: 2 !important;
       min-height: 0 !important;
       overflow: hidden !important;
     }
@@ -2632,11 +2881,11 @@
       gap: 12px 24px;
     }
     .resumo-single .resumo-stats {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 10px 20px;
     }
     .resumo-single .resumo-stats.stats-3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
     body.tv-mode .resumo-single .resumo-card {
       padding: 14px 20px;
@@ -2710,7 +2959,7 @@
       overflow: visible !important;
       align-self: start;
       display: grid !important;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-template-columns: repeat(8, minmax(0, 1fr));
       gap: 8px;
     }
     #armLayoutPatio:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
@@ -2723,15 +2972,19 @@
       height: 100%;
       min-height: 0;
     }
-    /* Conferentes: ranking em tela cheia (KPIs só no meta do header) */
+    /* Conferentes: KPIs + ranking (Design System) */
     #armLayoutConferentes:not(.has-blocks) {
       grid-template-columns: 1fr;
-      grid-template-rows: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: clamp(8px, 1vw, 14px);
     }
-    #armLayoutConferentes:not(.has-blocks) [data-block="kpis"] { display: none !important; }
+    #armLayoutConferentes:not(.has-blocks) [data-block="kpis"] {
+      display: grid !important;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
     #armLayoutConferentes:not(.has-blocks) [data-block="chart"] {
       grid-column: 1;
-      grid-row: 1;
+      grid-row: 2;
       min-height: 0;
     }
     .arm-layout:not(.has-blocks) [data-block="kpis"] { flex-shrink: 0; }
@@ -2814,7 +3067,7 @@
     .ctr-layout [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
     .ctr-layout [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
     .ctr-layout [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
-    .ctr-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .ctr-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .ctr-mix {
       display: flex;
       flex-wrap: wrap;
@@ -3234,7 +3487,7 @@
     }
     .rec-kpis {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: clamp(8px, 1vmin, 14px);
     }
     /* 019 — KPIs · torres por filial · CTRCs atrasados */
@@ -3917,7 +4170,7 @@
     }
     .arm-kpis {
       display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-template-columns: repeat(8, minmax(0, 1fr));
       gap: 8px;
     }
     .arm-kpi {
@@ -4490,7 +4743,7 @@
   <div id="panel-operacao" class="sector-root">
   <div class="tv-hint" id="tvHint">Modo TV · F ou ESC para sair · ideal para televisão</div>
   <div class="board">
-    <header class="topbar">
+    <header class="topbar ds-header">
       <div class="brand">
         <img
           class="js-sector-menu"
@@ -4518,8 +4771,8 @@
     <div class="view active" id="viewColeta">
       <section class="arena arena-single">
         <div class="arena-body ops-layout" id="opsLayoutColeta">
-          <div class="resumo-top resumo-single dash-block" data-block="resumo" aria-label="Resumo coleta">
-            <div class="resumo-card rc-col">
+          <div class="resumo-top resumo-single dash-block ds-kpi-row" data-block="resumo" aria-label="Resumo coleta">
+            <div class="resumo-card rc-col ds-panel">
               <p class="resumo-kicker">Coleta</p>
               <div class="resumo-total"><span>Total</span><strong id="totalColetas">0</strong></div>
               <div class="resumo-stats">
@@ -4527,17 +4780,18 @@
                 <div class="s-rota"><span>Em rota</span><b id="statRota">0</b></div>
                 <div class="s-par"><span>Parado</span><b id="statPar">0</b></div>
                 <div class="s-can"><span>Cancelada</span><b id="statCan">0</b></div>
+                <div class="s-pct"><span>% realização</span><b id="statPctReal">0%</b></div>
               </div>
             </div>
           </div>
 
-          <div class="ops-col dash-block" data-block="placas">
+          <div class="ops-col dash-block ds-panel" data-block="placas">
             <div class="col-sub">Placas</div>
             <div class="pop-stack" id="placaStack"></div>
           </div>
-          <div class="ops-col dash-block ops-col-torres" data-block="torres">
+          <div class="ops-col dash-block ops-col-torres ds-panel" data-block="torres">
             <div class="col-sub">Situações</div>
-            <div class="torres">
+            <div class="torres" id="coletaTorres">
               <div class="torre t-col">
                 <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
                 <div class="barra" id="barReal"><strong id="nReal">0<span class="pct-sign">%</span></strong></div>
@@ -4559,8 +4813,30 @@
                 <div class="base"><div class="lbl">Cancelada</div></div>
               </div>
             </div>
+            <div class="ds-hstatus" id="coletaHStatus" hidden aria-label="Status das coletas em faixas">
+              <div class="ds-hstatus-row">
+                <div class="ds-hstatus-lab is-ok">Realizadas</div>
+                <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-ok" id="colHFillReal"></div></div>
+                <div class="ds-hstatus-meta"><span id="colHNreal">0</span> · <span id="colHPreal">0%</span></div>
+              </div>
+              <div class="ds-hstatus-row">
+                <div class="ds-hstatus-lab is-run">Em rota</div>
+                <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-run" id="colHFillRota"></div></div>
+                <div class="ds-hstatus-meta"><span id="colHNRota">0</span> · <span id="colHPRota">0%</span></div>
+              </div>
+              <div class="ds-hstatus-row">
+                <div class="ds-hstatus-lab is-warn">Pendentes</div>
+                <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-warn" id="colHFillPar"></div></div>
+                <div class="ds-hstatus-meta"><span id="colHNPar">0</span> · <span id="colHPPar">0%</span></div>
+              </div>
+              <div class="ds-hstatus-row">
+                <div class="ds-hstatus-lab is-crit">Canceladas</div>
+                <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-crit" id="colHFillCan"></div></div>
+                <div class="ds-hstatus-meta"><span id="colHNCan">0</span> · <span id="colHPCan">0%</span></div>
+              </div>
+            </div>
           </div>
-          <div class="ops-col dash-block" data-block="prazo">
+          <div class="ops-col dash-block ds-panel" data-block="prazo">
             <div class="col-sub">Prazo / perdidas</div>
             <div class="pop-stack" id="prazoStack"></div>
           </div>
@@ -4572,19 +4848,20 @@
     <div class="view" id="viewEntrega">
       <section class="arena arena-single">
         <div class="arena-body ops-layout" id="opsLayoutEntrega">
-          <div class="resumo-top resumo-single dash-block" data-block="resumo" aria-label="Resumo entrega">
-            <div class="resumo-card rc-ent">
+          <div class="resumo-top resumo-single dash-block ds-kpi-row" data-block="resumo" aria-label="Resumo entrega">
+            <div class="resumo-card rc-ent ds-panel">
               <p class="resumo-kicker">Entrega</p>
               <div class="resumo-total"><span>Total</span><strong id="entTotal">0</strong></div>
               <div class="resumo-stats stats-3">
                 <div class="s-real"><span>Realizada</span><b id="sumEntReal">0</b></div>
                 <div class="s-rota"><span>Em rota</span><b id="sumEntRota">0</b></div>
                 <div class="s-par"><span>Pendência</span><b id="sumEntPar">0</b></div>
+                <div class="s-pct"><span>% realização</span><b id="sumEntPct">0%</b></div>
               </div>
             </div>
           </div>
 
-          <div class="ops-col dash-block ops-col-banners" data-block="banners">
+          <div class="ops-col dash-block ops-col-banners ds-panel" data-block="banners">
             <div class="col-sub" id="entChartSub">Entregas</div>
             <div class="entrega-pizza-wrap" id="entregaPizzaWrap" hidden>
               <svg id="entregaPizza" class="agenda-pizza entrega-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de entregas"></svg>
@@ -4656,43 +4933,43 @@
         </header>
 
         <div class="agenda-layout" id="agendaLayout">
-        <div class="agenda-kpis dash-block" data-block="kpis" id="agendaKpis" aria-label="Totais do mês">
-          <div class="agenda-kpi">
+        <div class="agenda-kpis dash-block ds-kpi-row" data-block="kpis" id="agendaKpis" aria-label="Totais do mês">
+          <div class="agenda-kpi ds-kpi is-neutral">
             <span>Agendamentos</span>
             <b id="kpiTotal">0</b>
             <small id="kpiTotalSub">CTRC no mês</small>
           </div>
-          <div class="agenda-kpi k-rota">
+          <div class="agenda-kpi k-rota ds-kpi is-run">
             <span>Em rota</span>
             <b id="kpiRota">0</b>
             <small id="kpiRotaSub">saída p/ entrega</small>
           </div>
-          <div class="agenda-kpi k-arm">
+          <div class="agenda-kpi k-arm ds-kpi is-warn">
             <span>No armazém</span>
             <b id="kpiArm">0</b>
             <small id="kpiArmSub">parado · 0 kg</small>
           </div>
-          <div class="agenda-kpi k-ok">
+          <div class="agenda-kpi k-ok ds-kpi is-ok">
             <span>Realizado</span>
             <b id="kpiReal">0</b>
             <small id="kpiRealSub">0 kg · R$ 0</small>
           </div>
-          <div class="agenda-kpi k-alerta">
+          <div class="agenda-kpi k-alerta ds-kpi is-crit">
             <span>Sem saída</span>
             <b id="kpiAlerta">0</b>
             <small>agendado hoje / alerta</small>
           </div>
-          <div class="agenda-kpi k-amanha">
+          <div class="agenda-kpi k-amanha ds-kpi is-run">
             <span>Amanhã</span>
             <b id="kpiAmanha">0</b>
             <small id="kpiAmanhaSub">agendados</small>
           </div>
-          <div class="agenda-kpi k-peso">
+          <div class="agenda-kpi k-peso ds-kpi is-secondary is-neutral">
             <span>Peso</span>
             <b id="kpiPeso">0</b>
             <small>kg no mês</small>
           </div>
-          <div class="agenda-kpi k-frete">
+          <div class="agenda-kpi k-frete ds-kpi is-secondary is-warn">
             <span>Frete</span>
             <b id="kpiFrete">0</b>
             <small>R$ no mês</small>
@@ -4801,7 +5078,7 @@
 
   <div id="panel-armazem" class="sector-root" hidden>
     <div class="arm-wrap">
-      <div class="arm-top">
+      <div class="arm-top ds-header">
         <div class="arm-brand">
           <img
             class="js-sector-menu"
@@ -4827,14 +5104,15 @@
       </div>
       <div class="arm-view active" id="viewArmPatio">
         <div class="arm-layout" id="armLayoutPatio">
-        <div class="arm-kpis dash-block" data-block="kpis">
-          <div class="arm-kpi"><div class="lbl">Veículos</div><div class="val" id="kVeic">0</div></div>
-          <div class="arm-kpi peso"><div class="lbl">Peso total</div><div class="val" id="kPeso">0</div></div>
-          <div class="arm-kpi atrasado"><div class="lbl">Atrasado</div><div class="val" id="kAtr">0</div></div>
-          <div class="arm-kpi descarregando"><div class="lbl">Descarregando</div><div class="val" id="kDes">0</div></div>
-          <div class="arm-kpi chegou"><div class="lbl">No pátio</div><div class="val" id="kChe">0</div></div>
-          <div class="arm-kpi aguardando"><div class="lbl">Aguardando</div><div class="val" id="kAgu">0</div></div>
-          <div class="arm-kpi finalizado"><div class="lbl">Finalizado</div><div class="val" id="kFin">0</div></div>
+        <div class="arm-kpis dash-block ds-kpi-row" data-block="kpis">
+          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Veículos</div><div class="val" id="kVeic">0</div></div>
+          <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Peso total</div><div class="val" id="kPeso">0</div></div>
+          <div class="arm-kpi atrasado ds-kpi is-crit"><div class="lbl">Atrasado</div><div class="val" id="kAtr">0</div></div>
+          <div class="arm-kpi descarregando ds-kpi is-run"><div class="lbl">Descarregando</div><div class="val" id="kDes">0</div></div>
+          <div class="arm-kpi chegou ds-kpi is-run"><div class="lbl">No pátio</div><div class="val" id="kChe">0</div></div>
+          <div class="arm-kpi aguardando ds-kpi is-warn"><div class="lbl">Aguardando</div><div class="val" id="kAgu">0</div></div>
+          <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Finalizado</div><div class="val" id="kFin">0</div></div>
+          <div class="arm-kpi ds-kpi is-warn"><div class="lbl">Tempo médio</div><div class="val" id="kTempoMed">—</div></div>
         </div>
         <div class="arm-hero arm-hero-solo dash-block" data-block="chart">
           <section class="arm-hero-card">
@@ -4904,11 +5182,11 @@
 
       <div class="arm-view" id="viewArmConferentes" hidden>
         <div class="arm-layout" id="armLayoutConferentes">
-        <div class="arm-kpis arm-kpis-conf dash-block" data-block="kpis" hidden aria-hidden="true">
-          <div class="arm-kpi"><div class="lbl">Conferentes</div><div class="val" id="kConfN">0</div></div>
-          <div class="arm-kpi peso"><div class="lbl">Peso total</div><div class="val" id="kConfPeso">0</div></div>
-          <div class="arm-kpi lider"><div class="lbl">Líder</div><div class="val" id="kConfLeader">—</div></div>
-          <div class="arm-kpi finalizado"><div class="lbl">Mês</div><div class="val" id="kConfMes">—</div></div>
+        <div class="arm-kpis arm-kpis-conf dash-block ds-kpi-row" data-block="kpis">
+          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Conferentes</div><div class="val" id="kConfN">0</div></div>
+          <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Peso total</div><div class="val" id="kConfPeso">0</div></div>
+          <div class="arm-kpi lider ds-kpi is-ok"><div class="lbl">Líder</div><div class="val" id="kConfLeader">—</div></div>
+          <div class="arm-kpi finalizado ds-kpi is-run"><div class="lbl">Mês</div><div class="val" id="kConfMes">—</div></div>
         </div>
         <section class="arm-hero-card arm-conf-card dash-block" data-block="chart">
           <header class="arm-conf-head">
@@ -4926,7 +5204,7 @@
 
   <div id="panel-contratacao" class="sector-root" hidden>
     <div class="ctr-wrap">
-      <div class="arm-top ctr-top">
+      <div class="arm-top ctr-top ds-header">
         <div class="arm-brand">
           <img
             class="js-sector-menu"
@@ -4951,11 +5229,12 @@
         </div>
       </div>
       <div class="ctr-layout" id="ctrLayout">
-        <div class="arm-kpis ctr-kpis dash-block" data-block="kpis">
-          <div class="arm-kpi"><div class="lbl">Veículos</div><div class="val" id="ctrVeic">0</div></div>
-          <div class="arm-kpi atrasado"><div class="lbl">Custo</div><div class="val" id="ctrCusto">0</div></div>
-          <div class="arm-kpi finalizado"><div class="lbl">Frete</div><div class="val" id="ctrFrete">0</div></div>
-          <div class="arm-kpi chegou"><div class="lbl">Período</div><div class="val" id="ctrPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
+        <div class="arm-kpis ctr-kpis dash-block ds-kpi-row" data-block="kpis">
+          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Veículos</div><div class="val" id="ctrVeic">0</div></div>
+          <div class="arm-kpi atrasado ds-kpi is-warn"><div class="lbl">Custo</div><div class="val" id="ctrCusto">0</div></div>
+          <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Frete</div><div class="val" id="ctrFrete">0</div></div>
+          <div class="arm-kpi ds-kpi is-run"><div class="lbl">Custo médio</div><div class="val" id="ctrCustoMed" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
+          <div class="arm-kpi chegou ds-kpi is-neutral"><div class="lbl">Período</div><div class="val" id="ctrPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
         </div>
         <section class="arm-hero-card dash-block" data-block="chart">
           <header>
@@ -4995,7 +5274,7 @@
   </div>
   <div id="panel-pendencia" class="sector-root" hidden>
     <div class="pen-wrap">
-      <div class="arm-top pen-top">
+      <div class="arm-top pen-top ds-header">
         <div class="arm-brand">
           <img
             class="js-sector-menu"
@@ -5020,23 +5299,24 @@
         </div>
       </div>
       <div class="pen-layout" id="penLayout">
-        <div class="arm-kpis pen-kpis dash-block" data-block="kpis">
-          <div class="arm-kpi finalizado"><div class="lbl">SLA</div><div class="val" id="penSla">0%</div></div>
-          <div class="arm-kpi"><div class="lbl">Solucionadas - 63</div><div class="val" id="penSoluc">0</div></div>
-          <div class="arm-kpi atrasado"><div class="lbl">Em aberto</div><div class="val" id="penAbertas">0</div></div>
-          <div class="arm-kpi chegou"><div class="lbl">Período</div><div class="val" id="penPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
+        <div class="arm-kpis pen-kpis dash-block ds-kpi-row" data-block="kpis">
+          <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">SLA</div><div class="val" id="penSla">0%</div></div>
+          <div class="arm-kpi ds-kpi is-ok"><div class="lbl">Solucionadas</div><div class="val" id="penSoluc">0</div></div>
+          <div class="arm-kpi atrasado ds-kpi is-crit"><div class="lbl">Em aberto</div><div class="val" id="penAbertas">0</div></div>
+          <div class="arm-kpi chegou ds-kpi is-neutral"><div class="lbl">Período</div><div class="val" id="penPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
         </div>
-        <div class="arm-hero arm-hero-solo dash-block" data-block="chart">
+        <div class="arm-hero arm-hero-solo dash-block ds-panel" data-block="chart">
           <section class="arm-hero-card">
             <header>
-              <h2>SLA do setor</h2>
+              <h2>Ofensores (Pareto)</h2>
               <div class="pen-hero-meta">
                 <div class="meta" id="penOfMeta">63 positiva · demais negativas</div>
                 <div class="meta" id="penAtualizado">atualizado —</div>
               </div>
             </header>
-            <div class="arm-towers-wrap pen-towers-wrap">
+            <div class="arm-towers-wrap pen-towers-wrap" id="penTorresWrap">
               <div class="torres arm-torres pen-torres" id="penTorres" aria-label="Torres de ofensores"></div>
+              <div class="ds-pareto" id="penPareto" hidden aria-label="Pareto de ofensores"></div>
             </div>
             <div class="arm-err" id="penErr" hidden></div>
           </section>
@@ -5046,7 +5326,7 @@
   </div>
   <div id="panel-reciclagem" class="sector-root" hidden>
     <div class="rec-wrap">
-      <div class="arm-top rec-top">
+      <div class="arm-top rec-top ds-header">
         <div class="arm-brand">
           <img
             class="js-sector-menu"
@@ -5071,10 +5351,11 @@
         </div>
       </div>
       <div class="rec-layout" id="recLayout">
-        <div class="arm-kpis rec-kpis dash-block" data-block="kpis">
-          <div class="arm-kpi finalizado"><div class="lbl">Frete</div><div class="val" id="recFrete">R$ 0</div></div>
-          <div class="arm-kpi peso"><div class="lbl">Peso</div><div class="val" id="recPeso">0</div></div>
-          <div class="arm-kpi atrasado"><div class="lbl">CTRCs</div><div class="val" id="recQtd">0</div></div>
+        <div class="arm-kpis rec-kpis dash-block ds-kpi-row" data-block="kpis">
+          <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Frete</div><div class="val" id="recFrete">R$ 0</div></div>
+          <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Peso</div><div class="val" id="recPeso">0</div></div>
+          <div class="arm-kpi atrasado ds-kpi is-crit"><div class="lbl">CTRCs</div><div class="val" id="recQtd">0</div></div>
+          <div class="arm-kpi ds-kpi is-warn"><div class="lbl">Visão</div><div class="val" id="recVisao" style="font-size:clamp(12px,1.4vw,16px)">—</div></div>
         </div>
 
         <!-- 019 Sem transferência: torres verticais por cidade/UF + CTRCs atrasados -->
@@ -5112,14 +5393,14 @@
 
         <!-- 081 Sem saída: torres horizontais -->
         <div class="rec-towers-grid rec-view-081" id="recView081">
-          <section class="rec-htowers-card">
+          <section class="rec-htowers-card dash-block ds-panel" data-block="chart">
             <header>
               <h2>CTEs mais atrasados</h2>
               <div class="meta" id="recCteMeta">top por dias de atraso</div>
             </header>
             <div class="rec-htowers" id="recTorresCte" aria-label="Torres horizontais CTE"></div>
           </section>
-          <section class="rec-htowers-card">
+          <section class="rec-htowers-card dash-block ds-panel" data-block="tabela">
             <header>
               <h2>Clientes mais atrasados</h2>
               <div class="meta" id="recCliMeta">top por atraso máximo</div>
@@ -5134,7 +5415,7 @@
   </div>
   <div id="panel-emissao" class="sector-root" hidden>
     <div class="emi-wrap">
-      <div class="arm-top emi-top">
+      <div class="arm-top emi-top ds-header">
         <div class="arm-brand">
           <img
             class="js-sector-menu"
@@ -5160,19 +5441,19 @@
       </div>
 
       <div class="emi-layout" id="emiLayout">
-        <div class="arm-kpis emi-kpis-shift dash-block" data-block="shift">
-          <div class="arm-kpi chegou"><div class="lbl">Dia</div><div class="val" id="emiDia">0</div></div>
-          <div class="arm-kpi"><div class="lbl">Noite</div><div class="val" id="emiNoite">0</div></div>
-          <div class="arm-kpi peso"><div class="lbl">Cubagem</div><div class="val" id="emiCubagem" style="font-size:clamp(14px,1.6vw,22px)">0</div></div>
-          <div class="arm-kpi atrasado"><div class="lbl">Cancelados</div><div class="val" id="emiCancelados">0</div></div>
+        <div class="arm-kpis emi-kpis-shift dash-block ds-kpi-row" data-block="shift">
+          <div class="arm-kpi chegou ds-kpi is-run"><div class="lbl">Dia</div><div class="val" id="emiDia">0</div></div>
+          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Noite</div><div class="val" id="emiNoite">0</div></div>
+          <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Cubagem</div><div class="val" id="emiCubagem" style="font-size:clamp(14px,1.6vw,22px)">0</div></div>
+          <div class="arm-kpi atrasado ds-kpi is-crit"><div class="lbl">Cancelados</div><div class="val" id="emiCancelados">0</div></div>
         </div>
 
-        <div class="arm-kpis emi-kpis dash-block" data-block="kpis">
-          <div class="arm-kpi"><div class="lbl">CTEs</div><div class="val" id="emiCtes">0</div></div>
-          <div class="arm-kpi peso"><div class="lbl">Peso</div><div class="val" id="emiPeso" style="font-size:clamp(13px,1.5vw,20px)">0</div></div>
-          <div class="arm-kpi finalizado"><div class="lbl">Valor mercadoria</div><div class="val" id="emiValor" style="font-size:clamp(12px,1.35vw,18px)">R$ 0</div></div>
-          <div class="arm-kpi chegou"><div class="lbl">Volumes</div><div class="val" id="emiVolumes">0</div></div>
-          <div class="arm-kpi descarregando"><div class="lbl">Frete</div><div class="val" id="emiFrete" style="font-size:clamp(12px,1.35vw,18px)">R$ 0</div></div>
+        <div class="arm-kpis emi-kpis dash-block ds-kpi-row" data-block="kpis">
+          <div class="arm-kpi ds-kpi is-ok"><div class="lbl">CTEs</div><div class="val" id="emiCtes">0</div></div>
+          <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Peso</div><div class="val" id="emiPeso" style="font-size:clamp(13px,1.5vw,20px)">0</div></div>
+          <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Valor mercadoria</div><div class="val" id="emiValor" style="font-size:clamp(12px,1.35vw,18px)">R$ 0</div></div>
+          <div class="arm-kpi chegou ds-kpi is-run"><div class="lbl">Volumes</div><div class="val" id="emiVolumes">0</div></div>
+          <div class="arm-kpi descarregando ds-kpi is-warn"><div class="lbl">Frete</div><div class="val" id="emiFrete" style="font-size:clamp(12px,1.35vw,18px)">R$ 0</div></div>
         </div>
 
         <div class="emi-main dash-block" data-block="chart">
@@ -5605,6 +5886,9 @@
       ];
       const entTotal = document.getElementById('entTotal');
       if (entTotal) entTotal.textContent = String(total);
+      const pctReal = total > 0 ? Math.round(((counts.realizada || 0) / total) * 100) : 0;
+      const pctEl = document.getElementById('sumEntPct');
+      if (pctEl) pctEl.textContent = pctReal + '%';
       items.forEach(({ seg, ban, n, p, sum, val }) => {
         const pct = total > 0 ? Math.round((val / total) * 100) : 0;
         const grow = total > 0 ? Math.max(val, 0) : 1;
@@ -5778,20 +6062,22 @@
 
     function renderTorres(counts) {
       const items = [
-        { suf: 'Real', bar: 'barReal', val: counts.realizada || 0 },
-        { suf: 'Rota', bar: 'barRota', val: counts.em_rota || 0 },
-        { suf: 'Par', bar: 'barPar', val: counts.parado || 0 },
-        { suf: 'Can', bar: 'barCan', val: counts.cancelada || 0 },
+        { suf: 'Real', bar: 'barReal', val: counts.realizada || 0, hFill: 'colHFillReal', hN: 'colHNreal', hP: 'colHPreal' },
+        { suf: 'Rota', bar: 'barRota', val: counts.em_rota || 0, hFill: 'colHFillRota', hN: 'colHNRota', hP: 'colHPRota' },
+        { suf: 'Par', bar: 'barPar', val: counts.parado || 0, hFill: 'colHFillPar', hN: 'colHNPar', hP: 'colHPPar' },
+        { suf: 'Can', bar: 'barCan', val: counts.cancelada || 0, hFill: 'colHFillCan', hN: 'colHNCan', hP: 'colHPCan' },
       ];
       const total = Math.max(0, Number(counts.total) || 0);
       // Escala pelo maior valor (torres "andam" juntas quando % muda)
       const max = Math.max(...items.map(i => i.val), 1);
 
-      items.forEach(({ suf, bar, val }) => {
+      items.forEach(({ suf, bar, val, hFill, hN, hP }) => {
         const pct = total > 0 ? Math.round((val / total) * 100) : 0;
         const nEl = document.getElementById('n' + suf);
-        nEl.innerHTML = `${pct}<span class="pct-sign">%</span>`;
-        nEl.title = `${val} de ${total}`;
+        if (nEl) {
+          nEl.innerHTML = `${pct}<span class="pct-sign">%</span>`;
+          nEl.title = `${val} de ${total}`;
+        }
         const pin = document.getElementById('rank' + suf);
         if (pin) {
           pin.textContent = String(val);
@@ -5803,8 +6089,15 @@
           // Altura segue o percentual relativo (sobe/desce suavemente via CSS transition)
           barEl.style.height = alturaTorre(val, max) + 'px';
         }
+        const fill = document.getElementById(hFill);
+        if (fill) fill.style.width = (total > 0 ? pct : 0) + '%';
+        const hn = document.getElementById(hN);
+        if (hn) hn.textContent = String(val);
+        const hp = document.getElementById(hP);
+        if (hp) hp.textContent = pct + '%';
       });
-      document.getElementById('totalColetas').textContent = String(total);
+      const totalEl = document.getElementById('totalColetas');
+      if (totalEl) totalEl.textContent = String(total);
       const parts = [
         ['statReal', counts.realizada || 0],
         ['statRota', counts.em_rota || 0],
@@ -5815,6 +6108,9 @@
         const el = document.getElementById(statId);
         if (el) el.textContent = String(val);
       });
+      const pctReal = total > 0 ? Math.round(((counts.realizada || 0) / total) * 100) : 0;
+      const pctEl = document.getElementById('statPctReal');
+      if (pctEl) pctEl.textContent = pctReal + '%';
       const sub = document.getElementById('totalSub');
       if (sub) { sub.hidden = true; sub.textContent = ''; }
       lastCounts = counts;
@@ -6257,10 +6553,13 @@
         const views = defaults.views || {};
         ui = views[viewId] || views.patio || ui || {};
       }
-      // Entrega + Agendamento: pizza (layout remoto/legado ainda vinha "towers"/faixas)
+      // Entrega + Agendamento: pizza · Coleta: faixas horizontais (mapa)
       let chart = String(ui.chart || 'towers').toLowerCase();
       if (sec === 'distribuicao' && (viewId === 'entrega' || viewId === 'agendamento')) {
         chart = 'pizza';
+      }
+      if (sec === 'distribuicao' && viewId === 'coleta') {
+        chart = 'bars';
       }
       if (!['towers', 'pizza', 'bars'].includes(chart)) chart = 'towers';
       const scale = String(ui.scale || 'large').toLowerCase();
@@ -6343,6 +6642,24 @@
       if (entPizza) entPizza.hidden = ui.chart !== 'pizza';
       if (entCyl) entCyl.hidden = ui.chart === 'pizza';
       if (entSub) entSub.textContent = ui.chart === 'pizza' ? 'Pizza · entregas' : 'Faixas %';
+
+      // Coleta: faixas horizontais (mapa) — torres ficam de fallback se chart=towers
+      const colTorres = document.getElementById('coletaTorres');
+      const colH = document.getElementById('coletaHStatus');
+      if (colTorres && colH) {
+        const useBars = CURRENT_SECTOR === 'distribuicao'
+          && CURRENT_VIEW === 'coleta'
+          && ui.chart !== 'towers';
+        colTorres.hidden = useBars;
+        colH.hidden = !useBars;
+      }
+      const penTorres = document.getElementById('penTorres');
+      const penPareto = document.getElementById('penPareto');
+      if (penTorres && penPareto) {
+        const usePareto = CURRENT_SECTOR === 'pendencia';
+        penTorres.hidden = usePareto;
+        penPareto.hidden = !usePareto;
+      }
 
       document.documentElement.style.setProperty('--dash-font', String(ui.fontZoom || 1));
 
@@ -7043,6 +7360,27 @@
       setArmText('kChe', che);
       setArmText('kAgu', agu);
       setArmText('kFin', fin);
+      {
+        let sumMin = 0;
+        let nMin = 0;
+        for (const v of veics) {
+          let m = Number(v.tempo_descarga_min);
+          if (!Number.isFinite(m) || m <= 0) {
+            const ini = typeof armStripOperador === 'function' ? armStripOperador(v.inicio_descarga) : v.inicio_descarga;
+            const fim = typeof armStripOperador === 'function' ? armStripOperador(v.final_descarga) : v.final_descarga;
+            const iniDt = parseArmDt(ini);
+            const fimDt = parseArmDt(fim);
+            if (iniDt && fimDt && fimDt >= iniDt) m = (fimDt - iniDt) / 60000;
+            else if (iniDt && !fim) m = Math.max(0, (Date.now() - iniDt.getTime()) / 60000);
+          }
+          if (Number.isFinite(m) && m > 0) {
+            sumMin += m;
+            nMin += 1;
+          }
+        }
+        if (nMin > 0) setArmText('kTempoMed', armFmtDuracao(Math.round(sumMin / nMin)) || '—');
+        else setArmText('kTempoMed', '—');
+      }
       setArmText('armAtualizado',
         `pátio · descarregando · +3h · atualizado ${r.atualizado || '—'}`
       );
@@ -7381,10 +7719,11 @@
 
     function renderPenTorres(ofensores) {
       const host = document.getElementById('penTorres');
-      if (!host) return;
+      const pareto = document.getElementById('penPareto');
       const items = (ofensores || []).slice(0, 8);
       if (!items.length) {
-        host.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
+        if (host) host.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
+        if (pareto) pareto.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
         return;
       }
       const max = Math.max(...items.map((o) => Number(o.qtd) || 0), 1);
@@ -7392,6 +7731,27 @@
       const skinsNeg = ['t-of', 't-of2', 't-of3', 't-of4', 't-of5', 't-of6', 't-of7'];
       const tv = document.body.classList.contains('tv-mode');
       let negIdx = 0;
+      let acc = 0;
+      if (pareto) {
+        pareto.innerHTML = items.map((o) => {
+          const qtd = Number(o.qtd) || 0;
+          const pct = Math.round((qtd / total) * 100);
+          acc += pct;
+          const accShow = Math.min(100, acc);
+          const cod = String(o.codigo || '').trim();
+          const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
+          const lab = esc(tv ? shortPenLabel(nome, 28) : shortPenLabel(nome, 36));
+          const w = Math.max(4, Math.round((qtd / max) * 100));
+          return `<div class="ds-pareto-row" title="${esc(cod ? `${cod} · ${nome}` : nome)}">
+            <div class="ds-pareto-lab">${lab}</div>
+            <div class="ds-pareto-track"><div class="ds-pareto-fill" style="width:${w}%"></div></div>
+            <div class="ds-pareto-n">${qtd}</div>
+            <div class="ds-pareto-acc">${accShow}%</div>
+          </div>`;
+        }).join('');
+      }
+      if (!host) return;
+      negIdx = 0;
       host.innerHTML = items.map((o) => {
         const qtd = Number(o.qtd) || 0;
         const pct = Math.round((qtd / total) * 100);
@@ -7624,6 +7984,7 @@
       setRecText('recFrete', resumo.frete_fmt || fmtRecMoney(resumo.frete));
       setRecText('recPeso', resumo.peso_fmt || fmtRecPeso(resumo.peso));
       setRecText('recQtd', resumo.qtd != null ? String(resumo.qtd) : '0');
+      setRecText('recVisao', key === 'sem_saida' ? 'Sem saída' : 'Sem transf.');
       setRecText('recAtualizado', 'atualizado ' + (resumo.atualizado || data.updated_at || '—'));
 
       if (key === 'sem_transferencia') {
@@ -7925,6 +8286,16 @@
         setCtrText('ctrVeic', resumo.total_veiculos || veics.length || '0');
         setCtrText('ctrCusto', 'R$ ' + (resumo.custo_fmt || fmtCtrMoney(resumo.custo || 0)));
         setCtrText('ctrFrete', 'R$ ' + (resumo.frete_fmt || fmtCtrMoney(resumo.frete || 0)));
+        {
+          const nVeic = Number(resumo.total_veiculos) || veics.length || 0;
+          const custo = Number(resumo.custo) || 0;
+          if (nVeic > 0 && custo > 0) {
+            const med = custo / nVeic;
+            setCtrText('ctrCustoMed', 'R$ ' + med.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+          } else {
+            setCtrText('ctrCustoMed', '—');
+          }
+        }
         setCtrText('ctrPeriodo', resumo.periodo || '—');
         setCtrText('ctrAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
         setCtrText('ctrTabMeta', resumo.unidade || 'SPO');

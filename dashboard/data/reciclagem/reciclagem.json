@@ -1,38 +1,28 @@
 {
   "setor": "reciclagem",
-  "updated_at": "2026-08-14T17:44:00",
+  "updated_at": "2026-08-17T08:22:24",
   "sem_transferencia": {
     "programa": "019",
     "titulo": "SEM TRANSFERÊNCIA",
     "resumo": {
-      "atualizado": "14/08/2026 17:42",
-      "periodo": "14/08/2026",
-      "qtd": 258,
-      "frete": 233820.07000000056,
-      "frete_fmt": "R$ 233.820,07",
-      "peso": 226454.06799999997,
-      "peso_fmt": "226.454"
+      "atualizado": "17/08/2026 08:20",
+      "periodo": "17/08/2026",
+      "qtd": 141,
+      "frete": 125622.1599999998,
+      "frete_fmt": "R$ 125.622,16",
+      "peso": 189201.39500000008,
+      "peso_fmt": "189.201"
     },
     "por_filial": [
-      {
-        "cidade": "ANAPOLIS",
-        "uf": "GO",
-        "cidade_uf": "ANAPOLIS/GO",
-        "filial": "APS",
-        "qtd": 27,
-        "frete": 26371.699999999997,
-        "peso": 26414.789999999997,
-        "dias_max": 0
-      },
       {
         "cidade": "GOIANIA",
         "uf": "GO",
         "cidade_uf": "GOIANIA/GO",
         "filial": "GYN",
-        "qtd": 24,
-        "frete": 14242.520000000002,
-        "peso": 8596.948,
-        "dias_max": 60
+        "qtd": 20,
+        "frete": 3676.7400000000016,
+        "peso": 35509.2,
+        "dias_max": 63
       },
       {
         "cidade": "ITATIAIA",
@@ -42,27 +32,7 @@
         "qtd": 16,
         "frete": 3347.01,
         "peso": 121.11199999999998,
-        "dias_max": 10
-      },
-      {
-        "cidade": "ALTAMIRA",
-        "uf": "PA",
-        "cidade_uf": "ALTAMIRA/PA",
-        "filial": "ATM",
-        "qtd": 16,
-        "frete": 7913.9000000000015,
-        "peso": 2796.331,
-        "dias_max": 0
-      },
-      {
-        "cidade": "MARABA",
-        "uf": "PA",
-        "cidade_uf": "MARABA/PA",
-        "filial": "MAB",
-        "qtd": 13,
-        "frete": 10575.619999999999,
-        "peso": 3656.2700000000004,
-        "dias_max": 0
+        "dias_max": 13
       },
       {
         "cidade": "SALTO",
@@ -72,7 +42,7 @@
         "qtd": 11,
         "frete": 7818.500000000001,
         "peso": 7410.184,
-        "dias_max": 129
+        "dias_max": 132
       },
       {
         "cidade": "HORTOLANDIA",
@@ -82,7 +52,7 @@
         "qtd": 10,
         "frete": 4147.1900000000005,
         "peso": 4928.791,
-        "dias_max": 63
+        "dias_max": 66
       },
       {
         "cidade": "ITUPEVA",
@@ -92,17 +62,7 @@
         "qtd": 10,
         "frete": 5018.860000000002,
         "peso": 11578.09,
-        "dias_max": 4
-      },
-      {
-        "cidade": "CAMPO GRANDE",
-        "uf": "MS",
-        "cidade_uf": "CAMPO GRANDE/MS",
-        "filial": "KMS",
-        "qtd": 9,
-        "frete": 8962.48,
-        "peso": 4062.017,
-        "dias_max": 0
+        "dias_max": 7
       },
       {
         "cidade": "JARINU",
@@ -112,27 +72,67 @@
         "qtd": 8,
         "frete": 11940.660000000002,
         "peso": 20603.999999999996,
-        "dias_max": 157
+        "dias_max": 160
       },
       {
-        "cidade": "GUARULHOS",
-        "uf": "SP",
-        "cidade_uf": "GUARULHOS/SP",
-        "filial": "SPL",
-        "qtd": 6,
-        "frete": 1043.85,
-        "peso": 578.0029999999999,
-        "dias_max": 43
-      },
-      {
-        "cidade": "CARIACICA",
-        "uf": "ES",
-        "cidade_uf": "CARIACICA/ES",
-        "filial": "VIX",
+        "cidade": "CUIABA",
+        "uf": "MT",
+        "cidade_uf": "CUIABA/MT",
+        "filial": "CGB",
         "qtd": 5,
-        "frete": 4579.63,
-        "peso": 2944.5050000000006,
-        "dias_max": 2
+        "frete": 17328.359999999997,
+        "peso": 10946.669000000002,
+        "dias_max": 0
+      },
+      {
+        "cidade": "SUMARE",
+        "uf": "SP",
+        "cidade_uf": "SUMARE/SP",
+        "filial": "LEO",
+        "qtd": 4,
+        "frete": 0.04,
+        "peso": 2439.484,
+        "dias_max": 70
+      },
+      {
+        "cidade": "CAMPINAS",
+        "uf": "SP",
+        "cidade_uf": "CAMPINAS/SP",
+        "filial": "LEO",
+        "qtd": 3,
+        "frete": 16176.380000000001,
+        "peso": 22681.006,
+        "dias_max": 33
+      },
+      {
+        "cidade": "BRASILIA",
+        "uf": "DF",
+        "cidade_uf": "BRASILIA/DF",
+        "filial": "BSB",
+        "qtd": 3,
+        "frete": 4500.030000000001,
+        "peso": 9142.986,
+        "dias_max": 4
+      },
+      {
+        "cidade": "BRAGANCA PAULISTA",
+        "uf": "SP",
+        "cidade_uf": "BRAGANCA PAULISTA/SP",
+        "filial": "CPQ",
+        "qtd": 2,
+        "frete": 149.25,
+        "peso": 124.34,
+        "dias_max": 188
+      },
+      {
+        "cidade": "SOCORRO",
+        "uf": "SP",
+        "cidade_uf": "SOCORRO/SP",
+        "filial": "LEO",
+        "qtd": 2,
+        "frete": 611.61,
+        "peso": 72.28,
+        "dias_max": 138
       }
     ],
     "top_cte": [
@@ -143,7 +143,7 @@
         "uf": "SP",
         "cidade_uf": "BRAGANCA PAULISTA/SP",
         "cliente": "ELAINE TAVELLA DE OLIVEIRA TAV",
-        "dias_atraso": 185,
+        "dias_atraso": 188,
         "ultima_ocorrencia": "CHEGADA NA UNIDADE"
       },
       {
@@ -153,7 +153,7 @@
         "uf": "SP",
         "cidade_uf": "JARINU/SP",
         "cliente": "ESSITY DO BRASIL INDUSTRIA E C",
-        "dias_atraso": 157,
+        "dias_atraso": 160,
         "ultima_ocorrencia": "AGUARDANDO AGENDAMENTO DO CLIENTE"
       },
       {
@@ -163,7 +163,7 @@
         "uf": "SP",
         "cidade_uf": "SOCORRO/SP",
         "cliente": "LOJAS UNIAO LTDA",
-        "dias_atraso": 135,
+        "dias_atraso": 138,
         "ultima_ocorrencia": "ENTREGA AGENDADA"
       },
       {
@@ -173,7 +173,7 @@
         "uf": "SP",
         "cidade_uf": "SALTO/SP",
         "cliente": "DECOR COLORS TINTAS LTDA",
-        "dias_atraso": 129,
+        "dias_atraso": 132,
         "ultima_ocorrencia": "ENTREGA PREJUDICADA PELO HORARIO"
       },
       {
@@ -183,7 +183,7 @@
         "uf": "SP",
         "cidade_uf": "SAO JOAO DA BOA VISTA/SP",
         "cliente": "MANTIQUEIRA DISTR.PROD DE HIGI",
-        "dias_atraso": 123,
+        "dias_atraso": 126,
         "ultima_ocorrencia": "LIBERADO PELO CR"
       },
       {
@@ -193,7 +193,7 @@
         "uf": "SP",
         "cidade_uf": "JARINU/SP",
         "cliente": "ESSITY DO BRASIL INDUSTRIA E C",
-        "dias_atraso": 109,
+        "dias_atraso": 112,
         "ultima_ocorrencia": "FALTA COM BUSCA / RECONFERENCIA"
       },
       {
@@ -203,7 +203,7 @@
         "uf": "SP",
         "cidade_uf": "JARINU/SP",
         "cliente": "ESSITY DO BRASIL INDUSTRIA E C",
-        "dias_atraso": 109,
+        "dias_atraso": 112,
         "ultima_ocorrencia": "FALTA COM BUSCA / RECONFERENCIA"
       },
       {
@@ -213,7 +213,7 @@
         "uf": "SP",
         "cidade_uf": "SOCORRO/SP",
         "cliente": "LOJAS UNIAO LTDA",
-        "dias_atraso": 109,
+        "dias_atraso": 112,
         "ultima_ocorrencia": "IMAGENS OPERACIONAIS CARGA & DESCARGA / OUTROS"
       },
       {
@@ -223,7 +223,7 @@
         "uf": "SP",
         "cidade_uf": "SAO BERNARDO DO CAMPO/SP",
         "cliente": "EVER GREEN IND E COM LTDA",
-        "dias_atraso": 108,
+        "dias_atraso": 111,
         "ultima_ocorrencia": "IMAGENS OPERACIONAIS CARGA & DESCARGA / OUTROS"
       },
       {
@@ -233,7 +233,7 @@
         "uf": "SP",
         "cidade_uf": "SALTO/SP",
         "cliente": "LOJAS CEM S/A",
-        "dias_atraso": 106,
+        "dias_atraso": 109,
         "ultima_ocorrencia": "DOCUMENTO DE TRANSPORTE EMITIDO"
       }
     ]
@@ -242,15 +242,157 @@
     "programa": "081",
     "titulo": "SEM SAÍDA PARA ENTREGA",
     "resumo": {
-      "atualizado": "14/08/2026 17:44",
-      "periodo": "15/08/2026",
-      "qtd": 0,
-      "frete": 0,
+      "atualizado": "17/08/2026 08:22",
+      "periodo": "18/08/2026",
+      "qtd": 90,
+      "frete": 0.0,
       "frete_fmt": "R$ 0,00",
-      "peso": 0,
-      "peso_fmt": "0"
+      "peso": 285036.08400000003,
+      "peso_fmt": "285.036"
     },
-    "top_cte": [],
-    "top_cliente": []
+    "top_cte": [
+      {
+        "ctrc": "UNIDADE",
+        "cliente": "",
+        "dias_atraso": 0,
+        "cidade_uf": "",
+        "ultima_ocorrencia": ""
+      },
+      {
+        "ctrc": "UNIDADE",
+        "cliente": "",
+        "dias_atraso": 0,
+        "cidade_uf": "",
+        "ultima_ocorrencia": ""
+      },
+      {
+        "ctrc": "UNIDADE",
+        "cliente": "",
+        "dias_atraso": 0,
+        "cidade_uf": "",
+        "ultima_ocorrencia": ""
+      },
+      {
+        "ctrc": "SPO",
+        "cliente": "AV. PADRE ANCHIETA 740A",
+        "dias_atraso": 0,
+        "cidade_uf": "SP/01",
+        "ultima_ocorrencia": "21878239000139"
+      },
+      {
+        "ctrc": "SPO",
+        "cliente": "AV FAGUNDES DE OLIVEIRA 964",
+        "dias_atraso": 0,
+        "cidade_uf": "SP/01",
+        "ultima_ocorrencia": "00042814057200"
+      },
+      {
+        "ctrc": "SPO",
+        "cliente": "R. MANOEL ALONSO ALMENDRA, 285 285",
+        "dias_atraso": 0,
+        "cidade_uf": "SP/06",
+        "ultima_ocorrencia": "27359248000108"
+      },
+      {
+        "ctrc": "SPO",
+        "cliente": "R.CORONEL MORAIS 282",
+        "dias_atraso": 0,
+        "cidade_uf": "SP/04",
+        "ultima_ocorrencia": "60906168000192"
+      },
+      {
+        "ctrc": "SPO",
+        "cliente": "RUA PEDRO DE TOLEDO 600",
+        "dias_atraso": 0,
+        "cidade_uf": "SP/06",
+        "ultima_ocorrencia": "05863583000017"
+      },
+      {
+        "ctrc": "SPO",
+        "cliente": "RUA PEDRO DE TOLEDO 600",
+        "dias_atraso": 0,
+        "cidade_uf": "SP/06",
+        "ultima_ocorrencia": "05863583000017"
+      },
+      {
+        "ctrc": "SPO",
+        "cliente": "RUA ANTONIO AUGUSTO COVELLO 73",
+        "dias_atraso": 0,
+        "cidade_uf": "SP/08",
+        "ultima_ocorrencia": "07921454000144"
+      }
+    ],
+    "top_cliente": [
+      {
+        "cliente": "ROD DOM PEDRO I KM 73 S/N",
+        "dias_max": 0,
+        "qtd": 6,
+        "frete": 0.0,
+        "peso": 6702.84
+      },
+      {
+        "cliente": "RUA PEDRO DE TOLEDO 600",
+        "dias_max": 0,
+        "qtd": 6,
+        "frete": 0.0,
+        "peso": 121332.0
+      },
+      {
+        "cliente": "AV MINAS GERAIS 1240",
+        "dias_max": 0,
+        "qtd": 6,
+        "frete": 0.0,
+        "peso": 45000.0
+      },
+      {
+        "cliente": "R LUIZ FERIANE 189",
+        "dias_max": 0,
+        "qtd": 6,
+        "frete": 0.0,
+        "peso": 39600.899999999994
+      },
+      {
+        "cliente": "(sem cliente)",
+        "dias_max": 0,
+        "qtd": 3,
+        "frete": 0.0,
+        "peso": 0.0
+      },
+      {
+        "cliente": "AVENIDA DR. SEBASTIAO HENRIQUE DA CUNHA 1658 PAVMTOTERREO",
+        "dias_max": 0,
+        "qtd": 3,
+        "frete": 0.0,
+        "peso": 105.0
+      },
+      {
+        "cliente": "RUA PROFESSOR ORACY GOMES 121 ENTREGA HORARIO COMERCIAL - CONFORME JA INFORMADO NO CADASTR",
+        "dias_max": 0,
+        "qtd": 3,
+        "frete": 0.0,
+        "peso": 363.0
+      },
+      {
+        "cliente": "AV. PADRE ANCHIETA 740A",
+        "dias_max": 0,
+        "qtd": 3,
+        "frete": 0.0,
+        "peso": 171.0
+      },
+      {
+        "cliente": "AV FAGUNDES DE OLIVEIRA 964",
+        "dias_max": 0,
+        "qtd": 3,
+        "frete": 0.0,
+        "peso": 39.78
+      },
+      {
+        "cliente": "R. MANOEL ALONSO ALMENDRA, 285 285",
+        "dias_max": 0,
+        "qtd": 3,
+        "frete": 0.0,
+        "peso": 36.0
+      }
+    ]
   }
 }
