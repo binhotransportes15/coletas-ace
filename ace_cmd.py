@@ -1062,19 +1062,25 @@ def run_sync_455() -> str:
 
 
 def run_mapa_cmd() -> str:
-    """Puxa entrega 36 no SSW e monta o Mapa Operacional (CyberMap)."""
-    from pipeline import run_full_pipeline_36
+    """Puxa coleta 50 + 103 + entrega 36 e monta o Mapa Operacional."""
+    from pipeline import run_pipeline_mapa
 
-    print("\n=== Mapa Operacional (36 + CyberMap) ===")
-    result = run_full_pipeline_36(
+    print("\n=== Mapa Operacional (50 + 103 + 36 + CyberMap) ===")
+    result = run_pipeline_mapa(
         headless=_cfg_headless(),
         on_status=_on_status,
     )
     mapa = result.get("mapa") or {}
     tot = (mapa.get("payload") or {}).get("totais") or {}
+    errs = result.get("errors") or {}
+    extra = f" · erros={errs}" if errs else ""
     return (
-        f"mapa OK · periodo={result.get('period') or '—'} · "
-        f"veiculos={tot.get('veiculos')} paradas={tot.get('paradas')}"
+        f"mapa OK · veiculos={tot.get('veiculos')} "
+        f"E={tot.get('veiculos_entrega')} C={tot.get('veiculos_coleta')} "
+        f"paradas={tot.get('paradas')} · "
+        f"frete E R${tot.get('frete_entrega') or 0} · "
+        f"frete C R${tot.get('frete_coleta') or 0}"
+        f"{extra}"
     )
 
 

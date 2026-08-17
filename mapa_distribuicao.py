@@ -23,6 +23,7 @@ MAPA_CACHE_JSON = CACHE_DIR / "mapa_distribuicao.json"
 MAPA_DASH_DIR = DASHBOARD_DIR / "data" / "mapa"
 MAPA_DASH_JSON = MAPA_DASH_DIR / "mapa_distribuicao.json"
 MAPA_LOCAL_JSON = DASHBOARD_DIR / "data" / "local" / "mapa_distribuicao.json"
+COLETAS_103_CSV = CACHE_DIR / "coletas_103.csv"
 ENTREGAS_36_CSV = CACHE_DIR / "entregas_36.csv"
 
 # Situações = veículo na rua (entrega)
@@ -108,6 +109,22 @@ def _ace_em_rota_plates() -> set[str]:
             if str(row.get("status_ace") or "").strip().lower() != "em_rota":
                 continue
             if str(row.get("excluido") or "") in {"1", "true", "True"}:
+                continue
+            pl = _norm_plate(row.get("placa") or "")
+            if pl:
+                out.add(pl)
+    return out
+
+
+def _ace_coleta_em_rota_plates() -> set[str]:
+    """Placas de coleta na rua (103 · comandada → em_rota)."""
+    path = COLETAS_103_CSV
+    if not path.is_file():
+        return set()
+    out: set[str] = set()
+    with path.open(encoding="utf-8-sig", newline="") as fh:
+        for row in csv.DictReader(fh):
+            if str(row.get("status_ace") or "").strip().lower() != "em_rota":
                 continue
             pl = _norm_plate(row.get("placa") or "")
             if pl:
@@ -203,7 +220,7 @@ def _find_report_50() -> Path | None:
 
 
 def _find_report_76_cyber() -> Path | None:
-    """SSW 76 / ssw0216 (CyberMap) — frete/peso oficial das coletas. ≠ ACE 076 remuneração."""
+    """SSW 76 / ssw0216 (CyberMap) — frete/peso oficial das coletas. ≠ parser remuneração ACE."""
     try:
         from map_renderer import load_project
 
@@ -213,7 +230,13 @@ def _find_report_76_cyber() -> Path | None:
     except Exception:
         pass
     return _newest_in_folders(
-        ("relatorio_76*", "*ssw0216*", "*0216*.sswweb"),
+        (
+            "relatorio_76*",
+            "mapa_76*",
+            "*ssw0216*",
+            "*0216*.sswweb",
+            "contratacao_076*",
+        ),
         _download_folders(),
     )
 
@@ -233,19 +256,8 @@ def _find_report_200() -> Path | None:
     )
 
 
-def _frete_peso_por_placa(
-    *,
-    report_36: Path | None,
-    on_status: StatusCallback,
-) -> dict[str, dict[str, float]]:
-    """Totais por placa (coleta/entrega) via lógica CyberMap: 36 + 50(+76) + 200."""
-    out: dict[str, dict[str, float]] = {}
-    try:
-        from map_renderer import ProjectConfig, load_project
-        from report76_support import load_combined_operational_frame
-    except Exception as err:
-        on_status(f"Mapa: frete/peso CyberMap indisponível ({err})")
-        return out
+def _build_project_for_frame(*, report_36: Path | None) -> Any:
+    from map_renderer import ProjectConfig, load_project
 
     try:
         base_proj = load_project()
@@ -258,8 +270,7 @@ def _frete_peso_por_placa(
     path36 = str(report_36) if report_36 and report_36.is_file() else (
         str(getattr(base_proj, "report_36_path", "") or "")
     )
-
-    proj = ProjectConfig(
+    return ProjectConfig(
         app_title=getattr(base_proj, "app_title", "ACE"),
         base=getattr(base_proj, "base", None) or ProjectConfig().base,
         report_36_path=path36,
@@ -268,6 +279,26 @@ def _frete_peso_por_placa(
         report_200_path=str(p200) if p200 else str(getattr(base_proj, "report_200_path", "") or ""),
         operation_view_mode="TODOS",
     )
+
+
+def _frete_peso_por_placa(
+    *,
+    report_36: Path | None,
+    on_status: StatusCallback,
+) -> dict[str, dict[str, float]]:
+    """Totais por placa (coleta/entrega) via lógica CyberMap: 36 + 50(+76) + 200."""
+    out: dict[str, dict[str, float]] = {}
+    try:
+        from report76_support import load_combined_operational_frame
+    except Exception as err:
+        on_status(f"Mapa: frete/peso CyberMap indisponível ({err})")
+        return out
+
+    try:
+        proj = _build_project_for_frame(report_36=report_36)
+    except Exception as err:
+        on_status(f"Mapa: frete/peso projeto ({err})")
+        return out
 
     fontes = []
     if proj.report_36_path:
@@ -316,18 +347,265 @@ def _frete_peso_por_placa(
     return out
 
 
+def _build_coleta_vehicles(
+    *,
+    report_36: Path | None,
+    cargas: dict[str, dict[str, float]],
+    on_status: StatusCallback,
+) -> list[dict[str, Any]]:
+    """Rotas das coletas na rua (103 em_rota + relatório 50/76 do CyberMap)."""
+    try:
+        from map_renderer import resolve_operational_point, save_delivery_geocode_cache
+        from osrm_client import build_visual_route
+        from report76_support import load_combined_operational_frame
+    except Exception as err:
+        on_status(f"Mapa: coleta geocode indisponível ({err})")
+        return []
+
+    plates = _ace_coleta_em_rota_plates()
+    if not plates:
+        # fallback: placas que só têm coleta no frame operacional
+        plates = {
+            pl
+            for pl, c in cargas.items()
+            if (c.get("peso_coleta") or c.get("frete_coleta"))
+            and not (c.get("peso_entrega") or c.get("frete_entrega"))
+        }
+    if not plates:
+        on_status("Mapa: nenhuma placa de coleta em rota (103)")
+        return []
+
+    try:
+        proj = _build_project_for_frame(report_36=report_36)
+        df = load_combined_operational_frame(proj)
+    except Exception as err:
+        on_status(f"Mapa: frame coleta falhou ({err})")
+        return []
+
+    if df is None or getattr(df, "empty", True):
+        on_status("Mapa: sem linhas de coleta no operacional (rode `50`)")
+        return []
+
+    col = df[df["MOVIMENTO_NORM"].astype(str).str.upper() == "COLETA"].copy()
+    if col.empty:
+        on_status("Mapa: relatório 50 sem coletas — puxe `50` / `mapa`")
+        return []
+
+    base_name, base_lat, base_lon = _base_ll()
+    base_pt = (base_lat, base_lon)
+    district_points: dict[str, tuple[float, float]] = {}
+    veiculos: list[dict[str, Any]] = []
+
+    plates_sorted = sorted(plates)[:_MAX_VEICULOS]
+    on_status(f"Mapa: {len(plates_sorted)} placa(s) coleta na rua…")
+
+    for pl in plates_sorted:
+        rows = col[col["PLACA_NORM"].astype(str) == pl]
+        if rows.empty:
+            rows = col[col["PLACA"].map(_norm_plate) == pl]
+        if rows.empty:
+            continue
+        stops_out: list[dict[str, Any]] = []
+        coords: list[tuple[float, float]] = []
+        peso_rota = 0.0
+        frete_rota = 0.0
+        motorista = ""
+        for i, (_, row) in enumerate(rows.head(_MAX_PARADAS).iterrows(), start=1):
+            w = _num(row.get("PESO_CALCULADO_NUM"))
+            f = _num(row.get("FRETE_NUM"))
+            peso_rota += w
+            frete_rota += f
+            addr = str(row.get("ENDERECO") or "")
+            cep = str(row.get("CEP") or "")
+            city = str(
+                row.get("CIDADE_ENTREGA_EXIBICAO")
+                or row.get("CLIENTE_EXIBICAO")
+                or ""
+            )
+            bairro = str(row.get("BAIRRO_MAPA") or "")
+            pt = resolve_operational_point(
+                address=addr,
+                cep=cep,
+                city=city,
+                district_norm=bairro,
+                district_points=district_points,
+            )
+            if not pt:
+                continue
+            lat, lon = float(pt[0]), float(pt[1])
+            coords.append((lat, lon))
+            stops_out.append(
+                {
+                    "seq": i,
+                    "lat": lat,
+                    "lon": lon,
+                    "ctrc": str(row.get("CTRC") or row.get("DOCUMENTO_NUMERO") or ""),
+                    "cliente": str(row.get("CLIENTE_EXIBICAO") or row.get("DESTINATARIO_EXIBICAO") or ""),
+                    "cidade": city,
+                    "bairro": bairro,
+                    "status": "coleta",
+                    "cep": cep,
+                    "peso": round(w, 2),
+                    "frete": round(f, 2),
+                    "tipo": "coleta",
+                }
+            )
+
+        if not stops_out and not (peso_rota or frete_rota):
+            op = cargas.get(pl) or {}
+            if not (op.get("peso_coleta") or op.get("frete_coleta")):
+                continue
+
+        polyline: list[list[float]] = []
+        dist_km = 0.0
+        dur_min = 0.0
+        if len(coords) >= 1:
+            try:
+                route = build_visual_route(base_pt, coords, include_return_to_base=False)
+                polyline = [[float(a), float(b)] for a, b in (route.geometry or [])]
+                dist_km = float(getattr(route, "distance_km", 0) or 0)
+                dur_min = float(getattr(route, "duration_min", 0) or 0)
+            except Exception as err:
+                on_status(f"Mapa: OSRM coleta {pl}: {err}")
+                polyline = [[base_lat, base_lon]] + [[a, b] for a, b in coords]
+
+        op = cargas.get(pl) or {}
+        peso_col = float(op.get("peso_coleta") or 0) or peso_rota
+        frete_col = float(op.get("frete_coleta") or 0) or frete_rota
+
+        veiculos.append(
+            {
+                "placa": pl,
+                "motorista": motorista,
+                "tipo": "coleta",
+                "romaneio": "",
+                "paradas_n": len(stops_out),
+                "distance_km": round(dist_km, 1),
+                "duration_min": round(dur_min, 0),
+                "peso": round(peso_rota, 2),
+                "frete": round(frete_rota, 2),
+                "peso_rota": round(peso_rota, 2),
+                "frete_rota": round(frete_rota, 2),
+                "peso_entrega": 0.0,
+                "frete_entrega": 0.0,
+                "peso_coleta": round(peso_col, 2),
+                "frete_coleta": round(frete_col, 2),
+                "polyline": polyline,
+                "paradas": stops_out,
+            }
+        )
+
+    try:
+        save_delivery_geocode_cache()
+    except Exception:
+        pass
+
+    on_status(f"Mapa: {len(veiculos)} veículo(s) de coleta com rota")
+    return veiculos
+
+
+def _merge_coleta_into_veiculos(
+    entrega: list[dict[str, Any]],
+    coleta: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Une entrega+coleta na mesma placa; mantém coleta-only como tipo=coleta."""
+    by_pl: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for v in entrega:
+        pl = str(v.get("placa") or "")
+        if not pl:
+            continue
+        by_pl[pl] = dict(v)
+        order.append(pl)
+    for cv in coleta:
+        pl = str(cv.get("placa") or "")
+        if not pl:
+            continue
+        if pl in by_pl:
+            ev = by_pl[pl]
+            ev["tipo"] = "ambos"
+            ev["polyline_coleta"] = cv.get("polyline") or []
+            ev["paradas_coleta"] = cv.get("paradas") or []
+            ev["paradas_coleta_n"] = int(cv.get("paradas_n") or 0)
+            if not (ev.get("peso_coleta") or ev.get("frete_coleta")):
+                ev["peso_coleta"] = cv.get("peso_coleta") or 0
+                ev["frete_coleta"] = cv.get("frete_coleta") or 0
+        else:
+            by_pl[pl] = dict(cv)
+            order.append(pl)
+    return [by_pl[pl] for pl in order if pl in by_pl]
+
+
 def _base_ll() -> tuple[str, float, float]:
+    """Base BINHO — Av. Amâncio Gaioli, 1197 · Água Chata, Guarulhos-SP."""
     try:
         from map_renderer import load_project
 
         p = load_project()
         return (
-            str(p.base.name or "BINHO"),
+            str(p.base.name or "BINHO TRANSPORTES"),
             float(p.base.latitude),
             float(p.base.longitude),
         )
     except Exception:
         return ("BINHO TRANSPORTES", -23.422851, -46.415482)
+
+
+def _base_payload() -> dict[str, Any]:
+    name, lat, lon = _base_ll()
+    return {
+        "nome": name or "BINHO TRANSPORTES",
+        "lat": lat,
+        "lon": lon,
+        "endereco": "Av. Amâncio Gaioli, 1197 - Água Chata, Guarulhos - SP",
+    }
+
+
+def _servico_por_placa() -> dict[str, dict[str, float | int]]:
+    """% de serviço feito por placa (103 coleta + 36 entrega)."""
+    out: dict[str, dict[str, float | int]] = {}
+
+    def _bump(pl: str, feitas: bool) -> None:
+        if not pl:
+            return
+        slot = out.setdefault(pl, {"feitas": 0, "total": 0, "pct": 0.0})
+        slot["total"] = int(slot["total"]) + 1
+        if feitas:
+            slot["feitas"] = int(slot["feitas"]) + 1
+
+    if COLETAS_103_CSV.is_file():
+        with COLETAS_103_CSV.open(encoding="utf-8-sig", newline="") as fh:
+            for row in csv.DictReader(fh):
+                pl = _norm_plate(row.get("placa") or "")
+                st = str(row.get("status_ace") or "").strip().lower()
+                if st in {"cancelada", "outro"}:
+                    continue
+                _bump(pl, st == "realizada")
+
+    if ENTREGAS_36_CSV.is_file():
+        with ENTREGAS_36_CSV.open(encoding="utf-8-sig", newline="") as fh:
+            for row in csv.DictReader(fh):
+                if str(row.get("excluido") or "") in {"1", "true", "True"}:
+                    continue
+                pl = _norm_plate(row.get("placa") or "")
+                st = str(row.get("status_ace") or "").strip().lower()
+                if st in {"cancelada", "excluido", "excluída"}:
+                    continue
+                _bump(pl, st == "realizada")
+
+    for pl, slot in out.items():
+        tot = int(slot["total"]) or 0
+        feitas = int(slot["feitas"]) or 0
+        slot["pct"] = round((feitas / tot) * 100.0, 1) if tot else 0.0
+    return out
+
+
+def _apply_servico(veic: dict[str, Any], stats: dict[str, dict[str, float | int]]) -> None:
+    pl = _norm_plate(veic.get("placa") or "")
+    s = stats.get(pl) or {}
+    veic["servico_feitas"] = int(s.get("feitas") or 0)
+    veic["servico_total"] = int(s.get("total") or 0)
+    veic["servico_pct"] = float(s.get("pct") or 0.0)
 
 
 def _build_from_cybermap_report(
@@ -366,6 +644,7 @@ def _build_from_cybermap_report(
     veiculos: list[dict[str, Any]] = []
     district_points: dict[str, tuple[float, float]] = {}
     cargas = _frete_peso_por_placa(report_36=report, on_status=on_status)
+    servico = _servico_por_placa()
 
     plates_sorted = sorted(by_plate.keys())[:_MAX_VEICULOS]
     on_status(f"Mapa: {len(plates_sorted)} placa(s) na rua — geocode/OSRM…")
@@ -445,11 +724,19 @@ def _build_from_cybermap_report(
                 "paradas": stops_out,
             }
         )
+        _apply_servico(veiculos[-1], servico)
 
     try:
         save_delivery_geocode_cache()
     except Exception:
         pass
+
+    coleta_veics = _build_coleta_vehicles(
+        report_36=report, cargas=cargas, on_status=on_status
+    )
+    veiculos = _merge_coleta_into_veiculos(veiculos, coleta_veics)
+    for v in veiculos:
+        _apply_servico(v, servico)
 
     tot_peso_rota = sum(float(v.get("peso_rota") or 0) for v in veiculos)
     tot_frete_rota = sum(float(v.get("frete_rota") or 0) for v in veiculos)
@@ -457,15 +744,22 @@ def _build_from_cybermap_report(
     tot_frete_ent = sum(float(v.get("frete_entrega") or 0) for v in veiculos)
     tot_peso_col = sum(float(v.get("peso_coleta") or 0) for v in veiculos)
     tot_frete_col = sum(float(v.get("frete_coleta") or 0) for v in veiculos)
+    n_coleta = sum(1 for v in veiculos if str(v.get("tipo") or "") in {"coleta", "ambos"})
+    n_entrega = sum(1 for v in veiculos if str(v.get("tipo") or "") in {"entrega", "ambos"})
 
     return {
         "atualizado": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         "fonte": str(report),
-        "base": {"nome": base_name, "lat": base_lat, "lon": base_lon},
+        "base": _base_payload(),
         "veiculos": veiculos,
         "totais": {
             "veiculos": len(veiculos),
-            "paradas": sum(int(v.get("paradas_n") or 0) for v in veiculos),
+            "paradas": sum(
+                int(v.get("paradas_n") or 0) + int(v.get("paradas_coleta_n") or 0)
+                for v in veiculos
+            ),
+            "veiculos_entrega": n_entrega,
+            "veiculos_coleta": n_coleta,
             "peso": round(tot_peso_rota, 2),
             "frete": round(tot_frete_rota, 2),
             "peso_rota": round(tot_peso_rota, 2),
@@ -506,6 +800,7 @@ def _build_from_ace_csv(*, on_status: StatusCallback) -> dict[str, Any]:
 
     veiculos = []
     cargas = _frete_peso_por_placa(report_36=_find_report_36(), on_status=on_status)
+    servico = _servico_por_placa()
     for i, pl in enumerate(sorted(by_plate.keys())[:_MAX_VEICULOS]):
         rows = by_plate[pl]
         # espalha levemente em torno da base para aparecer no mapa
@@ -552,21 +847,34 @@ def _build_from_ace_csv(*, on_status: StatusCallback) -> dict[str, Any]:
                 "aprox": True,
             }
         )
+        _apply_servico(veiculos[-1], servico)
 
     tot_peso_ent = sum(float(v.get("peso_entrega") or 0) for v in veiculos)
     tot_frete_ent = sum(float(v.get("frete_entrega") or 0) for v in veiculos)
     tot_peso_col = sum(float(v.get("peso_coleta") or 0) for v in veiculos)
     tot_frete_col = sum(float(v.get("frete_coleta") or 0) for v in veiculos)
 
+    coleta_veics = _build_coleta_vehicles(
+        report_36=_find_report_36(), cargas=cargas, on_status=on_status
+    )
+    veiculos = _merge_coleta_into_veiculos(veiculos, coleta_veics)
+    tot_peso_col = sum(float(v.get("peso_coleta") or 0) for v in veiculos)
+    tot_frete_col = sum(float(v.get("frete_coleta") or 0) for v in veiculos)
+    tot_peso_ent = sum(float(v.get("peso_entrega") or 0) for v in veiculos)
+    tot_frete_ent = sum(float(v.get("frete_entrega") or 0) for v in veiculos)
+
     return {
         "atualizado": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         "fonte": "entregas_36.csv",
-        "aviso": "Rotas aproximadas — rode `36` com o Excel SSW para geocode/OSRM real.",
-        "base": {"nome": base_name, "lat": base_lat, "lon": base_lon},
+        "base": _base_payload(),
+        "aviso": "Rotas aproximadas — rode `mapa` para puxar 50+36 e geocode real.",
         "veiculos": veiculos,
         "totais": {
             "veiculos": len(veiculos),
-            "paradas": sum(int(v.get("paradas_n") or 0) for v in veiculos),
+            "paradas": sum(
+                int(v.get("paradas_n") or 0) + int(v.get("paradas_coleta_n") or 0)
+                for v in veiculos
+            ),
             "peso": round(tot_peso_ent, 2),
             "frete": round(tot_frete_ent, 2),
             "peso_rota": round(tot_peso_ent, 2),

@@ -3860,7 +3860,7 @@
     }
     .mapa-layout {
       display: grid;
-      grid-template-columns: minmax(260px, 0.9fr) minmax(0, 2.1fr);
+      grid-template-columns: minmax(200px, 0.72fr) minmax(0, 1.7fr) minmax(260px, 0.95fr);
       gap: 10px;
       min-height: 0;
       height: 100%;
@@ -3872,112 +3872,110 @@
       min-height: 0;
       overflow: hidden;
     }
+    .mapa-side-right {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+      overflow: hidden;
+    }
     .mapa-kpis {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 6px;
+      flex: 0 0 auto;
     }
     .mapa-kpi {
-      background: var(--panel);
+      background: rgba(2, 6, 23, 0.55);
       border: 1px solid #1e293b;
       border-radius: 10px;
-      padding: 10px;
+      padding: 8px 10px;
     }
     .mapa-kpi.wide {
       grid-column: 1 / -1;
     }
     .mapa-kpi .lbl {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: #94a3b8;
     }
     .mapa-kpi .val {
-      font-size: clamp(22px, 3vmin, 36px);
+      font-size: clamp(18px, 2.4vmin, 28px);
       font-weight: 900;
       color: #f8fafc;
       font-variant-numeric: tabular-nums;
     }
-    .mapa-farol-card {
-      background: rgba(2, 6, 23, 0.55);
-      border: 1px solid #1e293b;
-      border-radius: 12px;
+    /* Farol SP — silhueta grande na lateral, % por cima */
+    .mapa-farol-hero {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      border-radius: 0;
+      overflow: hidden;
+      background: transparent;
+      border: none;
+    }
+    .mapa-farol-hero #mapaFarolLeaflet {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .mapa-farol-overlay {
+      position: absolute;
+      inset: 0;
       display: flex;
       flex-direction: column;
-      min-height: clamp(180px, 28vh, 320px);
-      overflow: hidden;
-      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 500;
+      text-align: center;
+      padding: 12px;
+      background: radial-gradient(ellipse at center, rgba(2,6,23,0.35) 0%, transparent 65%);
     }
-    .mapa-farol-card > header {
-      padding: 8px 12px 4px;
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 8px;
+    .mapa-farol-overlay .big {
+      font-size: clamp(48px, 8vmin, 92px);
+      font-weight: 900;
+      line-height: 0.95;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 24px currentColor, 0 4px 20px rgba(0,0,0,0.65);
+      transition: color 0.8s ease;
     }
-    .mapa-farol-card > header h2 {
-      margin: 0;
+    .mapa-farol-overlay .lab {
+      margin-top: 8px;
       font-size: 12px;
-      letter-spacing: 0.1em;
+      font-weight: 800;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: #e2e8f0;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
     }
-    .mapa-farol-card > header .meta {
+    .mapa-farol-overlay .meta {
+      margin-top: 4px;
       font-size: 11px;
       font-weight: 700;
       color: #94a3b8;
-    }
-    .mapa-farol-body {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 8px;
-      padding: 4px 10px 10px;
-      min-height: 0;
-      flex: 1;
-    }
-    .mapa-farol-pct {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      min-width: 72px;
-    }
-    .mapa-farol-pct .big {
-      font-size: clamp(28px, 4vmin, 44px);
-      font-weight: 900;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
-    }
-    .mapa-farol-pct .lab {
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: #64748b;
-      margin-top: 4px;
-    }
-    .mapa-farol-pct.is-crit .big { color: #f87171; }
-    .mapa-farol-pct.is-warn .big { color: #fbbf24; }
-    .mapa-farol-pct.is-ok .big { color: #4ade80; }
-    #mapaFarolLeaflet {
-      width: 100%;
-      height: 100%;
-      min-height: 140px;
-      border-radius: 8px;
-      background: #020617;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+      max-width: 90%;
     }
     .mapa-list-card {
       flex: 1;
       min-height: 0;
-      background: rgba(2, 6, 23, 0.55);
-      border: 1px solid #1e293b;
-      border-radius: 12px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
     .mapa-list-card header {
-      padding: 10px 12px 6px;
+      padding: 4px 2px 8px;
       display: flex;
       justify-content: space-between;
       gap: 8px;
@@ -3989,43 +3987,64 @@
       text-transform: uppercase;
     }
     .mapa-list {
-      overflow: auto;
-      padding: 4px 10px 12px;
+      position: relative;
+      overflow: hidden;
+      padding: 0;
       flex: 1;
+      min-height: 180px;
     }
-    .mapa-placa {
+    .mapa-placa-pop {
+      position: absolute;
+      left: 0;
+      right: 0;
       display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 8px;
+      grid-template-columns: 52px 1fr auto;
+      gap: 10px;
       align-items: center;
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid transparent;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(2, 6, 23, 0.82);
+      border: 1px solid #1e293b;
+      opacity: 0;
+      transform: translateY(12px) scale(0.96);
+      transition: opacity 0.45s ease, transform 0.45s ease, border-color 0.3s, box-shadow 0.3s;
       cursor: pointer;
-      margin-bottom: 4px;
     }
-    .mapa-placa:hover, .mapa-placa.active {
-      background: rgba(56, 189, 248, 0.08);
-      border-color: rgba(56, 189, 248, 0.35);
+    .mapa-placa-pop.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
-    .mapa-placa .dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: #38bdf8;
+    .mapa-placa-pop.leaving {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.96);
     }
-    .mapa-placa .pl {
-      font-weight: 800;
+    .mapa-placa-pop.active {
+      border-color: rgba(250, 204, 21, 0.65);
+      box-shadow: 0 0 24px rgba(250, 204, 21, 0.18);
+    }
+    .mapa-placa-pop .name {
+      font-weight: 900;
       font-variant-numeric: tabular-nums;
-      color: #e2e8f0;
+      color: #f8fafc;
+      font-size: 15px;
     }
-    .mapa-placa .meta {
+    .mapa-placa-pop .meta {
       font-size: 11px;
       color: #64748b;
-      grid-column: 2 / -1;
     }
-    .mapa-placa .n {
-      font-weight: 800;
+    .mapa-placa-pop .badge {
+      font-weight: 900;
+      font-size: 16px;
       color: #94a3b8;
+      font-variant-numeric: tabular-nums;
+    }
+    .mapa-placa-pop .badge.up { color: #8cc63f; }
+    .mapa-placa-pop .donut { width: 46px; height: 46px; position: relative; }
+    .mapa-placa-pop .donut svg { width: 46px; height: 46px; }
+    .mapa-placa-pop .donut .pct {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 900; color: #e2e8f0;
     }
     .mapa-map-card {
       min-height: 0;
@@ -4035,6 +4054,44 @@
       position: relative;
       background: #020617;
     }
+    .mapa-route-caption {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      z-index: 800;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.82);
+      border: 1px solid rgba(250, 204, 21, 0.35);
+      color: #f8fafc;
+      font-size: 13px;
+      font-weight: 800;
+      pointer-events: none;
+      max-width: min(420px, 80%);
+    }
+    .mapa-route-caption .sub {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    .mapa-base-label {
+      color: #facc15 !important;
+      font-weight: 900 !important;
+      font-size: 12px !important;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-shadow: 0 0 12px rgba(250, 204, 21, 0.8), 0 2px 6px rgba(0,0,0,0.9);
+    }
+    .leaflet-tooltip.mapa-base-tooltip {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      color: #facc15;
+      padding: 0;
+    }
+    .leaflet-tooltip.mapa-base-tooltip::before { display: none; }
     #mapaLeaflet {
       width: 100%;
       height: 100%;
@@ -4057,9 +4114,12 @@
       max-width: none;
       width: 100%;
     }
-    body.tv-mode .mapa-kpi .val { font-size: clamp(28px, 4vmin, 48px); }
-    @media (max-width: 980px) {
-      .mapa-layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(360px, 1fr); }
+    body.tv-mode .mapa-kpi .val { font-size: clamp(22px, 3vmin, 36px); }
+    @media (max-width: 1100px) {
+      .mapa-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(180px, 28vh) minmax(360px, 1fr) auto;
+      }
       .mapa-wrap { height: auto; min-height: 100vh; }
     }
 
@@ -6097,7 +6157,22 @@
         </div>
       </div>
       <div class="mapa-layout" id="mapaLayout">
-        <aside class="mapa-side">
+        <aside class="mapa-side" aria-label="São Paulo serviço">
+          <section class="mapa-farol-hero" aria-label="Serviço realizado São Paulo">
+            <div id="mapaFarolLeaflet" aria-label="Mapa farol São Paulo"></div>
+            <div class="mapa-farol-overlay">
+              <div class="big" id="mapaFarolPct">—</div>
+              <div class="lab" id="mapaFarolLab">realizado</div>
+              <div class="meta" id="mapaFarolMeta">coleta + entrega</div>
+            </div>
+          </section>
+        </aside>
+        <section class="mapa-map-card">
+          <div id="mapaLeaflet" aria-label="Mapa de rotas"></div>
+          <div class="mapa-route-caption" id="mapaRouteCaption" hidden></div>
+          <div class="mapa-aviso" id="mapaAviso" hidden></div>
+        </section>
+        <aside class="mapa-side-right">
           <div class="mapa-kpis">
             <div class="mapa-kpi">
               <div class="lbl">Na rua</div>
@@ -6109,34 +6184,21 @@
             </div>
             <div class="mapa-kpi">
               <div class="lbl">Frete entrega</div>
-              <div class="val" id="mapaFreteEnt" style="font-size:clamp(16px,2.2vmin,26px)">R$ 0</div>
+              <div class="val" id="mapaFreteEnt" style="font-size:clamp(14px,1.8vmin,22px)">R$ 0</div>
             </div>
             <div class="mapa-kpi">
               <div class="lbl">Peso entrega</div>
-              <div class="val" id="mapaPesoEnt" style="font-size:clamp(16px,2.2vmin,26px)">0 kg</div>
+              <div class="val" id="mapaPesoEnt" style="font-size:clamp(14px,1.8vmin,22px)">0 kg</div>
             </div>
             <div class="mapa-kpi">
               <div class="lbl">Frete coleta</div>
-              <div class="val" id="mapaFreteCol" style="font-size:clamp(16px,2.2vmin,26px)">R$ 0</div>
+              <div class="val" id="mapaFreteCol" style="font-size:clamp(14px,1.8vmin,22px)">R$ 0</div>
             </div>
             <div class="mapa-kpi">
               <div class="lbl">Peso coleta</div>
-              <div class="val" id="mapaPesoCol" style="font-size:clamp(16px,2.2vmin,26px)">0 kg</div>
+              <div class="val" id="mapaPesoCol" style="font-size:clamp(14px,1.8vmin,22px)">0 kg</div>
             </div>
           </div>
-          <section class="mapa-farol-card" aria-label="Serviço realizado São Paulo">
-            <header>
-              <h2>São Paulo · serviço</h2>
-              <div class="meta" id="mapaFarolMeta">coleta + entrega</div>
-            </header>
-            <div class="mapa-farol-body">
-              <div class="mapa-farol-pct is-ok" id="mapaFarolPctBox">
-                <div class="big" id="mapaFarolPct">—</div>
-                <div class="lab" id="mapaFarolLab">realizado</div>
-              </div>
-              <div id="mapaFarolLeaflet" aria-label="Mapa farol São Paulo"></div>
-            </div>
-          </section>
           <section class="mapa-list-card">
             <header>
               <h2>Veículos</h2>
@@ -6146,10 +6208,6 @@
           </section>
           <div class="arm-err" id="mapaErr" hidden></div>
         </aside>
-        <section class="mapa-map-card">
-          <div id="mapaLeaflet" aria-label="Mapa de rotas"></div>
-          <div class="mapa-aviso" id="mapaAviso" hidden></div>
-        </section>
       </div>
     </div>
   </div>
@@ -6411,6 +6469,18 @@
     let mapaFarolLeaflet = null;
     let mapaFarolLayer = null;
     let lastMapaFarolPct = null;
+    let mapaRouteCursor = 0;
+    let mapaRouteTimer = null;
+    let mapaPlacaCursor = 0;
+    let mapaPlacaTimer = null;
+    const MAPA_ROUTE_MS = 9000;
+    const MAPA_PLACA_MS = 4500;
+    const MAPA_BASE_DEFAULT = {
+      nome: 'BINHO TRANSPORTES',
+      lat: -23.422851,
+      lon: -46.415482,
+      endereco: 'Av. Amâncio Gaioli, 1197 - Água Chata, Guarulhos - SP',
+    };
     const JANELA_MIN = 120;
     const PLACA_VISIBLE = 3;
     const PRAZO_VISIBLE = 4;
@@ -9267,10 +9337,19 @@
     }
 
     function mapaFarolTone(pct) {
-      if (pct == null || !Number.isFinite(pct)) return { tone: 'ok', color: '#64748b', label: 'sem dados' };
-      if (pct < 30) return { tone: 'crit', color: '#ef4444', label: 'crítico < 30%' };
-      if (pct <= 70) return { tone: 'warn', color: '#f59e0b', label: 'atenção ≤ 70%' };
-      return { tone: 'ok', color: '#22c55e', label: 'ok > 70%' };
+      if (pct == null || !Number.isFinite(pct)) {
+        return { tone: 'ok', color: '#64748b', label: 'sem dados' };
+      }
+      const p = Math.max(0, Math.min(100, pct)) / 100;
+      // vermelho → amarelo → verde (gradual)
+      const hue = p < 0.5 ? (p * 2) * 48 : 48 + ((p - 0.5) * 2) * 72;
+      const color = `hsl(${Math.round(hue)} 92% 52%)`;
+      let label = 'em andamento';
+      let tone = 'warn';
+      if (pct < 30) { label = 'crítico'; tone = 'crit'; }
+      else if (pct > 70) { label = 'no ritmo'; tone = 'ok'; }
+      else { label = 'atenção'; tone = 'warn'; }
+      return { tone, color, label };
     }
 
     function ensureMapaFarolLeaflet() {
@@ -9290,7 +9369,6 @@
         keyboard: false,
         tap: false,
       });
-      // fundo neutro (sem tiles) — só o polígono de SP
       mapaFarolLeaflet.setView([-23.55, -46.63], 10);
       return mapaFarolLeaflet;
     }
@@ -9305,7 +9383,6 @@
 
     function paintMapaFarol(pct, detail) {
       lastMapaFarolPct = pct;
-      const box = document.getElementById('mapaFarolPctBox');
       const pctEl = document.getElementById('mapaFarolPct');
       const lab = document.getElementById('mapaFarolLab');
       const meta = document.getElementById('mapaFarolMeta');
@@ -9314,10 +9391,7 @@
         pctEl.textContent = pct == null || !Number.isFinite(pct)
           ? '—'
           : `${Math.round(pct)}%`;
-      }
-      if (box) {
-        box.classList.remove('is-ok', 'is-warn', 'is-crit');
-        box.classList.add(`is-${info.tone}`);
+        pctEl.style.color = info.color;
       }
       if (lab) lab.textContent = info.label;
       if (meta) meta.textContent = detail || 'coleta + entrega';
@@ -9328,10 +9402,10 @@
       const applyStyle = () => {
         if (mapaFarolLayer) {
           mapaFarolLayer.setStyle({
-            color: '#0f172a',
-            weight: 0.6,
+            color: 'rgba(15,23,42,0.35)',
+            weight: 0.4,
             fillColor: color,
-            fillOpacity: 0.88,
+            fillOpacity: 0.9,
           });
         }
       };
@@ -9347,14 +9421,14 @@
         }
         mapaFarolLayer = L.geoJSON(geo, {
           style: {
-            color: '#0f172a',
-            weight: 0.6,
+            color: 'rgba(15,23,42,0.35)',
+            weight: 0.4,
             fillColor: color,
-            fillOpacity: 0.88,
+            fillOpacity: 0.9,
           },
         }).addTo(map);
         try {
-          map.fitBounds(mapaFarolLayer.getBounds(), { padding: [6, 6], maxZoom: 11 });
+          map.fitBounds(mapaFarolLayer.getBounds(), { padding: [4, 4], maxZoom: 11 });
         } catch (_) {}
         setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 80);
       }).catch(() => {
@@ -9401,6 +9475,13 @@
       return palette[i % palette.length];
     }
 
+    function mapaServicoColor(pct) {
+      const p = Math.max(0, Math.min(100, Number(pct) || 0));
+      if (p >= 100) return '#8cc63f';
+      if (p >= 50) return '#29abe2';
+      return '#fff200';
+    }
+
     function ensureMapaLeaflet() {
       const el = document.getElementById('mapaLeaflet');
       if (!el || typeof L === 'undefined') return null;
@@ -9423,22 +9504,137 @@
       mapaLayers = [];
     }
 
-    function focusMapaPlaca(placa) {
-      mapaSelectedPlaca = placa || null;
-      document.querySelectorAll('.mapa-placa').forEach((row) => {
+    function drawMapaBaseMarker(map, base) {
+      const b = Object.assign({}, MAPA_BASE_DEFAULT, base || {});
+      const lat = Number(b.lat);
+      const lon = Number(b.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      const halo = L.circleMarker([lat, lon], {
+        radius: 32, color: '#facc15', fillColor: '#facc15', fillOpacity: 0.12, weight: 0,
+      });
+      const mid = L.circleMarker([lat, lon], {
+        radius: 16, color: '#facc15', fillColor: '#facc15', fillOpacity: 0.22, weight: 0,
+      });
+      const core = L.circleMarker([lat, lon], {
+        radius: 8, color: '#fffbeb', fillColor: '#facc15', fillOpacity: 1, weight: 2,
+      }).bindTooltip(
+        `<div class="mapa-base-label">${esc(b.nome || 'BINHO TRANSPORTES')}</div>`
+        + `<div style="color:#cbd5e1;font-size:11px;margin-top:2px">${esc(b.endereco || MAPA_BASE_DEFAULT.endereco)}</div>`,
+        { permanent: true, direction: 'right', offset: [12, 0], className: 'mapa-base-tooltip' }
+      );
+      halo.addTo(map); mid.addTo(map); core.addTo(map);
+      mapaLayers.push(halo, mid, core);
+      return [lat, lon];
+    }
+
+    function stopMapaCarousels() {
+      if (mapaRouteTimer) { clearInterval(mapaRouteTimer); mapaRouteTimer = null; }
+      if (mapaPlacaTimer) { clearInterval(mapaPlacaTimer); mapaPlacaTimer = null; }
+    }
+
+    function showMapaVehicleRoute(v, idx) {
+      const map = ensureMapaLeaflet();
+      if (!map || !v) return;
+      clearMapaLayers();
+      const base = (lastMapaData && lastMapaData.base) || MAPA_BASE_DEFAULT;
+      const basePt = drawMapaBaseMarker(map, base);
+      const color = mapaPlateColor(idx);
+      const allPts = [];
+      if (basePt) allPts.push(basePt);
+
+      const poly = (v.polyline || []).filter((p) => p && p.length >= 2);
+      if (poly.length >= 2) {
+        const glow = L.polyline(poly, { color: '#0f172a', weight: 9, opacity: 0.55 });
+        const line = L.polyline(poly, {
+          color: v.tipo === 'coleta' ? '#facc15' : color,
+          weight: 5,
+          opacity: 0.98,
+          dashArray: v.tipo === 'coleta' ? '10 7' : undefined,
+        });
+        glow.addTo(map); line.addTo(map);
+        mapaLayers.push(glow, line);
+        poly.forEach((p) => allPts.push(p));
+      }
+      const polyC = (v.polyline_coleta || []).filter((p) => p && p.length >= 2);
+      if (polyC.length >= 2) {
+        const lineC = L.polyline(polyC, { color: '#facc15', weight: 4, opacity: 0.9, dashArray: '10 7' });
+        lineC.addTo(map);
+        mapaLayers.push(lineC);
+        polyC.forEach((p) => allPts.push(p));
+      }
+      const allStops = [...(v.paradas || []), ...(v.paradas_coleta || [])];
+      allStops.forEach((p) => {
+        if (p.lat == null || p.lon == null) return;
+        allPts.push([p.lat, p.lon]);
+        const isCol = p.tipo === 'coleta' || v.tipo === 'coleta';
+        const mk = L.circleMarker([p.lat, p.lon], {
+          radius: isCol ? 7 : 6,
+          color: '#020617',
+          fillColor: isCol ? '#22d3ee' : color,
+          fillOpacity: 0.95,
+          weight: 1,
+        }).bindTooltip(
+          (`${v.placa} · ${isCol ? 'C' : 'E'} ${p.seq || ''} ${p.cliente || ''}`
+          + (p.frete || p.peso
+            ? ` · R$ ${Number(p.frete || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · ${Number(p.peso || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg`
+            : '')).trim()
+        );
+        mk.addTo(map);
+        mapaLayers.push(mk);
+      });
+
+      if (allPts.length) {
+        try {
+          map.fitBounds(L.latLngBounds(allPts.map((p) => L.latLng(p[0], p[1]))), {
+            padding: [48, 48], maxZoom: 14,
+          });
+        } catch (_) {}
+      }
+
+      mapaSelectedPlaca = String(v.placa || '');
+      document.querySelectorAll('.mapa-placa-pop').forEach((row) => {
         row.classList.toggle('active', row.getAttribute('data-placa') === mapaSelectedPlaca);
       });
-      if (!lastMapaData || !mapaLeaflet) return;
-      const veics = lastMapaData.veiculos || [];
-      const v = veics.find((x) => String(x.placa) === String(placa));
-      if (!v) return;
-      const pts = (v.polyline && v.polyline.length)
-        ? v.polyline
-        : (v.paradas || []).map((p) => [p.lat, p.lon]);
-      if (!pts.length) return;
-      try {
-        mapaLeaflet.fitBounds(L.latLngBounds(pts.map((p) => L.latLng(p[0], p[1]))), { padding: [40, 40], maxZoom: 14 });
-      } catch (_) {}
+      const cap = document.getElementById('mapaRouteCaption');
+      if (cap) {
+        const tipo = String(v.tipo || 'entrega');
+        const badge = tipo === 'coleta' ? 'COLETA' : (tipo === 'ambos' ? 'ENTREGA + COLETA' : 'ENTREGA');
+        const pct = Number(v.servico_pct) || 0;
+        cap.hidden = false;
+        cap.innerHTML = `${esc(String(v.placa || '—'))} · ${badge}`
+          + `<span class="sub">${esc(v.motorista || '—')}`
+          + (v.distance_km ? ` · ${Number(v.distance_km).toFixed(1)} km` : '')
+          + ` · serviço ${pct.toFixed(0)}%</span>`;
+      }
+    }
+
+    function startMapaRouteCarousel() {
+      if (mapaRouteTimer) clearInterval(mapaRouteTimer);
+      const veics = (lastMapaData && lastMapaData.veiculos) || [];
+      if (!veics.length) return;
+      mapaRouteCursor = mapaRouteCursor % veics.length;
+      showMapaVehicleRoute(veics[mapaRouteCursor], mapaRouteCursor);
+      mapaRouteTimer = setInterval(() => {
+        const list = (lastMapaData && lastMapaData.veiculos) || [];
+        if (!list.length) return;
+        mapaRouteCursor = (mapaRouteCursor + 1) % list.length;
+        showMapaVehicleRoute(list[mapaRouteCursor], mapaRouteCursor);
+      }, MAPA_ROUTE_MS);
+    }
+
+    function focusMapaPlaca(placa) {
+      const veics = (lastMapaData && lastMapaData.veiculos) || [];
+      const idx = veics.findIndex((x) => String(x.placa) === String(placa));
+      if (idx < 0) return;
+      mapaRouteCursor = idx;
+      showMapaVehicleRoute(veics[idx], idx);
+      if (mapaRouteTimer) clearInterval(mapaRouteTimer);
+      mapaRouteTimer = setInterval(() => {
+        const list = (lastMapaData && lastMapaData.veiculos) || [];
+        if (!list.length) return;
+        mapaRouteCursor = (mapaRouteCursor + 1) % list.length;
+        showMapaVehicleRoute(list[mapaRouteCursor], mapaRouteCursor);
+      }, MAPA_ROUTE_MS);
     }
 
     function fmtMapaMoney(v) {
@@ -9453,12 +9649,77 @@
       return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' kg';
     }
 
+    function renderMapaPlacaPops() {
+      const stack = document.getElementById('mapaLista');
+      if (!stack) return;
+      const veics = (lastMapaData && lastMapaData.veiculos) || [];
+      if (!veics.length) {
+        stack.innerHTML = '<div class="arm-rank-empty">Nenhum veículo em rota</div>';
+        return;
+      }
+      const nVis = Math.min(5, veics.length);
+      const visible = [];
+      for (let i = 0; i < nVis; i++) {
+        visible.push({ v: veics[(mapaPlacaCursor + i) % veics.length], i: (mapaPlacaCursor + i) % veics.length });
+      }
+      Array.from(stack.querySelectorAll('.mapa-placa-pop')).forEach((el) => {
+        el.classList.remove('show');
+        el.classList.add('leaving');
+        setTimeout(() => { try { el.remove(); } catch (_) {} }, 420);
+      });
+      setTimeout(() => {
+        if (!document.getElementById('mapaLista')) return;
+        const nodes = visible.map(({ v, i }) => {
+          const pct = Number(v.servico_pct) || 0;
+          const color = mapaServicoColor(pct);
+          const feitas = Number(v.servico_feitas) || 0;
+          const total = Number(v.servico_total) || 0;
+          const tipo = String(v.tipo || 'entrega');
+          const badge = tipo === 'coleta' ? 'C' : (tipo === 'ambos' ? 'E+C' : 'E');
+          const el = document.createElement('div');
+          el.className = 'mapa-placa-pop' + (String(v.placa) === String(mapaSelectedPlaca) ? ' active' : '');
+          el.setAttribute('data-placa', String(v.placa || ''));
+          el.innerHTML = `
+            <div class="donut">${donutSvg(pct, color)}<div class="pct">0%</div></div>
+            <div>
+              <div class="name">${esc(String(v.placa || '—'))} <small style="opacity:.65">${badge}</small></div>
+              <div class="meta">${esc(v.motorista || '—')} · ${feitas}/${total || '—'}</div>
+            </div>
+            <div class="badge${pct >= 100 ? ' up' : ''}">${Math.round(pct)}%</div>`;
+          el.addEventListener('click', () => focusMapaPlaca(el.getAttribute('data-placa')));
+          stack.appendChild(el);
+          requestAnimationFrame(() => el.classList.add('show'));
+          animateDonut(el, pct);
+          return el;
+        });
+        let top = 0;
+        nodes.forEach((node, i) => {
+          node.style.top = top + 'px';
+          node.style.zIndex = String(100 - i);
+          top += (node.offsetHeight || 64) + 8;
+        });
+      }, 100);
+    }
+
+    function startMapaPlacaCarousel() {
+      if (mapaPlacaTimer) clearInterval(mapaPlacaTimer);
+      const veics = (lastMapaData && lastMapaData.veiculos) || [];
+      if (!veics.length) return;
+      renderMapaPlacaPops();
+      if (veics.length <= 5) return;
+      mapaPlacaTimer = setInterval(() => {
+        const list = (lastMapaData && lastMapaData.veiculos) || [];
+        if (list.length <= 5) return;
+        mapaPlacaCursor = (mapaPlacaCursor + 1) % list.length;
+        renderMapaPlacaPops();
+      }, MAPA_PLACA_MS);
+    }
+
     function paintMapa(data) {
       lastMapaData = data || null;
-      const err = document.getElementById('mapaErr');
       const aviso = document.getElementById('mapaAviso');
-      const list = document.getElementById('mapaLista');
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      stopMapaCarousels();
       if (!data) {
         set('mapaVeic', '0');
         set('mapaParadas', '0');
@@ -9466,7 +9727,11 @@
         set('mapaPesoEnt', '0 kg');
         set('mapaFreteCol', 'R$ 0');
         set('mapaPesoCol', '0 kg');
-        if (list) list.innerHTML = '<div class="arm-rank-empty">Sem dados — rode `36`</div>';
+        const list = document.getElementById('mapaLista');
+        if (list) list.innerHTML = '<div class="arm-rank-empty">Sem dados — rode `mapa`</div>';
+        clearMapaLayers();
+        const cap = document.getElementById('mapaRouteCaption');
+        if (cap) cap.hidden = true;
         return;
       }
       const veics = Array.isArray(data.veiculos) ? data.veiculos : [];
@@ -9486,84 +9751,11 @@
           aviso.hidden = true;
         }
       }
-      if (list) {
-        if (!veics.length) {
-          list.innerHTML = '<div class="arm-rank-empty">Nenhum veículo em rota</div>';
-        } else {
-          list.innerHTML = veics.map((v, i) => {
-            const pl = esc(String(v.placa || '—'));
-            const mot = esc(String(v.motorista || '—'));
-            const n = Number(v.paradas_n) || (v.paradas || []).length || 0;
-            const km = v.distance_km ? `${Number(v.distance_km).toFixed(1)} km` : '';
-            const freteE = Number(v.frete_entrega || v.frete || 0);
-            const pesoE = Number(v.peso_entrega || v.peso || 0);
-            const freteC = Number(v.frete_coleta || 0);
-            const pesoC = Number(v.peso_coleta || 0);
-            const cargaBits = [];
-            if (freteE || pesoE) cargaBits.push(`E ${fmtMapaMoney(freteE)} · ${fmtMapaPeso(pesoE)}`);
-            if (freteC || pesoC) cargaBits.push(`C ${fmtMapaMoney(freteC)} · ${fmtMapaPeso(pesoC)}`);
-            const color = mapaPlateColor(i);
-            return `<div class="mapa-placa" data-placa="${pl}" role="button" tabindex="0">
-              <span class="dot" style="background:${color}"></span>
-              <span class="pl">${pl}</span>
-              <span class="n">${n}</span>
-              <div class="meta">${mot}${km ? ' · ' + km : ''}${v.aprox ? ' · aprox.' : ''}${cargaBits.length ? '<br>' + cargaBits.join(' · ') : ''}</div>
-            </div>`;
-          }).join('');
-          list.querySelectorAll('.mapa-placa').forEach((row) => {
-            row.addEventListener('click', () => focusMapaPlaca(row.getAttribute('data-placa')));
-          });
-        }
-      }
-
-      const map = ensureMapaLeaflet();
-      if (!map) return;
-      clearMapaLayers();
-      const base = data.base || {};
-      if (base.lat != null && base.lon != null) {
-        const m = L.circleMarker([base.lat, base.lon], {
-          radius: 8, color: '#f8fafc', fillColor: '#0ea5e9', fillOpacity: 0.9, weight: 2,
-        }).bindTooltip(base.nome || 'Base');
-        m.addTo(map);
-        mapaLayers.push(m);
-      }
-      const allPts = [];
-      veics.forEach((v, i) => {
-        const color = mapaPlateColor(i);
-        const poly = (v.polyline || []).filter((p) => p && p.length >= 2);
-        if (poly.length >= 2) {
-          const glow = L.polyline(poly, { color: '#0f172a', weight: 7, opacity: 0.55 });
-          const line = L.polyline(poly, { color, weight: 4, opacity: 0.95 });
-          glow.addTo(map); line.addTo(map);
-          mapaLayers.push(glow, line);
-          poly.forEach((p) => allPts.push(p));
-        }
-        (v.paradas || []).forEach((p) => {
-          if (p.lat == null || p.lon == null) return;
-          allPts.push([p.lat, p.lon]);
-          const mk = L.circleMarker([p.lat, p.lon], {
-            radius: 5, color: '#020617', fillColor: color, fillOpacity: 0.95, weight: 1,
-          }).bindTooltip(
-            (`${v.placa} · ${p.seq || ''} ${p.cliente || ''}`
-            + (p.frete || p.peso
-              ? ` · R$ ${Number(p.frete || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · ${Number(p.peso || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg`
-              : '')).trim()
-          );
-          mk.addTo(map);
-          mapaLayers.push(mk);
-        });
-      });
-      if (allPts.length) {
-        try {
-          map.fitBounds(L.latLngBounds(allPts.map((p) => L.latLng(p[0], p[1]))), { padding: [36, 36], maxZoom: 13 });
-        } catch (_) {
-          map.setView([base.lat || -23.55, base.lon || -46.63], 11);
-        }
-      } else if (base.lat != null) {
-        map.setView([base.lat, base.lon], 12);
-      }
-      if (err) err.hidden = true;
-      setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 100);
+      ensureMapaLeaflet();
+      mapaRouteCursor = 0;
+      mapaPlacaCursor = 0;
+      startMapaRouteCarousel();
+      startMapaPlacaCarousel();
     }
 
     async function refreshMapa() {

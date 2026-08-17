@@ -527,6 +527,159 @@ def run_full_pipeline_36(
     }
 
 
+def run_pipeline_mapa(
+    *,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    keep_open: bool = False,
+    headless: bool | None = None,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    """
+    Mapa Operacional: puxa COLETA (50) + situação (103) + ENTREGA (36),
+    depois monta rotas/frete/peso (lógica CyberMap 50/76/200).
+    """
+    status = on_status or _noop
+
+    def emit(msg: str) -> None:
+        status(msg)
+        _log_file(msg)
+
+    cfg = settings or load_settings()
+    creds = credentials or load_credentials()
+    use_headless = cfg.headless if headless is None else bool(headless)
+
+    ini50, fim50 = periodo_50_coleta_hoje()
+    ini103, fim103 = periodo_103_hoje()
+    ini36, fim36 = periodo_36_ontem_hoje()
+
+    emit(
+        f"Pipeline MAPA | 50={format_period(ini50, fim50)} · "
+        f"103={format_period(ini103, fim103)} · 36={format_period(ini36, fim36)}"
+    )
+    cleanup_downloads(DOWNLOAD_DIR, on_status=emit)
+
+    result_50: dict[str, Any] = {}
+    result_103: dict[str, Any] = {}
+    result_36: dict[str, Any] = {}
+    errors: dict[str, str] = {}
+
+    try:
+        emit("[mapa] baixando coleta 50…")
+        dl50 = download_ace_reports(
+            ini50,
+            fim50,
+            keep_open=keep_open,
+            headless=use_headless,
+            on_status=lambda m: emit(f"[50] {m}"),
+            credentials=creds,
+            settings=cfg,
+            clean_downloads=False,
+        )
+        report50 = Path((dl50.get("paths") or {}).get("coleta") or "")
+        if not report50.is_file():
+            report50 = find_latest_report() or Path()
+        if report50.is_file():
+            result_50 = run_analysis_only(
+                report50, settings=cfg, on_status=lambda m: emit(f"[50] {m}"), sync=False
+            )
+            # mantém cópia estável para o CyberMap achar o 50
+            stable = DOWNLOAD_DIR / f"coleta_50_mapa{report50.suffix or '.sswweb'}"
+            try:
+                import shutil
+
+                shutil.copy2(report50, stable)
+                emit(f"[50] copiado → {stable.name}")
+            except Exception:
+                pass
+        else:
+            errors["50"] = "arquivo 50 não encontrado"
+    except Exception as err:  # noqa: BLE001
+        errors["50"] = str(err)
+        emit(f"[50] falhou: {err}")
+
+    try:
+        emit("[mapa] baixando situação coleta 103…")
+        dl103 = download_ace_103(
+            ini103,
+            fim103,
+            keep_open=keep_open,
+            headless=use_headless,
+            on_status=lambda m: emit(f"[103] {m}"),
+            credentials=creds,
+            settings=cfg,
+            clean_downloads=False,
+        )
+        report103 = Path((dl103.get("paths") or {}).get("coleta_103") or "")
+        if not report103.is_file():
+            report103 = find_latest_103() or Path()
+        if report103.is_file():
+            result_103 = analyze_report_103(
+                report103,
+                periodo=format_period(ini103, fim103),
+            )
+            emit(f"[103] OK · {result_103.get('totais') or result_103.get('resumo') or 'analisado'}")
+        else:
+            errors["103"] = "arquivo 103 não encontrado"
+    except Exception as err:  # noqa: BLE001
+        errors["103"] = str(err)
+        emit(f"[103] falhou: {err}")
+
+    try:
+        emit("[mapa] baixando entrega 36…")
+        dl36 = download_ace_36(
+            ini36,
+            fim36,
+            keep_open=keep_open,
+            headless=use_headless,
+            on_status=lambda m: emit(f"[36] {m}"),
+            credentials=creds,
+            settings=cfg,
+            clean_downloads=False,
+        )
+        report36 = Path((dl36.get("paths") or {}).get("entrega_36") or "")
+        if not report36.is_file():
+            report36 = find_latest_36() or Path()
+        if not report36.is_file():
+            raise RuntimeError("Download da entrega 36 nao gerou arquivo")
+        result_36 = run_analysis_36(
+            report36,
+            periodo=format_period(ini36, fim36),
+            settings=cfg,
+            on_status=lambda m: emit(f"[36] {m}"),
+            sync=True,
+        )
+    except Exception as err:  # noqa: BLE001
+        errors["36"] = str(err)
+        emit(f"[36] falhou: {err}")
+        # ainda tenta montar mapa com o que houver no disco
+        from mapa_distribuicao import build_mapa_distribuicao
+
+        result_36 = {
+            "mapa": build_mapa_distribuicao(on_status=lambda m: emit(f"[mapa] {m}"))
+        }
+
+    mapa = (result_36 or {}).get("mapa") or {}
+    tot = (mapa.get("payload") or {}).get("totais") or {}
+    emit(
+        f"MAPA OK · veiculos={tot.get('veiculos')} · "
+        f"coleta frete={tot.get('frete_coleta')} · entrega frete={tot.get('frete_entrega')}"
+        + (f" · erros={errors}" if errors else "")
+    )
+    return {
+        "ok": bool(mapa.get("ok", True)) and "36" not in errors,
+        "errors": errors,
+        "50": result_50,
+        "103": result_103,
+        "36": result_36,
+        "mapa": mapa,
+        "period_50": format_period(ini50, fim50),
+        "period_103": format_period(ini103, fim103),
+        "period_36": format_period(ini36, fim36),
+        "period": format_period(ini36, fim36),
+    }
+
+
 def run_full_pipeline_225(
     *,
     credentials: SswCredentials | None = None,
@@ -1213,7 +1366,7 @@ def run_parallel_cycle(
         )
 
     def _run_mapa() -> dict[str, Any]:
-        return run_full_pipeline_36(
+        return run_pipeline_mapa(
             credentials=creds,
             settings=cfg,
             headless=use_headless,

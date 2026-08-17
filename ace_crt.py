@@ -2438,7 +2438,7 @@ class AceCrtConsole(QWidget):
 
         lay.addWidget(self._section("Mapa Operacional"))
         for label, cmd in (
-            ("Puxar mapa (36 · rotas)", "mapa"),
+            ("Puxar mapa (50 · 103 · 36)", "mapa"),
         ):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
