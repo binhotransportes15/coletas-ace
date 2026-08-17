@@ -4036,39 +4036,69 @@
       position: relative;
       background: transparent;
       box-shadow: none;
+      grid-area: 1 / 1;
+      z-index: 1;
     }
     .mapa-map-card::after { display: none; }
+    /* Mapa full-bleed; farol + placas flutuam por cima (sem painéis laterais) */
     .mapa-layout {
       display: grid;
-      grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.55fr) minmax(240px, 0.85fr);
-      gap: 10px;
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
+      position: relative;
       min-height: 0;
       height: 100%;
+      overflow: hidden;
     }
     .mapa-side {
+      position: absolute;
+      left: 6px;
+      top: 6px;
+      bottom: 48px;
+      width: min(200px, 18vw);
+      z-index: 650;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 0;
       min-height: 0;
       overflow: hidden;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      pointer-events: none;
     }
     .mapa-side-right {
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      bottom: 48px;
+      width: min(300px, 24vw);
+      z-index: 650;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 0;
       min-height: 0;
       overflow: hidden;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      pointer-events: none;
     }
-    /* Farol SP — silhueta limpa, % branca fixa no centro */
+    .mapa-side-right .mapa-placa-pop {
+      pointer-events: auto;
+    }
+    /* Farol SP — silhueta neon clara, % no centro */
     .mapa-farol-hero {
       position: relative;
       flex: 1 1 auto;
       min-height: 0;
       border-radius: 0;
-      overflow: hidden;
-      background: transparent;
-      border: none;
-      box-shadow: none;
+      overflow: visible;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.4))
+              drop-shadow(0 0 18px rgba(255, 46, 207, 0.28));
     }
     .mapa-farol-hero #mapaFarolLeaflet,
     .mapa-farol-hero #mapaFarolLeaflet.leaflet-container,
@@ -4115,20 +4145,22 @@
     .mapa-list-card {
       flex: 1;
       min-height: 0;
-      background: transparent;
-      border: none;
+      background: transparent !important;
+      border: none !important;
       border-radius: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      box-shadow: none !important;
     }
     .mapa-list-card header {
-      padding: 2px 2px 6px;
+      padding: 2px 4px 8px;
       display: flex;
       justify-content: space-between;
       gap: 8px;
-      background: transparent;
-      border: none;
+      background: transparent !important;
+      border: none !important;
+      text-shadow: 0 1px 10px rgba(0,0,0,0.95);
     }
     .mapa-list-card header h2 {
       margin: 0;
@@ -4162,14 +4194,15 @@
       align-items: center;
       padding: 8px 4px;
       border-radius: 0;
-      background: transparent;
-      border: none;
-      box-shadow: none;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
       opacity: 0;
       transform: translateY(28px) scale(0.96);
       transition: opacity 0.45s ease, transform 0.55s cubic-bezier(.2,.8,.2,1), top 0.55s cubic-bezier(.2,.8,.2,1);
       cursor: pointer;
       pointer-events: auto;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.9);
     }
     .mapa-placa-pop.show {
       opacity: 1;
@@ -4455,6 +4488,15 @@
       min-height: 0 !important;
       height: 100% !important;
       overflow: hidden !important;
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      grid-template-rows: 1fr !important;
+    }
+    body.tv-mode #panel-mapa .mapa-side,
+    body.tv-mode #panel-mapa .mapa-side-right {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
     }
     body.tv-mode .mapa-kpis-top .arm-kpi .val { font-size: clamp(18px, 2.4vmin, 32px); }
     body.tv-mode .mapa-farol-overlay .big { font-size: clamp(64px, 10vmin, 120px); }
@@ -4462,7 +4504,15 @@
       .mapa-kpis-top { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .mapa-layout {
         grid-template-columns: 1fr;
-        grid-template-rows: minmax(180px, 28vh) minmax(360px, 1fr) auto;
+        grid-template-rows: 1fr;
+      }
+      .mapa-side {
+        width: min(140px, 28vw);
+        bottom: auto;
+        height: min(180px, 28vh);
+      }
+      .mapa-side-right {
+        width: min(220px, 42vw);
       }
       .mapa-wrap { height: auto; min-height: 100vh; }
     }
@@ -9707,8 +9757,15 @@
       return { tone, color, label };
     }
 
+    async function loadMapaFarolGeo() {
+      // sempre busca fresco (cores/zonas mudam com frequência)
+      const res = await fetch('data/mapa/sp_distritos.geojson?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('GeoJSON SP ausente');
+      window.__mapaFarolGeo = await res.json();
+      return window.__mapaFarolGeo;
+    }
+
     async function loadMapaZonas() {
-      if (window.__mapaZonas) return window.__mapaZonas;
       try {
         const res = await fetch('data/mapa/sp_zonas.json?t=' + Date.now(), { cache: 'no-store' });
         if (res.ok) {
@@ -9718,11 +9775,11 @@
       } catch (_) {}
       window.__mapaZonas = {
         zonas: {
-          CENTRO: { label: 'Centro', color: '#FFE566' },
-          LESTE: { label: 'Leste', color: '#39FF14' },
-          NORTE: { label: 'Norte', color: '#FF9F1C' },
-          OESTE: { label: 'Oeste', color: '#FF2ECF' },
-          SUL: { label: 'Sul', color: '#B967FF' },
+          CENTRO: { label: 'Centro', color: '#FFF56A' },
+          LESTE: { label: 'Leste', color: '#7CFF4A' },
+          NORTE: { label: 'Norte', color: '#FFB347' },
+          OESTE: { label: 'Oeste', color: '#FF5AE8' },
+          SUL: { label: 'Sul', color: '#C9A0FF' },
         },
         distritos: {},
       };
@@ -9753,14 +9810,6 @@
         if (container) container.style.background = 'transparent';
       } catch (_) {}
       return mapaFarolLeaflet;
-    }
-
-    async function loadMapaFarolGeo() {
-      if (window.__mapaFarolGeo) return window.__mapaFarolGeo;
-      const res = await fetch('data/mapa/sp_distritos.geojson?t=' + Date.now(), { cache: 'no-store' });
-      if (!res.ok) throw new Error('GeoJSON SP ausente');
-      window.__mapaFarolGeo = await res.json();
-      return window.__mapaFarolGeo;
     }
 
     function paintMapaFarol(pct, detail) {
@@ -9794,11 +9843,11 @@
               || (zonas.distritos[p.name] && zonas.distritos[p.name].color)
               || '#00f0ff';
             return {
-              color: color,
-              weight: 1.35,
-              opacity: 0.95,
+              color: '#ffffff',
+              weight: 1.1,
+              opacity: 0.85,
               fillColor: color,
-              fillOpacity: 0.72,
+              fillOpacity: 0.92,
               className: 'mapa-zona-neon',
             };
           },
