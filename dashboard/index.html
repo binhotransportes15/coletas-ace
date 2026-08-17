@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
-  <title>BINHO · OPERACIONAL</title>
+  <title>BINHO Â· OPERACIONAL</title>
   <script src="config.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -26,7 +26,7 @@
       --cad-dark: #fbb03b;
       --can: #ed1c24;
       --can-dark: #c1272d;
-      /* Design System — aliases semânticos (não trocam os hex legado) */
+      /* Design System â€” aliases semÃ¢nticos (nÃ£o trocam os hex legado) */
       --ok: var(--col);
       --ok-dark: var(--col-dark);
       --run: var(--com);
@@ -144,7 +144,7 @@
     .ds-status-crit { color: var(--crit) !important; }
     .ds-status-neutral { color: var(--neutral) !important; }
 
-    /* Faixas horizontais de status (Coleta / composição) */
+    /* Faixas horizontais de status (Coleta / composiÃ§Ã£o) */
     .ds-hstatus {
       display: flex;
       flex-direction: column;
@@ -262,7 +262,7 @@
     }
     .ds-pareto-n { color: var(--text); min-width: 2.5ch; }
     .ds-pareto-acc { color: var(--warn); min-width: 3.5ch; }
-    /* Pendência / TV: Pareto ocupa a parede */
+    /* PendÃªncia / TV: Pareto ocupa a parede */
     body.tv-mode .ds-pareto {
       gap: clamp(12px, 1.8vmin, 22px) !important;
       padding: clamp(10px, 1.6vmin, 24px) clamp(12px, 2vmin, 28px) !important;
@@ -369,7 +369,7 @@
     }
     body.live-mode { overflow: hidden; height: 100vh; }
 
-    /* webOS / Smart TV: vídeo 1×1 em loop impede o protetor de tela */
+    /* webOS / Smart TV: vÃ­deo 1Ã—1 em loop impede o protetor de tela */
     #tvKeepAliveVideo {
       position: fixed;
       left: 0;
@@ -1014,7 +1014,7 @@
     }
     .t-can .base .lbl { color: var(--can); }
 
-    /* Gestão */
+    /* GestÃ£o */
     .panel {
       background: var(--panel); border: 1px solid var(--line);
       border-radius: 14px; padding: 14px;
@@ -1145,7 +1145,7 @@
       padding: 0 !important;
     }
     body.tv-mode.tv-idle { cursor: none; }
-    /* TV: logo só na Distribuição */
+    /* TV: logo sÃ³ na DistribuiÃ§Ã£o */
     body.tv-mode:not([data-sector="distribuicao"]) .brand img,
     body.tv-mode:not([data-sector="distribuicao"]) .arm-brand > img,
     body.tv-mode:not([data-sector="distribuicao"]) .js-sector-menu,
@@ -1285,7 +1285,7 @@
     body.tv-mode * {
       border-radius: 0 !important;
     }
-    /* Exceção: bolinhas E/C e base no mapa */
+    /* ExceÃ§Ã£o: bolinhas E/C e base no mapa */
     body.tv-mode .mapa-op-stop,
     body.tv-mode .mapa-op-stop *,
     body.tv-mode .cyber-base,
@@ -1452,7 +1452,7 @@
       border-bottom: 1px solid #132033 !important;
     }
 
-    /* Parede 2×3: cada TV mostra um pedaço do mesmo dashboard */
+    /* Parede 2Ã—3: cada TV mostra um pedaÃ§o do mesmo dashboard */
     body.tv-mode.tv-mosaic {
       overflow: hidden !important;
     }
@@ -1546,7 +1546,7 @@
     body.tv-mode .agenda-layout:not(.has-blocks) {
       display: grid !important;
       grid-template-columns: minmax(0, 1.7fr) minmax(190px, 0.65fr) !important;
-      /* KPIs · pizza/status · amanhã — todas as faixas com altura real (sem cortar) */
+      /* KPIs Â· pizza/status Â· amanhÃ£ â€” todas as faixas com altura real (sem cortar) */
       grid-template-rows: auto minmax(0, 1.15fr) minmax(130px, 0.52fr) !important;
       gap: clamp(6px, 0.8vmin, 12px) !important;
       height: 100% !important;
@@ -1555,7 +1555,7 @@
       overflow: hidden !important;
       align-content: stretch !important;
     }
-    /* TV: agendamento — tudo escala dentro do viewport */
+    /* TV: agendamento â€” tudo escala dentro do viewport */
     body.tv-mode .agenda-arena {
       display: flex !important;
       flex-direction: column !important;
@@ -1678,7 +1678,7 @@
     body.dash-hide-amanha .agenda-layout:not(.has-blocks) [data-block="amanha"] {
       display: none !important;
     }
-    /* TV: painéis de setor — coluna flex estável (evita layout bugado) */
+    /* TV: painÃ©is de setor â€” coluna flex estÃ¡vel (evita layout bugado) */
     body.tv-mode #panel-armazem:not([hidden]),
     body.tv-mode #panel-pendencia:not([hidden]),
     body.tv-mode #panel-contratacao:not([hidden]),
@@ -1709,7 +1709,7 @@
       grid-template-rows: auto minmax(0, 1fr) !important;
       box-sizing: border-box !important;
     }
-    /* Emissão: preenche a TV inteira (sem faixa vazia embaixo) */
+    /* EmissÃ£o: preenche a TV inteira (sem faixa vazia embaixo) */
     body.tv-mode #panel-emissao .emi-wrap {
       flex: 1 1 auto !important;
       min-height: 0 !important;
@@ -1725,7 +1725,7 @@
       gap: clamp(6px, 0.8vmin, 10px) !important;
       padding: clamp(8px, 1vmin, 12px) clamp(10px, 1.2vmin, 16px) !important;
     }
-    /* Mapa: 3 linhas (header · KPIs · layout) — sem fundo nas placas/mapa */
+    /* Mapa: 3 linhas (header Â· KPIs Â· layout) â€” sem fundo nas placas/mapa */
     body.tv-mode #panel-mapa .mapa-wrap {
       flex: 1 1 auto !important;
       min-height: 0 !important;
@@ -1740,7 +1740,7 @@
       padding: clamp(8px, 1vmin, 12px) clamp(10px, 1.2vmin, 16px) !important;
       box-sizing: border-box !important;
     }
-    /* Regra genérica .torre .barra { max-height:38vh } não vale pro armazém */
+    /* Regra genÃ©rica .torre .barra { max-height:38vh } nÃ£o vale pro armazÃ©m */
     body.tv-mode .torres.arm-torres .barra,
     body.tv-mode .torres.arm-torres .torre .barra,
     body.tv-mode .torres.pen-torres .barra,
@@ -1751,7 +1751,7 @@
     body.tv-mode #armLayoutPatio:not(.has-blocks) {
       display: grid !important;
       grid-template-columns: 1fr !important;
-      /* minmax(0, fr) — minpx alto estoura 100dvh na TV */
+      /* minmax(0, fr) â€” minpx alto estoura 100dvh na TV */
       grid-template-rows: auto minmax(0, 1.55fr) minmax(0, 0.7fr) !important;
       height: 100% !important;
       min-height: 0 !important;
@@ -1973,7 +1973,7 @@
       max-height: 32vh;
       border-radius: clamp(8px, 1vmin, 14px) clamp(8px, 1vmin, 14px) 0 0;
     }
-    /* Armazém / Pendência / Contratação: barras ocupam a coluna (não 32vh) */
+    /* ArmazÃ©m / PendÃªncia / ContrataÃ§Ã£o: barras ocupam a coluna (nÃ£o 32vh) */
     body.tv-mode .torres.arm-torres .barra,
     body.tv-mode .torres.arm-torres .torre .barra,
     body.tv-mode .torres.pen-torres .barra,
@@ -2153,7 +2153,7 @@
       text-overflow: ellipsis;
       text-rendering: geometricPrecision;
     }
-    /* Peso/Frete: valor inteiro visível (fonte encolhe conforme o tamanho) */
+    /* Peso/Frete: valor inteiro visÃ­vel (fonte encolhe conforme o tamanho) */
     .agenda-kpi.k-peso b,
     .agenda-kpi.k-frete b {
       overflow: visible;
@@ -2189,7 +2189,7 @@
       min-height: 0;
       display: grid;
       grid-template-columns: minmax(0, 1.4fr) minmax(200px, 0.7fr);
-      /* amanhã com piso real para cards não sumirem */
+      /* amanhÃ£ com piso real para cards nÃ£o sumirem */
       grid-template-rows: auto minmax(0, 1.1fr) minmax(140px, 0.5fr);
       gap: clamp(8px, 1vw, 14px);
       overflow: hidden;
@@ -2205,7 +2205,7 @@
       container-type: size;
       container-name: dashblock;
     }
-    /* KPIs: NÃO herdar flex-column do dash-block (empilhava 8 cards e a linha auto ia a 0px na TV) */
+    /* KPIs: NÃƒO herdar flex-column do dash-block (empilhava 8 cards e a linha auto ia a 0px na TV) */
     .agenda-layout .dash-block[data-block="kpis"],
     .agenda-layout .agenda-kpis.dash-block {
       display: grid !important;
@@ -2217,7 +2217,7 @@
       container-type: normal;
     }
     .agenda-layout .dash-block[hidden] { display: none !important; }
-    /* Layout fixo — blocos filhos diretos (sem display:contents / Sites-safe) */
+    /* Layout fixo â€” blocos filhos diretos (sem display:contents / Sites-safe) */
     .agenda-layout:not(.has-blocks) [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
     .agenda-layout:not(.has-blocks) [data-block="chart"] { grid-column: 1; grid-row: 2; }
     .agenda-layout:not(.has-blocks) [data-block="status"] { grid-column: 2; grid-row: 2; }
@@ -2310,7 +2310,7 @@
     .agenda-layout.has-blocks [data-block="amanha"] .agenda-card .ctrc {
       font-size: clamp(13px, 6cqh, 26px);
     }
-    /* com blocos, scale-large não força fonte fora do bloco */
+    /* com blocos, scale-large nÃ£o forÃ§a fonte fora do bloco */
     .agenda-layout.has-blocks ~ *,
     body.dash-scale-large .agenda-layout.has-blocks .agenda-kpi b {
       /* tipografia vem do container query acima */
@@ -2422,7 +2422,7 @@
       flex-direction: column;
       gap: 0;
       flex: 1 1 auto;
-      /* max-height:38% cortava os cards (só o topo aparecia) */
+      /* max-height:38% cortava os cards (sÃ³ o topo aparecia) */
       max-height: none;
       min-height: 0;
       height: 100%;
@@ -2632,7 +2632,7 @@
     .agenda-alert-chip,
     .agenda-alerts { display: none !important; }
 
-    /* ===== LOCK TELA CHEIA · SEM SAÍDA HOJE ===== */
+    /* ===== LOCK TELA CHEIA Â· SEM SAÃDA HOJE ===== */
     #alertaLock {
       display: none;
       position: fixed;
@@ -2644,7 +2644,7 @@
       background: rgba(0, 0, 0, 0.72);
     }
     body.alerta-lock #alertaLock { display: flex; }
-    /* Nunca mostrar/bipar fora da Distribuição (falha-segura de CSS) */
+    /* Nunca mostrar/bipar fora da DistribuiÃ§Ã£o (falha-segura de CSS) */
     body:not([data-sector="distribuicao"]) #alertaLock,
     body:not([data-sector="distribuicao"]).alerta-lock #alertaLock {
       display: none !important;
@@ -2817,7 +2817,7 @@
       color: #67e8f9;
       flex-shrink: 0;
     }
-    /* TV/vivo: pizza + cards amanhã + status lateral (sem ribbon / sem tabela gestão) */
+    /* TV/vivo: pizza + cards amanhÃ£ + status lateral (sem ribbon / sem tabela gestÃ£o) */
     body.live-mode .agenda-gestao-only { display: none !important; }
     body.live-mode .agenda-head h2 { display: none; }
     body.live-mode .agenda-kpi b {
@@ -2838,7 +2838,7 @@
       height: 100%;
       max-width: 100%;
     }
-    /* Callouts cabem no viewBox 900×520 (não estouram as bordas) */
+    /* Callouts cabem no viewBox 900Ã—520 (nÃ£o estouram as bordas) */
     body.live-mode .agenda-pizza .callout-pct { font-size: 34px; }
     body.live-mode .agenda-pizza .callout-lab { font-size: 15px; }
     body.live-mode .agenda-pizza .callout-count { font-size: 13px; }
@@ -2867,7 +2867,7 @@
     body.tv-mode.live-mode .agenda-pizza .callout-count { font-size: 12px; }
     body.tv-mode.live-mode .tower-bar .track { height: 18px; }
     @media (max-width: 980px) {
-      /* Só empilha em telas realmente estreitas — Sites/TV iframe usa o grid 2 colunas */
+      /* SÃ³ empilha em telas realmente estreitas â€” Sites/TV iframe usa o grid 2 colunas */
       body.live-mode:not(.tv-mode) .agenda-layout:not(.has-blocks) {
         grid-template-columns: 1fr;
         grid-template-rows: auto minmax(180px, 1fr) auto minmax(120px, 0.5fr);
@@ -2890,7 +2890,7 @@
         grid-template-columns: repeat(4, minmax(0, 1fr));
       }
     }
-    /* iframe Sites / TV: nunca colapsar Agendamento em coluna única */
+    /* iframe Sites / TV: nunca colapsar Agendamento em coluna Ãºnica */
     html.tv-in-frame .agenda-layout:not(.has-blocks),
     body.tv-mode .agenda-layout:not(.has-blocks) {
       display: grid !important;
@@ -3044,7 +3044,7 @@
       body.tv-mode .col-right { max-height: 24vh; }
     }
 
-    /* ——— Hub OPERACIONAL · setores (menu escondido: clicar no logo) ——— */
+    /* â€”â€”â€” Hub OPERACIONAL Â· setores (menu escondido: clicar no logo) â€”â€”â€” */
     .sector-overlay {
       position: fixed; inset: 0; z-index: 130;
       background: rgba(2, 6, 23, 0.72);
@@ -3155,7 +3155,7 @@
     body:not([data-sector="distribuicao"]):not([data-sector="armazem"]) .swap-nav { display: none !important; }
     body:not([data-sector="distribuicao"]) > .tv-hint { display: none !important; }
 
-    /* Views operacionais — uma tela cheia por vez */
+    /* Views operacionais â€” uma tela cheia por vez */
     #viewColeta, #viewEntrega, #viewAgendamento { display: none; }
     #viewColeta.active, #viewEntrega.active, #viewAgendamento.active {
       display: flex;
@@ -3177,7 +3177,7 @@
       height: 100%;
       min-height: 0;
     }
-    /* ops-layout/agenda-layout definem o grid; flex acima é só fallback */
+    /* ops-layout/agenda-layout definem o grid; flex acima Ã© sÃ³ fallback */
     .arena-single .arena-body.ops-layout:not(.has-blocks),
     .arena-single .arena-body.agenda-layout:not(.has-blocks) {
       display: grid;
@@ -3225,7 +3225,7 @@
     body[data-view="agendamento"] .swap-dot i.d-ag { background: #fbb03b; box-shadow: 0 0 8px rgba(251,176,59,.7); }
     /* setas sempre ativas no ciclo de 3 telas */
 
-    /* Armazém embutido */
+    /* ArmazÃ©m embutido */
 
     .arm-view { display: none; flex: 1; min-height: 0; flex-direction: column; gap: 10px; overflow: hidden; }
     .arm-view.active { display: flex; }
@@ -3253,7 +3253,7 @@
       container-type: normal;
     }
     .arm-layout .dash-block[hidden] { display: none !important; }
-    /* Pátio: KPIs · torres grandes · tabela embaixo */
+    /* PÃ¡tio: KPIs Â· torres grandes Â· tabela embaixo */
     #armLayoutPatio:not(.has-blocks) {
       display: grid;
       grid-template-columns: 1fr;
@@ -3265,7 +3265,7 @@
     #armLayoutPatio:not(.has-blocks) [data-block="kpis"] {
       grid-column: 1;
       grid-row: 1;
-      /* size containment impede a linha medir os cards → KPIs somem */
+      /* size containment impede a linha medir os cards â†’ KPIs somem */
       container-type: normal !important;
       min-height: min-content !important;
       height: auto !important;
@@ -3358,7 +3358,7 @@
     body[data-sector="pendencia"] #penTitle { color: #f472b6; }
     body[data-sector="contratacao"] #ctrTitle { color: #fb923c; }
 
-    /* Contratação 073→200 */
+    /* ContrataÃ§Ã£o 073â†’200 */
     .ctr-wrap {
       height: 100vh;
       padding: 12px 14px;
@@ -3565,7 +3565,7 @@
       }
     }
 
-    /* Pendência 031 — KPIs + torres em tela cheia (sem tabela CTRCs) */
+    /* PendÃªncia 031 â€” KPIs + torres em tela cheia (sem tabela CTRCs) */
     .pen-wrap {
       height: 100vh;
       padding: 12px 14px;
@@ -3600,7 +3600,7 @@
       padding: clamp(12px, 1.8vw, 28px) clamp(10px, 1.4vw, 22px);
     }
 
-    /* Emissão 455 — wallboard operacional (performance → status → volume) */
+    /* EmissÃ£o 455 â€” wallboard operacional (performance â†’ status â†’ volume) */
     .emi-wrap {
       height: 100vh;
       padding: 10px 12px;
@@ -3975,7 +3975,7 @@
       body:not(.tv-mode) .emi-wrap { height: auto; min-height: 100vh; }
       body:not(.tv-mode) .emi-layout { grid-template-rows: auto auto auto; height: auto; overflow: visible; }
     }
-    /* TV Emissão — preenche 100% da tela; gráfico contido (min-height: 0) */
+    /* TV EmissÃ£o â€” preenche 100% da tela; grÃ¡fico contido (min-height: 0) */
     html.tv-in-frame body.tv-mode #panel-emissao .emi-wrap,
     body.tv-mode #panel-emissao .emi-wrap {
       height: 100% !important;
@@ -4053,7 +4053,7 @@
       flex-shrink: 0;
     }
 
-    /* —— Mapa Operacional —— */
+    /* â€”â€” Mapa Operacional â€”â€” */
     .mapa-wrap {
       height: 100vh;
       padding: 10px 12px;
@@ -4094,7 +4094,7 @@
       z-index: 1;
     }
     .mapa-map-card::after { display: none; }
-    /* Mapa full-bleed; farol + placas flutuam DENTRO do mapa (sem colunas/painéis) */
+    /* Mapa full-bleed; farol + placas flutuam DENTRO do mapa (sem colunas/painÃ©is) */
     .mapa-layout {
       display: grid !important;
       grid-template-columns: 1fr !important;
@@ -4143,7 +4143,7 @@
     .mapa-side .mapa-farol-hero {
       pointer-events: auto;
     }
-    /* Farol SP — mais escuro + contorno (sem painel/quadrão atrás) */
+    /* Farol SP â€” mais escuro + contorno (sem painel/quadrÃ£o atrÃ¡s) */
     .mapa-farol-hero {
       position: relative;
       flex: 1 1 auto;
@@ -4191,7 +4191,7 @@
       padding: 12px;
       background: none;
     }
-    /* Onda só dentro do número/% — não cobre o mapa SP */
+    /* Onda sÃ³ dentro do nÃºmero/% â€” nÃ£o cobre o mapa SP */
     .mapa-farol-pct-wrap {
       position: relative;
       display: inline-grid;
@@ -4244,7 +4244,7 @@
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
-      /* sobe só no desenho do número/% */
+      /* sobe sÃ³ no desenho do nÃºmero/% */
       clip-path: inset(calc(100% - var(--farol-level)) 0 0 0);
       transition: clip-path 0.9s cubic-bezier(.2,.8,.2,1), background-image 0.6s ease;
       filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.35));
@@ -4299,7 +4299,7 @@
       min-height: 180px;
       background: transparent;
     }
-    /* Placas estilo distribuição — sem fundo, sobem e somem */
+    /* Placas estilo distribuiÃ§Ã£o â€” sem fundo, sobem e somem */
     .mapa-placa-pop {
       position: absolute;
       left: 0;
@@ -4415,7 +4415,7 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: 900; color: #f8fafc;
     }
-    /* Farol cyberpunk — zonas mais escuras + contorno forte */
+    /* Farol cyberpunk â€” zonas mais escuras + contorno forte */
     #mapaFarolLeaflet path.mapa-zona-neon,
     .mapa-farol-hero path {
       filter: brightness(0.68) saturate(1.2)
@@ -4461,7 +4461,7 @@
       0% { transform: scale(0.7); opacity: 0.85; }
       100% { transform: scale(1.55); opacity: 0; }
     }
-    /* Bolinhas E/C — círculo (não quadrado) */
+    /* Bolinhas E/C â€” cÃ­rculo (nÃ£o quadrado) */
     .mapa-op-stop {
       --op-main: #00f0ff;
       --op-soft: #8defff;
@@ -4684,7 +4684,7 @@
       display: none !important;
     }
 
-    /* Gestão do Mapa Operacional */
+    /* GestÃ£o do Mapa Operacional */
     .mapa-gestao-panel {
       position: absolute !important;
       right: 8px !important;
@@ -4942,7 +4942,7 @@
     .pen-torres .t-of7 .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
     .pen-torres .t-of7 .pin { background: #ef4444; }
 
-    /* Reciclagem — 019 torres verticais · 081 torres horizontais */
+    /* Reciclagem â€” 019 torres verticais Â· 081 torres horizontais */
     .rec-wrap {
       display: flex;
       flex-direction: column;
@@ -4963,7 +4963,7 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: clamp(8px, 1vmin, 14px);
     }
-    /* 019 — KPIs · torres por filial · CTRCs atrasados */
+    /* 019 â€” KPIs Â· torres por filial Â· CTRCs atrasados */
     .rec-view-019 {
       display: none;
       flex: 1;
@@ -5317,7 +5317,7 @@
       .pen-towers-wrap { min-height: 360px; }
     }
 
-    /* Coleta / Entrega — blocos arrastáveis (CRT) */
+    /* Coleta / Entrega â€” blocos arrastÃ¡veis (CRT) */
     .ops-layout {
       flex: 1;
       min-height: 0;
@@ -5374,7 +5374,7 @@
       min-height: 0;
       height: 100%;
     }
-    /* Desktop: torres/faixas preenchem a coluna (antes só o TV fazia isso) */
+    /* Desktop: torres/faixas preenchem a coluna (antes sÃ³ o TV fazia isso) */
     body.live-mode:not(.tv-mode) .ops-layout .ops-col-torres,
     body.live-mode:not(.tv-mode) .ops-layout .ops-col-banners {
       height: 100%;
@@ -5411,7 +5411,7 @@
     body.live-mode:not(.tv-mode) .resumo-single .resumo-stats b {
       font-size: clamp(22px, 2.6vw, 36px);
     }
-    /* Entrega sem blocos CRT: pizza grande + pendências laterais */
+    /* Entrega sem blocos CRT: pizza grande + pendÃªncias laterais */
     #opsLayoutEntrega:not(.has-blocks) {
       grid-template-columns: minmax(320px, 1.7fr) minmax(180px, 0.75fr);
     }
@@ -5540,7 +5540,7 @@
     /* Tamanho das letras (CRT fontZoom) + escala TV 43" parede */
     html { --dash-font: 1; }
     body.tv-mode {
-      /* Full HD 43" vista de longe — números dominam */
+      /* Full HD 43" vista de longe â€” nÃºmeros dominam */
       --tv-scale: 1.2;
     }
     @media (min-width: 1680px) and (max-width: 2100px) and (min-height: 900px) and (max-height: 1200px) {
@@ -5750,7 +5750,7 @@
     .torres.arm-torres .t-che .pin { background: #0ea5e9; }
     .torres.arm-torres .t-agu .pin { background: #64748b; }
     .torres.arm-torres .t-fin .pin { background: #22c55e; }
-    /* Contratação: sobrescreve arm-torres (mesma div tem as duas classes) */
+    /* ContrataÃ§Ã£o: sobrescreve arm-torres (mesma div tem as duas classes) */
     .torres.arm-torres.ctr-torres {
       min-height: 0;
       max-height: none;
@@ -6083,7 +6083,7 @@
       #armLayoutPatio:not(.has-blocks) [data-block="tabela"] { grid-column: 1; grid-row: 3; }
     }
 
-    /* Escolher qual TV física (slot 1–6) */
+    /* Escolher qual TV fÃ­sica (slot 1â€“6) */
     .tv-slot-overlay {
       position: fixed; inset: 0; z-index: 120;
       background: rgba(2, 6, 23, 0.92);
@@ -6127,7 +6127,7 @@
   </style>
 </head>
 <body class="live-mode" data-sector="distribuicao" data-view="coleta">
-  <!-- webOS: vídeo 1×1 muted+loop (src preenchido em JS via canvas/stream silencioso) -->
+  <!-- webOS: vÃ­deo 1Ã—1 muted+loop (src preenchido em JS via canvas/stream silencioso) -->
   <video
     id="tvKeepAliveVideo"
     muted
@@ -6142,11 +6142,11 @@
   ></video>
   <div class="tv-slot-overlay" id="tvSlotOverlay" hidden>
     <div class="tv-slot-sheet" role="dialog" aria-modal="true" aria-labelledby="tvSlotTitle">
-      <p class="kicker">PAREDE 2×3</p>
-      <h2 id="tvSlotTitle">Qual TV é esta?</h2>
+      <p class="kicker">PAREDE 2Ã—3</p>
+      <h2 id="tvSlotTitle">Qual TV Ã© esta?</h2>
       <p style="color:#94a3b8;font-size:13px;margin:0 0 14px;line-height:1.45">
-        Escolha a posição nesta parede (só uma vez). O link pode ser
-        <code>#tv/distribuicao</code> ou outro setor — a posição fica salva neste aparelho.
+        Escolha a posiÃ§Ã£o nesta parede (sÃ³ uma vez). O link pode ser
+        <code>#tv/distribuicao</code> ou outro setor â€” a posiÃ§Ã£o fica salva neste aparelho.
       </p>
       <div class="tv-slot-grid" id="tvSlotGrid">
         <button type="button" data-slot="1">TV 1</button>
@@ -6163,7 +6163,7 @@
     <div class="sector-sheet" role="dialog" aria-modal="true" aria-labelledby="sectorSheetTitle">
       <header>
         <div>
-          <p class="kicker">BINHO · hub único</p>
+          <p class="kicker">BINHO Â· hub Ãºnico</p>
           <h2 id="sectorSheetTitle">SETORES</h2>
         </div>
         <button type="button" class="close-sheet" id="btnCloseSetores">Fechar</button>
@@ -6171,37 +6171,37 @@
       <div class="sector-grid" id="sectorGrid">
         <button type="button" class="sector-card active" data-sector="distribuicao">
           <span class="tag">Ativo</span>
-          <span class="name">Distribuição</span>
-          <span class="desc">Coleta · Entrega · Agendamento</span>
+          <span class="name">DistribuiÃ§Ã£o</span>
+          <span class="desc">Coleta Â· Entrega Â· Agendamento</span>
         </button>
         <button type="button" class="sector-card" data-sector="armazem">
           <span class="tag">078</span>
-          <span class="name">Armazém</span>
-          <span class="desc">Descarga · pátio · status</span>
+          <span class="name">ArmazÃ©m</span>
+          <span class="desc">Descarga Â· pÃ¡tio Â· status</span>
         </button>
         <button type="button" class="sector-card" data-sector="contratacao">
-          <span class="tag">073 · 200</span>
-          <span class="name">Contratação</span>
-          <span class="desc">Veículos · custo · frete</span>
+          <span class="tag">073 Â· 200</span>
+          <span class="name">ContrataÃ§Ã£o</span>
+          <span class="desc">VeÃ­culos Â· custo Â· frete</span>
         </button>
         <button type="button" class="sector-card" data-sector="pendencia">
           <span class="tag">031</span>
-          <span class="name">Pendência</span>
-          <span class="desc">Ocorrências · ofensores · CTRCs</span>
+          <span class="name">PendÃªncia</span>
+          <span class="desc">OcorrÃªncias Â· ofensores Â· CTRCs</span>
         </button>
         <button type="button" class="sector-card" data-sector="mapa">
-          <span class="tag">36 · rotas</span>
+          <span class="tag">36 Â· rotas</span>
           <span class="name">Mapa Operacional</span>
-          <span class="desc">Veículos na rua · rotas CyberMap</span>
+          <span class="desc">VeÃ­culos na rua Â· rotas CyberMap</span>
         </button>
         <button type="button" class="sector-card" data-sector="emissao">
           <span class="tag">455</span>
-          <span class="name">Emissão</span>
-          <span class="desc">CTEs · frete · picos · expedidores</span>
+          <span class="name">EmissÃ£o</span>
+          <span class="desc">CTEs Â· frete Â· picos Â· expedidores</span>
         </button>
       </div>
-      <div class="sector-prefs" aria-label="Preferências do mapa">
-        <label for="mapaRouteSec">Mapa · tempo de cada rota</label>
+      <div class="sector-prefs" aria-label="PreferÃªncias do mapa">
+        <label for="mapaRouteSec">Mapa Â· tempo de cada rota</label>
         <select id="mapaRouteSec" title="Quanto tempo cada rota fica no mapa">
           <option value="8000">8 s</option>
           <option value="12000">12 s</option>
@@ -6211,31 +6211,31 @@
           <option value="45000">45 s</option>
           <option value="60000">60 s</option>
         </select>
-        <p class="hint">Na TV, tempos maiores aliviam travamento ao trocar de rota.</p>
+        <p class="hint">Controla rota e placas juntos. Na TV, tempos maiores aliviam travamento.</p>
       </div>
     </div>
   </div>
 
-  <button type="button" class="swap-nav prev" id="btnSwapPrev" title="Tela anterior (←)" aria-label="Tela anterior">‹</button>
-  <button type="button" class="swap-nav next" id="btnSwapNext" title="Próxima tela (→)" aria-label="Próxima tela">›</button>
+  <button type="button" class="swap-nav prev" id="btnSwapPrev" title="Tela anterior (â†)" aria-label="Tela anterior">â€¹</button>
+  <button type="button" class="swap-nav next" id="btnSwapNext" title="PrÃ³xima tela (â†’)" aria-label="PrÃ³xima tela">â€º</button>
 
   <div id="alertaLock" role="alertdialog" aria-modal="true" aria-labelledby="alertaLockTitle" hidden>
     <div class="alerta-lock-box">
       <div class="siren-big" aria-hidden="true">!</div>
       <div class="tag">Alerta operacional</div>
-      <h1 id="alertaLockTitle">Agendamento sem saída hoje</h1>
+      <h1 id="alertaLockTitle">Agendamento sem saÃ­da hoje</h1>
       <div class="count" id="alertaLockCount">0</div>
-      <div class="hint" id="alertaLockHint">Há CTRC agendado hoje sem saída. Bipa a cada 10s · Continuar some por 1 min.</div>
+      <div class="hint" id="alertaLockHint">HÃ¡ CTRC agendado hoje sem saÃ­da. Bipa a cada 10s Â· Continuar some por 1 min.</div>
       <div class="alerta-lock-list" id="alertaLockList"></div>
       <div class="alerta-lock-actions">
         <button type="button" id="btnAlertaContinuar">Continuar navegando</button>
-        <button type="button" class="secondary" id="btnAlertaIrGestao">Abrir Gestão</button>
+        <button type="button" class="secondary" id="btnAlertaIrGestao">Abrir GestÃ£o</button>
       </div>
     </div>
   </div>
 
   <div id="panel-operacao" class="sector-root">
-  <div class="tv-hint" id="tvHint">Modo TV · F ou ESC para sair · ideal para televisão</div>
+  <div class="tv-hint" id="tvHint">Modo TV Â· F ou ESC para sair Â· ideal para televisÃ£o</div>
   <div class="board">
     <header class="topbar ds-header">
       <div class="brand">
@@ -6251,13 +6251,13 @@
       </div>
       <nav class="nav">
         <button type="button" class="nav-btn active" data-view="live">Ao vivo</button>
-        <button type="button" class="nav-btn" data-view="gestao">Gestão</button>
+        <button type="button" class="nav-btn" data-view="gestao">GestÃ£o</button>
         <button type="button" class="nav-btn tv-btn" id="btnTv" title="Modo TV / tela inteira (F)">TV</button>
       </nav>
       <div class="clock-box">
         <div class="lbl">Tempo real</div>
         <div class="time" id="clock">--:--:--</div>
-        <div class="date" id="clockDate">—</div>
+        <div class="date" id="clockDate">â€”</div>
       </div>
     </header>
 
@@ -6274,7 +6274,7 @@
                 <div class="s-rota"><span>Em rota</span><b id="statRota">0</b></div>
                 <div class="s-par"><span>Parado</span><b id="statPar">0</b></div>
                 <div class="s-can"><span>Cancelada</span><b id="statCan">0</b></div>
-                <div class="s-pct"><span>% realização</span><b id="statPctReal">0%</b></div>
+                <div class="s-pct"><span>% realizaÃ§Ã£o</span><b id="statPctReal">0%</b></div>
               </div>
             </div>
           </div>
@@ -6284,7 +6284,7 @@
             <div class="pop-stack" id="placaStack"></div>
           </div>
           <div class="ops-col dash-block ops-col-torres ds-panel" data-block="torres">
-            <div class="col-sub">Situações</div>
+            <div class="col-sub">SituaÃ§Ãµes</div>
             <div class="torres" id="coletaTorres">
               <div class="torre t-col">
                 <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
@@ -6311,22 +6311,22 @@
               <div class="ds-hstatus-row">
                 <div class="ds-hstatus-lab is-ok">Realizadas</div>
                 <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-ok" id="colHFillReal"></div></div>
-                <div class="ds-hstatus-meta"><span id="colHNreal">0</span> · <span id="colHPreal">0%</span></div>
+                <div class="ds-hstatus-meta"><span id="colHNreal">0</span> Â· <span id="colHPreal">0%</span></div>
               </div>
               <div class="ds-hstatus-row">
                 <div class="ds-hstatus-lab is-run">Em rota</div>
                 <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-run" id="colHFillRota"></div></div>
-                <div class="ds-hstatus-meta"><span id="colHNRota">0</span> · <span id="colHPRota">0%</span></div>
+                <div class="ds-hstatus-meta"><span id="colHNRota">0</span> Â· <span id="colHPRota">0%</span></div>
               </div>
               <div class="ds-hstatus-row">
                 <div class="ds-hstatus-lab is-warn">Pendentes</div>
                 <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-warn" id="colHFillPar"></div></div>
-                <div class="ds-hstatus-meta"><span id="colHNPar">0</span> · <span id="colHPPar">0%</span></div>
+                <div class="ds-hstatus-meta"><span id="colHNPar">0</span> Â· <span id="colHPPar">0%</span></div>
               </div>
               <div class="ds-hstatus-row">
                 <div class="ds-hstatus-lab is-crit">Canceladas</div>
                 <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-crit" id="colHFillCan"></div></div>
-                <div class="ds-hstatus-meta"><span id="colHNCan">0</span> · <span id="colHPCan">0%</span></div>
+                <div class="ds-hstatus-meta"><span id="colHNCan">0</span> Â· <span id="colHPCan">0%</span></div>
               </div>
             </div>
           </div>
@@ -6349,8 +6349,8 @@
               <div class="resumo-stats stats-3">
                 <div class="s-real"><span>Realizada</span><b id="sumEntReal">0</b></div>
                 <div class="s-rota"><span>Em rota</span><b id="sumEntRota">0</b></div>
-                <div class="s-par"><span>Pendência</span><b id="sumEntPar">0</b></div>
-                <div class="s-pct"><span>% realização</span><b id="sumEntPct">0%</b></div>
+                <div class="s-par"><span>PendÃªncia</span><b id="sumEntPar">0</b></div>
+                <div class="s-pct"><span>% realizaÃ§Ã£o</span><b id="sumEntPct">0%</b></div>
               </div>
             </div>
           </div>
@@ -6358,7 +6358,7 @@
           <div class="ops-col dash-block ops-col-banners ds-panel" data-block="banners">
             <div class="col-sub" id="entChartSub">Entregas</div>
             <div class="entrega-pizza-wrap" id="entregaPizzaWrap" hidden>
-              <svg id="entregaPizza" class="agenda-pizza entrega-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de entregas"></svg>
+              <svg id="entregaPizza" class="agenda-pizza entrega-pizza" viewBox="0 0 900 520" role="img" aria-label="GrÃ¡fico pizza de entregas"></svg>
             </div>
             <div class="cyl-wrap" id="entregaCylWrap" aria-label="Resumo de entregas">
               <div class="cyl">
@@ -6391,7 +6391,7 @@
                 </div>
                 <div class="cyl-ban-row r-par">
                   <div class="ban-left">
-                    <div class="ban-title">Pendência</div>
+                    <div class="ban-title">PendÃªncia</div>
                     <div class="ban-meta"><b id="entNPar">0</b></div>
                   </div>
                   <div class="cyl-ban-track">
@@ -6404,7 +6404,7 @@
             </div>
           </div>
           <div class="ops-col dash-block" data-block="pendencias">
-            <div class="col-sub">Pendências</div>
+            <div class="col-sub">PendÃªncias</div>
             <div class="pop-stack" id="pendenciaStack"></div>
           </div>
         </div>
@@ -6413,60 +6413,60 @@
 
     <!-- AGENDAMENTO 225 -->
     <div class="view" id="viewAgendamento">
-      <section class="agenda-arena" aria-label="Agendamentos do mês">
+      <section class="agenda-arena" aria-label="Agendamentos do mÃªs">
         <header class="agenda-head">
           <div>
             <h2 id="agendaTitulo">Agendamento</h2>
-            <div class="sub" id="agendaPeriodo">Mês corrente · relatório 225</div>
+            <div class="sub" id="agendaPeriodo">MÃªs corrente Â· relatÃ³rio 225</div>
           </div>
           <div class="agenda-swap-btns">
-            <button type="button" id="btnAgendaPrev" title="Tela anterior">‹ Ant.</button>
+            <button type="button" id="btnAgendaPrev" title="Tela anterior">â€¹ Ant.</button>
             <div class="sub" id="agendaTick">troca em 15s</div>
-            <button type="button" id="btnAgendaNext" title="Próxima tela">› Prox.</button>
+            <button type="button" id="btnAgendaNext" title="PrÃ³xima tela">â€º Prox.</button>
           </div>
         </header>
 
         <div class="agenda-layout" id="agendaLayout">
-        <div class="agenda-kpis dash-block ds-kpi-row" data-block="kpis" id="agendaKpis" aria-label="Totais do mês">
+        <div class="agenda-kpis dash-block ds-kpi-row" data-block="kpis" id="agendaKpis" aria-label="Totais do mÃªs">
           <div class="agenda-kpi ds-kpi is-neutral">
             <span>Agendamentos</span>
             <b id="kpiTotal">0</b>
-            <small id="kpiTotalSub">CTRC no mês</small>
+            <small id="kpiTotalSub">CTRC no mÃªs</small>
           </div>
           <div class="agenda-kpi k-rota ds-kpi is-run">
             <span>Em rota</span>
             <b id="kpiRota">0</b>
-            <small id="kpiRotaSub">saída p/ entrega</small>
+            <small id="kpiRotaSub">saÃ­da p/ entrega</small>
           </div>
           <div class="agenda-kpi k-arm ds-kpi is-warn">
-            <span>No armazém</span>
+            <span>No armazÃ©m</span>
             <b id="kpiArm">0</b>
-            <small id="kpiArmSub">parado · 0 kg</small>
+            <small id="kpiArmSub">parado Â· 0 kg</small>
           </div>
           <div class="agenda-kpi k-ok ds-kpi is-ok">
             <span>Realizado</span>
             <b id="kpiReal">0</b>
-            <small id="kpiRealSub">0 kg · R$ 0</small>
+            <small id="kpiRealSub">0 kg Â· R$ 0</small>
           </div>
           <div class="agenda-kpi k-alerta ds-kpi is-crit">
-            <span>Sem saída</span>
+            <span>Sem saÃ­da</span>
             <b id="kpiAlerta">0</b>
             <small>agendado hoje / alerta</small>
           </div>
           <div class="agenda-kpi k-amanha ds-kpi is-run">
-            <span>Amanhã</span>
+            <span>AmanhÃ£</span>
             <b id="kpiAmanha">0</b>
             <small id="kpiAmanhaSub">agendados</small>
           </div>
           <div class="agenda-kpi k-peso ds-kpi is-secondary is-neutral">
             <span>Peso</span>
             <b id="kpiPeso">0</b>
-            <small>kg no mês</small>
+            <small>kg no mÃªs</small>
           </div>
           <div class="agenda-kpi k-frete ds-kpi is-secondary is-warn">
             <span>Frete</span>
             <b id="kpiFrete">0</b>
-            <small>R$ no mês</small>
+            <small>R$ no mÃªs</small>
           </div>
         </div>
 
@@ -6491,7 +6491,7 @@
             </div>
           </div>
           <div class="agenda-pizza-wrap" id="agendaPizzaWrap" hidden>
-              <svg id="agendaPizza" class="agenda-pizza" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Gráfico pizza de agendamentos"></svg>
+              <svg id="agendaPizza" class="agenda-pizza" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="GrÃ¡fico pizza de agendamentos"></svg>
           </div>
         </div>
 
@@ -6502,16 +6502,16 @@
           <div class="tower-alerts" id="agendaTowerAlerts"></div>
         </aside>
 
-        <div class="agenda-amanha-wrap dash-block" data-block="amanha" aria-label="Agendamentos de amanhã">
+        <div class="agenda-amanha-wrap dash-block" data-block="amanha" aria-label="Agendamentos de amanhÃ£">
           <div class="agenda-table-head">
-            <strong>Amanhã</strong>
+            <strong>AmanhÃ£</strong>
             <span class="muted" id="agendaFilaMeta">dia seguinte</span>
           </div>
           <div class="agenda-cards" id="agendaAmanhaCards"></div>
         </div>
 
         <div class="agenda-alert-chip" id="agendaAlertChip" hidden>
-          <span>⚠ Sem saída hoje</span>
+          <span>âš  Sem saÃ­da hoje</span>
           <b id="agAlert">0</b>
         </div>
         <span id="agTotal" hidden>0</span>
@@ -6527,12 +6527,12 @@
         <div class="agenda-table-wrap agenda-gestao-only">
           <div class="agenda-table-head">
             <strong>Fila de agendamentos</strong>
-            <span class="muted">gestão</span>
+            <span class="muted">gestÃ£o</span>
           </div>
           <table>
             <thead>
               <tr>
-                <th>Hora</th><th>CTRC</th><th>Destinatário</th>
+                <th>Hora</th><th>CTRC</th><th>DestinatÃ¡rio</th>
                 <th>Destino</th><th>Peso</th><th>Frete</th><th>Status</th>
               </tr>
             </thead>
@@ -6542,10 +6542,10 @@
       </section>
     </div>
 
-    <!-- GESTÃO -->
+    <!-- GESTÃƒO -->
     <div class="view" id="viewGestao">
       <section class="panel">
-        <h2>Gestão</h2>
+        <h2>GestÃ£o</h2>
         <div class="toolbar" id="tabsRelatorio">
           <button type="button" class="chip active" data-rel="coleta">Coleta</button>
           <button type="button" class="chip" data-rel="36">Entrega</button>
@@ -6566,7 +6566,7 @@
       </section>
     </div>
 
-    <p class="status-line" id="statusLine">BINHO · OPERACIONAL · DISTRIBUIÇÃO</p>
+    <p class="status-line" id="statusLine">BINHO Â· OPERACIONAL Â· DISTRIBUIÃ‡ÃƒO</p>
   </div>
   </div><!-- /panel-operacao -->
 
@@ -6583,8 +6583,8 @@
             tabindex="0"
           />
           <div class="arm-titles">
-            <div class="kicker" id="armKicker">BINHO · OPERACIONAL · 078</div>
-            <h1 id="armTitle">ARMAZÉM <span class="swap-dot" id="armSwapDot" aria-hidden="true"><i class="d-patio"></i><i class="d-conf"></i></span></h1>
+            <div class="kicker" id="armKicker">BINHO Â· OPERACIONAL Â· 078</div>
+            <h1 id="armTitle">ARMAZÃ‰M <span class="swap-dot" id="armSwapDot" aria-hidden="true"><i class="d-patio"></i><i class="d-conf"></i></span></h1>
           </div>
         </div>
         <nav class="nav">
@@ -6593,29 +6593,29 @@
         <div class="clock-box">
           <div class="lbl">Tempo real</div>
           <div class="time" id="armClock">--:--:--</div>
-          <div class="date" id="armDate">—</div>
+          <div class="date" id="armDate">â€”</div>
         </div>
       </div>
       <div class="arm-view active" id="viewArmPatio">
         <div class="arm-layout" id="armLayoutPatio">
         <div class="arm-kpis dash-block ds-kpi-row" data-block="kpis">
-          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Veículos</div><div class="val" id="kVeic">0</div></div>
+          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">VeÃ­culos</div><div class="val" id="kVeic">0</div></div>
           <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Peso total</div><div class="val" id="kPeso">0</div></div>
           <div class="arm-kpi atrasado ds-kpi is-crit"><div class="lbl">Atrasado</div><div class="val" id="kAtr">0</div></div>
           <div class="arm-kpi descarregando ds-kpi is-run"><div class="lbl">Descarregando</div><div class="val" id="kDes">0</div></div>
-          <div class="arm-kpi chegou ds-kpi is-run"><div class="lbl">No pátio</div><div class="val" id="kChe">0</div></div>
+          <div class="arm-kpi chegou ds-kpi is-run"><div class="lbl">No pÃ¡tio</div><div class="val" id="kChe">0</div></div>
           <div class="arm-kpi aguardando ds-kpi is-warn"><div class="lbl">Aguardando</div><div class="val" id="kAgu">0</div></div>
           <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Finalizado</div><div class="val" id="kFin">0</div></div>
-          <div class="arm-kpi ds-kpi is-warn"><div class="lbl">Tempo médio</div><div class="val" id="kTempoMed">—</div></div>
+          <div class="arm-kpi ds-kpi is-warn"><div class="lbl">Tempo mÃ©dio</div><div class="val" id="kTempoMed">â€”</div></div>
         </div>
         <div class="arm-hero arm-hero-solo dash-block" data-block="chart">
           <section class="arm-hero-card">
             <header>
               <h2>Descarga</h2>
-              <div class="meta">atrasado (+3h) · descarregando · pátio · aguardando · finalizado</div>
+              <div class="meta">atrasado (+3h) Â· descarregando Â· pÃ¡tio Â· aguardando Â· finalizado</div>
             </header>
             <div class="arm-towers-wrap">
-              <div class="torres arm-torres" id="armTorres" aria-label="Torres de status do pátio">
+              <div class="torres arm-torres" id="armTorres" aria-label="Torres de status do pÃ¡tio">
                 <div class="torre t-atr">
                   <div class="pin" title="Quantidade"><span id="armRankAtr">0</span></div>
                   <div class="barra" id="armBarAtr"><strong id="armPctAtr">0<span class="pct-sign">%</span></strong></div>
@@ -6629,7 +6629,7 @@
                 <div class="torre t-che">
                   <div class="pin" title="Quantidade"><span id="armRankChe">0</span></div>
                   <div class="barra" id="armBarChe"><strong id="armPctChe">0<span class="pct-sign">%</span></strong></div>
-                  <div class="base"><div class="lbl">No pátio</div></div>
+                  <div class="base"><div class="lbl">No pÃ¡tio</div></div>
                 </div>
                 <div class="torre t-agu">
                   <div class="pin" title="Quantidade"><span id="armRankAgu">0</span></div>
@@ -6647,8 +6647,8 @@
         </div>
         <section class="arm-panel dash-block" data-block="tabela">
           <header>
-            <h2>Relatório de descarga</h2>
-            <div class="meta" id="armAtualizado">pátio · descarregando · +3h · atualizado —</div>
+            <h2>RelatÃ³rio de descarga</h2>
+            <div class="meta" id="armAtualizado">pÃ¡tio Â· descarregando Â· +3h Â· atualizado â€”</div>
           </header>
           <div class="arm-table-wrap">
             <table>
@@ -6660,9 +6660,9 @@
                   <th>Carreta</th>
                   <th class="right">Peso veic.</th>
                   <th>Chegada</th>
-                  <th>Previsão</th>
+                  <th>PrevisÃ£o</th>
                   <th>Tempo descarga</th>
-                  <th>Início descarga</th>
+                  <th>InÃ­cio descarga</th>
                   <th>Fim descarga</th>
                 </tr>
               </thead>
@@ -6679,13 +6679,13 @@
         <div class="arm-kpis arm-kpis-conf dash-block ds-kpi-row" data-block="kpis">
           <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Conferentes</div><div class="val" id="kConfN">0</div></div>
           <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Peso total</div><div class="val" id="kConfPeso">0</div></div>
-          <div class="arm-kpi lider ds-kpi is-ok"><div class="lbl">Líder</div><div class="val" id="kConfLeader">—</div></div>
-          <div class="arm-kpi finalizado ds-kpi is-run"><div class="lbl">Mês</div><div class="val" id="kConfMes">—</div></div>
+          <div class="arm-kpi lider ds-kpi is-ok"><div class="lbl">LÃ­der</div><div class="val" id="kConfLeader">â€”</div></div>
+          <div class="arm-kpi finalizado ds-kpi is-run"><div class="lbl">MÃªs</div><div class="val" id="kConfMes">â€”</div></div>
         </div>
         <section class="arm-hero-card arm-conf-card dash-block" data-block="chart">
           <header class="arm-conf-head">
             <h2>Melhores da BINHO</h2>
-            <div class="meta" id="armRankMeta">peso lido no mês</div>
+            <div class="meta" id="armRankMeta">peso lido no mÃªs</div>
           </header>
           <div class="arm-rank-body arm-rank-body-full">
             <div class="arm-best-list" id="armRankRest" aria-label="Ranking conferentes"></div>
@@ -6709,8 +6709,8 @@
             tabindex="0"
           />
           <div class="arm-titles">
-            <div class="kicker" id="ctrKicker">BINHO · OPERACIONAL · CARRETEIRO · TRANSF</div>
-            <h1 id="ctrTitle">CONTRATAÇÃO</h1>
+            <div class="kicker" id="ctrKicker">BINHO Â· OPERACIONAL Â· CARRETEIRO Â· TRANSF</div>
+            <h1 id="ctrTitle">CONTRATAÃ‡ÃƒO</h1>
           </div>
         </div>
         <nav class="nav">
@@ -6719,22 +6719,22 @@
         <div class="clock-box">
           <div class="lbl">Tempo real</div>
           <div class="time" id="ctrClock">--:--:--</div>
-          <div class="date" id="ctrDate">—</div>
+          <div class="date" id="ctrDate">â€”</div>
         </div>
       </div>
       <div class="ctr-layout" id="ctrLayout">
         <div class="arm-kpis ctr-kpis dash-block ds-kpi-row" data-block="kpis">
-          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Veículos</div><div class="val" id="ctrVeic">0</div></div>
+          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">VeÃ­culos</div><div class="val" id="ctrVeic">0</div></div>
           <div class="arm-kpi atrasado ds-kpi is-warn"><div class="lbl">Custo</div><div class="val" id="ctrCusto">0</div></div>
           <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Frete</div><div class="val" id="ctrFrete">0</div></div>
-          <div class="arm-kpi ds-kpi is-run"><div class="lbl">Custo médio</div><div class="val" id="ctrCustoMed" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
-          <div class="arm-kpi chegou ds-kpi is-neutral"><div class="lbl">Período</div><div class="val" id="ctrPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
+          <div class="arm-kpi ds-kpi is-run"><div class="lbl">Custo mÃ©dio</div><div class="val" id="ctrCustoMed" style="font-size:clamp(13px,1.5vw,18px)">â€”</div></div>
+          <div class="arm-kpi chegou ds-kpi is-neutral"><div class="lbl">PerÃ­odo</div><div class="val" id="ctrPeriodo" style="font-size:clamp(13px,1.5vw,18px)">â€”</div></div>
         </div>
         <section class="arm-hero-card dash-block" data-block="chart">
           <header>
             <h2>Destinos (unidade)</h2>
-            <div class="meta" id="ctrMeta">base 073 · UNIDADE DESTINO</div>
-            <div class="meta" id="ctrAtualizado">atualizado —</div>
+            <div class="meta" id="ctrMeta">base 073 Â· UNIDADE DESTINO</div>
+            <div class="meta" id="ctrAtualizado">atualizado â€”</div>
           </header>
           <div class="ctr-mix" id="ctrMix" aria-label="Mix propriedade"></div>
           <div class="ctr-towers-wrap">
@@ -6743,7 +6743,7 @@
         </section>
         <section class="arm-panel dash-block" data-block="tabela">
           <header>
-            <h2>Veículos (placa · carreta · CTRB)</h2>
+            <h2>VeÃ­culos (placa Â· carreta Â· CTRB)</h2>
             <div class="meta" id="ctrTabMeta">SPO</div>
           </header>
           <div class="arm-table-wrap">
@@ -6779,8 +6779,8 @@
             tabindex="0"
           />
           <div class="arm-titles">
-            <div class="kicker" id="penKicker">BINHO · OPERACIONAL · 031</div>
-            <h1 id="penTitle">PENDÊNCIA</h1>
+            <div class="kicker" id="penKicker">BINHO Â· OPERACIONAL Â· 031</div>
+            <h1 id="penTitle">PENDÃŠNCIA</h1>
           </div>
         </div>
         <nav class="nav">
@@ -6789,7 +6789,7 @@
         <div class="clock-box">
           <div class="lbl">Tempo real</div>
           <div class="time" id="penClock">--:--:--</div>
-          <div class="date" id="penDate">—</div>
+          <div class="date" id="penDate">â€”</div>
         </div>
       </div>
       <div class="pen-layout" id="penLayout">
@@ -6797,15 +6797,15 @@
           <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">SLA</div><div class="val" id="penSla">0%</div></div>
           <div class="arm-kpi ds-kpi is-ok"><div class="lbl">Solucionadas</div><div class="val" id="penSoluc">0</div></div>
           <div class="arm-kpi atrasado ds-kpi is-crit"><div class="lbl">Em aberto</div><div class="val" id="penAbertas">0</div></div>
-          <div class="arm-kpi chegou ds-kpi is-neutral"><div class="lbl">Período</div><div class="val" id="penPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
+          <div class="arm-kpi chegou ds-kpi is-neutral"><div class="lbl">PerÃ­odo</div><div class="val" id="penPeriodo" style="font-size:clamp(13px,1.5vw,18px)">â€”</div></div>
         </div>
         <div class="arm-hero arm-hero-solo dash-block ds-panel" data-block="chart">
           <section class="arm-hero-card">
             <header>
               <h2>Ofensores (Pareto)</h2>
               <div class="pen-hero-meta">
-                <div class="meta" id="penOfMeta">63 positiva · demais negativas</div>
-                <div class="meta" id="penAtualizado">atualizado —</div>
+                <div class="meta" id="penOfMeta">63 positiva Â· demais negativas</div>
+                <div class="meta" id="penAtualizado">atualizado â€”</div>
               </div>
             </header>
             <div class="arm-towers-wrap pen-towers-wrap" id="penTorresWrap">
@@ -6831,8 +6831,8 @@
             tabindex="0"
           />
           <div class="arm-titles">
-            <div class="kicker" id="recKicker">BINHO · OPERACIONAL · 019</div>
-            <h1 id="recTitle">RECICLAGEM <span class="swap-dot" id="recSwapDot" role="button" tabindex="0" title="Trocar tela" aria-label="Alternar Sem transferência e Sem saída"><i class="d-st"></i><i class="d-ss"></i></span></h1>
+            <div class="kicker" id="recKicker">BINHO Â· OPERACIONAL Â· 019</div>
+            <h1 id="recTitle">RECICLAGEM <span class="swap-dot" id="recSwapDot" role="button" tabindex="0" title="Trocar tela" aria-label="Alternar Sem transferÃªncia e Sem saÃ­da"><i class="d-st"></i><i class="d-ss"></i></span></h1>
           </div>
         </div>
         <nav class="nav">
@@ -6841,7 +6841,7 @@
         <div class="clock-box">
           <div class="lbl">Tempo real</div>
           <div class="time" id="recClock">--:--:--</div>
-          <div class="date" id="recDate">—</div>
+          <div class="date" id="recDate">â€”</div>
         </div>
       </div>
       <div class="rec-layout" id="recLayout">
@@ -6849,10 +6849,10 @@
           <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Frete</div><div class="val" id="recFrete">R$ 0</div></div>
           <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Peso</div><div class="val" id="recPeso">0</div></div>
           <div class="arm-kpi atrasado ds-kpi is-crit"><div class="lbl">CTRCs</div><div class="val" id="recQtd">0</div></div>
-          <div class="arm-kpi ds-kpi is-warn"><div class="lbl">Visão</div><div class="val" id="recVisao" style="font-size:clamp(12px,1.4vw,16px)">—</div></div>
+          <div class="arm-kpi ds-kpi is-warn"><div class="lbl">VisÃ£o</div><div class="val" id="recVisao" style="font-size:clamp(12px,1.4vw,16px)">â€”</div></div>
         </div>
 
-        <!-- 019 Sem transferência: torres verticais por cidade/UF + CTRCs atrasados -->
+        <!-- 019 Sem transferÃªncia: torres verticais por cidade/UF + CTRCs atrasados -->
         <div class="rec-view-019" id="recView019">
           <section class="rec-filial-card dash-block" data-block="chart">
             <header>
@@ -6875,7 +6875,7 @@
                     <th>CTRC</th>
                     <th>Cidade/UF</th>
                     <th>Cliente</th>
-                    <th>Ocorrência</th>
+                    <th>OcorrÃªncia</th>
                     <th style="text-align:right">Atraso</th>
                   </tr>
                 </thead>
@@ -6885,7 +6885,7 @@
           </section>
         </div>
 
-        <!-- 081 Sem saída: torres horizontais -->
+        <!-- 081 Sem saÃ­da: torres horizontais -->
         <div class="rec-towers-grid rec-view-081" id="recView081">
           <section class="rec-htowers-card dash-block ds-panel" data-block="chart">
             <header>
@@ -6897,13 +6897,13 @@
           <section class="rec-htowers-card dash-block ds-panel" data-block="tabela">
             <header>
               <h2>Clientes mais atrasados</h2>
-              <div class="meta" id="recCliMeta">top por atraso máximo</div>
+              <div class="meta" id="recCliMeta">top por atraso mÃ¡ximo</div>
             </header>
             <div class="rec-htowers" id="recTorresCli" aria-label="Torres horizontais clientes"></div>
           </section>
         </div>
         <div class="arm-err" id="recErr" hidden></div>
-        <div class="meta rec-atualizado" id="recAtualizado">atualizado —</div>
+        <div class="meta rec-atualizado" id="recAtualizado">atualizado â€”</div>
       </div>
     </div>
   </div>
@@ -6920,29 +6920,29 @@
             tabindex="0"
           />
           <div class="arm-titles">
-            <div class="kicker" id="mapaKicker">BINHO · OPERACIONAL · MAPA</div>
+            <div class="kicker" id="mapaKicker">BINHO Â· OPERACIONAL Â· MAPA</div>
             <h1 id="mapaTitle">MAPA OPERACIONAL</h1>
           </div>
         </div>
         <nav class="nav">
           <button type="button" class="nav-btn active" id="btnMapaLive" data-mapa-view="live">Ao vivo</button>
-          <button type="button" class="nav-btn" id="btnMapaGestao" data-mapa-view="gestao">Gestão</button>
+          <button type="button" class="nav-btn" id="btnMapaGestao" data-mapa-view="gestao">GestÃ£o</button>
           <button type="button" class="nav-btn tv-btn" id="btnTvMapa" title="Modo TV / tela inteira (F)">TV</button>
         </nav>
         <div class="clock-box">
           <div class="lbl">Tempo real</div>
           <div class="time" id="mapaClock">--:--:--</div>
-          <div class="date" id="mapaDate">—</div>
+          <div class="date" id="mapaDate">â€”</div>
         </div>
       </div>
       <div class="arm-kpis mapa-kpis-top dash-block ds-kpi-row" data-block="kpis" aria-label="Totais do dia">
         <div class="arm-kpi ds-kpi is-ok">
           <div class="lbl">Coleta</div>
-          <div class="val" id="mapaTotCol">—</div>
+          <div class="val" id="mapaTotCol">â€”</div>
         </div>
         <div class="arm-kpi ds-kpi is-run">
           <div class="lbl">Entrega</div>
-          <div class="val" id="mapaTotEnt">—</div>
+          <div class="val" id="mapaTotEnt">â€”</div>
         </div>
         <div class="arm-kpi ds-kpi is-neutral">
           <div class="lbl">Na rua</div>
@@ -6975,13 +6975,13 @@
           <div class="mapa-route-caption" id="mapaRouteCaption" hidden></div>
           <div class="mapa-zone-legend" id="mapaZoneLegend" hidden></div>
           <div class="mapa-aviso" id="mapaAviso" hidden></div>
-          <aside class="mapa-side" aria-label="São Paulo serviço">
-            <section class="mapa-farol-hero" aria-label="Serviço realizado São Paulo">
-              <div id="mapaFarolLeaflet" aria-label="Mapa farol São Paulo"></div>
+          <aside class="mapa-side" aria-label="SÃ£o Paulo serviÃ§o">
+            <section class="mapa-farol-hero" aria-label="ServiÃ§o realizado SÃ£o Paulo">
+              <div id="mapaFarolLeaflet" aria-label="Mapa farol SÃ£o Paulo"></div>
               <div class="mapa-farol-overlay">
                 <div class="mapa-farol-pct-wrap" id="mapaFarolWave" data-tone="low">
-                  <span class="big mapa-farol-pct-base" id="mapaFarolPct">—</span>
-                  <span class="big mapa-farol-pct-fill" id="mapaFarolPctFill" aria-hidden="true">—</span>
+                  <span class="big mapa-farol-pct-base" id="mapaFarolPct">â€”</span>
+                  <span class="big mapa-farol-pct-fill" id="mapaFarolPctFill" aria-hidden="true">â€”</span>
                 </div>
                 <div class="lab" id="mapaFarolLab" hidden>realizado</div>
                 <div class="meta" id="mapaFarolMeta" hidden>coleta + entrega</div>
@@ -6991,40 +6991,40 @@
           <aside class="mapa-side-right">
             <section class="mapa-list-card">
               <header>
-                <h2>Veículos</h2>
-                <div class="meta" id="mapaAtualizado">—</div>
+                <h2>VeÃ­culos</h2>
+                <div class="meta" id="mapaAtualizado">â€”</div>
               </header>
               <div class="mapa-list pop-stack" id="mapaLista"></div>
             </section>
             <div class="arm-err" id="mapaErr" hidden></div>
           </aside>
-          <aside class="mapa-gestao-panel" id="mapaGestaoPanel" hidden aria-label="Gestão do mapa">
+          <aside class="mapa-gestao-panel" id="mapaGestaoPanel" hidden aria-label="GestÃ£o do mapa">
             <header class="mapa-gestao-head">
-              <h2>Gestão · veículo</h2>
-              <div class="meta" id="mapaGestaoAtualizado">—</div>
+              <h2>GestÃ£o Â· veÃ­culo</h2>
+              <div class="meta" id="mapaGestaoAtualizado">â€”</div>
             </header>
             <div class="mapa-gestao-tools">
-              <input type="search" id="mapaGestaoBusca" placeholder="Buscar placa, motorista, CTRC…" autocomplete="off" />
-              <select id="mapaGestaoSelect" aria-label="Selecionar veículo">
-                <option value="">Selecione um veículo…</option>
+              <input type="search" id="mapaGestaoBusca" placeholder="Buscar placa, motorista, CTRCâ€¦" autocomplete="off" />
+              <select id="mapaGestaoSelect" aria-label="Selecionar veÃ­culo">
+                <option value="">Selecione um veÃ­culoâ€¦</option>
               </select>
             </div>
             <div class="mapa-gestao-summary" id="mapaGestaoSummary" hidden>
-              <div class="mapa-gestao-placa" id="mapaGestaoPlaca">—</div>
-              <div class="mapa-gestao-meta" id="mapaGestaoMeta">—</div>
+              <div class="mapa-gestao-placa" id="mapaGestaoPlaca">â€”</div>
+              <div class="mapa-gestao-meta" id="mapaGestaoMeta">â€”</div>
               <div class="mapa-gestao-kpis">
-                <div><span class="k">Serviço</span><strong id="mapaGestaoServico">—</strong></div>
-                <div><span class="k">Frete ent.</span><strong id="mapaGestaoFreteEnt">—</strong></div>
-                <div><span class="k">Peso ent.</span><strong id="mapaGestaoPesoEnt">—</strong></div>
-                <div><span class="k">Frete col.</span><strong id="mapaGestaoFreteCol">—</strong></div>
-                <div><span class="k">Peso col.</span><strong id="mapaGestaoPesoCol">—</strong></div>
-                <div><span class="k">Km</span><strong id="mapaGestaoKm">—</strong></div>
+                <div><span class="k">ServiÃ§o</span><strong id="mapaGestaoServico">â€”</strong></div>
+                <div><span class="k">Frete ent.</span><strong id="mapaGestaoFreteEnt">â€”</strong></div>
+                <div><span class="k">Peso ent.</span><strong id="mapaGestaoPesoEnt">â€”</strong></div>
+                <div><span class="k">Frete col.</span><strong id="mapaGestaoFreteCol">â€”</strong></div>
+                <div><span class="k">Peso col.</span><strong id="mapaGestaoPesoCol">â€”</strong></div>
+                <div><span class="k">Km</span><strong id="mapaGestaoKm">â€”</strong></div>
               </div>
             </div>
             <div class="mapa-gestao-stops-wrap">
-              <div class="mapa-gestao-stops-title">Paradas · entregue / pendente</div>
+              <div class="mapa-gestao-stops-title">Paradas Â· entregue / pendente</div>
               <div class="mapa-gestao-stops" id="mapaGestaoStops">
-                <div class="arm-rank-empty">Selecione um veículo</div>
+                <div class="arm-rank-empty">Selecione um veÃ­culo</div>
               </div>
             </div>
           </aside>
@@ -7045,12 +7045,12 @@
             tabindex="0"
           />
           <div class="arm-titles">
-            <div class="kicker" id="emiKicker">BINHO · OPERACIONAL · 455</div>
-            <h1 id="emiTitle">EMISSÃO DE CT-e <span class="emi-mes-pill" id="emiMes">—</span></h1>
+            <div class="kicker" id="emiKicker">BINHO Â· OPERACIONAL Â· 455</div>
+            <h1 id="emiTitle">EMISSÃƒO DE CT-e <span class="emi-mes-pill" id="emiMes">â€”</span></h1>
           </div>
         </div>
         <div class="emi-top-actions">
-          <div class="emi-status-pill is-ok" id="emiStatusPill" title="Status operacional">OPERAÇÃO NORMAL</div>
+          <div class="emi-status-pill is-ok" id="emiStatusPill" title="Status operacional">OPERAÃ‡ÃƒO NORMAL</div>
           <nav class="nav">
             <button type="button" class="nav-btn tv-btn" id="btnTvEmissao" title="Modo TV / tela inteira (F)">TV</button>
           </nav>
@@ -7058,7 +7058,7 @@
         <div class="clock-box">
           <div class="lbl">Tempo real</div>
           <div class="time" id="emiClock">--:--:--</div>
-          <div class="date" id="emiDate">—</div>
+          <div class="date" id="emiDate">â€”</div>
         </div>
       </div>
 
@@ -7068,69 +7068,69 @@
           <div class="emi-kpi is-run">
             <div class="lbl">CT-e emitidos</div>
             <div class="val" id="emiCtes">0</div>
-            <div class="sub" id="emiPeriodo">—</div>
+            <div class="sub" id="emiPeriodo">â€”</div>
           </div>
           <div class="emi-kpi is-warn" id="emiKpiPendentes">
             <div class="lbl">Pendentes</div>
             <div class="val" id="emiPendentes">0</div>
-            <div class="sub">aguardando autorização</div>
+            <div class="sub">aguardando autorizaÃ§Ã£o</div>
           </div>
           <div class="emi-kpi is-ok" id="emiKpiFinalizados">
             <div class="lbl">Finalizados</div>
             <div class="val" id="emiErros">0</div>
-            <div class="sub">com autorização</div>
+            <div class="sub">com autorizaÃ§Ã£o</div>
           </div>
           <div class="emi-kpi is-crit">
             <div class="lbl">Cancelados</div>
             <div class="val" id="emiCancelados">0</div>
-            <div class="sub" id="emiCancelPct">—</div>
+            <div class="sub" id="emiCancelPct">â€”</div>
           </div>
           <div class="emi-kpi is-run">
             <div class="lbl">Prod./h</div>
             <div class="val" id="emiProdH">0</div>
-            <div class="sub">ritmo do período</div>
+            <div class="sub">ritmo do perÃ­odo</div>
           </div>
           <div class="emi-kpi is-warn">
             <div class="lbl">Meta/h</div>
-            <div class="val" id="emiMetaH">—</div>
-            <div class="sub" id="emiMetaHint">referência</div>
+            <div class="val" id="emiMetaH">â€”</div>
+            <div class="sub" id="emiMetaHint">referÃªncia</div>
           </div>
           <!-- IDs legados mantidos (ocultos) para compat -->
           <span id="emiDia" hidden>0</span>
           <span id="emiNoite" hidden>0</span>
         </div>
 
-        <!-- PRODUÇÃO + STATUS -->
+        <!-- PRODUÃ‡ÃƒO + STATUS -->
         <div class="emi-mid dash-block" data-block="chart">
           <section class="emi-card emi-hero-card">
             <header>
-              <h2>Produção de CT-e por hora</h2>
+              <h2>ProduÃ§Ã£o de CT-e por hora</h2>
               <div class="pen-hero-meta">
                 <div class="meta" id="emiChartSub">Emitidos por hora</div>
-                <div class="meta" id="emiAtualizado">atualizado —</div>
+                <div class="meta" id="emiAtualizado">atualizado â€”</div>
               </div>
             </header>
             <div class="emi-card-body">
               <div class="emi-chart-wrap">
                 <div class="emi-meta-line" id="emiMetaLine" hidden><span id="emiMetaLineLab">META</span></div>
-                <div class="emi-chart" id="emiChart" aria-label="Produção de CT-e por hora"></div>
+                <div class="emi-chart" id="emiChart" aria-label="ProduÃ§Ã£o de CT-e por hora"></div>
               </div>
             </div>
           </section>
-          <aside class="emi-card" aria-label="Status da operação">
+          <aside class="emi-card" aria-label="Status da operaÃ§Ã£o">
             <header>
-              <h2>Status da operação</h2>
-              <div class="meta" id="emiStatusLabel">—</div>
+              <h2>Status da operaÃ§Ã£o</h2>
+              <div class="meta" id="emiStatusLabel">â€”</div>
             </header>
             <div class="emi-card-body">
               <div class="emi-status-list">
                 <div class="emi-status-row" id="emiRowUltima">
-                  <span class="k">Última emissão</span>
-                  <span class="v" id="emiUltima">—</span>
+                  <span class="k">Ãšltima emissÃ£o</span>
+                  <span class="v" id="emiUltima">â€”</span>
                 </div>
                 <div class="emi-status-row" id="emiRowDesde">
-                  <span class="k">Tempo desde última</span>
-                  <span class="v" id="emiDesde">—</span>
+                  <span class="k">Tempo desde Ãºltima</span>
+                  <span class="v" id="emiDesde">â€”</span>
                 </div>
                 <div class="emi-status-row is-ok" id="emiRowPend">
                   <span class="k">Pendentes</span>
@@ -7145,13 +7145,13 @@
                   <span class="v" id="emiStatCanc">0</span>
                 </div>
               </div>
-              <div class="emi-turno" aria-label="Produção por turno">
+              <div class="emi-turno" aria-label="ProduÃ§Ã£o por turno">
                 <div class="emi-turno-box">
-                  <div class="t">Turno dia · 6–18h</div>
+                  <div class="t">Turno dia Â· 6â€“18h</div>
                   <div class="n"><span id="emiTurnoDia">0</span> <small style="font-size:0.45em;color:#64748b">CT-e</small></div>
                 </div>
                 <div class="emi-turno-box">
-                  <div class="t">Turno noite · 18–6h</div>
+                  <div class="t">Turno noite Â· 18â€“6h</div>
                   <div class="n"><span id="emiTurnoNoite">0</span> <small style="font-size:0.45em;color:#64748b">CT-e</small></div>
                 </div>
               </div>
@@ -7164,7 +7164,7 @@
           <section class="emi-card dash-block" data-block="expedidores">
             <header>
               <h2>Produtividade por expedidor</h2>
-              <div class="meta">CT-e · % · ritmo/h</div>
+              <div class="meta">CT-e Â· % Â· ritmo/h</div>
             </header>
             <div class="emi-card-body">
               <div class="emi-exp-list" id="emiExpedidores"></div>
@@ -7173,7 +7173,7 @@
           <section class="emi-card dash-block" data-block="volume">
             <header>
               <h2>Volume operacional</h2>
-              <div class="meta">movimentação do período</div>
+              <div class="meta">movimentaÃ§Ã£o do perÃ­odo</div>
             </header>
             <div class="emi-card-body">
               <div class="emi-vol-grid">
@@ -7200,16 +7200,16 @@
               </div>
               <div class="emi-derived" aria-label="Indicadores derivados">
                 <div class="box">
-                  <div class="k">Frete médio / CT-e</div>
-                  <div class="v" id="emiFreteMed">—</div>
+                  <div class="k">Frete mÃ©dio / CT-e</div>
+                  <div class="v" id="emiFreteMed">â€”</div>
                 </div>
                 <div class="box">
-                  <div class="k">Peso médio / CT-e</div>
-                  <div class="v" id="emiPesoMed">—</div>
+                  <div class="k">Peso mÃ©dio / CT-e</div>
+                  <div class="v" id="emiPesoMed">â€”</div>
                 </div>
                 <div class="box">
                   <div class="k">Volumes / CT-e</div>
-                  <div class="v" id="emiVolMed">—</div>
+                  <div class="v" id="emiVolMed">â€”</div>
                 </div>
               </div>
             </div>
@@ -7223,7 +7223,7 @@
   <div class="modal-backdrop" id="modalHist" role="dialog" aria-modal="true">
     <div class="modal">
       <button type="button" class="close" id="btnFecharHist">Fechar</button>
-      <h2 id="histTitulo">Histórico</h2>
+      <h2 id="histTitulo">HistÃ³rico</h2>
       <p class="sub-hist" id="histSub"></p>
       <div id="histLista"></div>
     </div>
@@ -7251,7 +7251,7 @@
       return false;
     }
 
-    /** Na LAN / ?local=1 usa só CSV do PC ACE (não depende da planilha). */
+    /** Na LAN / ?local=1 usa sÃ³ CSV do PC ACE (nÃ£o depende da planilha). */
     function preferLocalCsv() {
       const cfg = window.ACE_CONFIG || {};
       if (cfg.preferLocalCsv === true) return true;
@@ -7299,7 +7299,6 @@
     let mapaZoneLayer = null;
     const MAPA_ROUTE_MS_KEY = 'ace_mapa_route_ms';
     const MAPA_ROUTE_MS_DEFAULT = 15000;
-    const MAPA_PLACA_MS = 4500;
     const MAPA_PLACA_VISIBLE = 4;
     function loadMapaRouteMs() {
       try {
@@ -7343,7 +7342,7 @@
       nome: 'BINHO TRANSPORTES',
       lat: -23.4265324,
       lon: -46.3946075,
-      endereco: 'Av. Amâncio Gaioli, 1197 - Água Chata, Guarulhos - SP',
+      endereco: 'Av. AmÃ¢ncio Gaioli, 1197 - Ãgua Chata, Guarulhos - SP',
     };
     const JANELA_MIN = 120;
     const PLACA_VISIBLE = 3;
@@ -7357,28 +7356,28 @@
     const OPS_VIEWS = ['coleta', 'entrega', 'agendamento'];
     const VIEW_LABELS = { coleta: 'Coleta', entrega: 'Entrega', agendamento: 'Agendamento' };
     const ARM_VIEWS = ['patio', 'conferentes'];
-    const ARM_VIEW_LABELS = { patio: 'Armazém', conferentes: 'Melhores da BINHO' };
+    const ARM_VIEW_LABELS = { patio: 'ArmazÃ©m', conferentes: 'Melhores da BINHO' };
     const REC_VIEWS = ['sem_transferencia', 'sem_saida'];
     const REC_VIEW_LABELS = {
-      sem_transferencia: 'Sem transferência',
-      sem_saida: 'Sem saída para entrega',
+      sem_transferencia: 'Sem transferÃªncia',
+      sem_saida: 'Sem saÃ­da para entrega',
     };
     const SECTORS = {
-      distribuicao: { id: 'distribuicao', label: 'Distribuição', ready: true, panel: 'operacao' },
-      armazem: { id: 'armazem', label: 'Armazém', ready: true, panel: 'armazem' },
-      contratacao: { id: 'contratacao', label: 'Contratação', ready: true, panel: 'contratacao' },
-      pendencia: { id: 'pendencia', label: 'Pendência', ready: true, panel: 'pendencia' },
+      distribuicao: { id: 'distribuicao', label: 'DistribuiÃ§Ã£o', ready: true, panel: 'operacao' },
+      armazem: { id: 'armazem', label: 'ArmazÃ©m', ready: true, panel: 'armazem' },
+      contratacao: { id: 'contratacao', label: 'ContrataÃ§Ã£o', ready: true, panel: 'contratacao' },
+      pendencia: { id: 'pendencia', label: 'PendÃªncia', ready: true, panel: 'pendencia' },
       mapa: { id: 'mapa', label: 'Mapa Operacional', ready: true, panel: 'mapa' },
-      emissao: { id: 'emissao', label: 'Emissão', ready: true, panel: 'emissao' },
+      emissao: { id: 'emissao', label: 'EmissÃ£o', ready: true, panel: 'emissao' },
     };
     let CURRENT_SECTOR = 'distribuicao';
-    let CURRENT_VIEW = 'coleta'; // tela interna da Distribuição
+    let CURRENT_VIEW = 'coleta'; // tela interna da DistribuiÃ§Ã£o
 
     let VIEW = 'live';
     let REL = 'coleta'; // coleta (103+hist 50) | 36
     let TV_MODE = false;
-    let tvModeGen = 0; // invalida enter TV assíncrono se o usuário já saiu
-    let TV_SLOT = null; // 1..6 desta tela física
+    let tvModeGen = 0; // invalida enter TV assÃ­ncrono se o usuÃ¡rio jÃ¡ saiu
+    let TV_SLOT = null; // 1..6 desta tela fÃ­sica
     let TV_LAYOUT = null;
     let TV_EFFECTIVE = null;
     let tvLayoutPollTimer = null;
@@ -7390,9 +7389,9 @@
     let lastAgendaTorreCounts = null;
     let FILTRO = 'TODAS';
     let BUSCA = '';
-    let COLETAS = [];      // ao vivo (torres) — somente 103
+    let COLETAS = [];      // ao vivo (torres) â€” somente 103
     let COLETAS_50 = [];   // gestao / historico
-    let HISTORICO_50 = []; // eventos SIT/INSTR do relatório 50
+    let HISTORICO_50 = []; // eventos SIT/INSTR do relatÃ³rio 50
     let COLETAS_103 = [];
     let ENTREGAS_36 = [];  // CTRCs ativos 36
     let ENTREGAS_ALL = []; // todos CTRCs 36 (modal)
@@ -7422,19 +7421,19 @@
     let swapTimer = null;
     let swapCountdown = null;
     let ALERTA_LOCK_ON = false;
-    /** Usuário fechou o overlay; não cobre de novo até o snooze acabar (ou o alerta zerar). */
+    /** UsuÃ¡rio fechou o overlay; nÃ£o cobre de novo atÃ© o snooze acabar (ou o alerta zerar). */
     let ALERTA_LOCK_DISMISSED = false;
-    /** Timestamp até quando o overlay fica oculto após Continuar/ESC. */
+    /** Timestamp atÃ© quando o overlay fica oculto apÃ³s Continuar/ESC. */
     let ALERTA_LOCK_SNOOZE_UNTIL = 0;
     let alertaSnoozeTimer = null;
     let alertaBeepTimer = null;
     let alertaAudioCtx = null;
     const SWAP_MS = 15000;
-    /** Alerta “agendamento sem saída”: checagem na tela a cada 1 min */
+    /** Alerta â€œagendamento sem saÃ­daâ€: checagem na tela a cada 1 min */
     const ALERTA_SEM_SAIDA_POLL_MS = 60000;
-    /** Enquanto o overlay está ativo, bipa a cada 10s */
+    /** Enquanto o overlay estÃ¡ ativo, bipa a cada 10s */
     const ALERTA_BEEP_MS = 10000;
-    /** Após Continuar, some por 1 minuto e volta se ainda houver alerta */
+    /** ApÃ³s Continuar, some por 1 minuto e volta se ainda houver alerta */
     const ALERTA_SNOOZE_MS = 60000;
     let alertaSemSaidaTimer = null;
     let placaCursor = 0;
@@ -7456,8 +7455,8 @@
     function tickClock() {
       const now = new Date();
       const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-      const dias = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-      const date = `${dias[now.getDay()]} · ${pad(now.getDate())}/${pad(now.getMonth() + 1)}`;
+      const dias = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sÃ¡b'];
+      const date = `${dias[now.getDay()]} Â· ${pad(now.getDate())}/${pad(now.getMonth() + 1)}`;
       const clock = document.getElementById('clock');
       const clockDate = document.getElementById('clockDate');
       if (clock) clock.textContent = time;
@@ -7513,7 +7512,7 @@
           weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
         });
       }
-      // A cada minuto: tempo de descarga em andamento acompanha o relógio
+      // A cada minuto: tempo de descarga em andamento acompanha o relÃ³gio
       if (now.getSeconds() === 0 && typeof paintArmazemLiveFromCache === 'function') {
         try { paintArmazemLiveFromCache(); } catch (_) { /* ignore */ }
       }
@@ -7531,13 +7530,13 @@
       const text = await res.text();
       let dados;
       try { dados = JSON.parse(text); }
-      catch { throw new Error('Apps Script inválido — publique Nova versão'); }
+      catch { throw new Error('Apps Script invÃ¡lido â€” publique Nova versÃ£o'); }
       if (!dados.ok) throw new Error(dados.error || 'Erro na planilha');
       return dados;
     }
 
-    /** Versão dos dados no Apps Script — Dist e Armazém controlam separado
-     *  (antes um "comia" a versão e o outro pulava o refresh). */
+    /** VersÃ£o dos dados no Apps Script â€” Dist e ArmazÃ©m controlam separado
+     *  (antes um "comia" a versÃ£o e o outro pulava o refresh). */
     let lastDistDataVersion = null;
     let lastArmDataVersion = null;
     let forceNextRefresh = true;
@@ -7589,7 +7588,7 @@
 
     // compat: alguns fluxos usavam lastDataVersion no status
     function getLastDataVersionLabel() {
-      return lastDistDataVersion || lastArmDataVersion || '—';
+      return lastDistDataVersion || lastArmDataVersion || 'â€”';
     }
 
     function coletaKey(r) {
@@ -7628,7 +7627,7 @@
     }
 
     function statusAce36(c) {
-      // Ocorrências tratadas como realizada (mesmo se cache antigo marcou pendência)
+      // OcorrÃªncias tratadas como realizada (mesmo se cache antigo marcou pendÃªncia)
       const o = String(c.ocorrencia || '')
         .toUpperCase()
         .normalize('NFD')
@@ -7715,7 +7714,7 @@
           segEl.classList.toggle('is-zero', isZero);
         }
         if (banEl) {
-          // Largura mínima garante que o % caiba na ponta sem esmagar o texto
+          // Largura mÃ­nima garante que o % caiba na ponta sem esmagar o texto
           const w = total <= 0 ? 100 : (isZero ? 18 : Math.max(pct, 22));
           banEl.style.width = w + '%';
           banEl.classList.toggle('is-zero', isZero);
@@ -7820,7 +7819,7 @@
       return Math.round(minH + (valor / max) * (maxH - minH));
     }
 
-    /** Torres do pátio: preenche a coluna principal (estilo Coleta). */
+    /** Torres do pÃ¡tio: preenche a coluna principal (estilo Coleta). */
     function alturaTorreArm(valor, max) {
       const wrap = document.querySelector('#armLayoutPatio .arm-towers-wrap')
         || document.querySelector('.arm-towers-wrap');
@@ -7829,7 +7828,7 @@
       const base = tv ? 56 : 48;
       const pad = tv ? 24 : 18;
       let avail = wrap && wrap.clientHeight > 80 ? wrap.clientHeight : 0;
-      // Antes do layout assentar, clientHeight pode ser 0 — não usa 62vh (estoura TV)
+      // Antes do layout assentar, clientHeight pode ser 0 â€” nÃ£o usa 62vh (estoura TV)
       if (!avail) {
         const chart = document.querySelector('#armLayoutPatio [data-block="chart"]');
         avail = chart && chart.clientHeight > 80
@@ -7847,7 +7846,7 @@
       const stack = document.getElementById('prazoStack');
       if (!stack) return tv ? 7 : PRAZO_VISIBLE;
       const h = stack.clientHeight || 0;
-      // ~62px por card + gap — preenche a coluna
+      // ~62px por card + gap â€” preenche a coluna
       const bySpace = Math.max(3, Math.floor(h / (tv ? 70 : 64)));
       return Math.min(bySpace, tv ? 9 : 6);
     }
@@ -7966,7 +7965,7 @@
       wakeLock = null;
     }
 
-    /** Mantém <video> 1×1 tocando — webOS não ativa screensaver com mídia “em tela”. */
+    /** MantÃ©m <video> 1Ã—1 tocando â€” webOS nÃ£o ativa screensaver com mÃ­dia â€œem telaâ€. */
     let _tvKeepAliveReady = false;
     function buildTvKeepAliveStream() {
       const canvas = document.createElement('canvas');
@@ -7979,7 +7978,7 @@
         ctx.fillRect(0, 0, 2, 2);
       };
       paint();
-      // redesenha de vez em quando para o captureStream continuar “vivo”
+      // redesenha de vez em quando para o captureStream continuar â€œvivoâ€
       setInterval(paint, 1000);
       const stream = canvas.captureStream ? canvas.captureStream(1) : null;
       if (!stream) return null;
@@ -7989,14 +7988,14 @@
           const ac = new AC();
           const osc = ac.createOscillator();
           const gain = ac.createGain();
-          gain.gain.value = 0.00001; // praticamente mudo, mas track de áudio existe
+          gain.gain.value = 0.00001; // praticamente mudo, mas track de Ã¡udio existe
           osc.connect(gain);
           const dest = ac.createMediaStreamDestination();
           gain.connect(dest);
           osc.start();
           dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
         }
-      } catch (_) { /* sem áudio — só vídeo ainda ajuda em várias TVs */ }
+      } catch (_) { /* sem Ã¡udio â€” sÃ³ vÃ­deo ainda ajuda em vÃ¡rias TVs */ }
       return stream;
     }
 
@@ -8018,7 +8017,7 @@
           }
         }
         const p = v.play();
-        if (p && typeof p.catch === 'function') p.catch(() => { /* autoplay até gesto */ });
+        if (p && typeof p.catch === 'function') p.catch(() => { /* autoplay atÃ© gesto */ });
       } catch (_) { /* ignore */ }
     }
 
@@ -8065,7 +8064,7 @@
         if (!document.fullscreenElement && el.requestFullscreen) {
           await el.requestFullscreen();
         }
-      } catch (_) { /* usuário pode bloquear; CSS tv-mode ainda funciona */ }
+      } catch (_) { /* usuÃ¡rio pode bloquear; CSS tv-mode ainda funciona */ }
     }
 
     async function exitFullscreen() {
@@ -8080,7 +8079,7 @@
       TV_MODE = want;
       document.body.classList.toggle('tv-mode', TV_MODE);
       if (TV_MODE) {
-        // margens/logo vêm do layout via applyTvChrome (não força sem margem)
+        // margens/logo vÃªm do layout via applyTvChrome (nÃ£o forÃ§a sem margem)
       } else {
         document.body.classList.remove('tv-no-margins', 'tv-no-logo');
       }
@@ -8098,7 +8097,7 @@
       });
 
       if (want) {
-        // Visual + fullscreen no gesto do clique (sem await antes — senão a API atrasa/falha)
+        // Visual + fullscreen no gesto do clique (sem await antes â€” senÃ£o a API atrasa/falha)
         if (detectTvInFrame()) document.documentElement.classList.add('tv-in-frame');
         document.body.classList.add('tv-no-margins');
         if (isOpsSector(CURRENT_SECTOR)) setView('live');
@@ -8108,7 +8107,7 @@
         showTvHint();
         bumpTvIdle();
         if (syncHash) writeRouteHash({ tv: true, sector: CURRENT_SECTOR });
-        // Fullscreen nativo falha dentro de iframe (Google Sites) — CSS já cobre
+        // Fullscreen nativo falha dentro de iframe (Google Sites) â€” CSS jÃ¡ cobre
         const fsP = detectTvInFrame() ? Promise.resolve() : enterFullscreen();
         const wakeP = requestWakeLock();
 
@@ -8118,7 +8117,7 @@
           await loadTvLayout();
           if (gen !== tvModeGen || !TV_MODE) return;
           applyTvChrome();
-          // Mantém o setor que o usuário está vendo (não volta pra distribuição do slot)
+          // MantÃ©m o setor que o usuÃ¡rio estÃ¡ vendo (nÃ£o volta pra distribuiÃ§Ã£o do slot)
           await applyTvSlotAfterRoute({ gen, preferCurrentSector: true });
           if (gen !== tvModeGen || !TV_MODE) return;
           if (
@@ -8130,10 +8129,10 @@
               else startSwapLoop();
             }
           }
-        } catch (_) { /* layout offline — CSS tv-mode já ativo */ }
+        } catch (_) { /* layout offline â€” CSS tv-mode jÃ¡ ativo */ }
         if (gen === tvModeGen && TV_MODE) await Promise.allSettled([fsP, wakeP]);
       } else {
-        // Hash primeiro: evita race que lê #tv/... e reentra no modo TV
+        // Hash primeiro: evita race que lÃª #tv/... e reentra no modo TV
         if (syncHash) writeRouteHash({ tv: false });
         stopSwapLoop();
         stopTvSyncClock();
@@ -8150,10 +8149,10 @@
       if (gen === tvModeGen) {
         requestAnimationFrame(rerenderTorres);
         setTimeout(rerenderTorres, 80);
-        // Fullscreen / CSS TV assentam a altura depois — recalcula torres
+        // Fullscreen / CSS TV assentam a altura depois â€” recalcula torres
         setTimeout(rerenderTorres, 280);
         setTimeout(rerenderTorres, 600);
-        // Se o 1º refresh pintou e o layout TV veio depois, reaplicam os totais
+        // Se o 1Âº refresh pintou e o layout TV veio depois, reaplicam os totais
         setTimeout(() => {
           if (!TV_MODE) return;
           if (lastCounts) renderTorres(lastCounts);
@@ -8170,7 +8169,7 @@
     }
 
     const TV_SLOT_KEY = 'ace_tv_slot';
-    /** Seletor "Qual TV é esta?" desligado por agora (rede/local abre direto o setor). */
+    /** Seletor "Qual TV Ã© esta?" desligado por agora (rede/local abre direto o setor). */
     const TV_SLOT_PICKER_ENABLED = false;
 
     function readStoredTvSlot() {
@@ -8341,7 +8340,7 @@
     }
 
     async function loadTvLayout() {
-      // Preview no CRT injeta o rascunho — não sobrescrever com planilha
+      // Preview no CRT injeta o rascunho â€” nÃ£o sobrescrever com planilha
       if (window.__ACE_CRT_PREVIEW__ && window.__ACE_CRT_LAYOUT__) {
         TV_LAYOUT = window.__ACE_CRT_LAYOUT__;
         if (TV_SLOT) TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT);
@@ -8374,7 +8373,7 @@
         const views = defaults.views || {};
         ui = views[viewId] || views.patio || ui || {};
       }
-      // Entrega + Agendamento: pizza · Coleta: faixas horizontais (mapa)
+      // Entrega + Agendamento: pizza Â· Coleta: faixas horizontais (mapa)
       let chart = String(ui.chart || 'towers').toLowerCase();
       if (sec === 'distribuicao' && (viewId === 'entrega' || viewId === 'agendamento')) {
         chart = 'pizza';
@@ -8472,9 +8471,9 @@
       const entSub = document.getElementById('entChartSub');
       setChartPane(entPizza, ui.chart === 'pizza');
       setChartPane(entCyl, ui.chart !== 'pizza');
-      if (entSub) entSub.textContent = ui.chart === 'pizza' ? 'Pizza · entregas' : 'Faixas %';
+      if (entSub) entSub.textContent = ui.chart === 'pizza' ? 'Pizza Â· entregas' : 'Faixas %';
 
-      // Coleta: faixas horizontais (mapa) — torres ficam de fallback se chart=towers
+      // Coleta: faixas horizontais (mapa) â€” torres ficam de fallback se chart=towers
       const colTorres = document.getElementById('coletaTorres');
       const colH = document.getElementById('coletaHStatus');
       if (colTorres && colH) {
@@ -8496,7 +8495,7 @@
 
       document.documentElement.style.setProperty('--dash-font', String(ui.fontZoom || 1));
 
-      // Re-pinta pizza depois do pane ficar visível (evita SVG “vazio” no WebEngine)
+      // Re-pinta pizza depois do pane ficar visÃ­vel (evita SVG â€œvazioâ€ no WebEngine)
       if (CURRENT_SECTOR === 'distribuicao') {
         requestAnimationFrame(() => {
           if (CURRENT_VIEW === 'entrega' && lastCountsEnt) {
@@ -8516,7 +8515,7 @@
         });
       }
 
-      // Layout das TVs é fixo (CSS). Grades arrastáveis do CRT foram desativadas.
+      // Layout das TVs Ã© fixo (CSS). Grades arrastÃ¡veis do CRT foram desativadas.
       applyBlockLayout(document.getElementById('agendaLayout'), [], { active: false });
       applyBlockLayout(document.getElementById('opsLayoutColeta'), [], { active: false });
       applyBlockLayout(document.getElementById('opsLayoutEntrega'), [], { active: false });
@@ -8552,7 +8551,7 @@
         return;
       }
       document.body.classList.toggle('tv-no-logo', !eff.showLogo);
-      // Parede / iframe / margins none → edge-to-edge
+      // Parede / iframe / margins none â†’ edge-to-edge
       document.body.classList.toggle(
         'tv-no-margins',
         !!eff.mosaic || eff.margins === 'none' || detectTvInFrame()
@@ -8632,7 +8631,7 @@
       const i = Math.floor(Date.now() / Math.max(5000, ms)) % views.length;
       const next = views[(i + 1) % views.length];
       const label = labels[next] || next;
-      tick.textContent = `${label} em ${left}s · sync · ← →`;
+      tick.textContent = `${label} em ${left}s Â· sync Â· â† â†’`;
     }
 
     function isOpsSector(id) {
@@ -8655,7 +8654,7 @@
       if (id === 'rastreamento' || id === 'recicla' || id === 'reciclagem' || id === '019' || id === '081' || id === '19' || id === '81' || id === 'mapa') {
         id = 'mapa';
       }
-      // legado: coleta/entrega/agendamento eram “setores” → agora vistas da Distribuição
+      // legado: coleta/entrega/agendamento eram â€œsetoresâ€ â†’ agora vistas da DistribuiÃ§Ã£o
       if (isOpsView(id)) id = 'distribuicao';
       return SECTORS[id] ? id : 'distribuicao';
     }
@@ -8787,13 +8786,13 @@
       const title = document.getElementById('armTitle');
       const kick = document.getElementById('armKicker');
       if (title) {
-        const label = onPatio ? 'ARMAZÉM' : 'MELHORES DA BINHO';
+        const label = onPatio ? 'ARMAZÃ‰M' : 'MELHORES DA BINHO';
         title.innerHTML = `${label} <span class="swap-dot" id="armSwapDot" aria-hidden="true"><i class="d-patio"></i><i class="d-conf"></i></span>`;
-        title.title = 'Clique ou ← → para trocar tela';
+        title.title = 'Clique ou â† â†’ para trocar tela';
         title.style.cursor = 'pointer';
         title.onclick = () => stepSwap(1);
       }
-      if (kick) kick.textContent = onPatio ? 'BINHO · OPERACIONAL · 078' : 'BINHO · OPERACIONAL · 177 · RANKING';
+      if (kick) kick.textContent = onPatio ? 'BINHO Â· OPERACIONAL Â· 078' : 'BINHO Â· OPERACIONAL Â· 177 Â· RANKING';
       document.body.setAttribute('data-view', CURRENT_VIEW);
     }
 
@@ -8819,17 +8818,17 @@
       const onSt = CURRENT_VIEW !== 'sem_saida';
       const title = document.getElementById('recTitle');
       const kick = document.getElementById('recKicker');
-      const label = onSt ? 'SEM TRANSFERÊNCIA' : 'SEM SAÍDA PARA ENTREGA';
+      const label = onSt ? 'SEM TRANSFERÃŠNCIA' : 'SEM SAÃDA PARA ENTREGA';
       if (title) {
         title.innerHTML = `${label} <span class="swap-dot" id="recSwapDot" role="button" tabindex="0" title="Trocar tela" aria-label="Alternar telas"><i class="d-st"></i><i class="d-ss"></i></span>`;
-        title.title = 'Clique ou ← → para trocar tela';
+        title.title = 'Clique ou â† â†’ para trocar tela';
         title.style.cursor = 'pointer';
         title.onclick = () => stepSwap(1);
       }
       if (kick) {
         kick.textContent = onSt
-          ? 'BINHO · OPERACIONAL · 019'
-          : 'BINHO · OPERACIONAL · 081';
+          ? 'BINHO Â· OPERACIONAL Â· 019'
+          : 'BINHO Â· OPERACIONAL Â· 081';
       }
       document.body.setAttribute('data-view', CURRENT_VIEW);
       paintReciclagemFromCache();
@@ -8881,7 +8880,7 @@
       document.body.setAttribute('data-sector', CURRENT_SECTOR);
       document.body.setAttribute('data-view', CURRENT_VIEW);
 
-      // Fora da Distribuição: corta bip/overlay na hora (não espera o update)
+      // Fora da DistribuiÃ§Ã£o: corta bip/overlay na hora (nÃ£o espera o update)
       if (CURRENT_SECTOR !== 'distribuicao') {
         silenceAlertaSemSaidaUi();
       }
@@ -8962,10 +8961,10 @@
     }
 
     const ARM_STATUS_RANK = { atrasado: 0, descarregando: 1, chegou: 2, aguardando: 3, finalizado: 4 };
-    const ARM_DESC_ATR_MS = 3 * 60 * 60 * 1000; // >3h sem fim de descarga → vermelho
+    const ARM_DESC_ATR_MS = 3 * 60 * 60 * 1000; // >3h sem fim de descarga â†’ vermelho
 
     function parseArmDt(raw) {
-      const s = String(raw || '').trim().replace(/\s+[a-zA-Z_.À-ú]{2,}$/i, '').trim();
+      const s = String(raw || '').trim().replace(/\s+[a-zA-Z_.Ã€-Ãº]{2,}$/i, '').trim();
       if (!s) return null;
       const hoje = new Date();
       let m = s.match(/^HOJE\s+(\d{1,2}):(\d{2})$/i);
@@ -8982,14 +8981,14 @@
       return new Date(y, mo, d, +m[4], +m[5]);
     }
 
-    /** Remove operador no fim: "HOJE 13:07 aliny" → "HOJE 13:07" */
+    /** Remove operador no fim: "HOJE 13:07 aliny" â†’ "HOJE 13:07" */
     function armStripOperador(raw) {
-      return String(raw || '').trim().replace(/\s+[a-zA-Z_.À-ú]{2,}$/i, '').trim();
+      return String(raw || '').trim().replace(/\s+[a-zA-Z_.Ã€-Ãº]{2,}$/i, '').trim();
     }
 
     /**
-     * Se o campo ainda tem "HOJE" mas a linha já tem outra data absoluta (ex.: fim 14/08),
-     * ancora o HOJE nesse dia — corrige CSV antigo que “deslizou” para o dia atual.
+     * Se o campo ainda tem "HOJE" mas a linha jÃ¡ tem outra data absoluta (ex.: fim 14/08),
+     * ancora o HOJE nesse dia â€” corrige CSV antigo que â€œdeslizouâ€ para o dia atual.
      */
     function armAnchorHojeField(raw, hintRaw) {
       const full = String(raw || '').trim();
@@ -8998,7 +8997,7 @@
       const hintDt = parseArmDt(armStripOperador(hintRaw));
       const m = clean.match(/^HOJE\s+(\d{1,2}):(\d{2})$/i);
       if (!hintDt || !m) return full;
-      const opMatch = full.match(/\s+([a-zA-Z_.À-ú]{2,})$/i);
+      const opMatch = full.match(/\s+([a-zA-Z_.Ã€-Ãº]{2,})$/i);
       const op = opMatch ? ` ${opMatch[1]}` : '';
       return `${pad(hintDt.getDate())}/${pad(hintDt.getMonth() + 1)} ${pad(+m[1])}:${pad(+m[2])}${op}`;
     }
@@ -9016,12 +9015,12 @@
     }
 
     /**
-     * Exibe data/hora. dd/mm absoluto NÃO é reescrito (evita 14/08 virar 17/08).
-     * Só "HOJE HH:mm" vira o dia corrente do relógio.
+     * Exibe data/hora. dd/mm absoluto NÃƒO Ã© reescrito (evita 14/08 virar 17/08).
+     * SÃ³ "HOJE HH:mm" vira o dia corrente do relÃ³gio.
      */
     function armFmtMomento(raw) {
       const clean = armStripOperador(raw);
-      if (!clean) return '—';
+      if (!clean) return 'â€”';
       let m = clean.match(/^(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?\s+(\d{1,2}):(\d{2})$/);
       if (m) {
         return `${pad(+m[1])}/${pad(+m[2])} ${pad(+m[3])}:${pad(+m[4])}`;
@@ -9047,8 +9046,8 @@
     }
 
     /**
-     * Tempo de descarga ao vivo: fim−início, ou agora−início se ainda em andamento.
-     * Início no futuro (ex.: HOJE sticky) → não inventa "0min (andamento)".
+     * Tempo de descarga ao vivo: fimâˆ’inÃ­cio, ou agoraâˆ’inÃ­cio se ainda em andamento.
+     * InÃ­cio no futuro (ex.: HOJE sticky) â†’ nÃ£o inventa "0min (andamento)".
      */
     function armTempoDescargaLive(v) {
       const ini = armStripOperador(v.inicio_descarga);
@@ -9056,22 +9055,22 @@
       const iniDt = parseArmDt(ini);
       const fimDt = parseArmDt(fim);
       if (iniDt && fimDt && fimDt >= iniDt) {
-        return armFmtDuracao((fimDt - iniDt) / 60000) || (v.tempo_descarga || '—');
+        return armFmtDuracao((fimDt - iniDt) / 60000) || (v.tempo_descarga || 'â€”');
       }
       if (iniDt && !fim) {
         const deltaMs = Date.now() - iniDt.getTime();
-        // Início >1 min no futuro = dado inconsistente (HOJE que deslizou de outro dia)
+        // InÃ­cio >1 min no futuro = dado inconsistente (HOJE que deslizou de outro dia)
         if (deltaMs < -60000) {
-          return (v.tempo_descarga || '').trim() || '—';
+          return (v.tempo_descarga || '').trim() || 'â€”';
         }
         const mins = Math.max(0, Math.floor(deltaMs / 60000));
         const txt = armFmtDuracao(mins);
-        return txt ? `${txt} (andamento)` : '—';
+        return txt ? `${txt} (andamento)` : 'â€”';
       }
-      return (v.tempo_descarga || '').trim() || '—';
+      return (v.tempo_descarga || '').trim() || 'â€”';
     }
 
-    /** Descarga iniciada, sem fim, passando de 3h → atrasado (vermelho). */
+    /** Descarga iniciada, sem fim, passando de 3h â†’ atrasado (vermelho). */
     function armDescargaAtrasada(v) {
       const fim = armStripOperador(v.final_descarga);
       if (fim) return false;
@@ -9080,10 +9079,10 @@
       const dt = parseArmDt(ini);
       if (dt) {
         const deltaMs = Date.now() - dt.getTime();
-        if (deltaMs < -60000) return false; // início futuro → não é atraso
+        if (deltaMs < -60000) return false; // inÃ­cio futuro â†’ nÃ£o Ã© atraso
         if (deltaMs > ARM_DESC_ATR_MS) return true;
       }
-      // fallback se data inválida: usa minutos do CSV (só na falta do parse)
+      // fallback se data invÃ¡lida: usa minutos do CSV (sÃ³ na falta do parse)
       if (!dt) {
         const minsCsv = Number(v.tempo_descarga_min);
         if (Number.isFinite(minsCsv) && minsCsv > 180) return true;
@@ -9095,11 +9094,11 @@
       const fim = armStripOperador(v.final_descarga);
       if (fim) return 'finalizado';
       const stCsv = String(v.status || '').toLowerCase();
-      // CSV já consolidou como finalizado (mesmo se final veio vazio por falha de parse)
+      // CSV jÃ¡ consolidou como finalizado (mesmo se final veio vazio por falha de parse)
       if (stCsv === 'finalizado') return 'finalizado';
       const ini = armStripOperador(v.inicio_descarga);
       const iniDt = parseArmDt(ini);
-      // Início no futuro (HOJE sticky) → não marcar descarregando
+      // InÃ­cio no futuro (HOJE sticky) â†’ nÃ£o marcar descarregando
       if (iniDt && (iniDt.getTime() - Date.now()) > 60000) {
         if (armStripOperador(v.chegada)) return 'chegou';
         return stCsv === 'atrasado' ? 'atrasado' : (stCsv || 'aguardando');
@@ -9111,19 +9110,19 @@
       return stCsv || 'aguardando';
     }
 
-    /** Tabela: só pátio + descarregando + descarga >3h. Finalizado só no contador. */
+    /** Tabela: sÃ³ pÃ¡tio + descarregando + descarga >3h. Finalizado sÃ³ no contador. */
     function armShowInTabela(v) {
-      // Cinto de segurança: com fim de descarga, fora da fila ao vivo
+      // Cinto de seguranÃ§a: com fim de descarga, fora da fila ao vivo
       if (armStripOperador(v.final_descarga)) return false;
       const st = armStatusEfetivo(v);
       if (st === 'finalizado' || st === 'aguardando') return false;
       if (st === 'chegou' || st === 'descarregando') return true;
-      // atrasado por descarga longa (não por previsão de chegada)
+      // atrasado por descarga longa (nÃ£o por previsÃ£o de chegada)
       if (st === 'atrasado' && armStripOperador(v.inicio_descarga)) return true;
       return false;
     }
 
-    /** Sigla filial → cidade (mesma base do ACE / siglas_filiais.py) */
+    /** Sigla filial â†’ cidade (mesma base do ACE / siglas_filiais.py) */
     const SIGLAS_FILIAIS = {
       DCX: 'RIO DE JANEIRO', PPY: 'POUSO ALEGRE', GNN: 'GOIANIA', ATM: 'ALTAMIRA',
       GIR: 'GOIANIA', ATR: 'ALTAMIRA', GYN: 'GOIANIA', BSB: 'BRASILIA',
@@ -9134,15 +9133,15 @@
 
     function labelOrigemArm(raw) {
       const s = String(raw || '').trim().toUpperCase();
-      if (!s) return '—';
+      if (!s) return 'â€”';
       if (SIGLAS_FILIAIS[s]) return SIGLAS_FILIAIS[s];
-      // já veio cidade da planilha/parser
+      // jÃ¡ veio cidade da planilha/parser
       if (s.length > 3) return s;
       return s;
     }
 
     async function chamarPlanilhaArmazem(action) {
-      // Mesma URL/planilha da distribuição — actions dedicadas 078
+      // Mesma URL/planilha da distribuiÃ§Ã£o â€” actions dedicadas 078
       return chamarPlanilha(action);
     }
 
@@ -9178,7 +9177,7 @@
 
     function armBadge(status) {
       const s = (status || '').toLowerCase();
-      const label = s === 'chegou' ? 'no pátio' : (s || '—');
+      const label = s === 'chegou' ? 'no pÃ¡tio' : (s || 'â€”');
       return `<span class="arm-badge st-${s}">${label}</span>`;
     }
 
@@ -9303,11 +9302,11 @@
             nMin += 1;
           }
         }
-        if (nMin > 0) setArmText('kTempoMed', armFmtDuracao(Math.round(sumMin / nMin)) || '—');
-        else setArmText('kTempoMed', '—');
+        if (nMin > 0) setArmText('kTempoMed', armFmtDuracao(Math.round(sumMin / nMin)) || 'â€”');
+        else setArmText('kTempoMed', 'â€”');
       }
       setArmText('armAtualizado',
-        `pátio · descarregando · +3h · atualizado ${r.atualizado || '—'}`
+        `pÃ¡tio Â· descarregando Â· +3h Â· atualizado ${r.atualizado || 'â€”'}`
       );
 
       renderArmTorres({
@@ -9327,10 +9326,10 @@
           const prev = (v.prev_chegada || '').trim();
           const chegCell = chegou
             ? `<span class="mono">${armFmtMomento(chegou)}</span>`
-            : `<span class="muted">—</span>`;
+            : `<span class="muted">â€”</span>`;
           const prevCell = !chegou && prev
             ? `<span class="mono">${armFmtMomento(prev)}</span>`
-            : (chegou ? `<span class="muted">—</span>` : `<span class="mono">${prev ? armFmtMomento(prev) : '—'}</span>`);
+            : (chegou ? `<span class="muted">â€”</span>` : `<span class="mono">${prev ? armFmtMomento(prev) : 'â€”'}</span>`);
           const ini = (v.inicio_descarga || '').trim();
           const fim = (v.final_descarga || '').trim();
           const stEff = armStatusEfetivo(v);
@@ -9338,17 +9337,17 @@
           const tempoLive = armTempoDescargaLive(v);
           return `<tr class="${atrRow ? 'arm-row-atr' : ''}">
             <td>${armBadge(stEff)}</td>
-            <td>${v.origem || '—'}</td>
-            <td class="mono">${v.cavalo || '—'}</td>
-            <td class="mono">${v.carreta || '—'}</td>
-            <td class="right mono">${v.peso_veiculo || '—'}</td>
+            <td>${v.origem || 'â€”'}</td>
+            <td class="mono">${v.cavalo || 'â€”'}</td>
+            <td class="mono">${v.carreta || 'â€”'}</td>
+            <td class="right mono">${v.peso_veiculo || 'â€”'}</td>
             <td>${chegCell}</td>
             <td>${prevCell}</td>
             <td class="mono arm-tempo-live">${tempoLive}</td>
-            <td class="mono">${ini ? armFmtMomento(ini) : '—'}</td>
-            <td class="mono">${fim ? armFmtMomento(fim) : '—'}</td>
+            <td class="mono">${ini ? armFmtMomento(ini) : 'â€”'}</td>
+            <td class="mono">${fim ? armFmtMomento(fim) : 'â€”'}</td>
           </tr>`;
-        }).join('') || `<tr><td colspan="10" class="muted">Nenhum veículo no pátio / descarregando agora</td></tr>`;
+        }).join('') || `<tr><td colspan="10" class="muted">Nenhum veÃ­culo no pÃ¡tio / descarregando agora</td></tr>`;
       }
     }
 
@@ -9382,7 +9381,7 @@
         if (pin) {
           pin.textContent = String(val);
           pin.classList.toggle('pin-lg', val >= 100);
-          pin.title = `${val} veículo(s)`;
+          pin.title = `${val} veÃ­culo(s)`;
         }
         const barEl = document.getElementById(bar);
         if (barEl) barEl.style.height = alturaTorreArm(val, max) + 'px';
@@ -9390,7 +9389,7 @@
     }
 
     function renderArmPizza(finalizado, descarregando, patio) {
-      // Compat: redireciona para torres (pizza removida do pátio)
+      // Compat: redireciona para torres (pizza removida do pÃ¡tio)
       renderArmTorres({
         finalizado,
         descarregando,
@@ -9406,7 +9405,7 @@
       const ranked = (rows || [])
         .map((r) => ({
           rank: Number(r.rank) || 0,
-          nome: String(r.nome || r.conferente || r.login || '').trim() || '—',
+          nome: String(r.nome || r.conferente || r.login || '').trim() || 'â€”',
           login: String(r.login || '').trim(),
           unidade: String(r.unidade || '').trim(),
           kg: String(r.peso_lidos_fmt || r.peso_lidos || '0').replace(/\s*kg$/i, ''),
@@ -9438,19 +9437,19 @@
         const tot = (resumo && (resumo.peso_total_fmt || resumo.peso_total)) || '';
         const atualizado = (resumo && resumo.atualizado) || '';
         meta.textContent = [
-          mes ? `peso lido · ${mes}` : 'peso lido no mês',
+          mes ? `peso lido Â· ${mes}` : 'peso lido no mÃªs',
           tot ? `${tot}${String(tot).toLowerCase().includes('kg') ? '' : ' kg'}` : '',
           ranked.length ? `${ranked.length} conferentes` : '',
           atualizado ? `atualizado ${atualizado}` : '',
-        ].filter(Boolean).join(' · ');
+        ].filter(Boolean).join(' Â· ');
       }
       if (!rest) return;
 
       if (!ranked.length) {
-        rest.innerHTML = `<div class="arm-rank-empty">Aguardando leitura 177…</div>`;
+        rest.innerHTML = `<div class="arm-rank-empty">Aguardando leitura 177â€¦</div>`;
         ['kConfN', 'kConfPeso', 'kConfLeader', 'kConfMes'].forEach((id) => {
           const el = document.getElementById(id);
-          if (el) el.textContent = id === 'kConfN' ? '0' : (id === 'kConfPeso' ? '0 kg' : '—');
+          if (el) el.textContent = id === 'kConfN' ? '0' : (id === 'kConfPeso' ? '0 kg' : 'â€”');
         });
         return;
       }
@@ -9462,13 +9461,13 @@
         const pct = sharePct(r.peso);
         const w = barVsLeader(r.peso);
         return `<div class="arm-best-row${cls}">
-          <span class="arm-best-badge" aria-label="${place}º lugar">${place}</span>
+          <span class="arm-best-badge" aria-label="${place}Âº lugar">${place}</span>
           <span class="arm-best-avatar" title="${esc(r.login || r.nome)}">${esc(initials(r.nome))}</span>
           <div class="arm-best-who">
             <span class="nm" title="${esc(r.login || r.nome)}">${esc(r.nome)}</span>
             <span class="un">${esc(r.unidade || 'SPO')}</span>
           </div>
-          <span class="arm-best-track" title="${fmtShare(pct)} do total · ${w}% do líder"><i style="--w:${w}%"></i><b>${fmtShare(pct)}</b></span>
+          <span class="arm-best-track" title="${fmtShare(pct)} do total Â· ${w}% do lÃ­der"><i style="--w:${w}%"></i><b>${fmtShare(pct)}</b></span>
           <div class="arm-best-val">${esc(r.kg)} kg</div>
         </div>`;
       }).join('');
@@ -9483,8 +9482,8 @@
           || (totalPeso ? totalPeso.toLocaleString('pt-BR') : '0');
         kp.textContent = p ? (String(p).toLowerCase().includes('kg') ? String(p) : `${p} kg`) : '0 kg';
       }
-      if (kl) kl.textContent = ranked[0] ? ranked[0].nome.split(/\s+/)[0] : '—';
-      if (km) km.textContent = String((resumo && (resumo.periodo || resumo.mes || resumo.atualizado)) || mes || 'mês');
+      if (kl) kl.textContent = ranked[0] ? ranked[0].nome.split(/\s+/)[0] : 'â€”';
+      if (km) km.textContent = String((resumo && (resumo.periodo || resumo.mes || resumo.atualizado)) || mes || 'mÃªs');
     }
 
     async function refreshArmazem() {
@@ -9495,7 +9494,7 @@
         const changed = remoteVer == null
           || lastArmDataVersion == null
           || lastArmDataVersion !== remoteVer;
-        // Mesmo sem CSV novo, reaplica status/tempo ao vivo (relógio vs início descarga)
+        // Mesmo sem CSV novo, reaplica status/tempo ao vivo (relÃ³gio vs inÃ­cio descarga)
         if (!changed && (lastGoodArmVeic.length || lastGoodArmConf.length)) {
           paintArmazemLiveFromCache();
           return;
@@ -9588,14 +9587,14 @@
       } catch (e) {
         if (err) {
           err.hidden = false;
-          err.textContent = 'Sem dados do Armazém (Sheets/CSV). ' + e.message;
+          err.textContent = 'Sem dados do ArmazÃ©m (Sheets/CSV). ' + e.message;
         }
       }
     }
 
     function setPenText(id, text) {
       const el = document.getElementById(id);
-      if (el) el.textContent = text == null || text === '' ? '—' : String(text);
+      if (el) el.textContent = text == null || text === '' ? 'â€”' : String(text);
     }
 
     function alturaTorrePen(valor, max) {
@@ -9603,7 +9602,7 @@
         || document.querySelector('.pen-towers-wrap');
       const tv = document.body.classList.contains('tv-mode');
       const pin = tv ? 88 : 72;
-      // Reserva base p/ nome da ocorrência; chart ocupa quase a tela toda
+      // Reserva base p/ nome da ocorrÃªncia; chart ocupa quase a tela toda
       const base = tv ? 96 : 64;
       const pad = tv ? 36 : 24;
       const avail = wrap && wrap.clientHeight > 80
@@ -9617,36 +9616,36 @@
 
     function formatPeriodo31(raw) {
       const s = String(raw || '').trim();
-      if (!s) return '—';
+      if (!s) return 'â€”';
       const digits = s.replace(/\D/g, '');
       if (digits.length === 12) {
         const a = digits.slice(0, 6);
         const b = digits.slice(6, 12);
-        return `${a.slice(0, 2)}/${a.slice(2, 4)}/${a.slice(4)} – ${b.slice(0, 2)}/${b.slice(2, 4)}/${b.slice(4)}`;
+        return `${a.slice(0, 2)}/${a.slice(2, 4)}/${a.slice(4)} â€“ ${b.slice(0, 2)}/${b.slice(2, 4)}/${b.slice(4)}`;
       }
       if (digits.length === 8) {
         const a = digits.slice(0, 4);
         const b = digits.slice(4, 8);
-        return `${a.slice(0, 2)}/${a.slice(2)} – ${b.slice(0, 2)}/${b.slice(2)}`;
+        return `${a.slice(0, 2)}/${a.slice(2)} â€“ ${b.slice(0, 2)}/${b.slice(2)}`;
       }
       return s
-        .replace(/\s*[-–—]\s*/g, ' – ')
-        .replace(/^(\d{2})(\d{2})(\d{2})\s*–\s*(\d{2})(\d{2})(\d{2})$/, '$1/$2/$3 – $4/$5/$6');
+        .replace(/\s*[-â€“â€”]\s*/g, ' â€“ ')
+        .replace(/^(\d{2})(\d{2})(\d{2})\s*â€“\s*(\d{2})(\d{2})(\d{2})$/, '$1/$2/$3 â€“ $4/$5/$6');
     }
 
     function shortPenLabel(text, maxLen = 22) {
-      const raw = String(text || '').trim() || '—';
+      const raw = String(text || '').trim() || 'â€”';
       if (raw.length <= maxLen) return raw;
       const cut = raw.slice(0, maxLen - 1);
       const sp = cut.lastIndexOf(' ');
-      return ((sp > 8 ? cut.slice(0, sp) : cut).trim() + '…');
+      return ((sp > 8 ? cut.slice(0, sp) : cut).trim() + 'â€¦');
     }
 
     function penColorClass(o, negIdx) {
       const pol = String(o.polaridade || '').toLowerCase();
       const cod = String(o.codigo || '').trim();
       if (pol === 'pos' || cod === '63') return 'c-pos';
-      // cor estável por código (mesmo código = mesma cor entre atualizações)
+      // cor estÃ¡vel por cÃ³digo (mesmo cÃ³digo = mesma cor entre atualizaÃ§Ãµes)
       let h = 0;
       for (let i = 0; i < cod.length; i++) h = ((h << 5) - h + cod.charCodeAt(i)) | 0;
       const idx = cod ? Math.abs(h) % 8 : (negIdx % 8);
@@ -9659,11 +9658,11 @@
       const all = ofensores || [];
       const items = all.slice(0, document.body.classList.contains('tv-mode') ? 6 : 8);
       if (!items.length) {
-        if (host) host.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
-        if (pareto) pareto.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
+        if (host) host.innerHTML = '<div class="arm-rank-empty">Sem ocorrÃªncias no perÃ­odo</div>';
+        if (pareto) pareto.innerHTML = '<div class="arm-rank-empty">Sem ocorrÃªncias no perÃ­odo</div>';
         return;
       }
-      // % = participação no TODO (não acumulado, nem só entre os visíveis)
+      // % = participaÃ§Ã£o no TODO (nÃ£o acumulado, nem sÃ³ entre os visÃ­veis)
       const totalAll = all.reduce((s, o) => s + (Number(o.qtd) || 0), 0) || 1;
       const max = Math.max(...items.map((o) => Number(o.qtd) || 0), 1);
       const skinsNeg = ['t-of', 't-of2', 't-of3', 't-of4', 't-of5', 't-of6', 't-of7'];
@@ -9685,13 +9684,13 @@
           const pol = String(o.polaridade || '').toLowerCase();
           const isPos = pol === 'pos' || cod === '63';
           const colorCls = penColorClass(o, colorIdx++);
-          const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
+          const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `CÃ³d. ${cod}` : 'â€”');
           const lab = esc(tv ? shortPenLabel(nome, 42) : shortPenLabel(nome, 48));
           const w = Math.max(4, Math.min(100, pct));
           const codHtml = cod
-            ? `<span class="ds-pareto-cod">${esc(cod)}${isPos ? ' · SLA+' : ''}</span> · `
+            ? `<span class="ds-pareto-cod">${esc(cod)}${isPos ? ' Â· SLA+' : ''}</span> Â· `
             : '';
-          return `<div class="ds-pareto-row ${isPos ? 'is-pos' : ''}" title="${esc(cod ? `${cod} · ${nome}` : nome)} · ${pct}% do total">
+          return `<div class="ds-pareto-row ${isPos ? 'is-pos' : ''}" title="${esc(cod ? `${cod} Â· ${nome}` : nome)} Â· ${pct}% do total">
             <div class="ds-pareto-lab">${codHtml}${lab}</div>
             <div class="ds-pareto-track"><div class="ds-pareto-fill ${colorCls}" style="width:${w}%"></div></div>
             <div class="ds-pareto-n">${qtd}</div>
@@ -9708,11 +9707,11 @@
         const isPos = pol === 'pos' || String(o.codigo || '') === '63';
         const skin = isPos ? 't-pos' : (skinsNeg[negIdx++] || 't-of6');
         const cod = String(o.codigo || '').trim();
-        const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
-        const labFull = esc(cod ? `${cod} · ${nome}${isPos ? ' · SLA+' : ''}` : nome);
+        const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `CÃ³d. ${cod}` : 'â€”');
+        const labFull = esc(cod ? `${cod} Â· ${nome}${isPos ? ' Â· SLA+' : ''}` : nome);
         const lab = esc(tv ? nome : shortPenLabel(nome, 24));
         const h = alturaTorrePen(qtd, max);
-        return `<div class="torre ${skin}" title="${labFull} · ${pct}% do total">
+        return `<div class="torre ${skin}" title="${labFull} Â· ${pct}% do total">
           <div class="pin"><span class="${qtd >= 100 ? 'pin-lg' : ''}">${qtd}</span></div>
           <div class="barra" style="height:${h}px"><strong>${pct}<span class="pct-sign">%</span></strong></div>
           <div class="base"><div class="lbl">${lab}</div></div>
@@ -9783,14 +9782,14 @@
         setPenText('penSoluc', resumo.solucionadas || '0');
         setPenText('penAbertas', resumo.abertas || '0');
         setPenText('penPeriodo', formatPeriodo31(resumo.periodo || ''));
-        setPenText('penAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
+        setPenText('penAtualizado', 'atualizado ' + (resumo.atualizado || 'â€”'));
         const meta = document.getElementById('penOfMeta');
         if (meta) {
           const sla = slaTxt;
           const topoLab = resumo.topo_label || '';
           meta.textContent = topoLab
-            ? `SLA ${sla} · ofensor · ${topoLab}`
-            : `SLA ${sla} · 63 positiva · demais negativas`;
+            ? `SLA ${sla} Â· ofensor Â· ${topoLab}`
+            : `SLA ${sla} Â· 63 positiva Â· demais negativas`;
         }
 
         renderPenTorres(ofens);
@@ -9801,14 +9800,14 @@
       } catch (e) {
         if (err) {
           err.hidden = false;
-          err.textContent = 'Sem dados da Pendência (Sheets/CSV). ' + e.message;
+          err.textContent = 'Sem dados da PendÃªncia (Sheets/CSV). ' + e.message;
         }
       }
     }
 
     function setRecText(id, text) {
       const el = document.getElementById(id);
-      if (el) el.textContent = text == null || text === '' ? '—' : String(text);
+      if (el) el.textContent = text == null || text === '' ? 'â€”' : String(text);
     }
 
     function fmtRecMoney(v) {
@@ -9834,7 +9833,7 @@
       if (!root) return;
       const list = Array.isArray(rows) ? rows.slice(0, 10) : [];
       if (!list.length) {
-        root.innerHTML = '<div class="meta">Sem CTRCs neste relatório</div>';
+        root.innerHTML = '<div class="meta">Sem CTRCs neste relatÃ³rio</div>';
         return;
       }
       const vals = list.map((r) => Number(r[valueKey] || r.dias_max || 0) || 0);
@@ -9842,11 +9841,11 @@
       root.innerHTML = list.map((r) => {
         const val = Number(r[valueKey] || r.dias_max || 0) || 0;
         const pct = Math.max(6, Math.round((val / max) * 100));
-        let label = String(r[labelKey] || r.cliente || r.ctrc || '—');
+        let label = String(r[labelKey] || r.cliente || r.ctrc || 'â€”');
         if (kind === 'cte' && r.cliente) label = `${r.ctrc || label}`;
         const title = kind === 'cte'
-          ? `${r.ctrc || ''} · ${r.cliente || ''} · ${val}d`
-          : `${r.cliente || ''} · máx ${val}d · qtd ${r.qtd || ''}`;
+          ? `${r.ctrc || ''} Â· ${r.cliente || ''} Â· ${val}d`
+          : `${r.cliente || ''} Â· mÃ¡x ${val}d Â· qtd ${r.qtd || ''}`;
         return `<div class="rec-hbar ${kind}" title="${title.replace(/"/g, '&quot;')}">
           <div class="lbl">${label}</div>
           <div class="track"><div class="fill" style="width:${pct}%"></div></div>
@@ -9881,7 +9880,7 @@
       if (!host) return;
       const items = (Array.isArray(rows) ? rows : []).slice(0, 12);
       if (!items.length) {
-        host.innerHTML = '<div class="arm-rank-empty">Sem CTRCs — rode `reciclagem`</div>';
+        host.innerHTML = '<div class="arm-rank-empty">Sem CTRCs â€” rode `reciclagem`</div>';
         return;
       }
       const max = Math.max(...items.map((d) => Number(d.qtd) || 0), 1);
@@ -9890,10 +9889,10 @@
         const qtd = Number(d.qtd) || 0;
         const pct = Math.round((qtd / total) * 100);
         const skin = 't-d' + (i % 8);
-        const lab = esc(String(d.cidade_uf || d.filial_label || d.filial || '—').trim() || '—');
+        const lab = esc(String(d.cidade_uf || d.filial_label || d.filial || 'â€”').trim() || 'â€”');
         const tip = esc(
-          `${d.cidade_uf || '—'} · ${qtd} CTRCs`
-          + (d.dias_max ? ` · máx ${d.dias_max}d` : '')
+          `${d.cidade_uf || 'â€”'} Â· ${qtd} CTRCs`
+          + (d.dias_max ? ` Â· mÃ¡x ${d.dias_max}d` : '')
         );
         const h = alturaTorreRec(qtd, max);
         return `<div class="torre ${skin}" title="${tip}">
@@ -9914,12 +9913,12 @@
       }
       tb.innerHTML = list.map((r) => {
         const dias = Number(r.dias_atraso || 0) || 0;
-        const cid = esc(r.cidade_uf || [r.cidade, r.uf].filter(Boolean).join('/') || r.filial || '—');
+        const cid = esc(r.cidade_uf || [r.cidade, r.uf].filter(Boolean).join('/') || r.filial || 'â€”');
         return `<tr>
-          <td class="mono">${esc(r.ctrc || '—')}</td>
+          <td class="mono">${esc(r.ctrc || 'â€”')}</td>
           <td class="fil">${cid}</td>
-          <td>${esc(r.cliente || '—')}</td>
-          <td>${esc(r.ultima_ocorrencia || '—')}</td>
+          <td>${esc(r.cliente || 'â€”')}</td>
+          <td>${esc(r.ultima_ocorrencia || 'â€”')}</td>
           <td class="atraso">${dias}d</td>
         </tr>`;
       }).join('');
@@ -9933,14 +9932,14 @@
       setRecText('recFrete', resumo.frete_fmt || fmtRecMoney(resumo.frete));
       setRecText('recPeso', resumo.peso_fmt || fmtRecPeso(resumo.peso));
       setRecText('recQtd', resumo.qtd != null ? String(resumo.qtd) : '0');
-      setRecText('recVisao', key === 'sem_saida' ? 'Sem saída' : 'Sem transf.');
-      setRecText('recAtualizado', 'atualizado ' + (resumo.atualizado || data.updated_at || '—'));
+      setRecText('recVisao', key === 'sem_saida' ? 'Sem saÃ­da' : 'Sem transf.');
+      setRecText('recAtualizado', 'atualizado ' + (resumo.atualizado || data.updated_at || 'â€”'));
 
       if (key === 'sem_transferencia') {
         const filMeta = document.getElementById('recFilialMeta');
         const atrMeta = document.getElementById('recAtrasoMeta');
         const nCid = (block.por_filial || []).length;
-        if (filMeta) filMeta.textContent = `${block.titulo || 'SEM TRANSFERÊNCIA'} · ${nCid} cidades`;
+        if (filMeta) filMeta.textContent = `${block.titulo || 'SEM TRANSFERÃŠNCIA'} Â· ${nCid} cidades`;
         if (atrMeta) atrMeta.textContent = 'top 10 por dias de atraso';
         renderRecTorresCidade(block.por_filial || []);
         renderRecAtrasados(block.top_cte || []);
@@ -9949,8 +9948,8 @@
 
       const cteMeta = document.getElementById('recCteMeta');
       const cliMeta = document.getElementById('recCliMeta');
-      if (cteMeta) cteMeta.textContent = `${block.titulo || REC_VIEW_LABELS[key] || key} · top CTE`;
-      if (cliMeta) cliMeta.textContent = `${block.programa || ''} · top clientes`.trim();
+      if (cteMeta) cteMeta.textContent = `${block.titulo || REC_VIEW_LABELS[key] || key} Â· top CTE`;
+      if (cliMeta) cliMeta.textContent = `${block.programa || ''} Â· top clientes`.trim();
       renderRecHbars('recTorresCte', block.top_cte || [], { kind: 'cte', valueKey: 'dias_atraso', labelKey: 'ctrc' });
       renderRecHbars('recTorresCli', block.top_cliente || [], { kind: 'cli', valueKey: 'dias_max', labelKey: 'cliente' });
     }
@@ -9989,7 +9988,7 @@
 
     function setCtrText(id, text) {
       const el = document.getElementById(id);
-      if (el) el.textContent = text == null || text === '' ? '—' : String(text);
+      if (el) el.textContent = text == null || text === '' ? 'â€”' : String(text);
     }
 
     function fmtCtrMoney(v) {
@@ -10037,7 +10036,7 @@
           : lastGoodCtrDestinos
       ).slice(0, 10);
       if (!items.length) {
-        host.innerHTML = '<div class="arm-rank-empty">Sem destinos — rode `73`</div>';
+        host.innerHTML = '<div class="arm-rank-empty">Sem destinos â€” rode `73`</div>';
         return;
       }
       const max = Math.max(...items.map((d) => Number(d.qtd) || 0), 1);
@@ -10046,9 +10045,9 @@
         const qtd = Number(d.qtd) || 0;
         const pct = Math.round((qtd / total) * 100);
         const skin = 't-d' + (i % 8);
-        const lab = esc(String(d.destino || '—').trim() || '—');
+        const lab = esc(String(d.destino || 'â€”').trim() || 'â€”');
         const tip = esc(
-          `${d.destino || '—'} · ${qtd} CTRB · custo R$ ${fmtCtrMoney(d.custo)} · frete R$ ${fmtCtrMoney(d.frete)}`
+          `${d.destino || 'â€”'} Â· ${qtd} CTRB Â· custo R$ ${fmtCtrMoney(d.custo)} Â· frete R$ ${fmtCtrMoney(d.frete)}`
         );
         const h = alturaTorreCtr(qtd, max);
         return `<div class="torre ${skin}" title="${tip}">
@@ -10064,7 +10063,7 @@
       if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
       const s = String(v).trim();
       if (!s) return 0;
-      // Número puro (CSV: 5627.33 / 1751.4)
+      // NÃºmero puro (CSV: 5627.33 / 1751.4)
       if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
       // Formatado BR: "R$ 1.751,40" / "5.627,33" / "3,55 m3"
       const cleaned = s
@@ -10111,14 +10110,14 @@
     }
 
     function fmtEmiDesde(ms) {
-      if (ms == null || !Number.isFinite(ms) || ms < 0) return '—';
+      if (ms == null || !Number.isFinite(ms) || ms < 0) return 'â€”';
       const totalSec = Math.floor(ms / 1000);
       const h = Math.floor(totalSec / 3600);
       const m = Math.floor((totalSec % 3600) / 60);
       const s = totalSec % 60;
-      if (h > 0) return `Há ${h}h ${String(m).padStart(2, '0')}min`;
-      if (m > 0) return `Há ${m} min`;
-      return `Há ${s}s`;
+      if (h > 0) return `HÃ¡ ${h}h ${String(m).padStart(2, '0')}min`;
+      if (m > 0) return `HÃ¡ ${m} min`;
+      return `HÃ¡ ${s}s`;
     }
 
     function setEmiStatus(level, label) {
@@ -10137,7 +10136,7 @@
       const row = document.getElementById('emiRowDesde');
       if (!el) return;
       if (!lastEmiAtualizadoTs) {
-        el.textContent = '—';
+        el.textContent = 'â€”';
         if (row) row.classList.remove('is-warn', 'is-crit', 'is-ok');
         return;
       }
@@ -10162,7 +10161,7 @@
       if (line) {
         if (meta > 0) {
           line.hidden = false;
-          // Alinha à área das barras (desconta labels inferiores ~22px)
+          // Alinha Ã  Ã¡rea das barras (desconta labels inferiores ~22px)
           const frac = Math.max(0.04, Math.min(0.96, meta / max));
           line.style.bottom = `calc(22px + ${frac * 100}% * 0.72)`;
           const lab = document.getElementById('emiMetaLineLab');
@@ -10176,7 +10175,7 @@
         const show = x.qtd > 0 ? String(x.qtd) : '';
         let cls = 'emi-bar';
         if (meta > 0 && x.qtd > 0) cls += x.qtd >= meta ? ' is-above' : ' is-below';
-        return `<div class="${cls}" title="${x.hora}:00 · ${x.qtd}${meta ? ` · meta ${meta}` : ''}">
+        return `<div class="${cls}" title="${x.hora}:00 Â· ${x.qtd}${meta ? ` Â· meta ${meta}` : ''}">
           <span class="val">${show}</span>
           <i class="col" style="height:${pct}%"></i>
           <span class="h">${String(x.hora).padStart(2, '0')}</span>
@@ -10201,12 +10200,12 @@
         const pct = ((qtd / total) * 100);
         const pctLab = Number.isFinite(Number(r.pct)) ? Number(r.pct) : pct;
         const prod = qtd / hrs;
-        const nome = esc(String(r.nome_exibicao || r.nome || '—'));
+        const nome = esc(String(r.nome_exibicao || r.nome || 'â€”'));
         return `<div class="emi-exp-row">
           <span class="emi-exp-name" title="${nome}">${nome}</span>
           <div class="emi-exp-bar"><i style="width:${w}%"></i></div>
           <span class="qtd">${qtd}</span>
-          <div class="emi-exp-meta">${pctLab.toFixed(1).replace('.', ',')}% do total · ${prod.toFixed(1).replace('.', ',')} CT-e/h</div>
+          <div class="emi-exp-meta">${pctLab.toFixed(1).replace('.', ',')}% do total Â· ${prod.toFixed(1).replace('.', ',')} CT-e/h</div>
         </div>`;
       }).join('');
     }
@@ -10216,19 +10215,19 @@
         return { tone: 'ok', color: '#64748b', label: 'sem dados' };
       }
       const p = Math.max(0, Math.min(100, pct)) / 100;
-      // vermelho → amarelo → verde (gradual) — só no texto %
+      // vermelho â†’ amarelo â†’ verde (gradual) â€” sÃ³ no texto %
       const hue = p < 0.5 ? (p * 2) * 48 : 48 + ((p - 0.5) * 2) * 72;
       const color = `hsl(${Math.round(hue)} 92% 52%)`;
       let label = 'em andamento';
       let tone = 'warn';
-      if (pct < 30) { label = 'crítico'; tone = 'crit'; }
+      if (pct < 30) { label = 'crÃ­tico'; tone = 'crit'; }
       else if (pct > 70) { label = 'no ritmo'; tone = 'ok'; }
-      else { label = 'atenção'; tone = 'warn'; }
+      else { label = 'atenÃ§Ã£o'; tone = 'warn'; }
       return { tone, color, label };
     }
 
     async function loadMapaFarolGeo() {
-      // sempre busca fresco (cores/zonas mudam com frequência)
+      // sempre busca fresco (cores/zonas mudam com frequÃªncia)
       const res = await fetch('data/mapa/sp_distritos.geojson?t=' + Date.now(), { cache: 'no-store' });
       if (!res.ok) throw new Error('GeoJSON SP ausente');
       window.__mapaFarolGeo = await res.json();
@@ -10297,7 +10296,7 @@
         ? Math.max(0, Math.min(100, pct))
         : 0;
       const label = pct == null || !Number.isFinite(pct)
-        ? '—'
+        ? 'â€”'
         : `${Math.round(pct)}%`;
       if (pctEl) {
         pctEl.textContent = label;
@@ -10345,7 +10344,7 @@
       paintZones().catch(() => {
         if (lab) {
           lab.hidden = false;
-          lab.textContent = 'mapa SP indisponível';
+          lab.textContent = 'mapa SP indisponÃ­vel';
         }
       });
     }
@@ -10374,12 +10373,12 @@
         const tot = colTot + entTot;
         const pct = tot > 0 ? (real / tot) * 100 : null;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-        set('mapaTotCol', colTot ? `${colReal}/${colTot}` : '—');
-        set('mapaTotEnt', entTot ? `${entReal}/${entTot}` : '—');
+        set('mapaTotCol', colTot ? `${colReal}/${colTot}` : 'â€”');
+        set('mapaTotEnt', entTot ? `${entReal}/${entTot}` : 'â€”');
         paintMapaFarol(pct, [
           colTot ? `coleta ${colReal}/${colTot}` : null,
           entTot ? `entrega ${entReal}/${entTot}` : null,
-        ].filter(Boolean).join(' · ') || 'coleta + entrega');
+        ].filter(Boolean).join(' Â· ') || 'coleta + entrega');
       } catch (_) {
         paintMapaFarol(null, 'coleta + entrega');
       }
@@ -10415,7 +10414,7 @@
         maxZoom: 19,
         subdomains: 'abcd',
       }).addTo(mapaLeaflet);
-      // zonas SP capital — overlay cyberpunk (opacidade CyberMap)
+      // zonas SP capital â€” overlay cyberpunk (opacidade CyberMap)
       loadMapaFarolGeo().then(async (geo) => {
         const zonas = await loadMapaZonas();
         if (mapaZoneLayer) {
@@ -10564,10 +10563,10 @@
             iconAnchor: [14, 14],
           });
         const mk = L.marker([p.lat, p.lon], { icon, interactive: true }).bindTooltip(
-          (`${v.placa} · ${letter} ${p.seq || ''} ${p.cliente || ''}`
-          + ` · ${done ? 'realizado' : 'em rota'}`
+          (`${v.placa} Â· ${letter} ${p.seq || ''} ${p.cliente || ''}`
+          + ` Â· ${done ? 'realizado' : 'em rota'}`
           + (p.frete || p.peso
-            ? ` · R$ ${Number(p.frete || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · ${Number(p.peso || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg`
+            ? ` Â· R$ ${Number(p.frete || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} Â· ${Number(p.peso || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg`
             : '')).trim()
         );
         mk.addTo(map);
@@ -10592,14 +10591,14 @@
         const badge = tipo === 'coleta' ? 'COLETA' : (tipo === 'ambos' ? 'ENTREGA + COLETA' : 'ENTREGA');
         const pct = Number(v.servico_pct) || 0;
         cap.hidden = false;
-        cap.innerHTML = `${esc(String(v.placa || '—'))} · ${badge}`
-          + `<span class="sub">${esc(v.motorista || '—')}`
-          + (v.distance_km ? ` · ${Number(v.distance_km).toFixed(1)} km` : '')
-          + ` · serviço ${pct.toFixed(0)}%</span>`;
+        cap.innerHTML = `${esc(String(v.placa || 'â€”'))} Â· ${badge}`
+          + `<span class="sub">${esc(v.motorista || 'â€”')}`
+          + (v.distance_km ? ` Â· ${Number(v.distance_km).toFixed(1)} km` : '')
+          + ` Â· serviÃ§o ${pct.toFixed(0)}%</span>`;
       }
     }
 
-    /** Placas atualmente na lista da direita (janela do carrossel). */
+    /** Placas na lista da direita (janela alinhada Ã  rota ativa). */
     function getMapaVisibleVeiculos() {
       const veics = (lastMapaData && lastMapaData.veiculos) || [];
       if (!veics.length) return [];
@@ -10612,31 +10611,30 @@
       return out;
     }
 
-    /** Rota só de um carro que está aparecendo na lista da direita. */
-    function showMapaRouteFromVisible(preferWithin) {
-      const visible = getMapaVisibleVeiculos();
-      if (!visible.length) return;
-      let within = preferWithin;
-      if (within == null || within < 0 || within >= visible.length) {
-        const keep = visible.findIndex((x) => String(x.v.placa) === String(mapaSelectedPlaca));
-        within = keep >= 0 ? keep : 0;
-      }
-      mapaRouteCursor = within;
-      const item = visible[within];
-      showMapaVehicleRoute(item.v, item.i);
+    /** Mostra rota do veÃ­culo e alinha a lista lateral nele (mesmo tempo). */
+    function showMapaVehicleAt(idx) {
+      const veics = (lastMapaData && lastMapaData.veiculos) || [];
+      if (!veics.length) return;
+      const i = ((Number(idx) || 0) % veics.length + veics.length) % veics.length;
+      mapaRouteCursor = i;
+      mapaPlacaCursor = i;
+      renderMapaPlacaPops();
+      showMapaVehicleRoute(veics[i], i);
     }
 
     function startMapaRouteCarousel() {
       if (mapaRouteTimer) clearInterval(mapaRouteTimer);
-      const visible = getMapaVisibleVeiculos();
-      if (!visible.length) return;
-      showMapaRouteFromVisible(0);
+      if (mapaPlacaTimer) { clearInterval(mapaPlacaTimer); mapaPlacaTimer = null; }
+      const veics = (lastMapaData && lastMapaData.veiculos) || [];
+      if (!veics.length) return;
+      if (mapaUiView === 'gestao') return;
+      showMapaVehicleAt(mapaRouteCursor);
       mapaRouteTimer = setInterval(() => {
-        const list = getMapaVisibleVeiculos();
+        if (mapaUiView === 'gestao') return;
+        const list = (lastMapaData && lastMapaData.veiculos) || [];
         if (!list.length) return;
         mapaRouteCursor = (mapaRouteCursor + 1) % list.length;
-        const item = list[mapaRouteCursor];
-        showMapaVehicleRoute(item.v, item.i);
+        showMapaVehicleAt(mapaRouteCursor);
       }, mapaRouteMs);
     }
 
@@ -10644,13 +10642,9 @@
       const veics = (lastMapaData && lastMapaData.veiculos) || [];
       const idx = veics.findIndex((x) => String(x.placa) === String(placa));
       if (idx < 0) return;
-      // traz a placa clicada para o topo da lista visível e mostra a rota dela
-      mapaPlacaCursor = idx;
-      mapaRouteCursor = 0;
-      renderMapaPlacaPops();
-      showMapaVehicleRoute(veics[idx], idx);
+      mapaRouteCursor = idx;
+      showMapaVehicleAt(idx);
       startMapaRouteCarousel();
-      startMapaPlacaCarousel();
     }
 
     function fmtMapaMoney(v) {
@@ -10670,7 +10664,7 @@
       if (!stack) return;
       const veics = (lastMapaData && lastMapaData.veiculos) || [];
       if (!veics.length) {
-        stack.innerHTML = '<div class="arm-rank-empty">Nenhum veículo em rota</div>';
+        stack.innerHTML = '<div class="arm-rank-empty">Nenhum veÃ­culo em rota</div>';
         return;
       }
       const nVis = Math.min(MAPA_PLACA_VISIBLE, veics.length);
@@ -10699,8 +10693,8 @@
           el.innerHTML = `
             <div class="donut">${donutSvg(pct, color)}<div class="pct">0%</div></div>
             <div>
-              <div class="name">${esc(String(v.placa || '—'))}<span class="mapa-tipo-pill ${pillCls}">${tipo === 'ambos' ? 'EC' : badge}</span></div>
-              <div class="meta">${esc(v.motorista || '—')} · ${feitas}/${total || '—'}</div>
+              <div class="name">${esc(String(v.placa || 'â€”'))}<span class="mapa-tipo-pill ${pillCls}">${tipo === 'ambos' ? 'EC' : badge}</span></div>
+              <div class="meta">${esc(v.motorista || 'â€”')} Â· ${feitas}/${total || 'â€”'}</div>
             </div>
             <div class="badge${pct >= 100 ? ' up' : ''}">${Math.round(pct)}%</div>`;
           el.addEventListener('click', () => focusMapaPlaca(el.getAttribute('data-placa')));
@@ -10713,21 +10707,10 @@
       }, 120);
     }
 
+    /** Lista lateral acompanha a rota â€” sem timer prÃ³prio (era 4,5s e forÃ§ava troca). */
     function startMapaPlacaCarousel() {
-      if (mapaPlacaTimer) clearInterval(mapaPlacaTimer);
-      const veics = (lastMapaData && lastMapaData.veiculos) || [];
-      if (!veics.length) return;
+      if (mapaPlacaTimer) { clearInterval(mapaPlacaTimer); mapaPlacaTimer = null; }
       renderMapaPlacaPops();
-      if (veics.length <= MAPA_PLACA_VISIBLE) return;
-      mapaPlacaTimer = setInterval(() => {
-        const list = (lastMapaData && lastMapaData.veiculos) || [];
-        if (list.length <= MAPA_PLACA_VISIBLE) return;
-        mapaPlacaCursor = (mapaPlacaCursor + 1) % list.length;
-        renderMapaPlacaPops();
-        // janela da direita mudou → rota só entre os que estão aparecendo
-        mapaRouteCursor = 0;
-        showMapaRouteFromVisible(0);
-      }, MAPA_PLACA_MS);
     }
 
     function setMapaUiView(view, { syncSelect = true } = {}) {
@@ -10776,10 +10759,10 @@
       const veics = ((lastMapaData && lastMapaData.veiculos) || [])
         .filter((v) => mapaVeiculoMatchesQuery(v, q));
       const cur = mapaGestaoPlaca || '';
-      sel.innerHTML = '<option value="">Selecione um veículo…</option>'
+      sel.innerHTML = '<option value="">Selecione um veÃ­culoâ€¦</option>'
         + veics.map((v) => {
           const pct = Math.round(Number(v.servico_pct) || 0);
-          const label = `${v.placa || '—'} · ${v.motorista || '—'} · ${pct}%`;
+          const label = `${v.placa || 'â€”'} Â· ${v.motorista || 'â€”'} Â· ${pct}%`;
           return `<option value="${esc(String(v.placa || ''))}">${esc(label)}</option>`;
         }).join('');
       if (cur && [...sel.options].some((o) => o.value === String(cur))) {
@@ -10787,8 +10770,8 @@
       }
       if (meta) {
         meta.textContent = lastMapaData?.atualizado
-          ? `hoje · ${lastMapaData.atualizado}`
-          : (veics.length ? `${veics.length} veículo(s)` : '—');
+          ? `hoje Â· ${lastMapaData.atualizado}`
+          : (veics.length ? `${veics.length} veÃ­culo(s)` : 'â€”');
       }
     }
 
@@ -10796,7 +10779,7 @@
       const sum = document.getElementById('mapaGestaoSummary');
       if (sum) sum.hidden = true;
       const stops = document.getElementById('mapaGestaoStops');
-      if (stops) stops.innerHTML = '<div class="arm-rank-empty">Selecione um veículo</div>';
+      if (stops) stops.innerHTML = '<div class="arm-rank-empty">Selecione um veÃ­culo</div>';
     }
 
     function mapaStopTone(p) {
@@ -10829,15 +10812,15 @@
       const pct = Math.round(Number(v.servico_pct) || 0);
       const tipo = String(v.tipo || 'entrega');
       const tipoLab = tipo === 'coleta' ? 'COLETA' : (tipo === 'ambos' ? 'ENTREGA + COLETA' : 'ENTREGA');
-      set('mapaGestaoPlaca', String(v.placa || '—'));
-      set('mapaGestaoMeta', `${v.motorista || '—'} · ${tipoLab}`
-        + (v.romaneio ? ` · ${v.romaneio}` : ''));
-      set('mapaGestaoServico', total ? `${feitas}/${total} · ${pct}%` : `${pct}%`);
+      set('mapaGestaoPlaca', String(v.placa || 'â€”'));
+      set('mapaGestaoMeta', `${v.motorista || 'â€”'} Â· ${tipoLab}`
+        + (v.romaneio ? ` Â· ${v.romaneio}` : ''));
+      set('mapaGestaoServico', total ? `${feitas}/${total} Â· ${pct}%` : `${pct}%`);
       set('mapaGestaoFreteEnt', fmtMapaMoney(v.frete_entrega != null ? v.frete_entrega : v.frete));
       set('mapaGestaoPesoEnt', fmtMapaPeso(v.peso_entrega != null ? v.peso_entrega : v.peso));
       set('mapaGestaoFreteCol', fmtMapaMoney(v.frete_coleta));
       set('mapaGestaoPesoCol', fmtMapaPeso(v.peso_coleta));
-      set('mapaGestaoKm', v.distance_km != null ? `${Number(v.distance_km).toFixed(1)} km` : '—');
+      set('mapaGestaoKm', v.distance_km != null ? `${Number(v.distance_km).toFixed(1)} km` : 'â€”');
 
       const allStops = [
         ...(v.paradas || []).map((p) => ({ ...p, _kind: 'E' })),
@@ -10846,7 +10829,7 @@
       const host = document.getElementById('mapaGestaoStops');
       if (!host) return;
       if (!allStops.length) {
-        host.innerHTML = '<div class="arm-rank-empty">Sem paradas neste veículo</div>';
+        host.innerHTML = '<div class="arm-rank-empty">Sem paradas neste veÃ­culo</div>';
         return;
       }
       host.innerHTML = allStops.map((p, i) => {
@@ -10866,8 +10849,8 @@
         return `<div class="mapa-gestao-stop ${cls}">
           <div class="seq">${esc(String(seq))}</div>
           <div>
-            <div class="cli">${esc(p.cliente || '—')}</div>
-            <div class="sub">${esc(subParts.join(' · '))}</div>
+            <div class="cli">${esc(p.cliente || 'â€”')}</div>
+            <div class="sub">${esc(subParts.join(' Â· '))}</div>
           </div>
           <div class="st">${stLab}</div>
         </div>`;
@@ -10886,10 +10869,10 @@
         set('mapaPesoEnt', '0 kg');
         set('mapaFreteCol', 'R$ 0');
         set('mapaPesoCol', '0 kg');
-        set('mapaTotCol', '—');
-        set('mapaTotEnt', '—');
+        set('mapaTotCol', 'â€”');
+        set('mapaTotEnt', 'â€”');
         const list = document.getElementById('mapaLista');
-        if (list) list.innerHTML = '<div class="arm-rank-empty">Sem dados — rode `mapa`</div>';
+        if (list) list.innerHTML = '<div class="arm-rank-empty">Sem dados â€” rode `mapa`</div>';
         clearMapaLayers();
         const cap = document.getElementById('mapaRouteCaption');
         if (cap) cap.hidden = true;
@@ -10907,7 +10890,7 @@
       set('mapaPesoEnt', fmtMapaPeso(tot.peso_entrega != null ? tot.peso_entrega : tot.peso));
       set('mapaFreteCol', fmtMapaMoney(tot.frete_coleta));
       set('mapaPesoCol', fmtMapaPeso(tot.peso_coleta));
-      set('mapaAtualizado', data.atualizado ? `hoje · atualizado ${data.atualizado}` : 'hoje');
+      set('mapaAtualizado', data.atualizado ? `hoje Â· atualizado ${data.atualizado}` : 'hoje');
       if (aviso) {
         if (data.aviso) {
           aviso.hidden = false;
@@ -10964,7 +10947,7 @@
         }
         if (!data) {
           if (lastMapaData) data = lastMapaData;
-          else throw new Error('JSON do mapa ausente — rode `36` ou `mapa`');
+          else throw new Error('JSON do mapa ausente â€” rode `36` ou `mapa`');
         }
         paintMapa(data);
         await refreshMapaFarolServico();
@@ -10982,8 +10965,8 @@
 
     function formatEmiPeriodo(raw) {
       const s = String(raw || '').trim();
-      if (!s) return '—';
-      // Já formatado: 17/08 ou 17/08/26
+      if (!s) return 'â€”';
+      // JÃ¡ formatado: 17/08 ou 17/08/26
       if (/^\d{1,2}\/\d{1,2}/.test(s)) return s;
       // SSW DDMM (1708) ou DDMMYY (170826)
       const m = s.match(/^(\d{2})(\d{2})(\d{2,4})?$/);
@@ -11009,7 +10992,7 @@
       const span = emiActiveHourSpan(items);
       lastEmiActiveHours = span.hours || 0;
 
-      // Meta operacional = média das horas com emissão (referência visual; sem fonte externa)
+      // Meta operacional = mÃ©dia das horas com emissÃ£o (referÃªncia visual; sem fonte externa)
       const metaH = span.activeCount >= 2 ? Math.max(1, Math.round(span.avg)) : 0;
       const prodH = span.hours > 0 && ctes > 0
         ? (ctes / span.hours)
@@ -11020,7 +11003,7 @@
       set('emiTurnoDia', resumo.dia ?? '0');
       set('emiTurnoNoite', resumo.noite ?? '0');
       set('emiCubagem', resumo.cubagem_fmt || resumo.cubagem || '0');
-      set('emiMes', String(resumo.mes || '—').toUpperCase());
+      set('emiMes', String(resumo.mes || 'â€”').toUpperCase());
       set('emiCtes', resumo.ctes ?? '0');
       {
         const p = resumo.peso_fmt || resumo.peso || '0';
@@ -11038,19 +11021,19 @@
       set('emiStatPend', resumo.pendentes != null && resumo.pendentes !== '' ? String(resumo.pendentes) : '0');
       set('emiStatErr', resumo.finalizados != null && resumo.finalizados !== '' ? String(resumo.finalizados) : '0');
       set('emiPeriodo', formatEmiPeriodo(resumo.periodo || ''));
-      set('emiAtualizado', resumo.atualizado ? `atualizado ${resumo.atualizado}` : 'atualizado —');
+      set('emiAtualizado', resumo.atualizado ? `atualizado ${resumo.atualizado}` : 'atualizado â€”');
       set('emiProdH', prodH > 0 ? prodH.toFixed(1).replace('.', ',') : '0');
-      set('emiMetaH', metaH > 0 ? String(metaH) : '—');
-      set('emiMetaHint', metaH > 0 ? 'média das horas ativas' : 'sem referência');
+      set('emiMetaH', metaH > 0 ? String(metaH) : 'â€”');
+      set('emiMetaHint', metaH > 0 ? 'mÃ©dia das horas ativas' : 'sem referÃªncia');
 
       const chartSub = document.getElementById('emiChartSub');
       if (chartSub) {
         chartSub.textContent = metaH > 0
-          ? `Emitidos por hora · Meta operacional: ${metaH} CT-e/h`
+          ? `Emitidos por hora Â· Meta operacional: ${metaH} CT-e/h`
           : 'Emitidos por hora';
       }
 
-      // Pendentes / Finalizados: cores semânticas
+      // Pendentes / Finalizados: cores semÃ¢nticas
       const kpiPend = document.getElementById('emiKpiPendentes')
         || document.getElementById('emiPendentes')?.closest('.emi-kpi');
       if (kpiPend) {
@@ -11074,7 +11057,7 @@
         rowFin.classList.add('is-ok');
       }
 
-      // Cancelados: cor semântica
+      // Cancelados: cor semÃ¢ntica
       const kpiCanc = document.getElementById('emiCancelados')?.closest('.emi-kpi');
       if (kpiCanc) {
         kpiCanc.classList.toggle('is-crit', cancelados > 0);
@@ -11087,7 +11070,7 @@
       }
       set('emiCancelPct', ctes > 0
         ? `${((cancelados / ctes) * 100).toFixed(1).replace('.', ',')}% do total`
-        : '—');
+        : 'â€”');
 
       // Derivados
       const peso = emiParseNum(resumo.peso);
@@ -11098,44 +11081,44 @@
         set('emiPesoMed', (peso / ctes).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' kg');
         set('emiVolMed', (vols / ctes).toLocaleString('pt-BR', { maximumFractionDigits: 1 }));
       } else {
-        set('emiFreteMed', '—');
-        set('emiPesoMed', '—');
-        set('emiVolMed', '—');
+        set('emiFreteMed', 'â€”');
+        set('emiPesoMed', 'â€”');
+        set('emiVolMed', 'â€”');
       }
 
-      // Última emissão (proxy: timestamp do scrape 455)
+      // Ãšltima emissÃ£o (proxy: timestamp do scrape 455)
       const ts = parseEmiAtualizado(resumo.atualizado);
       lastEmiAtualizadoTs = ts;
       if (ts) {
         set('emiUltima', ts.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
       } else {
-        set('emiUltima', '—');
+        set('emiUltima', 'â€”');
       }
       updateEmiDesdeUltima(new Date());
 
       // Status operacional
       const mins = ts ? (Date.now() - ts.getTime()) / 60000 : null;
       let level = 'ok';
-      let label = 'OPERAÇÃO NORMAL';
+      let label = 'OPERAÃ‡ÃƒO NORMAL';
       if (cancelados > 0 && ctes > 0 && (cancelados / ctes) >= 0.05) {
         level = 'crit';
-        label = 'OPERAÇÃO CRÍTICA';
+        label = 'OPERAÃ‡ÃƒO CRÃTICA';
       } else if (cancelados > 0 || (mins != null && mins >= 60)) {
         level = 'crit';
-        label = 'OPERAÇÃO CRÍTICA';
+        label = 'OPERAÃ‡ÃƒO CRÃTICA';
       } else if (pendentes > 0 || (mins != null && mins >= 40)) {
         level = 'warn';
-        label = 'ATENÇÃO';
+        label = 'ATENÃ‡ÃƒO';
       } else if (metaH > 0 && prodH > 0 && prodH < metaH * 0.7) {
         level = 'warn';
-        label = 'ATENÇÃO';
+        label = 'ATENÃ‡ÃƒO';
       }
       setEmiStatus(level, label);
 
       const kick = document.getElementById('emiKicker');
       if (kick) {
         const perLab = formatEmiPeriodo(resumo.periodo || '');
-        kick.textContent = `BINHO · OPERACIONAL · 455 · ${perLab !== '—' ? perLab : 'mês'}`;
+        kick.textContent = `BINHO Â· OPERACIONAL Â· 455 Â· ${perLab !== 'â€”' ? perLab : 'mÃªs'}`;
       }
 
       renderEmiChart(horas, metaH);
@@ -11146,7 +11129,7 @@
       if (CURRENT_SECTOR !== 'emissao') return;
       const err = document.getElementById('emiErr');
       try {
-        // Local: stamp.json da 455 (meta.json da distribuição não muda só com emissão)
+        // Local: stamp.json da 455 (meta.json da distribuiÃ§Ã£o nÃ£o muda sÃ³ com emissÃ£o)
         let remoteVer = null;
         try {
           if (PREFER_LOCAL_CSV) {
@@ -11155,7 +11138,7 @@
               const j = await res.json();
               remoteVer = String(j.ts || j.atualizado || '');
             }
-            // fallback: campo atualizado do resumo (CSV já em cache)
+            // fallback: campo atualizado do resumo (CSV jÃ¡ em cache)
             if (!remoteVer && lastGoodEmiResumo && lastGoodEmiResumo.atualizado) {
               remoteVer = String(lastGoodEmiResumo.atualizado);
             }
@@ -11225,7 +11208,7 @@
       } catch (e) {
         if (err) {
           err.hidden = false;
-          err.textContent = 'Sem dados da Emissão (Sheets/CSV). ' + (e?.message || e);
+          err.textContent = 'Sem dados da EmissÃ£o (Sheets/CSV). ' + (e?.message || e);
         }
       }
     }
@@ -11234,7 +11217,7 @@
       if (CURRENT_SECTOR !== 'contratacao') return;
       const err = document.getElementById('ctrErr');
       try {
-        // Contratação é CSV local — usa stamp.json (não a version Sheets)
+        // ContrataÃ§Ã£o Ã© CSV local â€” usa stamp.json (nÃ£o a version Sheets)
         let stamp = null;
         try {
           const res = await fetch('data/contratacao/stamp.json?t=' + Date.now(), { cache: 'no-store' });
@@ -11282,26 +11265,26 @@
             const med = custo / nVeic;
             setCtrText('ctrCustoMed', 'R$ ' + med.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
           } else {
-            setCtrText('ctrCustoMed', '—');
+            setCtrText('ctrCustoMed', 'â€”');
           }
         }
-        setCtrText('ctrPeriodo', resumo.periodo || '—');
-        setCtrText('ctrAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
+        setCtrText('ctrPeriodo', resumo.periodo || 'â€”');
+        setCtrText('ctrAtualizado', 'atualizado ' + (resumo.atualizado || 'â€”'));
         setCtrText('ctrTabMeta', resumo.unidade || 'SPO');
         const meta = document.getElementById('ctrMeta');
         if (meta) {
           meta.textContent = [
             resumo.total_ctrbs ? `${resumo.total_ctrbs} CTRB/OS` : '',
             destinos.length ? `${destinos.length} destinos` : '',
-            '073 · unidade destino',
-          ].filter(Boolean).join(' · ');
+            '073 Â· unidade destino',
+          ].filter(Boolean).join(' Â· ');
         }
 
         const mix = document.getElementById('ctrMix');
         if (mix) {
           const contrat = Number(resumo.contratados) || Number(resumo.terceiro) || 0;
           mix.innerHTML = `
-            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">CARRETEIRO · TRANSFERÊNCIA</div></div>
+            <div class="mix-card terceiro"><div class="n">${contrat}</div><div class="l">CARRETEIRO Â· TRANSFERÃŠNCIA</div></div>
           `;
         }
 
@@ -11312,21 +11295,21 @@
           const sorted = veics.slice().sort((a, b) => Number(b.custo || 0) - Number(a.custo || 0));
           tb.innerHTML = sorted.slice(0, 120).map((v) => `
             <tr>
-              <td class="mono">${esc(v.placa || '—')}</td>
-              <td class="mono">${esc(v.carreta || '—')}</td>
-              <td>${esc(({'contratados':'CARRETEIRO · TRANSF'}[v.grupo] || v.grupo || v.propriedade || '—'))}</td>
+              <td class="mono">${esc(v.placa || 'â€”')}</td>
+              <td class="mono">${esc(v.carreta || 'â€”')}</td>
+              <td>${esc(({'contratados':'CARRETEIRO Â· TRANSF'}[v.grupo] || v.grupo || v.propriedade || 'â€”'))}</td>
               <td class="mono right">${esc(v.qtd_ctrb || '0')}</td>
               <td class="mono right">${esc(fmtCtrMoney(v.custo))}</td>
               <td class="mono right">${esc(fmtCtrMoney(v.frete))}</td>
             </tr>
-          `).join('') || `<tr><td colspan="6" class="muted">Sem carreteiros (transferência) — rode \`73\` no ACE</td></tr>`;
+          `).join('') || `<tr><td colspan="6" class="muted">Sem carreteiros (transferÃªncia) â€” rode \`73\` no ACE</td></tr>`;
         }
         if (stamp) lastCtrDataVersion = stamp;
         else if (resumo.atualizado) lastCtrDataVersion = String(resumo.atualizado);
       } catch (e) {
         if (err) {
           err.hidden = false;
-          err.textContent = 'Sem dados da Contratação (CSV). ' + e.message;
+          err.textContent = 'Sem dados da ContrataÃ§Ã£o (CSV). ' + e.message;
         }
       }
     }
@@ -11445,7 +11428,7 @@
     }
 
     async function applyTvSlotAfterRoute({ gen = null, preferCurrentSector = false } = {}) {
-      // Saiu do TV enquanto o enter ainda carregava layout → não reaplica modo TV
+      // Saiu do TV enquanto o enter ainda carregava layout â†’ nÃ£o reaplica modo TV
       if (gen != null && (gen !== tvModeGen || !TV_MODE)) return;
 
       await loadTvLayout();
@@ -11475,8 +11458,8 @@
         }
       }
 
-      // Parede/mosaico ou #tv/slot/N → setor do layout do CRT.
-      // TV manual (#tv/pendencia, botão TV no setor) → mantém setor atual / da URL.
+      // Parede/mosaico ou #tv/slot/N â†’ setor do layout do CRT.
+      // TV manual (#tv/pendencia, botÃ£o TV no setor) â†’ mantÃ©m setor atual / da URL.
       let sec;
       if (eff.mosaic || isSlotHash) {
         sec = normalizeSectorId(eff.sector);
@@ -11507,7 +11490,7 @@
       applyTvChrome();
 
       if (eff.mosaic) {
-        // Parede: pedaço fixo na grade; Dist/Armazém podem girar sync entre as TVs
+        // Parede: pedaÃ§o fixo na grade; Dist/ArmazÃ©m podem girar sync entre as TVs
         if ((sec === 'distribuicao' || sec === 'armazem') && eff.mode !== 'fixed' && eff.syncSwap) {
           const views = sec === 'armazem' ? ARM_VIEWS : OPS_VIEWS;
           const want = views[syncedOpsViewIndex(eff.swapMs) % views.length];
@@ -11524,7 +11507,7 @@
         return;
       }
 
-      // Fora da parede: só gira coleta/entrega/pátio se o setor atual for Dist/Armazém
+      // Fora da parede: sÃ³ gira coleta/entrega/pÃ¡tio se o setor atual for Dist/ArmazÃ©m
       // e o slot do CRT estiver amarrado a esse mesmo setor (ou TV aberta nele).
       if (sec !== 'distribuicao' && sec !== 'armazem') {
         stopSwapLoop();
@@ -11532,7 +11515,7 @@
         return;
       }
 
-      // Modo fixed do layout só vale na parede ou #tv/slot/N
+      // Modo fixed do layout sÃ³ vale na parede ou #tv/slot/N
       if ((eff.mosaic || isSlotHash) && eff.mode === 'fixed') {
         setSector(sec, { syncHash: false, forceTv: true, view: eff.view });
         stopSwapLoop();
@@ -11586,7 +11569,7 @@
       const rows = Array.from(byPlaca.values()).map(r => {
         const hadPrev = placaPrevFeitas.has(r.placa);
         const prev = hadPrev ? placaPrevFeitas.get(r.placa) : r.feitas;
-        // so conta delta apos o 1º ciclo (evita falso +N no load)
+        // so conta delta apos o 1Âº ciclo (evita falso +N no load)
         const delta = hadPrev ? Math.max(0, r.feitas - prev) : 0;
         if (delta > 0) placaHotUntil.set(r.placa, now + PLACA_HOT_MS);
         const hotUntil = placaHotUntil.get(r.placa) || 0;
@@ -11784,7 +11767,7 @@
             <div class="hora">${pad(r.limite.getHours())}:${pad(r.limite.getMinutes())}</div>
             <div>
               <div class="name" style="font-size:13px;">${esc(r.label)}</div>
-              <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
+              <div class="meta">${esc(r.sit)}${r.veiculo ? ' Â· ' + esc(r.veiculo) : ''}</div>
             </div>
             <div class="tag">${esc(tag)}</div>`;
           stack.appendChild(el);
@@ -11799,7 +11782,7 @@
       const stack = document.getElementById('pendenciaStack');
       if (!stack) return;
       if (!PENDENCIAS_36.length) {
-        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem pendências</div></div>';
+        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem pendÃªncias</div></div>';
         return;
       }
       const visible = [];
@@ -11821,7 +11804,7 @@
               <div class="name">${esc(r.label)}</div>
               <div class="meta">${r.veiculo ? esc(r.veiculo) : ''}</div>
             </div>
-            <div class="tag">PENDÊNCIA</div>`;
+            <div class="tag">PENDÃŠNCIA</div>`;
           stack.appendChild(el);
           requestAnimationFrame(() => el.classList.add('show'));
           return el;
@@ -11858,7 +11841,7 @@
       }, PEND_TICK_MS);
     }
 
-    /* ===== GESTÃO ===== */
+    /* ===== GESTÃƒO ===== */
     function labelStatus103(s) {
       return ({ parado: 'Parado', em_rota: 'Em rota', realizada: 'Realizada', cancelada: 'Cancelada' })[s] || s;
     }
@@ -11879,7 +11862,7 @@
         ].join(' ').toUpperCase().replace(/\s+/g, '');
         return blob.includes(q);
       }
-      // Grupo por placa (gestão coleta) ou linha individual
+      // Grupo por placa (gestÃ£o coleta) ou linha individual
       const blob = [
         c.placa, c.placa_key, c.grupo, c.motorista, c.coleta_id, c.coleta,
         c.numero, c.situacao_atual, c.carreta, c.placa_carreta,
@@ -11892,13 +11875,13 @@
 
     const SEM_PLACA_LABEL = 'SEM ROMANEIO';
 
-    /** Agrupa 103 por placa — espelha o resumo do 36 por romaneio. */
+    /** Agrupa 103 por placa â€” espelha o resumo do 36 por romaneio. */
     function agregarPlacasColeta(rows) {
       const by = new Map();
       (rows || []).forEach(c => {
         const st = statusAce(c);
         const placaNorm = parsePlaca(c.placa || c.veiculo || '');
-        // Sem placa (em especial parado) → SEM ROMANEIO
+        // Sem placa (em especial parado) â†’ SEM ROMANEIO
         const key = placaNorm || SEM_PLACA_LABEL;
         if (!by.has(key)) {
           by.set(key, {
@@ -11976,7 +11959,7 @@
           dominio: 'BIN',
           unidade_evento: String(c.unidade || id.slice(0, 3) || ''),
           usuario: usuario || '',
-          observacao: `${label}${c.situacao_atual === label ? ' (situação atual)' : ''}`,
+          observacao: `${label}${c.situacao_atual === label ? ' (situaÃ§Ã£o atual)' : ''}`,
           seq_evento: i + 1,
           coleta_id: id,
         });
@@ -12008,11 +11991,11 @@
       ];
       const opts36 = [
         ['TODAS', 'Todas'], ['realizada', 'Realizada'], ['em_rota', 'Em rota'],
-        ['parado', 'Pendência'],
+        ['parado', 'PendÃªncia'],
       ];
       const opts225 = [
         ['TODAS', 'Todas'], ['em_rota', 'Em rota'], ['parado', 'Parado'],
-        ['concluido', 'Concluído'], ['alerta', 'Sem saída'],
+        ['concluido', 'ConcluÃ­do'], ['alerta', 'Sem saÃ­da'],
       ];
       const opts = REL === '36' ? opts36 : (REL === '225' ? opts225 : optsColeta);
       if (!opts.some(([k]) => k === FILTRO)) FILTRO = 'TODAS';
@@ -12033,7 +12016,7 @@
       const tbody = document.getElementById('tbodyGestao');
       if (REL === '225') {
         thead.innerHTML = `<tr>
-          <th>CTRC</th><th>Remetente</th><th>Destinatário</th>
+          <th>CTRC</th><th>Remetente</th><th>DestinatÃ¡rio</th>
           <th>Peso</th><th>Frete</th><th>Agendado</th><th>Para</th><th>Status</th></tr>`;
         let rows = (AGENDAMENTOS_225 || []).filter(matchBusca);
         if (FILTRO === 'em_rota') rows = rows.filter(r => statusAce225(r) === 'em_rota');
@@ -12066,7 +12049,7 @@
       if (REL === '36') {
         thead.innerHTML = `<tr>
           <th>Romaneio</th><th>Placa</th><th>Motorista</th>
-          <th>Total</th><th>Realizada</th><th>Em rota</th><th>Pendência</th><th>%</th><th></th></tr>`;
+          <th>Total</th><th>Realizada</th><th>Em rota</th><th>PendÃªncia</th><th>%</th><th></th></tr>`;
         let rows = ROMANEIOS_36.filter(matchBusca);
         if (FILTRO === 'realizada') rows = rows.filter(r => Number(r.realizada) > 0);
         if (FILTRO === 'em_rota') rows = rows.filter(r => Number(r.em_rota) > 0);
@@ -12092,7 +12075,7 @@
         return;
       }
 
-      // Coleta unificada: resumo por placa (padrão do 36) + detalhe com histórico 50
+      // Coleta unificada: resumo por placa (padrÃ£o do 36) + detalhe com histÃ³rico 50
       thead.innerHTML = `<tr>
         <th>Placa</th><th>Motorista</th>
         <th>Total</th><th>Realizada</th><th>Em rota</th><th>Parado</th><th>%</th><th></th></tr>`;
@@ -12121,8 +12104,8 @@
       tbody.innerHTML = groups.map(r => {
         const isSem = r.placa === SEM_PLACA_LABEL;
         return `<tr>
-          <td>${esc(r.placa)}${r.carreta && !isSem ? ` <span class="muted">· ${esc(r.carreta)}</span>` : ''}</td>
-          <td>${esc(isSem ? '—' : (r.motorista || ''))}</td>
+          <td>${esc(r.placa)}${r.carreta && !isSem ? ` <span class="muted">Â· ${esc(r.carreta)}</span>` : ''}</td>
+          <td>${esc(isSem ? 'â€”' : (r.motorista || ''))}</td>
           <td>${esc(String(r.total))}</td>
           <td class="sit sit-realizada">${esc(String(r.realizada))}</td>
           <td class="sit sit-em_rota">${esc(String(r.em_rota))}</td>
@@ -12146,15 +12129,15 @@
       const group = groups.find(g => g.placa === key);
       const rows = (group && group.items) || [];
       const by50 = mapaColetas50();
-      titulo.textContent = `Coletas · ${key}`;
+      titulo.textContent = `Coletas Â· ${key}`;
       sub.textContent = group
-        ? `${group.total} coleta(s) · ${group.realizada} realizada · ${group.em_rota} em rota · ${group.parado} parado · ${group.pct}%`
+        ? `${group.total} coleta(s) Â· ${group.realizada} realizada Â· ${group.em_rota} em rota Â· ${group.parado} parado Â· ${group.pct}%`
         : '';
       if (!rows.length) {
         lista.innerHTML = '<p class="muted">Sem coletas neste grupo.</p>';
       } else {
         lista.innerHTML = `<table><thead><tr>
-          <th>Coleta</th><th>Status</th><th>Situação</th><th>Hora</th><th>Motorista</th><th></th>
+          <th>Coleta</th><th>Status</th><th>SituaÃ§Ã£o</th><th>Hora</th><th>Motorista</th><th></th>
         </tr></thead><tbody>${rows.map(c => {
           const st = statusAce(c);
           const id = coletaKey(c);
@@ -12169,7 +12152,7 @@
             <td>${esc(c.situacao_atual || '')}</td>
             <td>${esc(fmtCampo(c.hora, 'hora'))}</td>
             <td>${esc(c.motorista || '')}</td>
-            <td><button type="button" class="btn" data-hist="${esc(id)}" data-label="${esc(label)}" data-sit="${esc(sitHist)}">Histórico</button></td>
+            <td><button type="button" class="btn" data-hist="${esc(id)}" data-label="${esc(label)}" data-sit="${esc(sitHist)}">HistÃ³rico</button></td>
           </tr>`;
         }).join('')}</tbody></table>`;
         lista.querySelectorAll('[data-hist]').forEach(btn => {
@@ -12192,20 +12175,20 @@
       const rows = ENTREGAS_ALL.filter(c =>
         String(c.romaneio || '').toUpperCase() === String(romaneio || '').toUpperCase()
       );
-      titulo.textContent = `CTRCs · ${romaneio}`;
+      titulo.textContent = `CTRCs Â· ${romaneio}`;
       sub.textContent = `${rows.length} CTRC(s)`;
       if (!rows.length) {
         lista.innerHTML = '<p class="muted">Sem CTRCs neste romaneio.</p>';
       } else {
         lista.innerHTML = `<table><thead><tr>
-          <th>CTRC</th><th>Status</th><th>Destinatário</th><th>Ocorrência</th><th>Hora</th>
+          <th>CTRC</th><th>Status</th><th>DestinatÃ¡rio</th><th>OcorrÃªncia</th><th>Hora</th>
         </tr></thead><tbody>${rows.map(c => {
           const st = statusAce36(c);
           return `<tr>
             <td>${esc(c.ctrc_id || '')}</td>
-            <td class="sit sit-${esc(st)}">${esc(labelStatus103(st === 'parado' ? 'parado' : st).replace('Parado', 'Pendência'))}</td>
+            <td class="sit sit-${esc(st)}">${esc(labelStatus103(st === 'parado' ? 'parado' : st).replace('Parado', 'PendÃªncia'))}</td>
             <td>${esc(c.destinatario || '')}</td>
-            <td>${esc(c.ocorrencia || '—')}</td>
+            <td>${esc(c.ocorrencia || 'â€”')}</td>
             <td>${esc(c.hora_ocorrencia || '')}</td>
           </tr>`;
         }).join('')}</tbody></table>`;
@@ -12255,8 +12238,8 @@
       }).join('');
       return `<div class="ssw-wrap"><table class="ssw-hist">
         <thead><tr>
-          <th>Inclusão</th><th>Domi</th><th>Fili:</th><th>Inclusão Local</th>
-          <th>Usuário</th><th>Ocorrência</th><th>Instruções / situação</th><th>Ocorrência SSW</th>
+          <th>InclusÃ£o</th><th>Domi</th><th>Fili:</th><th>InclusÃ£o Local</th>
+          <th>UsuÃ¡rio</th><th>OcorrÃªncia</th><th>InstruÃ§Ãµes / situaÃ§Ã£o</th><th>OcorrÃªncia SSW</th>
         </tr></thead><tbody>${body || '<tr><td colspan="8">Sem eventos</td></tr>'}</tbody></table></div>`;
     }
 
@@ -12264,10 +12247,10 @@
       const modal = document.getElementById('modalHist');
       const lista = document.getElementById('histLista');
       const id = String(coletaId || '').toUpperCase().replace(/\s+/g, '').trim();
-      document.getElementById('histTitulo').textContent = `Histórico · ${label || id}`;
+      document.getElementById('histTitulo').textContent = `HistÃ³rico Â· ${label || id}`;
       document.getElementById('histSub').textContent =
-        `Situação atual: ${situacao || '—'} · histórico do relatório 50`;
-      lista.innerHTML = '<p class="sub-hist">Carregando…</p>';
+        `SituaÃ§Ã£o atual: ${situacao || 'â€”'} Â· histÃ³rico do relatÃ³rio 50`;
+      lista.innerHTML = '<p class="sub-hist">Carregandoâ€¦</p>';
       modal.classList.add('open');
       if (btn) btn.disabled = true;
       try {
@@ -12287,7 +12270,7 @@
         }
         lista.innerHTML = rows.length
           ? renderHistoricoSsw(rows)
-          : '<p class="sub-hist">Sem histórico nesta coleta (relatório 50). Rode o ciclo 50 de novo ou abra uma coleta do período atual.</p>';
+          : '<p class="sub-hist">Sem histÃ³rico nesta coleta (relatÃ³rio 50). Rode o ciclo 50 de novo ou abra uma coleta do perÃ­odo atual.</p>';
       } catch (err) {
         lista.innerHTML = `<p class="sub-hist">${esc(err.message)}</p>`;
       } finally {
@@ -12296,7 +12279,7 @@
     }
 
     function labelStatus225(s) {
-      return ({ em_rota: 'Em rota', parado: 'Parado', concluido: 'Concluído' })[s] || s;
+      return ({ em_rota: 'Em rota', parado: 'Parado', concluido: 'ConcluÃ­do' })[s] || s;
     }
 
     function parseCsvText(text) {
@@ -12341,7 +12324,7 @@
           updateAlertaSemSaidaLock();
           return;
         }
-        // Sheets vazio no meio do sync → mantém agenda anterior
+        // Sheets vazio no meio do sync â†’ mantÃ©m agenda anterior
         if (lastGood225.length) {
           AGENDAMENTOS_225 = lastGood225.slice();
           RESUMO_225 = resumoFromAgendaRows(AGENDAMENTOS_225);
@@ -12535,17 +12518,17 @@
 
     function renderAgendaPizza(rota, parado, ok) {
       renderStatusPizza('agendaPizza', [
-        { cls: 's-rota', label: 'EM ROTA', desc: 'Saída para entrega', value: Number(rota) || 0 },
-        { cls: 's-par', label: 'PARADO', desc: 'No armazém / agendado', value: Number(parado) || 0 },
-        { cls: 's-ok', label: 'CONCLUÍDO', desc: 'Entrega realizada', value: Number(ok) || 0 },
+        { cls: 's-rota', label: 'EM ROTA', desc: 'SaÃ­da para entrega', value: Number(rota) || 0 },
+        { cls: 's-par', label: 'PARADO', desc: 'No armazÃ©m / agendado', value: Number(parado) || 0 },
+        { cls: 's-ok', label: 'CONCLUÃDO', desc: 'Entrega realizada', value: Number(ok) || 0 },
       ]);
     }
 
     function renderEntregaPizza(real, rota, par) {
       renderStatusPizza('entregaPizza', [
-        { cls: 's-real', label: 'REALIZADA', desc: 'Entregas concluídas', value: Number(real) || 0 },
+        { cls: 's-real', label: 'REALIZADA', desc: 'Entregas concluÃ­das', value: Number(real) || 0 },
         { cls: 's-rota', label: 'EM ROTA', desc: 'Em deslocamento', value: Number(rota) || 0 },
-        { cls: 's-par', label: 'PENDÊNCIA', desc: 'Aguardando solução', value: Number(par) || 0 },
+        { cls: 's-par', label: 'PENDÃŠNCIA', desc: 'Aguardando soluÃ§Ã£o', value: Number(par) || 0 },
       ]);
     }
 
@@ -12606,7 +12589,7 @@
           <text class="callout-pct" x="${lx}" y="${ly - 8}" text-anchor="${anchorText}">${pct}%</text>
           <line class="callout-rule" x1="${ruleX1}" y1="${ly}" x2="${ruleX2}" y2="${ly}" />
           <text class="callout-lab" x="${lx}" y="${ly + 14}" text-anchor="${anchorText}">${p.label}</text>
-          <text class="callout-count" x="${lx}" y="${ly + 30}" text-anchor="${anchorText}">${p.value} · ${p.desc}</text>
+          <text class="callout-count" x="${lx}" y="${ly + 30}" text-anchor="${anchorText}">${p.value} Â· ${p.desc}</text>
         `);
         angle = end;
       });
@@ -12619,7 +12602,7 @@
     function extractHora225(raw) {
       const t = String(raw || '').trim();
       const m = t.match(/(\d{1,2}:\d{2})/);
-      return m ? m[1] : (t || '—');
+      return m ? m[1] : (t || 'â€”');
     }
 
     function fitAgendaMoneyKpis() {
@@ -12633,7 +12616,7 @@
           : document.body.classList.contains('live-mode') ? 32 : 26;
         let size = maxPx;
         el.style.fontSize = `${size}px`;
-        // reduz até caber na largura do card (com folga)
+        // reduz atÃ© caber na largura do card (com folga)
         const limit = Math.max(40, card.clientWidth - 24);
         while (size > 12 && el.scrollWidth > limit) {
           size -= 1;
@@ -12649,9 +12632,9 @@
       const tot = Math.max(1, Number(total) || 0);
       const items = [
         { cls: 's-rota', lbl: 'Em rota', val: rota },
-        { cls: 's-par', lbl: 'No armazém', val: parado },
+        { cls: 's-par', lbl: 'No armazÃ©m', val: parado },
         { cls: 's-ok', lbl: 'Realizado', val: ok },
-        { cls: 's-alert', lbl: 'Sem saída', val: alerta },
+        { cls: 's-alert', lbl: 'Sem saÃ­da', val: alerta },
       ];
       bars.innerHTML = items.map((it) => {
         const pct = Math.min(100, Math.round((Number(it.val) / tot) * 100));
@@ -12664,16 +12647,16 @@
 
       const chips = [];
       if (alerta > 0) {
-        chips.push(`<div class="tower-alert danger"><span class="ico">⚠</span><span class="txt">Agendamento sem saída (hoje)</span><span class="num">${alerta}</span></div>`);
+        chips.push(`<div class="tower-alert danger"><span class="ico">âš </span><span class="txt">Agendamento sem saÃ­da (hoje)</span><span class="num">${alerta}</span></div>`);
       }
       if (parado > 0) {
-        chips.push(`<div class="tower-alert"><span class="ico">■</span><span class="txt">No armazém / parado</span><span class="num">${parado}</span></div>`);
+        chips.push(`<div class="tower-alert"><span class="ico">â– </span><span class="txt">No armazÃ©m / parado</span><span class="num">${parado}</span></div>`);
       }
       if (rota > 0) {
-        chips.push(`<div class="tower-alert"><span class="ico">➔</span><span class="txt">Em rota</span><span class="num">${rota}</span></div>`);
+        chips.push(`<div class="tower-alert"><span class="ico">âž”</span><span class="txt">Em rota</span><span class="num">${rota}</span></div>`);
       }
       if (!chips.length) {
-        chips.push(`<div class="tower-alert"><span class="ico">✓</span><span class="txt">Sem alertas no momento</span><span class="num">0</span></div>`);
+        chips.push(`<div class="tower-alert"><span class="ico">âœ“</span><span class="txt">Sem alertas no momento</span><span class="num">0</span></div>`);
       }
       alerts.innerHTML = chips.join('');
     }
@@ -12681,7 +12664,7 @@
     function renderAgendamento() {
       const periodoEl = document.getElementById('agendaPeriodo');
       const tituloEl = document.getElementById('agendaTitulo');
-      // Totais sempre recalculados das linhas (amanhã / peso / frete ficam frescos)
+      // Totais sempre recalculados das linhas (amanhÃ£ / peso / frete ficam frescos)
       const live = resumoFromAgendaRows(AGENDAMENTOS_225);
       live.periodo = RESUMO_225.periodo || live.periodo;
       RESUMO_225 = { ...RESUMO_225, ...live };
@@ -12689,7 +12672,7 @@
       const per = String(RESUMO_225.periodo || '').trim();
       if (tituloEl) tituloEl.textContent = per || 'Agendamento';
       if (periodoEl) {
-        periodoEl.textContent = 'Mês corrente · relatório 225 (R · com horário)';
+        periodoEl.textContent = 'MÃªs corrente Â· relatÃ³rio 225 (R Â· com horÃ¡rio)';
       }
       const total = Number(RESUMO_225.total || AGENDAMENTOS_225.length) || 0;
       const rota = Number(RESUMO_225.em_rota) || 0;
@@ -12711,20 +12694,20 @@
       set('agParPct', pct(parado));
       set('agOkPct', pct(ok));
       set('kpiTotal', total);
-      set('kpiTotalSub', total ? `${pct(total)} do mês` : 'CTRC no mês');
+      set('kpiTotalSub', total ? `${pct(total)} do mÃªs` : 'CTRC no mÃªs');
       set('kpiRota', rota);
-      set('kpiRotaSub', total ? `${pct(rota)} do mês` : 'saída p/ entrega');
+      set('kpiRotaSub', total ? `${pct(rota)} do mÃªs` : 'saÃ­da p/ entrega');
       set('kpiPeso', RESUMO_225.peso_total || '0,00');
       set('kpiFrete', RESUMO_225.frete_total || '0,00');
       fitAgendaMoneyKpis();
       set('kpiReal', realizado);
-      set('kpiRealSub', `${RESUMO_225.peso_realizado || '0,00'} kg · R$ ${RESUMO_225.frete_realizado || '0,00'}`);
+      set('kpiRealSub', `${RESUMO_225.peso_realizado || '0,00'} kg Â· R$ ${RESUMO_225.frete_realizado || '0,00'}`);
       set('kpiArm', armazem);
-      set('kpiArmSub', `${RESUMO_225.peso_armazem || '0,00'} kg · R$ ${RESUMO_225.frete_armazem || '0,00'}`);
+      set('kpiArmSub', `${RESUMO_225.peso_armazem || '0,00'} kg Â· R$ ${RESUMO_225.frete_armazem || '0,00'}`);
       set('kpiAlerta', alerta);
       set('kpiAmanha', amanhaN);
       set('kpiAmanhaSub', amanhaN
-        ? `${RESUMO_225.peso_amanha || '0,00'} kg · R$ ${RESUMO_225.frete_amanha || '0,00'}`
+        ? `${RESUMO_225.peso_amanha || '0,00'} kg Â· R$ ${RESUMO_225.frete_amanha || '0,00'}`
         : 'nenhum agendado');
 
       const chip = document.getElementById('agendaAlertChip');
@@ -12752,7 +12735,7 @@
       if (filaMeta) filaMeta.textContent = `${amanhaRows.length} CTRC`;
       if (cards) {
         if (!amanhaRows.length) {
-          cards.innerHTML = '<div class="agenda-card empty">Nenhum agendamento para amanhã</div>';
+          cards.innerHTML = '<div class="agenda-card empty">Nenhum agendamento para amanhÃ£</div>';
         } else {
           const live = document.body.classList.contains('live-mode')
             || document.body.classList.contains('tv-mode')
@@ -12765,11 +12748,11 @@
             const hora = extractHora225(rawWhen);
             const data = String(r.agendado_para_data || '').trim()
               || (rawWhen.match(/\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/) || [''])[0]
-              || '—';
+              || 'â€”';
             return `<div class="agenda-card">
               <div class="ctrc">${esc(r.ctrc || '')}</div>
-              <div class="dest">${esc(r.destinatario || r.remetente || '—')}</div>
-              <div class="when">${esc(data)} · ${esc(hora)}</div>
+              <div class="dest">${esc(r.destinatario || r.remetente || 'â€”')}</div>
+              <div class="when">${esc(data)} Â· ${esc(hora)}</div>
             </div>`;
           }).join('') + (extra > 0
             ? `<div class="agenda-card empty">+${extra} mais</div>`
@@ -12780,7 +12763,7 @@
       const body = document.getElementById('agendaBody');
       if (!body) return;
       if (!AGENDAMENTOS_225.length) {
-        body.innerHTML = '<tr><td colspan="7" class="muted">Sem agendamentos no mês.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="muted">Sem agendamentos no mÃªs.</td></tr>';
         return;
       }
       body.innerHTML = AGENDAMENTOS_225.map(r => {
@@ -12794,7 +12777,7 @@
           <td>${esc(r.destino || '')}</td>
           <td>${esc(r.peso || '')}</td>
           <td>${esc(r.frete || '')}</td>
-          <td class="sit-${esc(st)}">${esc(isAlert ? 'SEM SAÍDA' : labelStatus225(st))}</td>
+          <td class="sit-${esc(st)}">${esc(isAlert ? 'SEM SAÃDA' : labelStatus225(st))}</td>
         </tr>`;
       }).join('');
     }
@@ -12807,7 +12790,7 @@
     }
 
     function playAlertaBeepOnce() {
-      // Guarda em todo bip: se saiu da Distribuição, mata o timer
+      // Guarda em todo bip: se saiu da DistribuiÃ§Ã£o, mata o timer
       if (!alertaSemSaidaAllowedHere()) {
         stopAlertaBeep();
         return;
@@ -12889,14 +12872,14 @@
       if (isOpsSector(CURRENT_SECTOR)) applyOpsLiveViews();
     }
 
-    /** Overlay/bip somente com Distribuição visível (nunca em armazém/contratação/etc). */
+    /** Overlay/bip somente com DistribuiÃ§Ã£o visÃ­vel (nunca em armazÃ©m/contrataÃ§Ã£o/etc). */
     function alertaSemSaidaAllowedHere() {
       if (VIEW !== 'live') return false;
       if (String(CURRENT_SECTOR || '') !== 'distribuicao') return false;
       if (document.body.getAttribute('data-sector') !== 'distribuicao') return false;
       const panel = document.getElementById('panel-operacao');
       if (panel && panel.hidden) return false;
-      // TV de parede/slot amarrada a outro setor: silêncio total
+      // TV de parede/slot amarrada a outro setor: silÃªncio total
       if (
         TV_MODE
         && TV_EFFECTIVE
@@ -12931,7 +12914,7 @@
       const n = listAlertaSemSaida().length;
       if (tick) {
         tick.textContent = n > 0
-          ? `SEM SAÍDA: ${n} · some 1 min · bipa a cada 10s`
+          ? `SEM SAÃDA: ${n} Â· some 1 min Â· bipa a cada 10s`
           : '';
       }
     }
@@ -12957,7 +12940,7 @@
 
       const snoozed = ALERTA_LOCK_SNOOZE_UNTIL > Date.now();
       const onDistribuicao = alertaSemSaidaAllowedHere();
-      // Overlay/bip só na Distribuição e fora do snooze
+      // Overlay/bip sÃ³ na DistribuiÃ§Ã£o e fora do snooze
       const ativo = alerts.length > 0 && !snoozed && onDistribuicao;
       ALERTA_LOCK_DISMISSED = snoozed;
 
@@ -12998,7 +12981,7 @@
           </div>`).join('');
       }
 
-      // No TV: pausa o swap e destaca a vista Agendamento (já estamos em Distribuição)
+      // No TV: pausa o swap e destaca a vista Agendamento (jÃ¡ estamos em DistribuiÃ§Ã£o)
       if (document.body.classList.contains('tv-mode')) {
         if (swapTimer) { clearInterval(swapTimer); swapTimer = null; }
         if (swapCountdown) { clearInterval(swapCountdown); swapCountdown = null; }
@@ -13010,7 +12993,7 @@
       }
       startAlertaBeep();
       const tick = document.getElementById('agendaTick');
-      if (tick) tick.textContent = `ALERTA · SEM SAÍDA (${alerts.length}) · bipa 10s`;
+      if (tick) tick.textContent = `ALERTA Â· SEM SAÃDA (${alerts.length}) Â· bipa 10s`;
     }
 
     function opsViewIndex() {
@@ -13039,7 +13022,7 @@
     }
 
     function goOpsSector(sectorId, opts) {
-      // compat: nomes antigos apontavam para “setor” = vista
+      // compat: nomes antigos apontavam para â€œsetorâ€ = vista
       if (isOpsView(sectorId) || String(sectorId).toLowerCase() === 'agenda') {
         goOpsView(sectorId, opts);
         return;
@@ -13122,7 +13105,7 @@
         if (swapCountdown) clearInterval(swapCountdown);
         swapCountdown = null;
         const tick = document.getElementById('agendaTick');
-        if (tick) tick.textContent = 'TELA TRAVADA · SEM SAÍDA';
+        if (tick) tick.textContent = 'TELA TRAVADA Â· SEM SAÃDA';
         return;
       }
       if (TV_MODE && TV_EFFECTIVE && TV_EFFECTIVE.syncSwap && TV_EFFECTIVE.mode !== 'fixed') {
@@ -13146,8 +13129,8 @@
       const paint = () => {
         if (tick) {
           tick.textContent = TV_MODE
-            ? `${nextLabel} em ${left}s · ← →`
-            : `${VIEW_LABELS[CURRENT_VIEW] || ''} · ← →`;
+            ? `${nextLabel} em ${left}s Â· â† â†’`
+            : `${VIEW_LABELS[CURRENT_VIEW] || ''} Â· â† â†’`;
         }
       };
       paint();
@@ -13239,8 +13222,8 @@
           || lastDistDataVersion !== remoteVer;
         if (forceNextRefresh) forceNextRefresh = false;
         if (!changed && (COLETAS_103.length || COLETAS_50.length || ENTREGAS_ALL.length)) {
-          if (status) status.textContent = `Atualizado · v${getLastDataVersionLabel()} (sem mudança)`;
-          // TV / iframe: layout assenta depois do 1º paint — re-pinta senão fica 0 na Coleta
+          if (status) status.textContent = `Atualizado Â· v${getLastDataVersionLabel()} (sem mudanÃ§a)`;
+          // TV / iframe: layout assenta depois do 1Âº paint â€” re-pinta senÃ£o fica 0 na Coleta
           if (lastCounts) renderTorres(lastCounts);
           else if (COLETAS_103.length) renderTorres(countByStatus(COLETAS_103));
           if (ENTREGAS_36.length) renderCilindroEntrega(countByStatus36(ENTREGAS_36));
@@ -13258,7 +13241,7 @@
         let rRom = { rows: [] };
 
         if (PREFER_LOCAL_CSV) {
-          if (status) status.textContent = 'Local/LAN · lendo CSV…';
+          if (status) status.textContent = 'Local/LAN Â· lendo CSVâ€¦';
           const [local50, local103, local36, localRom] = await Promise.all([
             loadCsvLocal(COLETAS_50_CSV_PATH).catch(() => []),
             loadCsvLocal(COLETAS_103_CSV_PATH).catch(() => []),
@@ -13303,7 +13286,7 @@
           } catch (_) { /* offline */ }
         }
 
-        // Histórico 50: tenta planilha (via coletas sync) + CSV local publicado
+        // HistÃ³rico 50: tenta planilha (via coletas sync) + CSV local publicado
         try {
           const localHist = await loadCsvLocal(HISTORICO_CSV_PATH);
           if (localHist && localHist.length) {
@@ -13398,7 +13381,7 @@
         if (remoteVer != null) commitDistVersion(remoteVer);
         else commitDistVersion(await fetchDataVersion());
         status.textContent =
-          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} · v${getLastDataVersionLabel()} · coleta(103): ${COLETAS.length} · entrega(36): ${ENTREGAS_36.length} · agenda(225): ${AGENDAMENTOS_225.length}`;
+          `Atualizado ${new Date().toLocaleTimeString('pt-BR')} Â· v${getLastDataVersionLabel()} Â· coleta(103): ${COLETAS.length} Â· entrega(36): ${ENTREGAS_36.length} Â· agenda(225): ${AGENDAMENTOS_225.length}`;
       } catch (err) {
         if (seq !== refreshSeq) return;
         status.textContent = err.message;
@@ -13507,7 +13490,7 @@
     if (btnSwapPrev) btnSwapPrev.addEventListener('click', () => stepSwap(-1));
     if (btnSwapNext) btnSwapNext.addEventListener('click', () => stepSwap(1));
 
-    // Arrastar/swipe horizontal · Distribuição e Armazém
+    // Arrastar/swipe horizontal Â· DistribuiÃ§Ã£o e ArmazÃ©m
     (function bindHorizontalSwap() {
       let x0 = null;
       let y0 = null;
@@ -13607,8 +13590,8 @@
     });
     document.addEventListener('fullscreenchange', () => {
       if (!document.fullscreenElement && TV_MODE) {
-        // saiu do fullscreen pelo ESC nativo — mantém layout TV ou sai?
-        // mantém CSS tv-mode para caber na TV sem fullscreen se o browser bloquear
+        // saiu do fullscreen pelo ESC nativo â€” mantÃ©m layout TV ou sai?
+        // mantÃ©m CSS tv-mode para caber na TV sem fullscreen se o browser bloquear
       }
     });
     ['mousemove', 'mousedown', 'touchstart', 'keydown'].forEach(ev => {
@@ -13628,7 +13611,7 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && TV_MODE) requestWakeLock();
       else if (document.visibilityState === 'visible') ensureTvKeepAliveVideo();
-      // Aba em segundo plano / outra TV: não fica bipando
+      // Aba em segundo plano / outra TV: nÃ£o fica bipando
       if (document.visibilityState !== 'visible') stopAlertaBeep();
       else updateAlertaSemSaidaLock();
     });
@@ -13638,12 +13621,12 @@
     applyRouteFromHash();
     applyDashboardChrome();
     startTvKeepAliveWatch();
-    // normaliza legado #tv → #tv/coleta (ou #tv/slot/N se já conhecido)
+    // normaliza legado #tv â†’ #tv/coleta (ou #tv/slot/N se jÃ¡ conhecido)
     if (/^#?(tv|fullscreen|tela)$/i.test((location.hash || '').replace(/^#/, ''))) {
       writeRouteHash({ tv: true, sector: 'distribuicao' });
     }
 
-    // Relê layout TV (CRT salvou → planilha ou tv_layout.json)
+    // RelÃª layout TV (CRT salvou â†’ planilha ou tv_layout.json)
     async function pollTvLayout() {
       if (!TV_MODE && !readStoredTvSlot()) return;
       const prev = TV_EFFECTIVE && TV_EFFECTIVE.layoutVersion;
@@ -13670,7 +13653,7 @@
         const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
-        // Só o fingerprint de UI (não use `at`/commit — mudam a cada chore de CSV)
+        // SÃ³ o fingerprint de UI (nÃ£o use `at`/commit â€” mudam a cada chore de CSV)
         const build = String(data.build || '').trim();
         if (!build) return;
         const prev = sessionStorage.getItem(VERSION_KEY);
@@ -13680,7 +13663,7 @@
         }
         if (prev === build) return;
         sessionStorage.setItem(VERSION_KEY, build);
-        // Mantém hash (#tv/armazem etc.) no reload
+        // MantÃ©m hash (#tv/armazem etc.) no reload
         location.reload();
       } catch (_) { /* offline / Pages ainda propagando */ }
     }
