@@ -76,10 +76,8 @@ def save_brand(brand: dict[str, Any]) -> dict[str, Any]:
 
 
 def resolve_crt_pixmap_path(brand: dict[str, Any] | None = None) -> Path:
+    """Cerebro do CRT — independente da logo das dashboards."""
     b = brand or load_brand()
-    if b.get("mode") == "hidden" or not b.get("visible", True):
-        return Path()  # empty → widget hides / draws nothing
-    # CRT: cerebro de circuitos (independente da logo das dashboards)
     for cand in (
         ASSETS / str(b.get("crtAsset") or "brain-circuit.png"),
         DEFAULT_CRT_BRAIN,
@@ -87,13 +85,41 @@ def resolve_crt_pixmap_path(brand: dict[str, Any] | None = None) -> Path:
     ):
         if cand.is_file():
             return cand
-    if b.get("mode") == "url" and b.get("url"):
-        cached = DASHBOARD / "brand-logo-remote.png"
-        if cached.is_file():
-            return cached
-    if DEFAULT_DASH_LOGO.is_file():
-        return DEFAULT_DASH_LOGO
     return Path()
+
+
+def resolve_dashboard_logo_path(brand: dict[str, Any] | None = None) -> Path:
+    """Arquivo da logo das dashboards (nunca o cérebro do CRT)."""
+    b = brand or load_brand()
+    if b.get("mode") == "hidden" or not b.get("visible", True):
+        return Path()
+    if b.get("mode") == "url":
+        for cand in sorted(DASHBOARD.glob("brand-logo-remote.*")):
+            if cand.is_file() and not _is_crt_brain_file(cand):
+                return cand
+    candidates = (
+        DASHBOARD / str(b.get("file") or "logo-binho.png"),
+        DEFAULT_DASH_LOGO,
+        BRAND_LOGO,
+    )
+    for cand in candidates:
+        if cand.is_file() and not _is_crt_brain_file(cand):
+            return cand
+    return Path()
+
+
+def _is_crt_brain_file(path: Path) -> bool:
+    """Detecta se um PNG é o cérebro (evita preview/publicar o asset do CRT)."""
+    try:
+        p = path.resolve()
+        brain = DEFAULT_CRT_BRAIN.resolve()
+        if p == brain:
+            return True
+        if brain.is_file() and p.is_file() and p.stat().st_size == brain.stat().st_size:
+            return p.read_bytes() == brain.read_bytes()
+    except Exception:
+        return False
+    return False
 
 
 def resolve_dashboard_src(brand: dict[str, Any] | None = None) -> str:
@@ -168,7 +194,7 @@ def apply_logo_url(url: str, *, timeout: float = 25.0) -> dict[str, Any]:
     if ext == ".png":
         shutil.copy2(dest, BRAND_LOGO)
         shutil.copy2(dest, DEFAULT_DASH_LOGO)
-        shutil.copy2(dest, DEFAULT_CRT_BRAIN)
+        # Nao altera o cerebro do CRT (assets/brain-circuit.png)
     else:
         # still point URL mode; keep local cache for offline
         try:
@@ -184,17 +210,13 @@ def apply_logo_url(url: str, *, timeout: float = 25.0) -> dict[str, Any]:
 
 
 def export_logo(dest: Path | str) -> Path:
+    """Exporta a logo das dashboards (nao o cerebro do CRT)."""
     out = Path(dest)
     out.parent.mkdir(parents=True, exist_ok=True)
     b = load_brand()
-    src = resolve_crt_pixmap_path(b)
+    src = resolve_dashboard_logo_path(b)
     if not src.is_file():
-        for cand in (BRAND_LOGO, DEFAULT_DASH_LOGO, DEFAULT_CRT_BRAIN):
-            if cand.is_file():
-                src = cand
-                break
-    if not src.is_file():
-        raise FileNotFoundError("Nenhuma logo para exportar")
+        raise FileNotFoundError("Nenhuma logo de dashboard para exportar")
     shutil.copy2(src, out)
     return out
 
@@ -267,19 +289,20 @@ def publish_brand(*, push_sheets: bool = True, push_git: bool = True) -> tuple[b
     notes: list[str] = []
     b = load_brand()
     save_brand(b)
-    # Garante arquivos no dashboard/
+    # Garante arquivos da logo no dashboard/ (nunca o cérebro do CRT)
     if b.get("mode") == "file":
-        src = resolve_crt_pixmap_path(b)
+        src = resolve_dashboard_logo_path(b)
         if src.is_file():
-            if not BRAND_LOGO.is_file() or src.resolve() != BRAND_LOGO.resolve():
+            if src.resolve() != BRAND_LOGO.resolve():
                 try:
                     shutil.copy2(src, BRAND_LOGO)
                 except Exception:
                     pass
-            try:
-                shutil.copy2(src, DEFAULT_DASH_LOGO)
-            except Exception:
-                pass
+            if src.resolve() != DEFAULT_DASH_LOGO.resolve():
+                try:
+                    shutil.copy2(src, DEFAULT_DASH_LOGO)
+                except Exception:
+                    pass
 
     lay = embed_brand_in_layout()
     notes.append("brand.json + tv_layout atualizados")

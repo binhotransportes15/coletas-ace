@@ -51,6 +51,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSlider,
     QSplitter,
     QStackedWidget,
@@ -286,7 +287,7 @@ def frost_params(
         "opacity": round(max(0.55, min(1.0, opacity)), 3),
     }
 
-DEFAULT_CRT_THEME = "binho"
+DEFAULT_CRT_THEME = "circuitos"
 
 
 
@@ -308,14 +309,68 @@ _SECTOR_TRACE_COLORS: dict[str, str] = {
     "mapa": "#009245",
 }
 
+# Setores do automático: relatórios SSW + o que cada um faz (painel AGORA)
+_SECTOR_GUIDE: tuple[dict[str, str], ...] = (
+    {
+        "id": "dist",
+        "title": "Distribuição",
+        "flag": "dist_in_loop",
+        "interval": "dist_intervalo",
+        "reports": "50 · 103 · 36 · 225",
+        "blurb": "Coletas do dia, torres/limites, entregas/romaneios e agendamentos.",
+    },
+    {
+        "id": "78",
+        "title": "Armazém",
+        "flag": "armazem_in_loop",
+        "interval": "armazem_intervalo",
+        "reports": "78 · 177",
+        "blurb": "Pátio/veículos e ranking de conferentes (nomes via 607).",
+    },
+    {
+        "id": "31",
+        "title": "Pendência",
+        "flag": "pendencia_in_loop",
+        "interval": "pendencia_intervalo",
+        "reports": "31",
+        "blurb": "Códigos de pendência e ofensores/SLA da operação.",
+    },
+    {
+        "id": "73",
+        "title": "Contratação",
+        "flag": "contratacao_in_loop",
+        "interval": "contratacao_intervalo",
+        "reports": "73 → 200",
+        "blurb": "Fretes do dia (073) cruzados com manifesto/filiais 200.",
+    },
+    {
+        "id": "455",
+        "title": "Emissão",
+        "flag": "emissao_in_loop",
+        "interval": "emissao_intervalo",
+        "reports": "455",
+        "blurb": "CTEs, frete, picos e expedidores emitidos no dia.",
+    },
+    {
+        "id": "mapa",
+        "title": "Mapa",
+        "flag": "mapa_in_loop",
+        "interval": "mapa_intervalo",
+        "reports": "36 + CyberMap",
+        "blurb": "Rotas e placas na TV (tempo de troca: /tempo mapa).",
+    },
+)
+
 
 class BinhoCubesWidget(QWidget):
     """Cerebro BINHO parado — circuitos acendem por setor / automacao."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setMinimumHeight(220)
-        self.setMaximumHeight(320)
+        # Altura flexível: evita esmagar o painel esquerdo em janela “solta”
+        self.setMinimumHeight(140)
+        self.setMaximumHeight(260)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAutoFillBackground(False)
         self._t = 0.0
@@ -343,7 +398,8 @@ class BinhoCubesWidget(QWidget):
             from brand import resolve_crt_pixmap_path, load_brand
 
             b = load_brand()
-            self._hidden_brand = b.get("mode") == "hidden" or not b.get("visible", True)
+            # Cerebro do CRT sempre visivel; logo das dashboards e independente
+            self._hidden_brand = False
             path = resolve_crt_pixmap_path(b)
         except Exception:
             self._hidden_brand = False
@@ -701,9 +757,25 @@ class CircuitBusOverlay(QWidget):
             targets.append(("_main", self._main_bar))
         for sid, dest in targets:
             try:
+                if dest.width() < 8 or dest.height() < 4:
+                    continue
+                if self._brain.width() < 40 or self._brain.height() < 40:
+                    continue
                 start = self._map_pt(self._brain, self._brain.brain_anchor(sid))
                 end = self._map_pt(dest, QPointF(max(6.0, dest.width() * 0.08), dest.height() / 2.0))
             except Exception:
+                continue
+            # Coord inválida / painel ainda não layoutado (janela solta / resize)
+            if (
+                start.x() < -20
+                or end.x() < -20
+                or start.y() < -20
+                or end.y() < -20
+                or start.x() > self.width() + 40
+                or end.x() > self.width() + 40
+            ):
+                continue
+            if abs(end.x() - start.x()) < 12 and abs(end.y() - start.y()) < 8:
                 continue
             col = self._color_for_sector(sid)
             lit = self._full or sid in active or (sid == "_main" and (self._full or bool(active)))
@@ -832,6 +904,48 @@ class SysMeterRow(QWidget):
         elif v >= warn:
             color = "#f59e0b"
         self._apply_chunk(color)
+
+
+class QuickCmdButton(QPushButton):
+    """Botão de atalho com título + código SSW + o que faz."""
+
+    def __init__(
+        self,
+        title: str,
+        code: str,
+        blurb: str,
+        cmd: str,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("quickCmd")
+        self.setCursor(Qt.PointingHandCursor)
+        self.setMinimumHeight(54)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setToolTip(f"{title} ({code})\n{blurb}\nComando: {cmd}")
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(8, 6, 8, 6)
+        root.setSpacing(2)
+
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
+        top.setSpacing(8)
+        lab_code = QLabel(code)
+        lab_code.setObjectName("quickCmdCode")
+        lab_title = QLabel(title)
+        lab_title.setObjectName("quickCmdTitle")
+        top.addWidget(lab_code)
+        top.addWidget(lab_title, 1)
+        root.addLayout(top)
+
+        lab_blurb = QLabel(blurb)
+        lab_blurb.setObjectName("quickCmdBlurb")
+        lab_blurb.setWordWrap(True)
+        root.addWidget(lab_blurb)
+
+        for w in (lab_code, lab_title, lab_blurb):
+            w.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
 
 class SectorMeterRow(QWidget):
@@ -1253,6 +1367,39 @@ QPushButton:disabled {{
 QPushButton#primary {{
     background: {t['btn_hover']};
     font-weight: 700;
+}}
+QPushButton#quickCmd {{
+    background: {t['btn_bg']};
+    border: 1px solid {t['line']};
+    border-radius: {radius};
+    text-align: left;
+    padding: 0;
+}}
+QPushButton#quickCmd:hover {{
+    background: {t['btn_hover']};
+    border-color: {t['text']};
+}}
+QPushButton#quickCmd:pressed {{
+    background: {t['btn_press']};
+}}
+QLabel#quickCmdCode {{
+    color: {t['text']};
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    min-width: 42px;
+    background: transparent;
+}}
+QLabel#quickCmdTitle {{
+    color: {t['text']};
+    font-size: 12px;
+    font-weight: 700;
+    background: transparent;
+}}
+QLabel#quickCmdBlurb {{
+    color: {t['dim']};
+    font-size: 10px;
+    background: transparent;
 }}
 QPushButton#menuBtn {{
     min-width: 64px;
@@ -1685,16 +1832,6 @@ class AceCrtConsole(QWidget):
         self.mode.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         head.addWidget(self.title)
         head.addStretch(1)
-        lab_theme = QLabel("Tema")
-        lab_theme.setObjectName("mode")
-        self.cmb_theme = QComboBox()
-        for tid, meta in CRT_THEMES.items():
-            self.cmb_theme.addItem(str(meta["label"]), tid)
-        self.cmb_theme.setMinimumWidth(140)
-        self.cmb_theme.currentIndexChanged.connect(self._on_theme_combo)
-        head.addWidget(lab_theme)
-        head.addWidget(self.cmb_theme)
-        head.addSpacing(12)
         head.addWidget(self.mode)
         head.addSpacing(8)
         self.btn_menu = QPushButton("Menu")
@@ -1705,12 +1842,16 @@ class AceCrtConsole(QWidget):
         root.addLayout(head)
 
         split = QSplitter(Qt.Horizontal)
+        split.setObjectName("mainSplit")
         split.setChildrenCollapsible(False)
-        split.addWidget(self._build_left())
+        left = self._build_left()
+        left.setMinimumWidth(260)
+        split.addWidget(left)
         split.addWidget(self._build_center())
         split.setStretchFactor(0, 2)
         split.setStretchFactor(1, 5)
         split.setSizes([360, 720])
+        self._main_split = split
         root.addWidget(split, 1)
 
         # Abas ficam na janela Menu (escondida até F2 / botão)
@@ -1779,6 +1920,9 @@ class AceCrtConsole(QWidget):
                     self._center_on_screen()
             if not self.isFullScreen() and not self.isMaximized():
                 self._normal_geom = self.geometry()
+            self._clamp_main_splitter()
+            QTimer.singleShot(50, self._relayout_chrome)
+            QTimer.singleShot(120, self._wire_circuit_bus)
             meta = CRT_THEMES.get(self._theme_id) or {}
             if meta.get("frost"):
                 fa, fb = self._frost_alpha_val(), self._frost_blur_val()
@@ -1868,11 +2012,26 @@ class AceCrtConsole(QWidget):
         lay.addWidget(self.bar)
 
         lay.addWidget(self._section("AGORA"))
+        agora_tip = QLabel("Sessão + o que cada setor puxa no automático")
+        agora_tip.setObjectName("hint")
+        agora_tip.setWordWrap(True)
+        lay.addWidget(agora_tip)
+
+        self.meta_scroll = QScrollArea()
+        self.meta_scroll.setWidgetResizable(True)
+        self.meta_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.meta_scroll.setFrameShape(QFrame.NoFrame)
+        self.meta_scroll.setMinimumHeight(120)
+        self.meta_scroll.setMaximumHeight(260)
+        self.meta_scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.meta = QLabel("carregando…")
         self.meta.setObjectName("detail")
         self.meta.setWordWrap(True)
-        lay.addWidget(self.meta)
-        lay.addStretch(1)
+        self.meta.setTextFormat(Qt.RichText)
+        self.meta.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self.meta.setMargin(2)
+        self.meta_scroll.setWidget(self.meta)
+        lay.addWidget(self.meta_scroll, 1)
         return box
 
     def _build_center(self) -> QWidget:
@@ -1883,26 +2042,20 @@ class AceCrtConsole(QWidget):
 
         # Atalhos de reports (ligar/parar automação fica só em Gestão)
         lay.addWidget(self._section("RÁPIDO"))
-        grid = QGridLayout()
-        grid.setSpacing(6)
-        shortcuts = [
-            ("Coletas", "50"),
-            ("Limites", "103"),
-            ("Entregas", "36"),
-            ("Agendamentos", "225"),
-            ("Armazém", "78"),
-            ("Pendência", "31"),
-            ("Contratação", "73"),
-            ("Mapa", "mapa"),
-            ("Atualizar tudo", "sync"),
-            ("Atualizar dados", "dash"),
-            ("Telas locais", "local"),
-        ]
-        for i, (label, cmd) in enumerate(shortcuts):
-            btn = QPushButton(label)
-            btn.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
-            grid.addWidget(btn, i // 4, i % 4)
-        lay.addLayout(grid)
+        tip_rapido = QLabel(
+            "Clique para baixar o relatório no SSW. Código · o que atualiza no painel."
+        )
+        tip_rapido.setObjectName("hint")
+        tip_rapido.setWordWrap(True)
+        lay.addWidget(tip_rapido)
+        rapido_scroll = QScrollArea()
+        rapido_scroll.setWidgetResizable(True)
+        rapido_scroll.setFrameShape(QFrame.NoFrame)
+        rapido_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        rapido_scroll.setMinimumHeight(160)
+        rapido_scroll.setMaximumHeight(320)
+        rapido_scroll.setWidget(self._build_rapido_panel())
+        lay.addWidget(rapido_scroll)
 
         head_cmd = QHBoxLayout()
         self.cmd_section = self._section("AUTO · setores")
@@ -1935,6 +2088,13 @@ class AceCrtConsole(QWidget):
             ("mapa", "Mapa"),
         ):
             meter = SectorMeterRow(sid, title)
+            guide = next((g for g in _SECTOR_GUIDE if g["id"] == sid), None)
+            if guide:
+                meter.setToolTip(
+                    f"{guide['title']}\n"
+                    f"Relatórios: {guide['reports']}\n"
+                    f"{guide['blurb']}"
+                )
             self._sector_meters[sid] = meter
             bars_lay.addWidget(meter)
         bars_lay.addStretch(1)
@@ -1977,6 +2137,55 @@ class AceCrtConsole(QWidget):
         lay.addWidget(hint)
         return box
 
+    def _build_rapido_panel(self) -> QWidget:
+        """Comandos rápidos agrupados por setor, com código SSW + o que faz."""
+        wrap = QWidget()
+        outer = QVBoxLayout(wrap)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(6)
+
+        groups: list[tuple[str, list[tuple[str, str, str, str]]]] = [
+            (
+                "Distribuição",
+                [
+                    ("Coletas", "50", "Baixa coletas do dia (SSW 0157) e atualiza torres/KPIs.", "50"),
+                    ("Torres / limites", "103", "Situação das coletas: limites, status e torres.", "103"),
+                    ("Entregas", "36", "Romaneios e entregas do dia na operação.", "36"),
+                    ("Agendamentos", "225", "Agenda de amanhã / coletas agendadas.", "225"),
+                ],
+            ),
+            (
+                "Armazém · Pendência · Contratação",
+                [
+                    ("Pátio / veículos", "78", "Veículos no armazém, KPIs e torres do 078.", "78"),
+                    ("Pendências / SLA", "31", "Códigos de pendência e ofensores (inclui SLA).", "31"),
+                    ("Frete 073→200", "73", "Contratação do dia: 073 cruzado com filiais 200.", "73"),
+                ],
+            ),
+            (
+                "Mapa · publicação · local",
+                [
+                    ("Mapa operacional", "mapa", "Monta rotas (CyberMap) e atualiza a TV do mapa.", "mapa"),
+                    ("Só planilha/site", "sync", "Envia 50+103+36+225 já baixados — não abre o SSW.", "sync"),
+                    ("Arquivos dashboard", "dash", "Gera/atualiza CSVs e JSON locais do painel.", "dash"),
+                    ("Telas locais", "local", "Abre as telas internas (coleta, entrega, armazém…).", "local"),
+                ],
+            ),
+        ]
+
+        for group_title, items in groups:
+            outer.addWidget(self._section(group_title))
+            grid = QGridLayout()
+            grid.setSpacing(6)
+            grid.setContentsMargins(0, 0, 0, 0)
+            for i, (title, code, blurb, cmd) in enumerate(items):
+                btn = QuickCmdButton(title, code, blurb, cmd)
+                btn.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
+                grid.addWidget(btn, i // 2, i % 2)
+            outer.addLayout(grid)
+
+        return wrap
+
     def _toggle_cmd_view(self) -> None:
         nxt = "log" if self._cmd_view != "log" else "bars"
         self._apply_cmd_view(nxt, announce=True)
@@ -2012,7 +2221,6 @@ class AceCrtConsole(QWidget):
         tabs.addTab(self._build_automacao_tab(), "Automação")
         tabs.addTab(self._build_local_tab(), "Local")
         tabs.addTab(self._build_tv_tab(), "TV")
-        tabs.addTab(self._build_marca_tab(), "Marca")
         tabs.addTab(self._build_gestao_tab(), "Gestão")
         self._right_tabs = tabs
         return tabs
@@ -2055,9 +2263,9 @@ class AceCrtConsole(QWidget):
             "automação": "autom",
             "local": "local",
             "tv": "tv",
-            "marca": "marc",
-            "logo": "marc",
-            "brand": "marc",
+            "marca": "config",
+            "logo": "config",
+            "brand": "config",
             "gestao": "gest",
             "gestão": "gest",
         }
@@ -2091,25 +2299,95 @@ class AceCrtConsole(QWidget):
         wrap = QWidget()
         outer = QVBoxLayout(wrap)
         outer.setContentsMargins(8, 8, 8, 8)
+        outer.setSpacing(8)
+
+        intro = QLabel(
+            "Login SSW, publicação e logo das dashboards.\n"
+            "O visual do CRT (tema Circuitos) é fixo — só a logo das TVs/sites muda aqui."
+        )
+        intro.setObjectName("hint")
+        intro.setWordWrap(True)
+        outer.addWidget(intro)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         body = QWidget()
         form = QFormLayout(body)
         form.setLabelAlignment(Qt.AlignLeft)
-        form.setSpacing(6)
+        form.setSpacing(8)
+
+        form.addRow(self._section("Logo das dashboards"))
+        logo_tip = QLabel(
+            "Altera só a marca nas telas (GitHub Pages, Sites e local). "
+            "O cérebro do CRT não muda."
+        )
+        logo_tip.setObjectName("hint")
+        logo_tip.setWordWrap(True)
+        form.addRow(logo_tip)
+
+        self._brand_preview = QLabel()
+        self._brand_preview.setAlignment(Qt.AlignCenter)
+        self._brand_preview.setMinimumHeight(100)
+        self._brand_preview.setMaximumHeight(140)
+        self._brand_preview.setStyleSheet("background:#030712;border:1px solid #164e63;")
+        form.addRow(self._brand_preview)
+
+        self._brand_status = QLabel("—")
+        self._brand_status.setObjectName("hint")
+        self._brand_status.setWordWrap(True)
+        form.addRow(self._brand_status)
+
+        row_logo = QHBoxLayout()
+        btn_file = QPushButton("Escolher imagem…")
+        btn_file.setObjectName("primary")
+        btn_file.clicked.connect(self._brand_pick_file)
+        btn_export = QPushButton("Exportar…")
+        btn_export.clicked.connect(self._brand_export)
+        btn_refresh = QPushButton("Atualizar preview")
+        btn_refresh.clicked.connect(self._brand_refresh_preview)
+        row_logo.addWidget(btn_file)
+        row_logo.addWidget(btn_export)
+        row_logo.addWidget(btn_refresh)
+        wrap_logo = QWidget()
+        wrap_logo.setLayout(row_logo)
+        form.addRow(wrap_logo)
+
+        url_row = QHBoxLayout()
+        self._brand_url = QLineEdit()
+        self._brand_url.setPlaceholderText("https://…/logo.png")
+        btn_url = QPushButton("Usar URL")
+        btn_url.clicked.connect(self._brand_apply_url)
+        url_row.addWidget(self._brand_url, 1)
+        url_row.addWidget(btn_url)
+        wrap_url = QWidget()
+        wrap_url.setLayout(url_row)
+        form.addRow("URL online", wrap_url)
+
+        vis = QHBoxLayout()
+        btn_show = QPushButton("Mostrar nas dashboards")
+        btn_show.clicked.connect(self._brand_show_all)
+        btn_hide = QPushButton("Ocultar nas dashboards")
+        btn_hide.clicked.connect(self._brand_hide_all)
+        btn_pub = QPushButton("Publicar logo")
+        btn_pub.setObjectName("primary")
+        btn_pub.clicked.connect(self._brand_publish)
+        vis.addWidget(btn_show)
+        vis.addWidget(btn_hide)
+        vis.addWidget(btn_pub)
+        wrap_vis = QWidget()
+        wrap_vis.setLayout(vis)
+        form.addRow(wrap_vis)
 
         groups = {
-            "ssw": "Acesso ao sistema",
-            "auto": "Atualização",
-            "local": "Modo local",
-            "cloud": "Planilha e site",
-            "armazem": "Armazém",
-            "pendencia": "Pendência",
-            "contratacao": "Contratação",
-            "automacao": "Automação",
+            "ssw": ("Acesso ao SSW", "URL, empresa, usuário e senha do sistema."),
+            "auto": ("Atualização geral", "Opções de coleta/entrega e período (diário ou sexta)."),
+            "local": ("Modo local / rede", "Sem planilha e acesso na Wi‑Fi (detalhes também na aba Local)."),
+            "cloud": ("Planilha e site", "Google Sheets, Sites e GitHub Pages."),
+            "armazem": ("Armazém", "Ajustes do setor 078."),
+            "pendencia": ("Pendência", "Ajustes do setor 031."),
+            "contratacao": ("Contratação", "Ajustes 073 → 200."),
+            "automacao": ("Automação", "Use a aba Automação para setores e intervalos."),
         }
-        # headless / automação: abas próprias
         skip_keys = {
             "headless",
             "loop_intervalo",
@@ -2122,9 +2400,13 @@ class AceCrtConsole(QWidget):
                 continue
             if group != current_group:
                 current_group = group
-                lab = QLabel(groups.get(group, group))
-                lab.setObjectName("section")
-                form.addRow(lab)
+                title, hint = groups.get(group, (group, ""))
+                form.addRow(self._section(title))
+                if hint:
+                    h = QLabel(hint)
+                    h.setObjectName("hint")
+                    h.setWordWrap(True)
+                    form.addRow(h)
 
             if typ == "bool":
                 w: QWidget = QCheckBox("sim")
@@ -2145,62 +2427,33 @@ class AceCrtConsole(QWidget):
             self._fields[key] = w
             form.addRow(_field_label(key), w)
 
+        form.addRow(self._section("Navegador (SSW)"))
+        viz_hint = QLabel(
+            "Desmarcado = roda oculto (mais leve). Marcado = você vê o Chrome/Edge abrindo."
+        )
+        viz_hint.setObjectName("hint")
+        viz_hint.setWordWrap(True)
+        form.addRow(viz_hint)
         self.chk_viz = QCheckBox("Mostrar navegador ao trabalhar")
-        form.addRow(self._section("Tela"), self.chk_viz)
-
-        form.addRow(self._section("Aparência"))
-        self.cmb_theme_cfg = QComboBox()
-        for tid, meta in CRT_THEMES.items():
-            self.cmb_theme_cfg.addItem(str(meta["label"]), tid)
-        self.cmb_theme_cfg.currentIndexChanged.connect(self._on_theme_combo_cfg)
-        form.addRow("Tema do painel", self.cmb_theme_cfg)
-
-        frost_hint = QLabel("Só no tema Escuro fosco · Salvar grava os valores")
-        frost_hint.setObjectName("hint")
-        form.addRow(frost_hint)
-
-        self.lbl_frost_alpha = QLabel("55%")
-        self.sld_frost_alpha = QSlider(Qt.Horizontal)
-        self.sld_frost_alpha.setRange(0, 100)
-        self.sld_frost_alpha.setValue(55)
-        self.sld_frost_alpha.setToolTip(
-            "Controla a opacidade da janela (0 = sólida · 100 = bem transparente)"
-        )
-        self.sld_frost_alpha.valueChanged.connect(self._on_frost_alpha)
-        row_a = QHBoxLayout()
-        row_a.addWidget(self.sld_frost_alpha, 1)
-        row_a.addWidget(self.lbl_frost_alpha)
-        wrap_a = QWidget()
-        wrap_a.setLayout(row_a)
-        form.addRow("Transparência", wrap_a)
-
-        self.lbl_frost_blur = QLabel("70%")
-        self.sld_frost_blur = QSlider(Qt.Horizontal)
-        self.sld_frost_blur.setRange(0, 100)
-        self.sld_frost_blur.setValue(70)
-        self.sld_frost_blur.setToolTip(
-            "Fosco Windows: 0 = sem blur · 100 = acrylic/mica"
-        )
-        self.sld_frost_blur.valueChanged.connect(self._on_frost_blur)
-        row_b = QHBoxLayout()
-        row_b.addWidget(self.sld_frost_blur, 1)
-        row_b.addWidget(self.lbl_frost_blur)
-        wrap_b = QWidget()
-        wrap_b.setLayout(row_b)
-        form.addRow("Fosco (blur)", wrap_b)
+        form.addRow(self.chk_viz)
 
         scroll.setWidget(body)
         outer.addWidget(scroll, 1)
 
         row = QHBoxLayout()
         btn_reload = QPushButton("Recarregar")
+        btn_reload.setToolTip("Descarta alterações não salvas e lê o arquivo de config")
         btn_reload.clicked.connect(self._reload_payload)
-        btn_save = QPushButton("Salvar")
+        btn_save = QPushButton("Salvar configuração")
         btn_save.setObjectName("primary")
+        btn_save.setToolTip("Grava login, planilha, LAN e demais campos desta aba")
         btn_save.clicked.connect(self._save_config)
         row.addWidget(btn_reload)
+        row.addStretch(1)
         row.addWidget(btn_save)
         outer.addLayout(row)
+
+        self._brand_refresh_preview()
         return wrap
 
     def _build_automacao_tab(self) -> QWidget:
@@ -2786,98 +3039,18 @@ class AceCrtConsole(QWidget):
         wall = "PAREDE" if (self._tv_layout or {}).get("wallMode") else "NORMAL"
         self._tv_persist(title="Layout TV", body=f"Layout salvo ({wall}).")
 
-    def _build_marca_tab(self) -> QWidget:
-        wrap = QWidget()
-        outer = QVBoxLayout(wrap)
-        outer.setContentsMargins(0, 0, 0, 0)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        body = QWidget()
-        lay = QVBoxLayout(body)
-        lay.setContentsMargins(10, 10, 10, 10)
-        lay.setSpacing(8)
-
-        lay.addWidget(self._section("Logo BINHO (todas as dashboards)"))
-        tip = QLabel(
-            "Troca a logo do CRT e das TVs (GitHub Pages, Sites e local). "
-            "Use arquivo, URL online, exportar, ou remover de tudo."
-        )
-        tip.setObjectName("hint")
-        tip.setWordWrap(True)
-        lay.addWidget(tip)
-
-        self._brand_preview = QLabel()
-        self._brand_preview.setAlignment(Qt.AlignCenter)
-        self._brand_preview.setMinimumHeight(120)
-        self._brand_preview.setMaximumHeight(160)
-        self._brand_preview.setStyleSheet("background:#030712;border:1px solid #164e63;")
-        lay.addWidget(self._brand_preview)
-
-        self._brand_status = QLabel("—")
-        self._brand_status.setObjectName("hint")
-        self._brand_status.setWordWrap(True)
-        lay.addWidget(self._brand_status)
-
-        row = QHBoxLayout()
-        btn_file = QPushButton("Escolher imagem…")
-        btn_file.setObjectName("primary")
-        btn_file.clicked.connect(self._brand_pick_file)
-        btn_export = QPushButton("Exportar imagem…")
-        btn_export.clicked.connect(self._brand_export)
-        row.addWidget(btn_file)
-        row.addWidget(btn_export)
-        lay.addLayout(row)
-
-        lay.addWidget(self._section("URL online"))
-        url_row = QHBoxLayout()
-        self._brand_url = QLineEdit()
-        self._brand_url.setPlaceholderText("https://…/logo.png")
-        btn_url = QPushButton("Usar URL")
-        btn_url.clicked.connect(self._brand_apply_url)
-        url_row.addWidget(self._brand_url, 1)
-        url_row.addWidget(btn_url)
-        lay.addLayout(url_row)
-
-        lay.addWidget(self._section("Visibilidade"))
-        vis = QHBoxLayout()
-        btn_show = QPushButton("Mostrar em tudo")
-        btn_show.clicked.connect(self._brand_show_all)
-        btn_hide = QPushButton("Remover de tudo")
-        btn_hide.clicked.connect(self._brand_hide_all)
-        vis.addWidget(btn_show)
-        vis.addWidget(btn_hide)
-        lay.addLayout(vis)
-
-        lay.addWidget(self._section("Tema + publicar"))
-        btn_theme = QPushButton("Aplicar tema Circuitos")
-        btn_theme.clicked.connect(lambda: self._apply_theme("circuitos", persist=True))
-        lay.addWidget(btn_theme)
-        btn_pub = QPushButton("Publicar marca (Sites / GitHub / local)")
-        btn_pub.setObjectName("primary")
-        btn_pub.clicked.connect(self._brand_publish)
-        lay.addWidget(btn_pub)
-
-        btn_refresh = QPushButton("Atualizar preview")
-        btn_refresh.clicked.connect(self._brand_refresh_preview)
-        lay.addWidget(btn_refresh)
-
-        lay.addStretch(1)
-        scroll.setWidget(body)
-        outer.addWidget(scroll)
-        self._brand_refresh_preview()
-        return wrap
-
     def _brand_refresh_preview(self) -> None:
         try:
-            from brand import load_brand, resolve_crt_pixmap_path, resolve_dashboard_src
+            from brand import load_brand, resolve_dashboard_logo_path, resolve_dashboard_src
 
             b = load_brand()
-            path = resolve_crt_pixmap_path(b)
             src = resolve_dashboard_src(b)
             mode = b.get("mode")
             vis = b.get("visible", True)
+            path = resolve_dashboard_logo_path(b)
             self._brand_status.setText(
-                f"modo={mode} · visível={vis} · src={src or '—'} · arquivo={path.name if path.is_file() else '—'}"
+                f"modo={mode} · visível={vis} · src={src or '—'} · "
+                f"arquivo={path.name if path.is_file() else '—'}"
             )
             if hasattr(self, "_brand_url") and b.get("url"):
                 self._brand_url.setText(str(b.get("url") or ""))
@@ -2886,13 +3059,15 @@ class AceCrtConsole(QWidget):
                 return
             if mode == "hidden" or not vis:
                 lab.setPixmap(QPixmap())
-                lab.setText("logo oculta")
+                lab.setText("logo oculta nas dashboards")
                 return
             if path.is_file():
                 pm = QPixmap(str(path))
                 if not pm.isNull():
                     lab.setText("")
-                    lab.setPixmap(pm.scaled(140, 140, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    lab.setPixmap(
+                        pm.scaled(140, 140, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    )
                     return
             lab.setText("(sem imagem)")
             lab.setPixmap(QPixmap())
@@ -2901,13 +3076,9 @@ class AceCrtConsole(QWidget):
                 self._brand_status.setText(str(e))
 
     def _brand_after_change(self, note: str) -> None:
+        # Só atualiza preview da logo das dashboards — CRT (cérebro) não muda
         self._append_log("ok", note)
         self._brand_refresh_preview()
-        if hasattr(self, "cubes"):
-            try:
-                self.cubes.reload_brand_asset()
-            except Exception:
-                pass
 
     def _brand_pick_file(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -2924,12 +3095,12 @@ class AceCrtConsole(QWidget):
             apply_logo_file(path)
             self._brand_after_change(f"Logo aplicada: {Path(path).name}")
         except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Marca", str(e))
+            QMessageBox.warning(self, "Logo", str(e))
 
     def _brand_apply_url(self) -> None:
         url = (self._brand_url.text() if hasattr(self, "_brand_url") else "").strip()
         if not url:
-            QMessageBox.information(self, "Marca", "Cole uma URL de imagem.")
+            QMessageBox.information(self, "Logo", "Cole uma URL de imagem.")
             return
         try:
             from brand import apply_logo_url
@@ -2937,7 +3108,7 @@ class AceCrtConsole(QWidget):
             apply_logo_url(url)
             self._brand_after_change(f"Logo via URL: {url[:80]}")
         except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Marca", str(e))
+            QMessageBox.warning(self, "Logo", str(e))
 
     def _brand_export(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
@@ -2953,9 +3124,9 @@ class AceCrtConsole(QWidget):
 
             out = export_logo(path)
             self._append_log("ok", f"Logo exportada: {out}")
-            QMessageBox.information(self, "Marca", f"Salvo em:\n{out}")
+            QMessageBox.information(self, "Logo", f"Salvo em:\n{out}")
         except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Marca", str(e))
+            QMessageBox.warning(self, "Logo", str(e))
 
     def _brand_hide_all(self) -> None:
         try:
@@ -2964,7 +3135,7 @@ class AceCrtConsole(QWidget):
             hide_everywhere()
             self._brand_after_change("Logo removida de todas as dashboards")
         except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Marca", str(e))
+            QMessageBox.warning(self, "Logo", str(e))
 
     def _brand_show_all(self) -> None:
         try:
@@ -2973,7 +3144,7 @@ class AceCrtConsole(QWidget):
             show_everywhere()
             self._brand_after_change("Logo visível em todas as dashboards")
         except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Marca", str(e))
+            QMessageBox.warning(self, "Logo", str(e))
 
     def _brand_publish(self) -> None:
         try:
@@ -2982,12 +3153,10 @@ class AceCrtConsole(QWidget):
             ok, msg = publish_brand(push_sheets=True, push_git=True)
             kind = "ok" if ok else "erro"
             self._append_log(kind, f"Publicar marca: {msg}")
-            QMessageBox.information(self, "Marca · publicar", msg)
+            QMessageBox.information(self, "Logo · publicar", msg)
             self._brand_refresh_preview()
-            if hasattr(self, "cubes"):
-                self.cubes.reload_brand_asset()
         except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Marca", str(e))
+            QMessageBox.warning(self, "Logo", str(e))
 
     def _build_gestao_tab(self) -> QWidget:
         wrap = QWidget()
@@ -3095,17 +3264,61 @@ class AceCrtConsole(QWidget):
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         self._relayout_chrome()
+        # Debounce: Windows manda vários sizes intermediários ao soltar/redimensionar
+        self._resize_layout_token = int(getattr(self, "_resize_layout_token", 0)) + 1
+        token = self._resize_layout_token
+
+        def _after() -> None:
+            if token != getattr(self, "_resize_layout_token", 0):
+                return
+            self._clamp_main_splitter()
+            self._relayout_chrome()
+            self._wire_circuit_bus()
+            if hasattr(self, "cubes"):
+                self.cubes.update()
+
+        QTimer.singleShot(40, _after)
+        QTimer.singleShot(140, _after)
+
+    def _clamp_main_splitter(self) -> None:
+        """Mantém o painel esquerdo utilizável em janela normal (não esmaga o cérebro)."""
+        sp = getattr(self, "_main_split", None)
+        if sp is None:
+            return
+        try:
+            sizes = sp.sizes()
+            if len(sizes) < 2:
+                return
+            total = sum(sizes)
+            if total < 200:
+                return
+            left, right = int(sizes[0]), int(sizes[1])
+            min_left = 260
+            max_left = max(min_left, int(total * 0.45))
+            # Preferência estável ~1/3, só corrige extremos
+            if left < min_left:
+                left = min_left
+            elif left > max_left and total >= 700:
+                left = max_left
+            else:
+                return
+            right = max(280, total - left)
+            sp.setSizes([left, right])
+        except Exception:
+            pass
 
     def _relayout_chrome(self) -> None:
         """Reencaixa scanlines + circuitos após resize / sair de tela cheia."""
         r = self.rect()
+        if r.width() < 50 or r.height() < 50:
+            return
         if hasattr(self, "_scan") and self._scan is not None:
             self._scan.setGeometry(r)
+            self._scan.raise_()
             self._scan.update()
         bus = getattr(self, "_circuit_bus", None)
         if bus is not None:
             # Windows + WA_TranslucentBackground: esconder/mostrar limpa fantasma
-            # que sobra ao sair de fullscreen com o overlay no tamanho antigo
             was = bus.isVisible()
             if was:
                 bus.hide()
@@ -3121,7 +3334,7 @@ class AceCrtConsole(QWidget):
         try:
             for sp in self.findChildren(QSplitter):
                 sizes = sp.sizes()
-                if sizes:
+                if sizes and all(s >= 0 for s in sizes):
                     sp.setSizes(sizes)
                 sp.updateGeometry()
                 sp.update()
@@ -3216,11 +3429,9 @@ class AceCrtConsole(QWidget):
             elif isinstance(w, QLineEdit):
                 w.setText("" if val is None else str(val))
         self.chk_viz.setChecked(not bool(self.payload.get("headless", True)))
-        theme = str(self.payload.get("crt_theme") or DEFAULT_CRT_THEME)
-        if theme not in CRT_THEMES:
-            theme = DEFAULT_CRT_THEME
+        # Tema do CRT é fixo (Circuitos)
         self._load_frost_sliders_from_payload()
-        self._apply_theme(theme, persist=False)
+        self._apply_theme(DEFAULT_CRT_THEME, persist=False)
         self._seed_sector_bars_from_config()
         self._update_meta()
         self._append_log("config", "Configuração recarregada.")
@@ -3321,15 +3532,16 @@ class AceCrtConsole(QWidget):
         self.payload["crt_frost_blur"] = self._frost_blur_val()
 
     def _on_theme_combo(self) -> None:
-        tid = str(self.cmb_theme.currentData() or DEFAULT_CRT_THEME)
-        self._apply_theme(tid, persist=True)
+        # Tema travado — seletor removido da UI
+        self._apply_theme(DEFAULT_CRT_THEME, persist=True)
 
     def _on_theme_combo_cfg(self) -> None:
-        tid = str(self.cmb_theme_cfg.currentData() or DEFAULT_CRT_THEME)
-        self._apply_theme(tid, persist=True)
+        self._apply_theme(DEFAULT_CRT_THEME, persist=True)
 
     def _apply_theme(self, theme_id: str, *, persist: bool = True) -> None:
-        tid = theme_id if theme_id in CRT_THEMES else DEFAULT_CRT_THEME
+        # Tema do programa é fixo; ignora ids antigos salvos no payload
+        tid = DEFAULT_CRT_THEME
+        _ = theme_id  # compat assinatura
         self._theme_id = tid
         fa, fb = self._frost_alpha_val(), self._frost_blur_val()
         ss = build_crt_stylesheet(tid, frost_alpha=fa, frost_blur=fb)
@@ -3614,6 +3826,7 @@ class AceCrtConsole(QWidget):
                 # overlay/cérebro ficam desalinhados ao sair de tela cheia
                 QTimer.singleShot(0, self._relayout_chrome)
                 QTimer.singleShot(60, self._relayout_chrome)
+                QTimer.singleShot(80, self._clamp_main_splitter)
                 QTimer.singleShot(180, self._wire_circuit_bus)
                 meta = CRT_THEMES.get(self._theme_id) or {}
                 if meta.get("frost"):
@@ -3661,7 +3874,9 @@ class AceCrtConsole(QWidget):
             # relayout atrasado: o Windows ainda reporta tamanho fullscreen no frame seguinte
             QTimer.singleShot(0, self._relayout_chrome)
             QTimer.singleShot(50, self._relayout_chrome)
+            QTimer.singleShot(80, self._clamp_main_splitter)
             QTimer.singleShot(120, self._wire_circuit_bus)
+            QTimer.singleShot(200, self._relayout_chrome)
             QTimer.singleShot(200, self._relayout_chrome)
         meta = CRT_THEMES.get(self._theme_id) or {}
         if meta.get("frost"):
@@ -3725,6 +3940,8 @@ class AceCrtConsole(QWidget):
 
     def _update_meta(self) -> None:
         p = self.payload or {}
+        user = str(p.get("user") or "—")
+        units = str(p.get("unit") or "—").strip() or "—"
         viz = "navegador ligado" if not p.get("headless", True) else "navegador oculto"
         sheets = "planilha ligada" if p.get("enable_sheets") else "planilha desligada"
         try:
@@ -3733,19 +3950,48 @@ class AceCrtConsole(QWidget):
             dest = resolve_publish_target(load_settings())
         except Exception:
             dest = str(p.get("publish_target") or "auto")
-        arm = "armazém on" if p.get("armazem_in_loop", True) else "armazém off"
-        pend = "pendência on" if p.get("pendencia_in_loop", True) else "pendência off"
-        ctr = "contratação on" if p.get("contratacao_in_loop", True) else "contratação off"
-        emi = "emissão on" if p.get("emissao_in_loop", False) else "emissão off"
-        mapa = "mapa on" if p.get("mapa_in_loop", True) else "mapa off"
-        dist = "dist on" if p.get("dist_in_loop", True) else "dist off"
+        dest_txt = {
+            "sites": "Google Sites",
+            "github": "GitHub Pages",
+            "local": "só local (LAN/CSV)",
+            "auto": "auto",
+        }.get(str(dest), str(dest))
         modo = str(p.get("periodo_modo") or "diario")
-        modo_txt = "diário" if modo == "diario" else "a partir da sexta"
-        self.meta.setText(
-            f"usuário {p.get('user') or '—'}  ·  unidades {p.get('unit') or '—'}\n"
-            f"{sheets}  ·  TV={dest}  ·  {viz}\n"
-            f"auto: {dist} · {arm} · {pend} · {ctr} · {emi} · {mapa}\n"
-            f"padrão {p.get('loop_intervalo') or '5m'}  ·  {modo_txt}"
+        modo_txt = (
+            "período diário (hoje)"
+            if modo == "diario"
+            else "período a partir da sexta (até hoje)"
+        )
+        fallback = str(p.get("loop_intervalo") or "5m")
+
+        lines: list[str] = [
+            f"<b>Sessão</b> · {user}",
+            f"Unidades SSW: <b>{units}</b><br>"
+            f"<span style='opacity:0.75'>Filiais em que o login busca os relatórios.</span>",
+            f"{sheets} · TV={dest_txt} · {viz}",
+            f"Automático · padrão <b>{fallback}</b> · {modo_txt}",
+            "<b>Setores no loop</b>",
+        ]
+        for g in _SECTOR_GUIDE:
+            default_on = g["id"] != "455"
+            on = bool(p.get(g["flag"], default_on))
+            iv = str(p.get(g["interval"]) or "").strip() or fallback
+            mark = "ON" if on else "off"
+            color = "#67e8f9" if on else "#64748b"
+            lines.append(
+                f"<span style='color:{color}'><b>{g['title']}</b> [{mark}]</span> "
+                f"a cada {iv}<br>"
+                f"SSW {g['reports']}<br>"
+                f"<span style='opacity:0.8'>{g['blurb']}</span>"
+            )
+        tip = (
+            "<span style='opacity:0.7'>Ajuste setores/tempos em Menu → Automação. "
+            "Logo das TVs em Configuração.</span>"
+        )
+        lines.append(tip)
+        self.meta.setText("<br><br>".join(lines))
+        self.meta.setToolTip(
+            "Resumo da sessão e do que cada setor do automático puxa no SSW."
         )
 
     def _submit_prompt(self) -> None:
@@ -4102,9 +4348,8 @@ class AceCrtConsole(QWidget):
         if hasattr(self, "chk_viz"):
             self.chk_viz.setChecked(not bool(self.payload.get("headless", True)))
         self._load_frost_sliders_from_payload()
-        theme = str(self.payload.get("crt_theme") or DEFAULT_CRT_THEME)
-        if theme in CRT_THEMES and theme != getattr(self, "_theme_id", None):
-            self._apply_theme(theme, persist=False)
+        if getattr(self, "_theme_id", None) != DEFAULT_CRT_THEME:
+            self._apply_theme(DEFAULT_CRT_THEME, persist=False)
         self._update_meta()
 
     def closeEvent(self, event) -> None:  # noqa: N802
