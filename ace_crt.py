@@ -2016,6 +2016,17 @@ class AceCrtConsole(QWidget):
         self.mode.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         head.addWidget(self.title)
         head.addStretch(1)
+        lab_theme = QLabel("Tema")
+        lab_theme.setObjectName("mode")
+        self.cmb_theme = QComboBox()
+        for tid, meta in CRT_THEMES.items():
+            self.cmb_theme.addItem(str(meta["label"]), tid)
+        self.cmb_theme.setMinimumWidth(140)
+        self.cmb_theme.setToolTip("Tema visual do CRT (salvo na configuração)")
+        self.cmb_theme.currentIndexChanged.connect(self._on_theme_combo)
+        head.addWidget(lab_theme)
+        head.addWidget(self.cmb_theme)
+        head.addSpacing(12)
         head.addWidget(self.mode)
         head.addSpacing(8)
         self.btn_lock = QPushButton("Bloquear")
@@ -2607,8 +2618,7 @@ class AceCrtConsole(QWidget):
         outer.setSpacing(8)
 
         intro = QLabel(
-            "Login SSW, publicação e logo das dashboards.\n"
-            "O visual do CRT (tema Circuitos) é fixo — só a logo das TVs/sites muda aqui."
+            "Login SSW, publicação, logo das dashboards e tema do painel CRT."
         )
         intro.setObjectName("hint")
         intro.setWordWrap(True)
@@ -2745,6 +2755,53 @@ class AceCrtConsole(QWidget):
         form.addRow(viz_hint)
         self.chk_viz = QCheckBox("Mostrar navegador ao trabalhar")
         form.addRow(self.chk_viz)
+
+        form.addRow(self._section("Aparência do CRT"))
+        apar_tip = QLabel(
+            "Tema do painel (cérebro/cores). A logo das dashboards é independente, acima."
+        )
+        apar_tip.setObjectName("hint")
+        apar_tip.setWordWrap(True)
+        form.addRow(apar_tip)
+        self.cmb_theme_cfg = QComboBox()
+        for tid, meta in CRT_THEMES.items():
+            self.cmb_theme_cfg.addItem(str(meta["label"]), tid)
+        self.cmb_theme_cfg.currentIndexChanged.connect(self._on_theme_combo_cfg)
+        form.addRow("Tema do painel", self.cmb_theme_cfg)
+
+        frost_hint = QLabel("Só no tema Escuro fosco · Salvar grava os valores")
+        frost_hint.setObjectName("hint")
+        form.addRow(frost_hint)
+
+        self.lbl_frost_alpha = QLabel("55%")
+        self.sld_frost_alpha = QSlider(Qt.Horizontal)
+        self.sld_frost_alpha.setRange(0, 100)
+        self.sld_frost_alpha.setValue(55)
+        self.sld_frost_alpha.setToolTip(
+            "Controla a opacidade da janela (0 = sólida · 100 = bem transparente)"
+        )
+        self.sld_frost_alpha.valueChanged.connect(self._on_frost_alpha)
+        row_a = QHBoxLayout()
+        row_a.addWidget(self.sld_frost_alpha, 1)
+        row_a.addWidget(self.lbl_frost_alpha)
+        wrap_a = QWidget()
+        wrap_a.setLayout(row_a)
+        form.addRow("Transparência", wrap_a)
+
+        self.lbl_frost_blur = QLabel("70%")
+        self.sld_frost_blur = QSlider(Qt.Horizontal)
+        self.sld_frost_blur.setRange(0, 100)
+        self.sld_frost_blur.setValue(70)
+        self.sld_frost_blur.setToolTip(
+            "Fosco Windows: 0 = sem blur · 100 = acrylic/mica"
+        )
+        self.sld_frost_blur.valueChanged.connect(self._on_frost_blur)
+        row_b = QHBoxLayout()
+        row_b.addWidget(self.sld_frost_blur, 1)
+        row_b.addWidget(self.lbl_frost_blur)
+        wrap_b = QWidget()
+        wrap_b.setLayout(row_b)
+        form.addRow("Fosco (blur)", wrap_b)
 
         scroll.setWidget(body)
         outer.addWidget(scroll, 1)
@@ -3743,9 +3800,11 @@ class AceCrtConsole(QWidget):
             elif isinstance(w, QLineEdit):
                 w.setText("" if val is None else str(val))
         self.chk_viz.setChecked(not bool(self.payload.get("headless", True)))
-        # Tema do CRT é fixo (Circuitos)
+        theme = str(self.payload.get("crt_theme") or DEFAULT_CRT_THEME)
+        if theme not in CRT_THEMES:
+            theme = DEFAULT_CRT_THEME
         self._load_frost_sliders_from_payload()
-        self._apply_theme(DEFAULT_CRT_THEME, persist=False)
+        self._apply_theme(theme, persist=False)
         self._seed_sector_bars_from_config()
         self._update_meta()
         self._append_log("config", "Configuração recarregada.")
@@ -3846,16 +3905,15 @@ class AceCrtConsole(QWidget):
         self.payload["crt_frost_blur"] = self._frost_blur_val()
 
     def _on_theme_combo(self) -> None:
-        # Tema travado — seletor removido da UI
-        self._apply_theme(DEFAULT_CRT_THEME, persist=True)
+        tid = str(self.cmb_theme.currentData() or DEFAULT_CRT_THEME)
+        self._apply_theme(tid, persist=True)
 
     def _on_theme_combo_cfg(self) -> None:
-        self._apply_theme(DEFAULT_CRT_THEME, persist=True)
+        tid = str(self.cmb_theme_cfg.currentData() or DEFAULT_CRT_THEME)
+        self._apply_theme(tid, persist=True)
 
     def _apply_theme(self, theme_id: str, *, persist: bool = True) -> None:
-        # Tema do programa é fixo; ignora ids antigos salvos no payload
-        tid = DEFAULT_CRT_THEME
-        _ = theme_id  # compat assinatura
+        tid = theme_id if theme_id in CRT_THEMES else DEFAULT_CRT_THEME
         self._theme_id = tid
         fa, fb = self._frost_alpha_val(), self._frost_blur_val()
         ss = build_crt_stylesheet(tid, frost_alpha=fa, frost_blur=fb)
@@ -4689,8 +4747,9 @@ class AceCrtConsole(QWidget):
         if hasattr(self, "chk_viz"):
             self.chk_viz.setChecked(not bool(self.payload.get("headless", True)))
         self._load_frost_sliders_from_payload()
-        if getattr(self, "_theme_id", None) != DEFAULT_CRT_THEME:
-            self._apply_theme(DEFAULT_CRT_THEME, persist=False)
+        theme = str(self.payload.get("crt_theme") or DEFAULT_CRT_THEME)
+        if theme in CRT_THEMES and theme != getattr(self, "_theme_id", None):
+            self._apply_theme(theme, persist=False)
         self._update_meta()
 
     def closeEvent(self, event) -> None:  # noqa: N802
