@@ -338,6 +338,15 @@
       background: #0a121e !important;
       box-shadow: none !important;
     }
+    body.tv-mode #panel-mapa .ds-kpi,
+    body.tv-mode #panel-mapa .arm-kpi.ds-kpi {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    body.tv-mode #panel-mapa .arm-kpi.ds-kpi .val {
+      font-size: clamp(18px, 2.4vmin, 32px) !important;
+    }
     body.tv-mode .ds-kpi .val,
     body.tv-mode .ds-kpi > b,
     body.tv-mode .arm-kpi.ds-kpi .val,
@@ -1276,6 +1285,16 @@
     body.tv-mode * {
       border-radius: 0 !important;
     }
+    /* Exceção: bolinhas E/C e base no mapa */
+    body.tv-mode .mapa-op-stop,
+    body.tv-mode .mapa-op-stop *,
+    body.tv-mode .cyber-base,
+    body.tv-mode .cyber-base::after,
+    body.tv-mode .mapa-stop-dot,
+    body.tv-mode .donut svg,
+    body.tv-mode .donut circle {
+      border-radius: 999px !important;
+    }
     body.tv-mode .topbar,
     body.tv-mode .arm-top,
     body.tv-mode .resumo-card,
@@ -1634,8 +1653,7 @@
     }
     body.tv-mode #panel-armazem .arm-wrap,
     body.tv-mode #panel-pendencia .pen-wrap,
-    body.tv-mode #panel-contratacao .ctr-wrap,
-    body.tv-mode #panel-mapa .mapa-wrap {
+    body.tv-mode #panel-contratacao .ctr-wrap {
       flex: 1 1 auto !important;
       min-height: 0 !important;
       height: auto !important;
@@ -1645,6 +1663,21 @@
       overflow: hidden !important;
       display: grid !important;
       grid-template-rows: auto minmax(0, 1fr) !important;
+    }
+    /* Mapa: 3 linhas (header · KPIs · layout) — sem fundo nas placas/mapa */
+    body.tv-mode #panel-mapa .mapa-wrap {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      height: 100% !important;
+      max-width: none !important;
+      width: 100% !important;
+      margin: 0 !important;
+      overflow: hidden !important;
+      display: grid !important;
+      grid-template-rows: auto auto minmax(0, 1fr) !important;
+      gap: clamp(6px, 0.8vmin, 10px) !important;
+      padding: clamp(8px, 1vmin, 12px) clamp(10px, 1.2vmin, 16px) !important;
+      box-sizing: border-box !important;
     }
     /* Emissão: wrap dedicado (evita o layout TV genérico que estoura o gráfico) */
     body.tv-mode #panel-emissao .emi-wrap {
@@ -3937,9 +3970,27 @@
       grid-template-columns: repeat(8, minmax(0, 1fr));
       flex: 0 0 auto;
     }
+    .mapa-kpis-top .arm-kpi,
+    .mapa-kpis-top .arm-kpi.ds-kpi {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 4px 6px !important;
+    }
     .mapa-kpis-top .arm-kpi .val {
       font-size: clamp(16px, 1.9vmin, 26px);
     }
+    .mapa-map-card {
+      min-height: 0;
+      border: none;
+      border-radius: 0;
+      overflow: hidden;
+      position: relative;
+      background: transparent;
+      box-shadow: none;
+    }
+    .mapa-map-card::after { display: none; }
     .mapa-layout {
       display: grid;
       grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.55fr) minmax(240px, 0.85fr);
@@ -4109,33 +4160,6 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: 900; color: #f8fafc;
     }
-    .mapa-map-card {
-      min-height: 0;
-      border: 1px solid rgba(0, 240, 255, 0.22);
-      border-radius: 12px;
-      overflow: hidden;
-      position: relative;
-      background:
-        radial-gradient(ellipse at 30% 20%, rgba(0, 240, 255, 0.08), transparent 55%),
-        radial-gradient(ellipse at 80% 80%, rgba(255, 42, 109, 0.06), transparent 50%),
-        #0b0f14;
-      box-shadow:
-        0 0 0 1px rgba(255, 42, 109, 0.08),
-        0 0 28px rgba(0, 240, 255, 0.1);
-    }
-    .mapa-map-card::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 450;
-      background:
-        linear-gradient(rgba(0, 240, 255, 0.045) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 240, 255, 0.055) 1px, transparent 1px);
-      background-size: 100% 4px, 48px 48px;
-      mix-blend-mode: screen;
-      opacity: 0.55;
-    }
     .leaflet-div-icon.cyber-base-icon {
       background: transparent;
       border: none;
@@ -4172,7 +4196,7 @@
       0% { transform: scale(0.7); opacity: 0.85; }
       100% { transform: scale(1.55); opacity: 0; }
     }
-    /* Bolinhas E/C — padrão CyberMap */
+    /* Bolinhas E/C — círculo (não quadrado) */
     .mapa-op-stop {
       --op-main: #00f0ff;
       --op-soft: #8defff;
@@ -4180,9 +4204,9 @@
       --op-glow: rgba(0, 240, 255, 0.82);
       --op-text: #05070a;
       position: relative;
-      width: 26px;
-      height: 26px;
-      border-radius: 999px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50% !important;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -4193,6 +4217,7 @@
         0 0 0 4px var(--op-ring),
         0 0 16px var(--op-glow);
       box-sizing: border-box;
+      overflow: hidden;
     }
     .mapa-op-stop span {
       color: var(--op-text);
@@ -4307,7 +4332,7 @@
       width: 100%;
       height: 100%;
       min-height: 320px;
-      background: #0b0f14;
+      background: transparent;
     }
     .mapa-aviso {
       position: absolute;
@@ -4324,6 +4349,29 @@
     body.tv-mode #panel-mapa .mapa-wrap {
       max-width: none;
       width: 100%;
+    }
+    body.tv-mode #panel-mapa .mapa-kpis-top .arm-kpi,
+    body.tv-mode #panel-mapa .mapa-kpis-top .arm-kpi.ds-kpi,
+    body.tv-mode #panel-mapa .mapa-kpis-top .ds-kpi {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    body.tv-mode #panel-mapa .mapa-map-card {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    body.tv-mode #panel-mapa .mapa-map-card::after {
+      display: none !important;
+    }
+    body.tv-mode #panel-mapa #mapaLeaflet {
+      background: transparent !important;
+    }
+    body.tv-mode #panel-mapa .mapa-layout {
+      min-height: 0 !important;
+      height: 100% !important;
+      overflow: hidden !important;
     }
     body.tv-mode .mapa-kpis-top .arm-kpi .val { font-size: clamp(18px, 2.4vmin, 32px); }
     body.tv-mode .mapa-farol-overlay .big { font-size: clamp(64px, 10vmin, 120px); }
@@ -9888,12 +9936,12 @@
         const letter = isCol ? 'C' : 'E';
         const kindCls = isCol ? 'is-coleta' : 'is-entrega';
         const stateCls = done ? 'is-done' : 'mapa-blink';
-        const icon = L.divIcon({
-          className: 'mapa-stop-icon',
-          html: `<div class="mapa-op-stop ${kindCls} ${stateCls}"><span>${letter}</span></div>`,
-          iconSize: [26, 26],
-          iconAnchor: [13, 13],
-        });
+          const icon = L.divIcon({
+            className: 'mapa-stop-icon',
+            html: `<div class="mapa-op-stop ${kindCls} ${stateCls}"><span>${letter}</span></div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+          });
         const mk = L.marker([p.lat, p.lon], { icon, interactive: true }).bindTooltip(
           (`${v.placa} · ${letter} ${p.seq || ''} ${p.cliente || ''}`
           + ` · ${done ? 'realizado' : 'em rota'}`
