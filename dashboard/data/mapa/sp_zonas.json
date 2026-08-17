@@ -2,505 +2,505 @@
   "zonas": {
     "CENTRO": {
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "LESTE": {
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "NORTE": {
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "OESTE": {
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "SUL": {
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     }
   },
   "distritos": {
     "Aricanduva": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Brasilândia": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Água Rasa": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Alto De Pinheiros": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Anhanguera": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Artur Alvim": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Barra Funda": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Bela Vista": {
       "zona": "CENTRO",
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "Belém": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Bom Retiro": {
       "zona": "CENTRO",
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "Brás": {
       "zona": "CENTRO",
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "Butantã": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Cachoeirinha": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Cambuci": {
       "zona": "CENTRO",
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "Campo Belo": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Campo Grande": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Campo Limpo": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Cangaiba": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Capão Redondo": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Cidade Ademar": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Cidade Tiradentes": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Carrão": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Casa Verde": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Cidade Dutra": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Cidade Lider": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Consolação": {
       "zona": "CENTRO",
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "Cursino": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Grajaú": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Moema": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Iguatemi": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Itaim Paulista": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Ermelino Matarazzo": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Freguesia Do Ó": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Guaianases": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Ipiranga": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Itaim Bibi": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Jabaquara": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Jaguaré": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Jaraguá": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Jardim Ângela": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Itaquera": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Jaçanã": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Jaguara": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Jardim Helena": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Jardim Paulista": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Jardim São Luís": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Morumbi": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Penha": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Perdizes": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Raposo Tavares": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Rio Pequeno": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "José Bonifácio": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Lapa": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Liberdade": {
       "zona": "CENTRO",
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "Limão": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Mandaqui": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Marsilac": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Mooca": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Parelheiros": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Pari": {
       "zona": "CENTRO",
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "Parque Do Carmo": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Pedreira": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Perus": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Pinheiros": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Pirituba": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Ponte Rasa": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "República": {
       "zona": "CENTRO",
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "Sacomã": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Santana": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "São Miguel": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Sapopemba": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Tucuruvi": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Vila Andrade": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Vila Formosa": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Santa Cecília": {
       "zona": "CENTRO",
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "Santo Amaro": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "São Lucas": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "São Mateus": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "São Rafael": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Saúde": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Sé": {
       "zona": "CENTRO",
       "label": "Centro",
-      "color": "#E8DC4A"
+      "color": "#FFE566"
     },
     "Socorro": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Tatuapé": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Tremembé": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Vila Curuçá": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Vila Guilherme": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Vila Jacuí": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Vila Leopoldina": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Vila Maria": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Vila Mariana": {
       "zona": "SUL",
       "label": "Sul",
-      "color": "#8A63E8"
+      "color": "#B967FF"
     },
     "Vila Matilde": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Vila Medeiros": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     },
     "Vila Prudente": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "Vila Sônia": {
       "zona": "OESTE",
       "label": "Oeste",
-      "color": "#CF4CC8"
+      "color": "#FF2ECF"
     },
     "Lajeado": {
       "zona": "LESTE",
       "label": "Leste",
-      "color": "#9ADD41"
+      "color": "#39FF14"
     },
     "São Domingos": {
       "zona": "NORTE",
       "label": "Norte",
-      "color": "#D97720"
+      "color": "#FF9F1C"
     }
   }
 }

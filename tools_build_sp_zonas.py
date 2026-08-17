@@ -10,13 +10,13 @@ ROOT = Path(__file__).resolve().parent
 GEO = ROOT / "dashboard" / "data" / "mapa" / "sp_distritos.geojson"
 OUT = ROOT / "dashboard" / "data" / "mapa" / "sp_zonas.json"
 
-# Cores oficiais do CyberMap (map_renderer.SAO_PAULO_ZONE_CONFIG)
+# Cores neon cyberpunk por zona
 ZONAS = {
-    "CENTRO": {"label": "Centro", "color": "#E8DC4A"},
-    "LESTE": {"label": "Leste", "color": "#9ADD41"},
-    "NORTE": {"label": "Norte", "color": "#D97720"},
-    "OESTE": {"label": "Oeste", "color": "#CF4CC8"},
-    "SUL": {"label": "Sul", "color": "#8A63E8"},
+    "CENTRO": {"label": "Centro", "color": "#FFE566"},
+    "LESTE": {"label": "Leste", "color": "#39FF14"},
+    "NORTE": {"label": "Norte", "color": "#FF9F1C"},
+    "OESTE": {"label": "Oeste", "color": "#FF2ECF"},
+    "SUL": {"label": "Sul", "color": "#B967FF"},
 }
 
 # Agrupamento CyberMap (nomes sem acento para match flexível)

@@ -1291,6 +1291,7 @@
     body.tv-mode .cyber-base,
     body.tv-mode .cyber-base::after,
     body.tv-mode .mapa-stop-dot,
+    body.tv-mode .mapa-tipo-pill,
     body.tv-mode .donut svg,
     body.tv-mode .donut circle {
       border-radius: 999px !important;
@@ -1350,6 +1351,9 @@
       box-shadow: none !important;
     }
     /* Mapa: sem placa/fundo (vence a regra #0a121e acima) */
+    body.tv-mode[data-sector="mapa"],
+    body.tv-mode #panel-mapa,
+    body.tv-mode #panel-mapa .mapa-wrap,
     body.tv-mode #panel-mapa .arm-kpi,
     body.tv-mode #panel-mapa .arm-kpi.ds-kpi,
     body.tv-mode #panel-mapa .ds-kpi,
@@ -1360,8 +1364,14 @@
     body.tv-mode #panel-mapa .mapa-side,
     body.tv-mode #panel-mapa .mapa-side-right,
     body.tv-mode #panel-mapa .mapa-layout,
+    body.tv-mode #panel-mapa .mapa-farol-hero,
     body.tv-mode #panel-mapa #mapaLeaflet,
-    body.tv-mode #panel-mapa #mapaLeaflet.leaflet-container {
+    body.tv-mode #panel-mapa #mapaLeaflet.leaflet-container,
+    body.tv-mode #panel-mapa #mapaFarolLeaflet,
+    body.tv-mode #panel-mapa #mapaFarolLeaflet.leaflet-container,
+    body.tv-mode #panel-mapa .leaflet-container,
+    body.tv-mode #panel-mapa .leaflet-pane,
+    body.tv-mode #panel-mapa .leaflet-map-pane {
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
@@ -1373,6 +1383,13 @@
     body.tv-mode #panel-mapa .ds-kpi::before,
     body.tv-mode #panel-mapa .arm-kpi.ds-kpi::before {
       display: none !important;
+    }
+    body.tv-mode #panel-mapa .mapa-zone-legend,
+    body.tv-mode #panel-mapa .mapa-route-caption {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.85);
     }
     body.tv-mode .resumo-card,
     body.tv-mode .arm-hero-card > header,
@@ -4171,6 +4188,37 @@
       font-variant-numeric: tabular-nums;
       color: #f8fafc;
       font-size: clamp(15px, 1.7vmin, 20px);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mapa-tipo-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50% !important;
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1;
+      flex-shrink: 0;
+      box-shadow: 0 0 10px currentColor;
+    }
+    .mapa-tipo-pill.is-entrega {
+      background: #00f0ff;
+      color: #05070a;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.75);
+    }
+    .mapa-tipo-pill.is-coleta {
+      background: #ffd166;
+      color: #05070a;
+      box-shadow: 0 0 12px rgba(255, 209, 102, 0.75);
+    }
+    .mapa-tipo-pill.is-ambos {
+      background: linear-gradient(135deg, #00f0ff 50%, #ffd166 50%);
+      color: #05070a;
+      font-size: 8px;
     }
     .mapa-placa-pop .meta {
       font-size: 11px;
@@ -4189,6 +4237,11 @@
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: 900; color: #f8fafc;
+    }
+    /* Farol cyberpunk — glow neon nas zonas */
+    #mapaFarolLeaflet path.mapa-zona-neon,
+    .mapa-farol-hero path {
+      filter: drop-shadow(0 0 2px rgba(0, 240, 255, 0.35)) drop-shadow(0 0 6px rgba(255, 46, 207, 0.25));
     }
     .leaflet-div-icon.cyber-base-icon {
       background: transparent;
@@ -9665,11 +9718,11 @@
       } catch (_) {}
       window.__mapaZonas = {
         zonas: {
-          CENTRO: { label: 'Centro', color: '#E8DC4A' },
-          LESTE: { label: 'Leste', color: '#9ADD41' },
-          NORTE: { label: 'Norte', color: '#D97720' },
-          OESTE: { label: 'Oeste', color: '#CF4CC8' },
-          SUL: { label: 'Sul', color: '#8A63E8' },
+          CENTRO: { label: 'Centro', color: '#FFE566' },
+          LESTE: { label: 'Leste', color: '#39FF14' },
+          NORTE: { label: 'Norte', color: '#FF9F1C' },
+          OESTE: { label: 'Oeste', color: '#FF2ECF' },
+          SUL: { label: 'Sul', color: '#B967FF' },
         },
         distritos: {},
       };
@@ -9739,12 +9792,14 @@
             const p = feat.properties || {};
             const color = p.zona_color
               || (zonas.distritos[p.name] && zonas.distritos[p.name].color)
-              || '#64748b';
+              || '#00f0ff';
             return {
-              color: 'rgba(2,6,23,0.55)',
-              weight: 0.7,
+              color: color,
+              weight: 1.35,
+              opacity: 0.95,
               fillColor: color,
-              fillOpacity: 0.88,
+              fillOpacity: 0.72,
+              className: 'mapa-zona-neon',
             };
           },
         }).addTo(map);
@@ -9837,12 +9892,14 @@
             const p = feat.properties || {};
             const color = p.zona_color
               || (zonas.distritos[p.name] && zonas.distritos[p.name].color)
-              || '#334155';
+              || '#00f0ff';
             return {
-              color: 'rgba(0,240,255,0.18)',
-              weight: 1.1,
+              color: color,
+              weight: 1.2,
+              opacity: 0.55,
               fillColor: color,
-              fillOpacity: 0.18,
+              fillOpacity: 0.16,
+              className: 'mapa-zona-neon',
             };
           },
           interactive: false,
@@ -10076,13 +10133,14 @@
           const total = Number(v.servico_total) || 0;
           const tipo = String(v.tipo || 'entrega');
           const badge = tipo === 'coleta' ? 'C' : (tipo === 'ambos' ? 'E+C' : 'E');
+          const pillCls = tipo === 'coleta' ? 'is-coleta' : (tipo === 'ambos' ? 'is-ambos' : 'is-entrega');
           const el = document.createElement('div');
           el.className = 'mapa-placa-pop' + (String(v.placa) === String(mapaSelectedPlaca) ? ' active' : '');
           el.setAttribute('data-placa', String(v.placa || ''));
           el.innerHTML = `
             <div class="donut">${donutSvg(pct, color)}<div class="pct">0%</div></div>
             <div>
-              <div class="name">${esc(String(v.placa || '—'))} <small style="opacity:.65">${badge}</small></div>
+              <div class="name">${esc(String(v.placa || '—'))}<span class="mapa-tipo-pill ${pillCls}">${tipo === 'ambos' ? 'EC' : badge}</span></div>
               <div class="meta">${esc(v.motorista || '—')} · ${feitas}/${total || '—'}</div>
             </div>
             <div class="badge${pct >= 100 ? ' up' : ''}">${Math.round(pct)}%</div>`;
