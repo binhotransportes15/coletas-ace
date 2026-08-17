@@ -37,7 +37,7 @@ SECTOR_SPECS: tuple[tuple[str, str, str, str], ...] = (
     ("31", "pendencia_in_loop", "pendencia_intervalo", "Pendência"),
     ("73", "contratacao_in_loop", "contratacao_intervalo", "Contratação"),
     ("455", "emissao_in_loop", "emissao_intervalo", "Emissão"),
-    ("reciclagem", "reciclagem_in_loop", "reciclagem_intervalo", "Reciclagem"),
+    ("mapa", "mapa_in_loop", "mapa_intervalo", "Mapa"),
 )
 
 
@@ -86,6 +86,10 @@ _JOB_TAG_ALIAS: dict[str, str] = {
     "455": "455",
     "emissao": "455",
     "emissão": "455",
+    "mapa": "mapa",
+    "mapaop": "mapa",
+    "maparotas": "mapa",
+    "cybermap": "mapa",
     "reciclagem": "reciclagem",
     "recicla": "reciclagem",
     "019": "reciclagem",
@@ -105,7 +109,7 @@ _PROGRESS_LADDER: tuple[tuple[float, tuple[str, ...]], ...] = (
     (70.0, ("sheets", "planilha", "apps script", "preparando envio")),
     (82.0, ("enviando", "lote", "atualizando aba", "batch")),
     (92.0, ("sheets:", "atualizada", "sem mudança", "pulou sync")),
-    (100.0, ("bloco ok", "pipeline ok", "sync ok", "automação + sheets", "ctes=", "455 ok", "031 ok", "078 ok")),
+    (100.0, ("bloco ok", "pipeline ok", "sync ok", "automação + sheets", "ctes=", "455 ok", "031 ok", "078 ok", "mapa ok")),
 )
 
 _DONE_MARKERS = ("bloco ok", "pipeline ok", "sync ok", "automação + sheets")

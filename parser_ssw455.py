@@ -1,9 +1,11 @@
 """Parser Excel SSW 455 — Fretes Expedidos/Recebidos (Emissão).
 
 Agrega KPIs do painel com colunas fixas do Excel:
-  H=hora · K=login · BD=peso · BE=cubagem · BF=volumes
-  BI=cancelados · BN=valor mercadoria · BQ=frete
-  DIA / NOITE (coluna H) · Expedidores (coluna K)
+  G=data emissão · H=hora emissão · I=data autorização · J=hora autorização
+  K=login · BD=peso · BE=cubagem · BF=volumes
+  BI=tipo baixa · BN=valor mercadoria · BQ=frete
+  DIA / NOITE (hora de emissão, col. H) · Expedidores (coluna K)
+  Pendentes = com emissão sem autorização · Finalizados = com autorização
 """
 from __future__ import annotations
 
@@ -25,7 +27,7 @@ EXPEDIDORES_455_CSV = CACHE_DIR / "expedidores_455.csv"
 HORAS_455_CSV = CACHE_DIR / "horas_455.csv"
 LAST_455_JSON = CACHE_DIR / "last_run_455.json"
 
-# DIA = 06:00–17:59 · NOITE = 18:00–05:59 (hora de autorização)
+# DIA = 06:00–17:59 · NOITE = 18:00–05:59 (hora de emissão)
 DIA_START = 6
 DIA_END = 18  # exclusive
 
@@ -33,9 +35,12 @@ DIA_END = 18  # exclusive
 COL_K_LOGIN = 11
 
 # Colunas fixas do Excel 455 (letras → métricas do painel)
-# Ordem real SSW: BD=peso · BE=cubagem · BF=qtde volumes · BI=cancel · BN=merc · BQ=frete
+# Ordem real SSW: G/H emissão · I/J autorização · BD=peso · BE=cubagem · BF=volumes · BN=merc · BQ=frete
 COL_FIXED_455: dict[str, str] = {
-    "hora": "H",
+    "data_emissao": "G",
+    "hora": "H",  # hora de emissão (picos / dia-noite)
+    "data_autorizacao": "I",
+    "hora_autorizacao": "J",
     "login": "K",
     "peso": "BD",
     "cubagem": "BE",
@@ -80,6 +85,8 @@ def _cell_by_letter(row: tuple[Any, ...] | list[Any], letters: str) -> Any:
 EMISSAO_FIELDS = [
     "ctrc",
     "data_emissao",
+    "hora_emissao",
+    "data_autorizacao",
     "hora_autorizacao",
     "expedidor",
     "frete",
@@ -109,6 +116,8 @@ RESUMO_FIELDS = [
     "dia",
     "noite",
     "cancelados",
+    "pendentes",
+    "finalizados",
 ]
 
 EXPEDIDOR_FIELDS = ["nome", "nome_exibicao", "qtd", "pct"]
@@ -202,9 +211,11 @@ def _map_headers(headers: list[Any]) -> dict[str, int]:
                     return
 
     pick(("ctrc",), "serie numero", "serie/numero", "nr cte", "n cte", "ctrc", "conhecimento", "cte")
-    pick(("data_emissao",), "data emissao", "dt emissao")
-    pick(("hora",), "hora emissao", "hr emissao", "hora de emissao")
-    pick(("unidade",), "unidade", "filial", "sigla")
+    pick(("data_emissao",), "data de emissao", "data emissao", "dt emissao")
+    pick(("hora",), "hora de emissao", "hora emissao", "hr emissao")
+    pick(("data_autorizacao",), "data de autorizacao", "data autorizacao", "dt autoriz")
+    pick(("hora_autorizacao",), "hora de autorizacao", "hora autorizacao", "hr autoriz", "hora autoriz")
+    pick(("unidade",), "unidade emissora", "unidade", "filial", "sigla")
     pick(("liquidacao",), "liquidacao", "liq ")
     # headers de métricas (se existirem, reforçam; letras fixas sobrescrevem abaixo)
     pick(("peso",), "peso real", "peso total", "peso kg", "peso")
@@ -212,12 +223,14 @@ def _map_headers(headers: list[Any]) -> dict[str, int]:
     pick(("volumes",), "quantidade de volume", "qtde volume", "qtd volume", "volumes", "volume")
     pick(("valor_mercadoria",), "valor da mercadoria", "valor mercadoria", "vl mercadoria")
     pick(("frete",), "valor do frete", "valor frete", "frete total", "vl frete", "frete")
-    pick(("cancelado",), "cancelado", "anulado")
+    pick(("cancelado",), "cancelado", "anulado", "tipo de baixa")
     pick(("expedidor",), "login", "usuario", "usuário", "expedidor")
 
-    # Letras fixas do Excel 455 — fonte da verdade das métricas
+    # Letras fixas do Excel 455 — fonte da verdade das métricas / horários
+    out["data_emissao"] = _col_letter_to_idx(COL_FIXED_455["data_emissao"])
     out["hora"] = _col_letter_to_idx(COL_FIXED_455["hora"])
-    out["hora_autorizacao"] = out["hora"]
+    out["data_autorizacao"] = _col_letter_to_idx(COL_FIXED_455["data_autorizacao"])
+    out["hora_autorizacao"] = _col_letter_to_idx(COL_FIXED_455["hora_autorizacao"])
     out["expedidor"] = _col_letter_to_idx(COL_FIXED_455["login"])
     out["peso"] = _col_letter_to_idx(COL_FIXED_455["peso"])
     out["cubagem"] = _col_letter_to_idx(COL_FIXED_455["cubagem"])
@@ -243,44 +256,95 @@ def _is_junk_row(rec: dict[str, Any]) -> bool:
     return False
 
 
-def _parse_hora(row: dict[str, Any], raw_row: tuple[Any, ...] | list[Any], colmap: dict[str, int]) -> int | None:
-    """Extrai hora 0–23 — prioridade coluna H (emissão)."""
-    for key in ("hora", "hora_autorizacao", "data_emissao"):
-        idx = colmap.get(key)
-        if key == "hora" and idx is None:
-            idx = _col_letter_to_idx(COL_FIXED_455["hora"])
-        if idx is None or idx >= len(raw_row):
-            continue
-        val = raw_row[idx]
-        if isinstance(val, datetime):
-            return val.hour
-        if hasattr(val, "hour") and not isinstance(val, str):
-            try:
-                return int(val.hour)
-            except Exception:
-                pass
-        # Excel time as fraction of day
-        if isinstance(val, (int, float)) and not isinstance(val, bool):
-            try:
-                f = float(val)
-                if 0 <= f < 1.5:  # serial time
-                    return max(0, min(23, int(f * 24) % 24))
-                if 0 <= f <= 23:
-                    return int(f)
-            except Exception:
-                pass
-        text = _clean(val)
-        if not text:
-            continue
+def _parse_hora_value(val: Any) -> int | None:
+    """Extrai hora 0–23 de célula Excel/texto."""
+    if val is None or val == "":
+        return None
+    if isinstance(val, datetime):
+        return val.hour
+    if hasattr(val, "hour") and not isinstance(val, str):
+        try:
+            return int(val.hour)
+        except Exception:
+            pass
+    # Excel time as fraction of day
+    if isinstance(val, (int, float)) and not isinstance(val, bool):
+        try:
+            f = float(val)
+            if 0 <= f < 1.5:  # serial time
+                return max(0, min(23, int(f * 24) % 24))
+            if 0 <= f <= 23:
+                return int(f)
+        except Exception:
+            pass
+    text = _clean(val)
+    if not text:
+        return None
+    m = re.search(r"(\d{1,2}):(\d{2})", text)
+    if m:
+        return max(0, min(23, int(m.group(1))))
+    m = re.search(r"\b(\d{1,2})h", text, re.I)
+    if m:
+        return max(0, min(23, int(m.group(1))))
+    if re.fullmatch(r"\d{1,2}", text):
+        return max(0, min(23, int(text)))
+    return None
+
+
+def _cell_raw(row: tuple[Any, ...] | list[Any], colmap: dict[str, int], key: str) -> Any:
+    idx = colmap.get(key)
+    if idx is None or idx >= len(row):
+        return ""
+    return row[idx]
+
+
+def _fmt_hora_hhmm(hora: int | None, raw: Any = None) -> str:
+    if hora is not None:
+        # preserva minutos se o texto original tiver HH:MM
+        text = _clean(raw)
         m = re.search(r"(\d{1,2}):(\d{2})", text)
         if m:
-            return max(0, min(23, int(m.group(1))))
-        m = re.search(r"\b(\d{1,2})h", text, re.I)
-        if m:
-            return max(0, min(23, int(m.group(1))))
-        if re.fullmatch(r"\d{1,2}", text):
-            return max(0, min(23, int(text)))
-    return None
+            return f"{int(m.group(1)):02d}:{m.group(2)}"
+        return f"{hora:02d}:00"
+    return ""
+
+
+def _has_datetime_parts(*, data: str, hora_txt: str, hora_int: int | None) -> bool:
+    return bool(str(data or "").strip()) or bool(str(hora_txt or "").strip()) or hora_int is not None
+
+
+def _parse_hora(row: dict[str, Any], raw_row: tuple[Any, ...] | list[Any], colmap: dict[str, int]) -> int | None:
+    """Compat: hora de emissão (coluna H)."""
+    return _parse_hora_value(_cell_raw(raw_row, colmap, "hora"))
+
+
+def _enrich_row_times(
+    rec: dict[str, Any],
+    raw_row: tuple[Any, ...] | list[Any],
+    colmap: dict[str, int],
+) -> None:
+    """Preenche emissão / autorização e flags internas."""
+    raw_he = _cell_raw(raw_row, colmap, "hora")
+    raw_ha = _cell_raw(raw_row, colmap, "hora_autorizacao")
+    raw_de = _cell_raw(raw_row, colmap, "data_emissao")
+    raw_da = _cell_raw(raw_row, colmap, "data_autorizacao")
+
+    h_em = _parse_hora_value(raw_he)
+    h_au = _parse_hora_value(raw_ha)
+
+    data_em = _clean(raw_de) or _clean(rec.get("data_emissao"))
+    data_au = _clean(raw_da)
+    hora_em = _fmt_hora_hhmm(h_em, raw_he)
+    hora_au = _fmt_hora_hhmm(h_au, raw_ha)
+
+    rec["data_emissao"] = data_em
+    rec["hora_emissao"] = hora_em
+    rec["data_autorizacao"] = data_au
+    rec["hora_autorizacao"] = hora_au
+    # picos / dia-noite: hora de emissão (filtro do relatório)
+    rec["_hora"] = h_em if h_em is not None else h_au
+    rec["_tem_emissao"] = _has_datetime_parts(data=data_em, hora_txt=hora_em, hora_int=h_em)
+    rec["_tem_autorizacao"] = _has_datetime_parts(data=data_au, hora_txt=hora_au, hora_int=h_au)
 
 
 def _is_cancelado(row: dict[str, str]) -> bool:
@@ -402,6 +466,8 @@ def parse_excel_455(path: Path | str) -> list[dict[str, Any]]:
             rec = {
                 "ctrc": ctrc,
                 "data_emissao": _clean(cell("data_emissao")),
+                "hora_emissao": "",
+                "data_autorizacao": "",
                 "hora_autorizacao": "",
                 "expedidor": login,  # coluna K · login
                 "frete": metrics["frete"],
@@ -413,9 +479,7 @@ def parse_excel_455(path: Path | str) -> list[dict[str, Any]]:
                 "unidade": _clean(cell("unidade")),
                 "liquidacao": _clean(cell("liquidacao")),
             }
-            hora = _parse_hora(rec, row, colmap)
-            rec["hora_autorizacao"] = "" if hora is None else f"{hora:02d}:00"
-            rec["_hora"] = hora
+            _enrich_row_times(rec, row, colmap)
             rec["_cancelado"] = _is_cancelado(rec)
             if _is_junk_row(rec):
                 continue
@@ -443,9 +507,17 @@ def _parse_text_455(path: Path) -> list[dict[str, Any]]:
     rows = list(reader)
     if not rows:
         return []
-    colmap = _map_headers(rows[0])
+
+    header_idx = 0
+    for i, row in enumerate(rows[:12]):
+        joined = " ".join(_norm_header(c) for c in row if c is not None)
+        if "hora de emissao" in joined or "serie numero" in joined:
+            header_idx = i
+            break
+
+    colmap = _map_headers(rows[header_idx])
     out: list[dict[str, Any]] = []
-    for row in rows[1:]:
+    for row in rows[header_idx + 1 :]:
         if not row:
             continue
 
@@ -457,12 +529,24 @@ def _parse_text_455(path: Path) -> list[dict[str, Any]]:
 
         ctrc = _clean(cell("ctrc"))
         if not ctrc:
+            # SSW text: coluna B = Serie/Numero CTRC (índice 1)
+            if len(row) > 1:
+                ctrc = _clean(row[1])
+        if not ctrc:
             continue
+        up = ctrc.upper()
+        if "CTRC" in up and len(ctrc) < 8:
+            continue
+        if ctrc in {"1", "2", "0"} and len(row) > 2 and _clean(row[1]):
+            # evita pegar marcador de linha
+            pass
         login = _login_from_row(row, colmap)
         metrics = _metrics_from_row(row)
         rec = {
             "ctrc": ctrc,
             "data_emissao": _clean(cell("data_emissao")),
+            "hora_emissao": "",
+            "data_autorizacao": "",
             "hora_autorizacao": "",
             "expedidor": login,  # coluna K · login
             "frete": metrics["frete"],
@@ -474,9 +558,7 @@ def _parse_text_455(path: Path) -> list[dict[str, Any]]:
             "unidade": _clean(cell("unidade")),
             "liquidacao": _clean(cell("liquidacao")),
         }
-        hora = _parse_hora(rec, row, colmap)
-        rec["hora_autorizacao"] = "" if hora is None else f"{hora:02d}:00"
-        rec["_hora"] = hora
+        _enrich_row_times(rec, row, colmap)
         rec["_cancelado"] = _is_cancelado(rec)
         if _is_junk_row(rec):
             continue
@@ -510,6 +592,10 @@ def analyze_reports_455(
     cubagem = sum(float(r.get("cubagem") or 0) for r in rows)
     frete = sum(float(r.get("frete") or 0) for r in rows)
     cancelados = sum(1 for r in rows if r.get("_cancelado"))
+    pendentes = sum(
+        1 for r in rows if r.get("_tem_emissao") and not r.get("_tem_autorizacao") and not r.get("_cancelado")
+    )
+    finalizados = sum(1 for r in rows if r.get("_tem_autorizacao") and not r.get("_cancelado"))
 
     dia = 0
     noite = 0
@@ -577,6 +663,8 @@ def analyze_reports_455(
         "dia": dia,
         "noite": noite,
         "cancelados": cancelados,
+        "pendentes": pendentes,
+        "finalizados": finalizados,
     }
 
     # CSV detalhe (sem campos internos)
@@ -586,6 +674,8 @@ def analyze_reports_455(
             {
                 "ctrc": r.get("ctrc"),
                 "data_emissao": r.get("data_emissao"),
+                "hora_emissao": r.get("hora_emissao"),
+                "data_autorizacao": r.get("data_autorizacao"),
                 "hora_autorizacao": r.get("hora_autorizacao"),
                 "expedidor": r.get("expedidor"),
                 "frete": r.get("frete"),
@@ -619,7 +709,8 @@ def analyze_reports_455(
     )
     status(
         f"[455] OK · CTEs={ctes} frete={resumo['frete_fmt']} "
-        f"dia={dia} noite={noite} cancel={cancelados} exp={len(expedidores)}"
+        f"dia={dia} noite={noite} cancel={cancelados} "
+        f"pend={pendentes} fin={finalizados} exp={len(expedidores)}"
     )
     return {
         "ok": True,

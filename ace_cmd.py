@@ -73,6 +73,9 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "emissao_intervalo": ("automacao", "str", False),
     "reciclagem_in_loop": ("automacao", "bool", False),
     "reciclagem_intervalo": ("automacao", "str", False),
+    "mapa_in_loop": ("automacao", "bool", False),
+    "mapa_intervalo": ("automacao", "str", False),
+    "cybermap_path": ("automacao", "str", False),
     # Sheets / dashboard
     "enable_sheets": ("cloud", "bool", False),
     "apps_script_url": ("cloud", "str", False),
@@ -144,6 +147,7 @@ def _save_payload(payload: dict[str, Any]) -> None:
         contratacao_intervalo=str(payload.get("contratacao_intervalo") or ""),
         emissao_intervalo=str(payload.get("emissao_intervalo") or ""),
         reciclagem_intervalo=str(payload.get("reciclagem_intervalo") or "30m"),
+        mapa_intervalo=str(payload.get("mapa_intervalo") or "10m"),
         enable_sheets=bool(payload.get("enable_sheets", False)),
         apps_script_url=str(payload.get("apps_script_url") or ""),
         apps_script_token=str(payload.get("apps_script_token") or ""),
@@ -160,6 +164,8 @@ def _save_payload(payload: dict[str, Any]) -> None:
         contratacao_in_loop=bool(payload.get("contratacao_in_loop", True)),
         emissao_in_loop=bool(payload.get("emissao_in_loop", False)),
         reciclagem_in_loop=bool(payload.get("reciclagem_in_loop", False)),
+        mapa_in_loop=bool(payload.get("mapa_in_loop", True)),
+        cybermap_path=str(payload.get("cybermap_path") or r"D:\MapaCustoRegiaoSP"),
         ciclo_paralelo=bool(payload.get("ciclo_paralelo", True)),
         modo_local=bool(payload.get("modo_local", False)),
         dashboard_lan=bool(payload.get("dashboard_lan", False)),
@@ -249,6 +255,10 @@ _CMD_TO_SECTOR: dict[str, str] = {
     "emissão": "455",
     "sync455": "455",
     "syncemissao": "455",
+    "mapa": "mapa",
+    "mapaop": "mapa",
+    "maparotas": "mapa",
+    "cybermap": "mapa",
     "reciclagem": "reciclagem",
     "recicla": "reciclagem",
     "019": "reciclagem",
@@ -280,7 +290,7 @@ def sectors_for_command(raw: str) -> list[str]:
         return [sid]
     # atalhos compostos: "atualizar tudo" já resolvido; sync all
     if head in {"all", "tudo"}:
-        return ["dist", "78", "31", "73", "455", "reciclagem"]
+        return ["dist", "78", "31", "73", "455", "mapa"]
     return []
 
 
@@ -415,7 +425,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     pend_on = bool(payload.get("pendencia_in_loop", True))
     ctr_on = bool(payload.get("contratacao_in_loop", True))
     emi_on = bool(payload.get("emissao_in_loop", False))
-    rec_on = bool(payload.get("reciclagem_in_loop", False))
+    mapa_on = bool(payload.get("mapa_in_loop", True))
     para_on = bool(payload.get("ciclo_paralelo", True))
     local_on = bool(payload.get("modo_local", False))
 
@@ -427,7 +437,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
         f"{status_online('031') if pend_on else status_idle('031·OFF')}  "
         f"{status_online('073') if ctr_on else status_idle('073·OFF')}  "
         f"{status_online('455') if emi_on else status_idle('455·OFF')}  "
-        f"{status_online('019') if rec_on else status_idle('019·OFF')}  "
+        f"{status_online('MAPA') if mapa_on else status_idle('MAPA·OFF')}  "
         f"{status_online('PARA') if para_on else status_idle('SEQ')}  "
         f"{status_online('LOCAL') if local_on else status_idle('CLOUD')}"
     )
@@ -501,11 +511,11 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print(f"    {muted('contratacao_in_loop'.ljust(18))} {str(ctr_on).lower()}")
     print(f"  {g('[EMISSAO 455]', bold=True)}")
     print(f"    {muted('emissao_in_loop'.ljust(18))} {str(emi_on).lower()}")
-    print(f"  {g('[RECICLAGEM 019·081]', bold=True)}")
-    print(f"    {muted('reciclagem_in_loop'.ljust(18))} {str(rec_on).lower()}")
+    print(f"  {g('[MAPA OPERACIONAL]', bold=True)}")
+    print(f"    {muted('mapa_in_loop'.ljust(18))} {str(mapa_on).lower()}")
     print(
-        f"    {muted('reciclagem_intervalo'.ljust(18))} "
-        f"{payload.get('reciclagem_intervalo') or '30m'}"
+        f"    {muted('mapa_intervalo'.ljust(18))} "
+        f"{payload.get('mapa_intervalo') or '10m'}"
     )
     print(f"  {g('[PARALELO]', bold=True)}")
     print(f"    {muted('ciclo_paralelo'.ljust(18))} {str(para_on).lower()}")
@@ -521,7 +531,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print(f"    Dist  {g('50')} coleta  {g('103')} torres  {g('36')} entrega  {g('225')} agenda")
     print(f"    Arm   {g('78')} patio   {g('177')} conf.   {g('607')} nomes   {g('sync78')}")
     print(f"    Pend  {g('31')} (10 cod.)  {g('sync31')}   Contr {g('73')}  {g('73 so73')}")
-    print(f"    Emis  {g('455')} / {g('emissao')}  {g('sync455')}   Recic {g('reciclagem')} 019·081")
+    print(f"    Emis  {g('455')} / {g('emissao')}  {g('sync455')}   Mapa {g('mapa')} (CyberMap)")
     print(f"    Sync  {g('sync')} dist   Loop {g('/automatica')}  {g('piloto_sites')}  {g('sites')}")
     print(f"    Local {g('local')}  {g('lan')}  {g('dash')}   Config {g('/e')}  {g('show')}  {g('help')}")
     print(f"    {g('/viz')} on|off   {g('brand')} ANSI   {g('crt')} CRT   {g('sair')}")
@@ -577,6 +587,8 @@ def cmd_help() -> str:
             "    73     073 tela → por destino: 200 (frete) · sem 076",
             "    73 so73     so 073 (sem frete 200)",
             "    73 sem200   sem manifesto 200",
+            "  Mapa Operacional",
+            "    mapa   puxa 36 + monta rotas (CyberMap)",
             "",
             "SYNC (so envia planilha / nao baixa SSW)",
             "    sync      distribuicao (50/103/36/225)",
@@ -592,6 +604,7 @@ def cmd_help() -> str:
             "    /e armazem_in_loop true|false",
             "    /e pendencia_in_loop true|false",
             "    /e contratacao_in_loop true|false",
+            "    /e mapa_in_loop true|false   · /e mapa_intervalo 10m",
             "",
             "TV / SITES",
             "    piloto_sites   Sheets ON · GitHub OFF · publish_target=sites",
@@ -663,6 +676,8 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "73_loop": "contratacao_in_loop",
         "emissao_loop": "emissao_in_loop",
         "455_loop": "emissao_in_loop",
+        "mapa_loop": "mapa_in_loop",
+        "map_loop": "mapa_in_loop",
         "reciclagem_loop": "reciclagem_in_loop",
         "recicla_loop": "reciclagem_in_loop",
         "019_loop": "reciclagem_in_loop",
@@ -672,6 +687,7 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "pendencia_tempo": "pendencia_intervalo",
         "contratacao_tempo": "contratacao_intervalo",
         "emissao_tempo": "emissao_intervalo",
+        "mapa_tempo": "mapa_intervalo",
         "paralelo": "ciclo_paralelo",
         "parallel": "ciclo_paralelo",
         "ciclo_paralelo": "ciclo_paralelo",
@@ -1045,6 +1061,23 @@ def run_sync_455() -> str:
     return f"sync455: {r.get('error') or r.get('reason') or r}"
 
 
+def run_mapa_cmd() -> str:
+    """Puxa entrega 36 no SSW e monta o Mapa Operacional (CyberMap)."""
+    from pipeline import run_full_pipeline_36
+
+    print("\n=== Mapa Operacional (36 + CyberMap) ===")
+    result = run_full_pipeline_36(
+        headless=_cfg_headless(),
+        on_status=_on_status,
+    )
+    mapa = result.get("mapa") or {}
+    tot = (mapa.get("payload") or {}).get("totais") or {}
+    return (
+        f"mapa OK · periodo={result.get('period') or '—'} · "
+        f"veiculos={tot.get('veiculos')} paradas={tot.get('paradas')}"
+    )
+
+
 def run_sync_31() -> str:
     from publish_dashboard import publish_pendencia_local
     from sheets_sync_31 import sync_sheets_31
@@ -1292,7 +1325,7 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
             "pendencia_in_loop": getattr(cfg, "pendencia_in_loop", True),
             "contratacao_in_loop": getattr(cfg, "contratacao_in_loop", True),
             "emissao_in_loop": getattr(cfg, "emissao_in_loop", False),
-            "reciclagem_in_loop": getattr(cfg, "reciclagem_in_loop", False),
+            "mapa_in_loop": getattr(cfg, "mapa_in_loop", True),
             "ciclo_paralelo": getattr(cfg, "ciclo_paralelo", True),
             "loop_intervalo": cfg.loop_intervalo,
             "unit": getattr(load_credentials(), "unit", ""),
@@ -1318,11 +1351,11 @@ def run_automatica_cmd(interval_arg: str | None = None, *, return_to_menu: bool 
         print(f"  {status_online('455')} Emissão no loop")
     else:
         print(f"  {status_idle('455')} fora do loop (rode `455` sob demanda)")
-    if getattr(cfg, "reciclagem_in_loop", False):
-        iv = getattr(cfg, "reciclagem_intervalo", None) or "30m"
-        print(f"  {status_online('019')} Reciclagem no loop (019·081 · {iv})")
+    if getattr(cfg, "mapa_in_loop", True):
+        iv = getattr(cfg, "mapa_intervalo", None) or "10m"
+        print(f"  {status_online('MAPA')} Mapa Operacional no loop (36 · {iv})")
     else:
-        print(f"  {status_idle('019')} fora do loop (rode `reciclagem` sob demanda)")
+        print(f"  {status_idle('MAPA')} fora do loop (rode `mapa` sob demanda)")
     if getattr(cfg, "ciclo_paralelo", True):
         print(f"  {status_online('PARA')} ciclo paralelo (setores juntos)")
     else:
@@ -1453,8 +1486,10 @@ def _execute_line_body(
         return (run_sync_455(), payload)
     if cmd in {"177", "/177", "conferentes", "/conferentes"}:
         return (run_pipeline_177_cmd(), _load_payload())
-    if cmd in {"607", "/607", "0607", "/0607", "mapa", "nomes"}:
+    if cmd in {"607", "/607", "0607", "/0607", "nomes", "conferentes_nomes"}:
         return (run_pipeline_0607_cmd(), _load_payload())
+    if cmd in {"mapa", "/mapa", "mapaop", "maparotas", "cybermap"}:
+        return (run_mapa_cmd(), payload)
     if cmd in {"sync78", "/sync78", "sheets78"}:
         return (run_sync_78(), payload)
     if cmd in {"3", "sync", "/sync"}:
@@ -1656,8 +1691,11 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0].lstrip("/").lower() in {"177", "conferentes", "once177"}:
         print(run_pipeline_177_cmd())
         return 0
-    if args and args[0].lstrip("/").lower() in {"607", "0607", "mapa", "nomes"}:
+    if args and args[0].lstrip("/").lower() in {"607", "0607", "nomes"}:
         print(run_pipeline_0607_cmd())
+        return 0
+    if args and args[0].lstrip("/").lower() in {"mapa", "mapaop", "maparotas", "cybermap"}:
+        print(run_mapa_cmd())
         return 0
     if args and args[0].lstrip("/").lower() in {"viz", "visualizar"}:
         payload = _load_payload()
@@ -1760,9 +1798,11 @@ def main(argv: list[str] | None = None) -> int:
             elif cmd in {"177", "/177", "conferentes", "/conferentes"}:
                 message = run_pipeline_177_cmd()
                 payload = _load_payload()
-            elif cmd in {"607", "/607", "0607", "/0607", "mapa", "nomes"}:
+            elif cmd in {"607", "/607", "0607", "/0607", "nomes", "conferentes_nomes"}:
                 message = run_pipeline_0607_cmd()
                 payload = _load_payload()
+            elif cmd in {"mapa", "/mapa", "mapaop", "maparotas", "cybermap"}:
+                message = run_mapa_cmd()
             elif cmd in {"sync78", "/sync78", "sheets78"}:
                 message = run_sync_78()
             elif cmd in {"sync31", "/sync31", "sheets31"}:

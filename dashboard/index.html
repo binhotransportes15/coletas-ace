@@ -7,6 +7,8 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <title>BINHO · OPERACIONAL</title>
   <script src="config.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <style>
     :root {
       color-scheme: dark;
@@ -1619,7 +1621,8 @@
     body.tv-mode #panel-armazem:not([hidden]),
     body.tv-mode #panel-pendencia:not([hidden]),
     body.tv-mode #panel-contratacao:not([hidden]),
-    body.tv-mode #panel-emissao:not([hidden]) {
+    body.tv-mode #panel-emissao:not([hidden]),
+    body.tv-mode #panel-mapa:not([hidden]) {
       display: flex !important;
       flex-direction: column !important;
       overflow: hidden !important;
@@ -1632,7 +1635,8 @@
     body.tv-mode #panel-armazem .arm-wrap,
     body.tv-mode #panel-pendencia .pen-wrap,
     body.tv-mode #panel-contratacao .ctr-wrap,
-    body.tv-mode #panel-emissao .emi-wrap {
+    body.tv-mode #panel-emissao .emi-wrap,
+    body.tv-mode #panel-mapa .mapa-wrap {
       flex: 1 1 auto !important;
       min-height: 0 !important;
       height: auto !important;
@@ -3844,6 +3848,221 @@
     body.tv-mode .emi-kpi .val { font-size: clamp(26px, 3.6vmin, 48px); }
     body.tv-mode .emi-chart { min-height: clamp(180px, 32vh, 420px); }
 
+    /* —— Mapa Operacional —— */
+    .mapa-wrap {
+      height: 100vh;
+      padding: 10px 12px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+    .mapa-layout {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.9fr) minmax(0, 2.1fr);
+      gap: 10px;
+      min-height: 0;
+      height: 100%;
+    }
+    .mapa-side {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .mapa-kpis {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .mapa-kpi {
+      background: var(--panel);
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .mapa-kpi.wide {
+      grid-column: 1 / -1;
+    }
+    .mapa-kpi .lbl {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .mapa-kpi .val {
+      font-size: clamp(22px, 3vmin, 36px);
+      font-weight: 900;
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+    }
+    .mapa-farol-card {
+      background: rgba(2, 6, 23, 0.55);
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: clamp(180px, 28vh, 320px);
+      overflow: hidden;
+      flex: 0 0 auto;
+    }
+    .mapa-farol-card > header {
+      padding: 8px 12px 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .mapa-farol-card > header h2 {
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #e2e8f0;
+    }
+    .mapa-farol-card > header .meta {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+    }
+    .mapa-farol-body {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      padding: 4px 10px 10px;
+      min-height: 0;
+      flex: 1;
+    }
+    .mapa-farol-pct {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 72px;
+    }
+    .mapa-farol-pct .big {
+      font-size: clamp(28px, 4vmin, 44px);
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .mapa-farol-pct .lab {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .mapa-farol-pct.is-crit .big { color: #f87171; }
+    .mapa-farol-pct.is-warn .big { color: #fbbf24; }
+    .mapa-farol-pct.is-ok .big { color: #4ade80; }
+    #mapaFarolLeaflet {
+      width: 100%;
+      height: 100%;
+      min-height: 140px;
+      border-radius: 8px;
+      background: #020617;
+    }
+    .mapa-list-card {
+      flex: 1;
+      min-height: 0;
+      background: rgba(2, 6, 23, 0.55);
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .mapa-list-card header {
+      padding: 10px 12px 6px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .mapa-list-card header h2 {
+      margin: 0;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .mapa-list {
+      overflow: auto;
+      padding: 4px 10px 12px;
+      flex: 1;
+    }
+    .mapa-placa {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
+    .mapa-placa:hover, .mapa-placa.active {
+      background: rgba(56, 189, 248, 0.08);
+      border-color: rgba(56, 189, 248, 0.35);
+    }
+    .mapa-placa .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #38bdf8;
+    }
+    .mapa-placa .pl {
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #e2e8f0;
+    }
+    .mapa-placa .meta {
+      font-size: 11px;
+      color: #64748b;
+      grid-column: 2 / -1;
+    }
+    .mapa-placa .n {
+      font-weight: 800;
+      color: #94a3b8;
+    }
+    .mapa-map-card {
+      min-height: 0;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      background: #020617;
+    }
+    #mapaLeaflet {
+      width: 100%;
+      height: 100%;
+      min-height: 320px;
+      background: #020617;
+    }
+    .mapa-aviso {
+      position: absolute;
+      left: 12px; right: 12px; bottom: 12px;
+      z-index: 500;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #fbbf24;
+      font-weight: 700;
+    }
+    body.tv-mode #panel-mapa .mapa-wrap {
+      max-width: none;
+      width: 100%;
+    }
+    body.tv-mode .mapa-kpi .val { font-size: clamp(28px, 4vmin, 48px); }
+    @media (max-width: 980px) {
+      .mapa-layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(360px, 1fr); }
+      .mapa-wrap { height: auto; min-height: 100vh; }
+    }
+
     .pen-torres {
       height: 100%;
       max-height: none;
@@ -5146,10 +5365,10 @@
           <span class="name">Pendência</span>
           <span class="desc">Ocorrências · ofensores · CTRCs</span>
         </button>
-        <button type="button" class="sector-card" data-sector="reciclagem">
-          <span class="tag">019 · 081</span>
-          <span class="name">Reciclagem</span>
-          <span class="desc">Sem transferência · Sem saída</span>
+        <button type="button" class="sector-card" data-sector="mapa">
+          <span class="tag">36 · rotas</span>
+          <span class="name">Mapa Operacional</span>
+          <span class="desc">Veículos na rua · rotas CyberMap</span>
         </button>
         <button type="button" class="sector-card" data-sector="emissao">
           <span class="tag">455</span>
@@ -5851,6 +6070,89 @@
       </div>
     </div>
   </div>
+  <div id="panel-mapa" class="sector-root" hidden>
+    <div class="mapa-wrap">
+      <div class="arm-top ds-header">
+        <div class="arm-brand">
+          <img
+            class="js-sector-menu"
+            src="logo-binho.png"
+            alt="BINHO Transportes"
+            title="Trocar setor"
+            role="button"
+            tabindex="0"
+          />
+          <div class="arm-titles">
+            <div class="kicker" id="mapaKicker">BINHO · OPERACIONAL · MAPA</div>
+            <h1 id="mapaTitle">MAPA OPERACIONAL</h1>
+          </div>
+        </div>
+        <nav class="nav">
+          <button type="button" class="nav-btn tv-btn" id="btnTvMapa" title="Modo TV / tela inteira (F)">TV</button>
+        </nav>
+        <div class="clock-box">
+          <div class="lbl">Tempo real</div>
+          <div class="time" id="mapaClock">--:--:--</div>
+          <div class="date" id="mapaDate">—</div>
+        </div>
+      </div>
+      <div class="mapa-layout" id="mapaLayout">
+        <aside class="mapa-side">
+          <div class="mapa-kpis">
+            <div class="mapa-kpi">
+              <div class="lbl">Na rua</div>
+              <div class="val" id="mapaVeic">0</div>
+            </div>
+            <div class="mapa-kpi">
+              <div class="lbl">Paradas</div>
+              <div class="val" id="mapaParadas">0</div>
+            </div>
+            <div class="mapa-kpi">
+              <div class="lbl">Frete entrega</div>
+              <div class="val" id="mapaFreteEnt" style="font-size:clamp(16px,2.2vmin,26px)">R$ 0</div>
+            </div>
+            <div class="mapa-kpi">
+              <div class="lbl">Peso entrega</div>
+              <div class="val" id="mapaPesoEnt" style="font-size:clamp(16px,2.2vmin,26px)">0 kg</div>
+            </div>
+            <div class="mapa-kpi">
+              <div class="lbl">Frete coleta</div>
+              <div class="val" id="mapaFreteCol" style="font-size:clamp(16px,2.2vmin,26px)">R$ 0</div>
+            </div>
+            <div class="mapa-kpi">
+              <div class="lbl">Peso coleta</div>
+              <div class="val" id="mapaPesoCol" style="font-size:clamp(16px,2.2vmin,26px)">0 kg</div>
+            </div>
+          </div>
+          <section class="mapa-farol-card" aria-label="Serviço realizado São Paulo">
+            <header>
+              <h2>São Paulo · serviço</h2>
+              <div class="meta" id="mapaFarolMeta">coleta + entrega</div>
+            </header>
+            <div class="mapa-farol-body">
+              <div class="mapa-farol-pct is-ok" id="mapaFarolPctBox">
+                <div class="big" id="mapaFarolPct">—</div>
+                <div class="lab" id="mapaFarolLab">realizado</div>
+              </div>
+              <div id="mapaFarolLeaflet" aria-label="Mapa farol São Paulo"></div>
+            </div>
+          </section>
+          <section class="mapa-list-card">
+            <header>
+              <h2>Veículos</h2>
+              <div class="meta" id="mapaAtualizado">—</div>
+            </header>
+            <div class="mapa-list" id="mapaLista"></div>
+          </section>
+          <div class="arm-err" id="mapaErr" hidden></div>
+        </aside>
+        <section class="mapa-map-card">
+          <div id="mapaLeaflet" aria-label="Mapa de rotas"></div>
+          <div class="mapa-aviso" id="mapaAviso" hidden></div>
+        </section>
+      </div>
+    </div>
+  </div>
   <div id="panel-emissao" class="sector-root" hidden>
     <div class="emi-wrap">
       <div class="arm-top emi-top ds-header">
@@ -5889,15 +6191,15 @@
             <div class="val" id="emiCtes">0</div>
             <div class="sub" id="emiPeriodo">—</div>
           </div>
-          <div class="emi-kpi is-muted">
+          <div class="emi-kpi is-warn" id="emiKpiPendentes">
             <div class="lbl">Pendentes</div>
-            <div class="val" id="emiPendentes">—</div>
-            <div class="sub">sem fonte 455</div>
+            <div class="val" id="emiPendentes">0</div>
+            <div class="sub">aguardando autorização</div>
           </div>
-          <div class="emi-kpi is-muted">
-            <div class="lbl">Erros</div>
-            <div class="val" id="emiErros">—</div>
-            <div class="sub">sem fonte 455</div>
+          <div class="emi-kpi is-ok" id="emiKpiFinalizados">
+            <div class="lbl">Finalizados</div>
+            <div class="val" id="emiErros">0</div>
+            <div class="sub">com autorização</div>
           </div>
           <div class="emi-kpi is-crit">
             <div class="lbl">Cancelados</div>
@@ -5952,12 +6254,12 @@
                   <span class="v" id="emiDesde">—</span>
                 </div>
                 <div class="emi-status-row is-ok" id="emiRowPend">
-                  <span class="k">Pendências</span>
-                  <span class="v" id="emiStatPend">—</span>
+                  <span class="k">Pendentes</span>
+                  <span class="v" id="emiStatPend">0</span>
                 </div>
                 <div class="emi-status-row is-ok" id="emiRowErr">
-                  <span class="k">Erros</span>
-                  <span class="v" id="emiStatErr">—</span>
+                  <span class="k">Finalizados</span>
+                  <span class="v" id="emiStatErr">0</span>
                 </div>
                 <div class="emi-status-row" id="emiRowCanc">
                   <span class="k">Cancelamentos</span>
@@ -6100,6 +6402,15 @@
     let emiRefreshTimer = null;
     let lastGoodRecData = null;
     let recRefreshTimer = null;
+    let mapaRefreshTimer = null;
+    let lastMapaData = null;
+    let lastMapaStamp = null;
+    let mapaLeaflet = null;
+    let mapaLayers = [];
+    let mapaSelectedPlaca = null;
+    let mapaFarolLeaflet = null;
+    let mapaFarolLayer = null;
+    let lastMapaFarolPct = null;
     const JANELA_MIN = 120;
     const PLACA_VISIBLE = 3;
     const PRAZO_VISIBLE = 4;
@@ -6123,7 +6434,7 @@
       armazem: { id: 'armazem', label: 'Armazém', ready: true, panel: 'armazem' },
       contratacao: { id: 'contratacao', label: 'Contratação', ready: true, panel: 'contratacao' },
       pendencia: { id: 'pendencia', label: 'Pendência', ready: true, panel: 'pendencia' },
-      reciclagem: { id: 'reciclagem', label: 'Reciclagem', ready: true, panel: 'reciclagem' },
+      mapa: { id: 'mapa', label: 'Mapa Operacional', ready: true, panel: 'mapa' },
       emissao: { id: 'emissao', label: 'Emissão', ready: true, panel: 'emissao' },
     };
     let CURRENT_SECTOR = 'distribuicao';
@@ -6251,6 +6562,14 @@
       }
       if (typeof updateEmiDesdeUltima === 'function') {
         try { updateEmiDesdeUltima(now); } catch (_) { /* ignore */ }
+      }
+      const mapaClock = document.getElementById('mapaClock');
+      const mapaDate = document.getElementById('mapaDate');
+      if (mapaClock) mapaClock.textContent = time;
+      if (mapaDate) {
+        mapaDate.textContent = now.toLocaleDateString('pt-BR', {
+          weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+        });
       }
       const recClock = document.getElementById('recClock');
       const recDate = document.getElementById('recDate');
@@ -6837,6 +7156,7 @@
         document.getElementById('btnTvPendencia'),
         document.getElementById('btnTvContratacao'),
         document.getElementById('btnTvEmissao'),
+        document.getElementById('btnTvMapa'),
         document.getElementById('btnTvReciclagem'),
       ];
       btns.forEach((btn) => {
@@ -7393,8 +7713,8 @@
       let id = String(raw || 'distribuicao').toLowerCase();
       if (id === 'dist' || id === 'ops' || id === 'operacao') id = 'distribuicao';
       if (id === 'agenda') id = 'agendamento';
-      if (id === 'rastreamento' || id === 'recicla' || id === '019' || id === '081' || id === '19' || id === '81') {
-        id = 'reciclagem';
+      if (id === 'rastreamento' || id === 'recicla' || id === 'reciclagem' || id === '019' || id === '081' || id === '19' || id === '81' || id === 'mapa') {
+        id = 'mapa';
       }
       // legado: coleta/entrega/agendamento eram “setores” → agora vistas da Distribuição
       if (isOpsView(id)) id = 'distribuicao';
@@ -7656,13 +7976,12 @@
         penRefreshTimer = null;
       }
 
-      if (CURRENT_SECTOR === 'reciclagem') {
-        applyRecViews();
-        refreshReciclagem();
-        if (!recRefreshTimer) recRefreshTimer = setInterval(refreshReciclagem, 15000);
-      } else if (recRefreshTimer) {
-        clearInterval(recRefreshTimer);
-        recRefreshTimer = null;
+      if (CURRENT_SECTOR === 'mapa') {
+        refreshMapa();
+        if (!mapaRefreshTimer) mapaRefreshTimer = setInterval(refreshMapa, 30000);
+      } else if (mapaRefreshTimer) {
+        clearInterval(mapaRefreshTimer);
+        mapaRefreshTimer = null;
       }
 
       if (CURRENT_SECTOR === 'emissao') {
@@ -8947,6 +9266,354 @@
       }).join('');
     }
 
+    function mapaFarolTone(pct) {
+      if (pct == null || !Number.isFinite(pct)) return { tone: 'ok', color: '#64748b', label: 'sem dados' };
+      if (pct < 30) return { tone: 'crit', color: '#ef4444', label: 'crítico < 30%' };
+      if (pct <= 70) return { tone: 'warn', color: '#f59e0b', label: 'atenção ≤ 70%' };
+      return { tone: 'ok', color: '#22c55e', label: 'ok > 70%' };
+    }
+
+    function ensureMapaFarolLeaflet() {
+      const el = document.getElementById('mapaFarolLeaflet');
+      if (!el || typeof L === 'undefined') return null;
+      if (mapaFarolLeaflet) {
+        setTimeout(() => { try { mapaFarolLeaflet.invalidateSize(); } catch (_) {} }, 80);
+        return mapaFarolLeaflet;
+      }
+      mapaFarolLeaflet = L.map(el, {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        keyboard: false,
+        tap: false,
+      });
+      // fundo neutro (sem tiles) — só o polígono de SP
+      mapaFarolLeaflet.setView([-23.55, -46.63], 10);
+      return mapaFarolLeaflet;
+    }
+
+    async function loadMapaFarolGeo() {
+      if (window.__mapaFarolGeo) return window.__mapaFarolGeo;
+      const res = await fetch('data/mapa/sp_distritos.geojson?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('GeoJSON SP ausente');
+      window.__mapaFarolGeo = await res.json();
+      return window.__mapaFarolGeo;
+    }
+
+    function paintMapaFarol(pct, detail) {
+      lastMapaFarolPct = pct;
+      const box = document.getElementById('mapaFarolPctBox');
+      const pctEl = document.getElementById('mapaFarolPct');
+      const lab = document.getElementById('mapaFarolLab');
+      const meta = document.getElementById('mapaFarolMeta');
+      const info = mapaFarolTone(pct);
+      if (pctEl) {
+        pctEl.textContent = pct == null || !Number.isFinite(pct)
+          ? '—'
+          : `${Math.round(pct)}%`;
+      }
+      if (box) {
+        box.classList.remove('is-ok', 'is-warn', 'is-crit');
+        box.classList.add(`is-${info.tone}`);
+      }
+      if (lab) lab.textContent = info.label;
+      if (meta) meta.textContent = detail || 'coleta + entrega';
+
+      const map = ensureMapaFarolLeaflet();
+      if (!map) return;
+      const color = info.color;
+      const applyStyle = () => {
+        if (mapaFarolLayer) {
+          mapaFarolLayer.setStyle({
+            color: '#0f172a',
+            weight: 0.6,
+            fillColor: color,
+            fillOpacity: 0.88,
+          });
+        }
+      };
+      if (mapaFarolLayer) {
+        applyStyle();
+        setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 60);
+        return;
+      }
+      loadMapaFarolGeo().then((geo) => {
+        if (mapaFarolLayer) {
+          try { map.removeLayer(mapaFarolLayer); } catch (_) {}
+          mapaFarolLayer = null;
+        }
+        mapaFarolLayer = L.geoJSON(geo, {
+          style: {
+            color: '#0f172a',
+            weight: 0.6,
+            fillColor: color,
+            fillOpacity: 0.88,
+          },
+        }).addTo(map);
+        try {
+          map.fitBounds(mapaFarolLayer.getBounds(), { padding: [6, 6], maxZoom: 11 });
+        } catch (_) {}
+        setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 80);
+      }).catch(() => {
+        if (lab) lab.textContent = 'mapa SP indisponível';
+      });
+    }
+
+    async function refreshMapaFarolServico() {
+      try {
+        let col = null;
+        let ent = null;
+        // Prefer CSV locais da distribuição
+        try {
+          const rows = await loadCsvLocal('data/resumo_103.csv');
+          col = rows && rows[0];
+        } catch (_) {}
+        try {
+          const rows = await loadCsvLocal('data/resumo_36.csv');
+          ent = rows && rows[0];
+        } catch (_) {}
+        const n = (v) => {
+          const x = Number(String(v ?? '').replace(/\./g, '').replace(',', '.'));
+          return Number.isFinite(x) ? x : 0;
+        };
+        const colReal = n(col?.realizada);
+        const colTot = n(col?.total);
+        const entReal = n(ent?.realizada);
+        const entTot = n(ent?.total);
+        const real = colReal + entReal;
+        const tot = colTot + entTot;
+        const pct = tot > 0 ? (real / tot) * 100 : null;
+        const detail = [
+          colTot ? `coleta ${colReal}/${colTot}` : null,
+          entTot ? `entrega ${entReal}/${entTot}` : null,
+        ].filter(Boolean).join(' · ') || 'coleta + entrega';
+        paintMapaFarol(pct, detail);
+      } catch (_) {
+        paintMapaFarol(null, 'coleta + entrega');
+      }
+    }
+
+    function mapaPlateColor(i) {
+      const palette = ['#38bdf8', '#4ade80', '#fbbf24', '#a78bfa', '#f472b6', '#2dd4bf', '#fb923c'];
+      return palette[i % palette.length];
+    }
+
+    function ensureMapaLeaflet() {
+      const el = document.getElementById('mapaLeaflet');
+      if (!el || typeof L === 'undefined') return null;
+      if (mapaLeaflet) {
+        setTimeout(() => { try { mapaLeaflet.invalidateSize(); } catch (_) {} }, 80);
+        return mapaLeaflet;
+      }
+      mapaLeaflet = L.map(el, { zoomControl: true, attributionControl: false });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+      }).addTo(mapaLeaflet);
+      return mapaLeaflet;
+    }
+
+    function clearMapaLayers() {
+      if (!mapaLeaflet) return;
+      mapaLayers.forEach((ly) => {
+        try { mapaLeaflet.removeLayer(ly); } catch (_) {}
+      });
+      mapaLayers = [];
+    }
+
+    function focusMapaPlaca(placa) {
+      mapaSelectedPlaca = placa || null;
+      document.querySelectorAll('.mapa-placa').forEach((row) => {
+        row.classList.toggle('active', row.getAttribute('data-placa') === mapaSelectedPlaca);
+      });
+      if (!lastMapaData || !mapaLeaflet) return;
+      const veics = lastMapaData.veiculos || [];
+      const v = veics.find((x) => String(x.placa) === String(placa));
+      if (!v) return;
+      const pts = (v.polyline && v.polyline.length)
+        ? v.polyline
+        : (v.paradas || []).map((p) => [p.lat, p.lon]);
+      if (!pts.length) return;
+      try {
+        mapaLeaflet.fitBounds(L.latLngBounds(pts.map((p) => L.latLng(p[0], p[1]))), { padding: [40, 40], maxZoom: 14 });
+      } catch (_) {}
+    }
+
+    function fmtMapaMoney(v) {
+      const n = Number(v) || 0;
+      return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+    function fmtMapaPeso(v) {
+      const n = Number(v) || 0;
+      if (n >= 1000) {
+        return (n / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' t';
+      }
+      return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' kg';
+    }
+
+    function paintMapa(data) {
+      lastMapaData = data || null;
+      const err = document.getElementById('mapaErr');
+      const aviso = document.getElementById('mapaAviso');
+      const list = document.getElementById('mapaLista');
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      if (!data) {
+        set('mapaVeic', '0');
+        set('mapaParadas', '0');
+        set('mapaFreteEnt', 'R$ 0');
+        set('mapaPesoEnt', '0 kg');
+        set('mapaFreteCol', 'R$ 0');
+        set('mapaPesoCol', '0 kg');
+        if (list) list.innerHTML = '<div class="arm-rank-empty">Sem dados — rode `36`</div>';
+        return;
+      }
+      const veics = Array.isArray(data.veiculos) ? data.veiculos : [];
+      const tot = data.totais || {};
+      set('mapaVeic', tot.veiculos != null ? tot.veiculos : veics.length);
+      set('mapaParadas', tot.paradas != null ? tot.paradas : veics.reduce((s, v) => s + (Number(v.paradas_n) || 0), 0));
+      set('mapaFreteEnt', fmtMapaMoney(tot.frete_entrega != null ? tot.frete_entrega : tot.frete));
+      set('mapaPesoEnt', fmtMapaPeso(tot.peso_entrega != null ? tot.peso_entrega : tot.peso));
+      set('mapaFreteCol', fmtMapaMoney(tot.frete_coleta));
+      set('mapaPesoCol', fmtMapaPeso(tot.peso_coleta));
+      set('mapaAtualizado', data.atualizado ? `atualizado ${data.atualizado}` : '—');
+      if (aviso) {
+        if (data.aviso) {
+          aviso.hidden = false;
+          aviso.textContent = data.aviso;
+        } else {
+          aviso.hidden = true;
+        }
+      }
+      if (list) {
+        if (!veics.length) {
+          list.innerHTML = '<div class="arm-rank-empty">Nenhum veículo em rota</div>';
+        } else {
+          list.innerHTML = veics.map((v, i) => {
+            const pl = esc(String(v.placa || '—'));
+            const mot = esc(String(v.motorista || '—'));
+            const n = Number(v.paradas_n) || (v.paradas || []).length || 0;
+            const km = v.distance_km ? `${Number(v.distance_km).toFixed(1)} km` : '';
+            const freteE = Number(v.frete_entrega || v.frete || 0);
+            const pesoE = Number(v.peso_entrega || v.peso || 0);
+            const freteC = Number(v.frete_coleta || 0);
+            const pesoC = Number(v.peso_coleta || 0);
+            const cargaBits = [];
+            if (freteE || pesoE) cargaBits.push(`E ${fmtMapaMoney(freteE)} · ${fmtMapaPeso(pesoE)}`);
+            if (freteC || pesoC) cargaBits.push(`C ${fmtMapaMoney(freteC)} · ${fmtMapaPeso(pesoC)}`);
+            const color = mapaPlateColor(i);
+            return `<div class="mapa-placa" data-placa="${pl}" role="button" tabindex="0">
+              <span class="dot" style="background:${color}"></span>
+              <span class="pl">${pl}</span>
+              <span class="n">${n}</span>
+              <div class="meta">${mot}${km ? ' · ' + km : ''}${v.aprox ? ' · aprox.' : ''}${cargaBits.length ? '<br>' + cargaBits.join(' · ') : ''}</div>
+            </div>`;
+          }).join('');
+          list.querySelectorAll('.mapa-placa').forEach((row) => {
+            row.addEventListener('click', () => focusMapaPlaca(row.getAttribute('data-placa')));
+          });
+        }
+      }
+
+      const map = ensureMapaLeaflet();
+      if (!map) return;
+      clearMapaLayers();
+      const base = data.base || {};
+      if (base.lat != null && base.lon != null) {
+        const m = L.circleMarker([base.lat, base.lon], {
+          radius: 8, color: '#f8fafc', fillColor: '#0ea5e9', fillOpacity: 0.9, weight: 2,
+        }).bindTooltip(base.nome || 'Base');
+        m.addTo(map);
+        mapaLayers.push(m);
+      }
+      const allPts = [];
+      veics.forEach((v, i) => {
+        const color = mapaPlateColor(i);
+        const poly = (v.polyline || []).filter((p) => p && p.length >= 2);
+        if (poly.length >= 2) {
+          const glow = L.polyline(poly, { color: '#0f172a', weight: 7, opacity: 0.55 });
+          const line = L.polyline(poly, { color, weight: 4, opacity: 0.95 });
+          glow.addTo(map); line.addTo(map);
+          mapaLayers.push(glow, line);
+          poly.forEach((p) => allPts.push(p));
+        }
+        (v.paradas || []).forEach((p) => {
+          if (p.lat == null || p.lon == null) return;
+          allPts.push([p.lat, p.lon]);
+          const mk = L.circleMarker([p.lat, p.lon], {
+            radius: 5, color: '#020617', fillColor: color, fillOpacity: 0.95, weight: 1,
+          }).bindTooltip(
+            (`${v.placa} · ${p.seq || ''} ${p.cliente || ''}`
+            + (p.frete || p.peso
+              ? ` · R$ ${Number(p.frete || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · ${Number(p.peso || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg`
+              : '')).trim()
+          );
+          mk.addTo(map);
+          mapaLayers.push(mk);
+        });
+      });
+      if (allPts.length) {
+        try {
+          map.fitBounds(L.latLngBounds(allPts.map((p) => L.latLng(p[0], p[1]))), { padding: [36, 36], maxZoom: 13 });
+        } catch (_) {
+          map.setView([base.lat || -23.55, base.lon || -46.63], 11);
+        }
+      } else if (base.lat != null) {
+        map.setView([base.lat, base.lon], 12);
+      }
+      if (err) err.hidden = true;
+      setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 100);
+    }
+
+    async function refreshMapa() {
+      if (CURRENT_SECTOR !== 'mapa') return;
+      const err = document.getElementById('mapaErr');
+      try {
+        let stamp = null;
+        try {
+          const res = await fetch('data/mapa/stamp.json?t=' + Date.now(), { cache: 'no-store' });
+          if (res.ok) {
+            const j = await res.json();
+            stamp = String(j.ts || j.atualizado || '');
+          }
+        } catch (_) {}
+        if (stamp && lastMapaStamp != null && stamp === lastMapaStamp && lastMapaData) {
+          paintMapa(lastMapaData);
+          await refreshMapaFarolServico();
+          return;
+        }
+        let data = null;
+        for (const url of [
+          'data/mapa/mapa_distribuicao.json',
+          'data/local/mapa_distribuicao.json',
+        ]) {
+          try {
+            const res = await fetch(url + '?t=' + Date.now(), { cache: 'no-store' });
+            if (res.ok) {
+              data = await res.json();
+              break;
+            }
+          } catch (_) {}
+        }
+        if (!data) {
+          if (lastMapaData) data = lastMapaData;
+          else throw new Error('JSON do mapa ausente — rode `36` ou `mapa`');
+        }
+        paintMapa(data);
+        await refreshMapaFarolServico();
+        if (stamp) lastMapaStamp = stamp;
+        else if (data.atualizado) lastMapaStamp = String(data.atualizado);
+        if (err) err.hidden = true;
+      } catch (e) {
+        if (err) {
+          err.hidden = false;
+          err.textContent = 'Sem dados do Mapa. ' + (e?.message || e);
+        }
+        try { await refreshMapaFarolServico(); } catch (_) {}
+      }
+    }
+
     function formatEmiPeriodo(raw) {
       const s = String(raw || '').trim();
       if (!s) return '—';
@@ -8998,10 +9665,12 @@
       set('emiFrete', resumo.frete_fmt || resumo.frete || 'R$ 0');
       set('emiCancelados', resumo.cancelados ?? '0');
       set('emiStatCanc', resumo.cancelados ?? '0');
-      set('emiPendentes', '—');
-      set('emiErros', '—');
-      set('emiStatPend', '—');
-      set('emiStatErr', '—');
+      const pendentes = emiParseNum(resumo.pendentes);
+      const finalizados = emiParseNum(resumo.finalizados);
+      set('emiPendentes', resumo.pendentes != null && resumo.pendentes !== '' ? String(resumo.pendentes) : '0');
+      set('emiErros', resumo.finalizados != null && resumo.finalizados !== '' ? String(resumo.finalizados) : '0');
+      set('emiStatPend', resumo.pendentes != null && resumo.pendentes !== '' ? String(resumo.pendentes) : '0');
+      set('emiStatErr', resumo.finalizados != null && resumo.finalizados !== '' ? String(resumo.finalizados) : '0');
       set('emiPeriodo', formatEmiPeriodo(resumo.periodo || ''));
       set('emiAtualizado', resumo.atualizado ? `atualizado ${resumo.atualizado}` : 'atualizado —');
       set('emiProdH', prodH > 0 ? prodH.toFixed(1).replace('.', ',') : '0');
@@ -9013,6 +9682,30 @@
         chartSub.textContent = metaH > 0
           ? `Emitidos por hora · Meta operacional: ${metaH} CT-e/h`
           : 'Emitidos por hora';
+      }
+
+      // Pendentes / Finalizados: cores semânticas
+      const kpiPend = document.getElementById('emiKpiPendentes')
+        || document.getElementById('emiPendentes')?.closest('.emi-kpi');
+      if (kpiPend) {
+        kpiPend.classList.remove('is-muted', 'is-ok', 'is-warn', 'is-crit');
+        kpiPend.classList.add(pendentes > 0 ? 'is-warn' : 'is-ok');
+      }
+      const kpiFin = document.getElementById('emiKpiFinalizados')
+        || document.getElementById('emiErros')?.closest('.emi-kpi');
+      if (kpiFin) {
+        kpiFin.classList.remove('is-muted', 'is-warn', 'is-crit');
+        kpiFin.classList.add('is-ok');
+      }
+      const rowPend = document.getElementById('emiRowPend');
+      if (rowPend) {
+        rowPend.classList.remove('is-ok', 'is-warn', 'is-crit');
+        rowPend.classList.add(pendentes > 0 ? 'is-warn' : 'is-ok');
+      }
+      const rowFin = document.getElementById('emiRowErr');
+      if (rowFin) {
+        rowFin.classList.remove('is-warn', 'is-crit');
+        rowFin.classList.add('is-ok');
       }
 
       // Cancelados: cor semântica
@@ -9064,7 +9757,7 @@
       } else if (cancelados > 0 || (mins != null && mins >= 60)) {
         level = 'crit';
         label = 'OPERAÇÃO CRÍTICA';
-      } else if (mins != null && mins >= 40) {
+      } else if (pendentes > 0 || (mins != null && mins >= 40)) {
         level = 'warn';
         label = 'ATENÇÃO';
       } else if (metaH > 0 && prodH > 0 && prodH < metaH * 0.7) {
@@ -11375,6 +12068,7 @@
     document.getElementById('btnTvPendencia')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvContratacao')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvEmissao')?.addEventListener('click', () => toggleTvMode());
+    document.getElementById('btnTvMapa')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvReciclagem')?.addEventListener('click', () => toggleTvMode());
     document.querySelectorAll('.js-sector-menu').forEach((logo) => {
       logo.addEventListener('click', (e) => {

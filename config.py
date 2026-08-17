@@ -81,6 +81,7 @@ class AceSettings:
     contratacao_intervalo: str = ""
     emissao_intervalo: str = ""
     reciclagem_intervalo: str = "30m"
+    mapa_intervalo: str = "10m"
     enable_sheets: bool = False
     apps_script_url: str = ""
     apps_script_token: str = ""
@@ -100,7 +101,9 @@ class AceSettings:
     pendencia_in_loop: bool = True  # 031
     contratacao_in_loop: bool = True  # 073
     emissao_in_loop: bool = False  # 455
-    reciclagem_in_loop: bool = False  # 019 + 081
+    reciclagem_in_loop: bool = False  # 019 + 081 (desativado — slot virou Mapa)
+    mapa_in_loop: bool = True  # Mapa Operacional · 36 + CyberMap
+    cybermap_path: str = r"D:\MapaCustoRegiaoSP"
     # /automatica: blocos em paralelo (1 browser cada)
     ciclo_paralelo: bool = True
     # Modo local: não envia Sheets/GitHub — só cache CSV + JSON em data/cache/local
@@ -127,6 +130,7 @@ def ensure_dirs() -> None:
     (DASHBOARD_DIR / "data" / "pendencia").mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data" / "contratacao").mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data" / "emissao").mkdir(parents=True, exist_ok=True)
+    (DASHBOARD_DIR / "data" / "mapa").mkdir(parents=True, exist_ok=True)
     (DASHBOARD_DIR / "data" / "reciclagem").mkdir(parents=True, exist_ok=True)
     (CACHE_DIR / "local").mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -163,6 +167,10 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
             payload.get("reciclagem_intervalo") or defaults.reciclagem_intervalo or "30m"
         ).strip()
         or "30m",
+        mapa_intervalo=str(
+            payload.get("mapa_intervalo") or defaults.mapa_intervalo or "10m"
+        ).strip()
+        or "10m",
         enable_sheets=bool(payload.get("enable_sheets", defaults.enable_sheets)),
         apps_script_url=str(payload.get("apps_script_url") or "").strip(),
         apps_script_token=str(payload.get("apps_script_token") or "").strip(),
@@ -189,6 +197,11 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         reciclagem_in_loop=bool(
             payload.get("reciclagem_in_loop", defaults.reciclagem_in_loop)
         ),
+        mapa_in_loop=bool(payload.get("mapa_in_loop", defaults.mapa_in_loop)),
+        cybermap_path=str(
+            payload.get("cybermap_path") or defaults.cybermap_path or ""
+        ).strip()
+        or defaults.cybermap_path,
         contratacao_in_loop=bool(
             payload.get("contratacao_in_loop", defaults.contratacao_in_loop)
         ),

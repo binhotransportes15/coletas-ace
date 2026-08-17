@@ -26,6 +26,7 @@ from parser_ssw455 import (
     HORAS_455_CSV,
     RESUMO_455_CSV,
 )
+from mapa_distribuicao import publish_mapa_local
 
 StatusCallback = Callable[[str], None]
 
@@ -565,6 +566,10 @@ def publish_dashboard(
     ensure_dashboard_files()
     paths = _copy_cache_to_dashboard()
     paths.update(_copy_contratacao_to_dashboard())
+    try:
+        paths.update(publish_mapa_local(on_status=status).get("paths") or {})
+    except Exception as err:  # noqa: BLE001
+        status(f"Mapa publish: {err}")
     result: dict[str, Any] = {"ok": True, "local": paths, "pushed": False}
 
     if not allow_push or getattr(cfg, "modo_local", False):

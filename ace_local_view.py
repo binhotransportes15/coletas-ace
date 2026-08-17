@@ -23,7 +23,7 @@ LOCAL_SCREENS: dict[str, tuple[str, str]] = {
     "conferentes": ("Armazém · Conferentes", "tv/armazem/conferentes"),
     "pendencia": ("Pendência", "tv/pendencia"),
     "contratacao": ("Contratação", "tv/contratacao"),
-    "reciclagem": ("Reciclagem", "tv/reciclagem"),
+    "mapa": ("Mapa Operacional", "tv/mapa"),
     "emissao": ("Emissão", "tv/emissao"),
 }
 
@@ -36,7 +36,7 @@ LOCAL_SCREEN_ORDER: tuple[str, ...] = (
     "conferentes",
     "pendencia",
     "contratacao",
-    "reciclagem",
+    "mapa",
     "emissao",
 )
 
@@ -61,11 +61,13 @@ _ALIASES: dict[str, str] = {
     "73": "contratacao",
     "contratação": "contratacao",
     "ctr": "contratacao",
-    "19": "reciclagem",
-    "019": "reciclagem",
-    "81": "reciclagem",
-    "081": "reciclagem",
-    "recicla": "reciclagem",
+    "19": "mapa",
+    "019": "mapa",
+    "81": "mapa",
+    "081": "mapa",
+    "recicla": "mapa",
+    "reciclagem": "mapa",
+    "mapa": "mapa",
     "455": "emissao",
     "emissão": "emissao",
 }

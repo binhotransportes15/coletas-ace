@@ -455,6 +455,13 @@ def run_analysis_36(
         f"excluidos ontem {meta.get('excluido', 0)}"
     )
     result: dict[str, Any] = {"analysis": meta, "report": str(path)}
+    try:
+        from mapa_distribuicao import build_mapa_distribuicao
+
+        result["mapa"] = build_mapa_distribuicao(report_path=path, on_status=status)
+    except Exception as err:  # noqa: BLE001
+        status(f"Mapa Operacional: {err}")
+        result["mapa"] = {"ok": False, "error": str(err)}
     if sync:
         if _should_use_local_store(cfg):
             result["sheets"] = {"ok": False, "skipped": True, "reason": "modo_local"}
@@ -1065,7 +1072,7 @@ def run_parallel_cycle(
     """
     Roda setores escolhidos ao mesmo tempo (1 Chromium por bloco).
 
-    jobs: lista entre dist | 78 | 31 | 73 | 455 | reciclagem.
+    jobs: lista entre dist | 78 | 31 | 73 | 455 | mapa | reciclagem.
     Se None, monta a partir das flags *_in_loop.
     should_stop: se True, interrompe assim que um bloco terminar (e sinaliza LoopStopped).
     """
@@ -1105,6 +1112,8 @@ def run_parallel_cycle(
             jobs.append("73")
         if getattr(cfg, "emissao_in_loop", False):
             jobs.append("455")
+        if getattr(cfg, "mapa_in_loop", True):
+            jobs.append("mapa")
         if getattr(cfg, "reciclagem_in_loop", False):
             jobs.append("reciclagem")
     else:
@@ -1117,6 +1126,9 @@ def run_parallel_cycle(
             "076": "73",
             "emissao": "455",
             "armazem": "78",
+            "mapaop": "mapa",
+            "maparotas": "mapa",
+            "cybermap": "mapa",
             "019": "reciclagem",
             "19": "reciclagem",
             "081": "reciclagem",
@@ -1200,12 +1212,21 @@ def run_parallel_cycle(
             clean_downloads=False,
         )
 
+    def _run_mapa() -> dict[str, Any]:
+        return run_full_pipeline_36(
+            credentials=creds,
+            settings=cfg,
+            headless=use_headless,
+            on_status=lambda m: emit(f"[mapa] {m}"),
+        )
+
     workers = {
         "dist": _run_dist,
         "78": _run_78,
         "31": _run_31,
         "73": _run_73,
         "455": _run_455,
+        "mapa": _run_mapa,
         "reciclagem": _run_reciclagem,
     }
     unknown = [j for j in jobs if j not in workers]
@@ -1263,10 +1284,11 @@ def run_parallel_cycle(
     result_31 = results.get("31") or {}
     result_73 = results.get("73") or {}
     result_455 = results.get("455") or {}
+    result_mapa = results.get("mapa") or {}
     result_reciclagem = results.get("reciclagem") or {}
     result_50 = dist.get("50") or {}
     result_103 = dist.get("103") or {}
-    result_36 = dist.get("36") or {}
+    result_36 = dist.get("36") or result_mapa or {}
     result_225 = dist.get("225") or {}
 
     any_ok = bool(
@@ -1278,6 +1300,7 @@ def run_parallel_cycle(
         or result_31
         or result_73
         or result_455
+        or result_mapa
         or result_reciclagem
     )
     if merged_errors and not any_ok:
@@ -1293,7 +1316,7 @@ def run_parallel_cycle(
         "errors": merged_errors,
         "period_50": dist.get("period_50") or "",
         "period_103": dist.get("period_103") or "",
-        "period_36": dist.get("period_36") or "",
+        "period_36": dist.get("period_36") or result_mapa.get("period") or "",
         "period_225": dist.get("period_225") or "",
         "50": result_50,
         "103": result_103,
@@ -1303,6 +1326,7 @@ def run_parallel_cycle(
         "31": result_31,
         "73": result_73,
         "455": result_455,
+        "mapa": result_mapa,
         "reciclagem": result_reciclagem,
         "sheets_50": dist.get("sheets_50") or {"ok": False, "skipped": True},
         "sheets_103": dist.get("sheets_103") or {"ok": False, "skipped": True},
