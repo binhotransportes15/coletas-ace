@@ -30,6 +30,7 @@ from PySide6.QtGui import (
     QPen,
     QPixmap,
     QLinearGradient,
+    QRadialGradient,
     QBrush,
     QTextCursor,
     QPolygonF,
@@ -313,8 +314,10 @@ class BinhoCubesWidget(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setMinimumHeight(132)
-        self.setMaximumHeight(168)
+        self.setMinimumHeight(220)
+        self.setMaximumHeight(320)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setAutoFillBackground(False)
         self._t = 0.0
         self._busy = False
         self._full = False
@@ -363,15 +366,20 @@ class BinhoCubesWidget(QWidget):
         self.update()
 
     def brain_anchor(self, sector: str | None = None) -> QPointF:
+        """Ponto de saida do circuito — borda direita do cerebro (rumo as barrinhas)."""
         bx, by, bw, bh = self._brain_rect
         if bw <= 1 or bh <= 1:
-            return QPointF(self.width() / 2.0, self.height() * 0.72)
+            return QPointF(self.width() * 0.92, self.height() * 0.55)
         sid = str(sector or "")
-        nodes = _BRAIN_REGIONS.get(sid) if sid else None
-        if nodes:
-            nx, ny = nodes[0]
-            return QPointF(bx + nx * bw, by + ny * bh)
-        return QPointF(bx + bw * 0.55, by + bh * 0.72)
+        # espalha saidas na borda direita conforme o setor
+        y_map = {
+            "dist": 0.28, "78": 0.38, "31": 0.22, "73": 0.48,
+            "455": 0.62, "mapa": 0.78, "cpu": 0.42, "mem": 0.52, "gpu": 0.62,
+            "_main": 0.70,
+        }
+        ny = y_map.get(sid, 0.55)
+        # ancora na silhueta + leve offset para a direita
+        return QPointF(bx + bw * 0.92, by + bh * ny)
 
     def set_fill_color(self, color: QColor) -> None:
         self._fill = QColor(color)
@@ -418,7 +426,7 @@ class BinhoCubesWidget(QWidget):
         return QColor(self._accent)
 
     def _themed_pixmap(self, src: QPixmap) -> QPixmap:
-        """Mantem luminosidade da arte e aplica a matiz do tema."""
+        """Mantem luminosidade da arte e aplica a matiz do tema (respeita transparencia)."""
         if src.isNull() or self._tint_alpha <= 0:
             return src
         out = QPixmap(src.size())
@@ -426,18 +434,15 @@ class BinhoCubesWidget(QWidget):
         qp = QPainter(out)
         qp.setRenderHint(QPainter.SmoothPixmapTransform, True)
         qp.drawPixmap(0, 0, src)
-        try:
-            qp.setCompositionMode(QPainter.CompositionMode_Color)
-        except Exception:
-            qp.setCompositionMode(QPainter.CompositionMode_SourceAtop)
+        # SourceAtop: so pinta onde ja tem pixel (nao cria quadro)
+        qp.setCompositionMode(QPainter.CompositionMode_SourceAtop)
         tint = QColor(self._accent)
         tint.setAlpha(self._tint_alpha)
         qp.fillRect(out.rect(), tint)
-        # leve brilho do tema nas areas claras
         qp.setCompositionMode(QPainter.CompositionMode_Plus)
-        qp.setOpacity(0.18)
+        qp.setOpacity(0.12)
         glow = QColor(self._glow)
-        glow.setAlpha(90)
+        glow.setAlpha(70)
         qp.fillRect(out.rect(), glow)
         qp.end()
         return out
@@ -451,7 +456,8 @@ class BinhoCubesWidget(QWidget):
         p.setRenderHint(QPainter.Antialiasing, True)
         p.setRenderHint(QPainter.SmoothPixmapTransform, True)
         w, h = self.width(), self.height()
-        p.fillRect(0, 0, w, h, self._fill)
+        # sem retangulo solido — cerebro flutua no painel
+        p.fillRect(0, 0, w, h, QColor(0, 0, 0, 0))
 
         if self._hidden_brand:
             self._brain_rect = (0.0, 0.0, 0.0, 0.0)
@@ -469,35 +475,32 @@ class BinhoCubesWidget(QWidget):
             active = set(_BRAIN_REGIONS.keys())
 
         if not self._pm.isNull():
-            target_h = int(min(h - 10, 140))
-            scaled = self._pm.scaledToHeight(target_h, Qt.SmoothTransformation)
+            # ocupa quase todo o widget (sem caixa)
+            target = int(min(w - 4, h - 4))
+            scaled = self._pm.scaled(target, target, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             themed = self._themed_pixmap(scaled)
             x = (w - themed.width()) / 2.0
             y = (h - themed.height()) / 2.0
             self._brain_rect = (x, y, float(themed.width()), float(themed.height()))
-            p.setOpacity(0.94 if busy else 0.88)
+            p.setOpacity(0.98 if busy else 0.94)
             p.drawPixmap(int(x), int(y), themed)
             p.setOpacity(1.0)
-            self._paint_region_glow(p, x, y, scaled.width(), scaled.height(), active, full, t)
-            self._paint_circuit_traces(p, x, y, scaled.width(), scaled.height(), active, full, t, busy)
-            self._paint_circuit_nodes(p, x, y, scaled.width(), scaled.height(), active, full, t, busy)
+            self._paint_region_glow(p, x, y, themed.width(), themed.height(), active, full, t)
+            self._paint_circuit_traces(p, x, y, themed.width(), themed.height(), active, full, t, busy)
+            self._paint_circuit_nodes(p, x, y, themed.width(), themed.height(), active, full, t, busy)
         else:
             self._paint_fallback_brain(p, w, h, t, busy, active, full)
 
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(0, 0, 0, 22))
-        step = 3
-        y0 = int((t * 14) % step)
-        for yy in range(y0, h, step):
-            p.drawRect(0, yy, w, 1)
-
+        # glow suave sob o cerebro (nao preenche um quadro)
         if self._cyan_glow or self._green_glow or busy:
-            glow = QLinearGradient(0, h * 0.55, 0, h)
-            glow.setColorAt(0.0, QColor(0, 0, 0, 0))
-            gc = QColor(self._glow)
-            gc.setAlpha(70 if busy else 34)
-            glow.setColorAt(1.0, gc)
-            p.fillRect(0, int(h * 0.55), w, int(h * 0.45), glow)
+            bx, by, bw, bh = self._brain_rect
+            if bw > 1:
+                glow = QRadialGradient(bx + bw * 0.5, by + bh * 0.55, max(bw, bh) * 0.65)
+                gc = QColor(self._glow)
+                gc.setAlpha(55 if busy else 28)
+                glow.setColorAt(0.0, gc)
+                glow.setColorAt(1.0, QColor(0, 0, 0, 0))
+                p.fillRect(int(bx), int(by), int(bw), int(bh), glow)
         p.end()
 
     def _paint_region_glow(
@@ -672,8 +675,7 @@ class CircuitBusOverlay(QWidget):
 
     def _tick(self) -> None:
         self._t += 0.033
-        if self._full or self._active or (int(self._t * 10) % 8 == 0):
-            self.update()
+        self.update()
 
     def _map_pt(self, widget: QWidget, local: QPointF) -> QPointF:
         gp = widget.mapTo(self, local.toPoint())
@@ -686,33 +688,46 @@ class CircuitBusOverlay(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
         t = self._t
+        # SEMPRE liga o cerebro a todas as barrinhas (fraco no idle, forte se ativo)
         targets: list[tuple[str, QWidget]] = []
-        if self._full or active:
-            for sid, meter in self._meters.items():
-                if (self._full or sid in active) and meter is not None and meter.isVisible():
-                    targets.append((sid, meter))
-        elif self._main_bar is not None and self._main_bar.isVisible():
+        for sid, meter in self._meters.items():
+            if meter is None or not meter.isVisible():
+                continue
+            bar = getattr(meter, "bar_widget", None) or getattr(meter, "_bar", None) or meter
+            targets.append((sid, bar))
+        if self._main_bar is not None and self._main_bar.isVisible():
             targets.append(("_main", self._main_bar))
         for sid, dest in targets:
             try:
-                start = self._map_pt(self._brain, self._brain.brain_anchor(None if sid == "_main" else sid))
-                end = self._map_pt(dest, QPointF(8, dest.height() / 2.0))
+                start = self._map_pt(self._brain, self._brain.brain_anchor(sid))
+                end = self._map_pt(dest, QPointF(max(6.0, dest.width() * 0.08), dest.height() / 2.0))
             except Exception:
                 continue
             col = self._color_for_sector(sid)
-            mid_x = start.x() + (end.x() - start.x()) * 0.45
-            pts = [start, QPointF(mid_x, start.y()), QPointF(mid_x, end.y()), end]
-            lit = self._full or sid in active or sid == "_main"
-            p.setPen(QPen(QColor(col.red(), col.green(), col.blue(), 160 if lit else 40), 1.5 if lit else 1.0))
+            lit = self._full or sid in active or (sid == "_main" and (self._full or bool(active)))
+            # caminho em degraus (PCB) ate a barra
+            mid_x = start.x() + max(24.0, (end.x() - start.x()) * 0.35)
+            pts = [
+                start,
+                QPointF(mid_x, start.y()),
+                QPointF(mid_x, end.y()),
+                end,
+            ]
+            base_a = 210 if lit else 95
+            width = 2.4 if lit else 1.5
+            # trilha base
+            p.setPen(QPen(QColor(col.red(), col.green(), col.blue(), base_a), width))
             for i in range(len(pts) - 1):
                 p.drawLine(pts[i], pts[i + 1])
+            # pulso viajando (sempre)
             segs = []
             total = 0.0
             for i in range(len(pts) - 1):
                 L = math.hypot(pts[i + 1].x() - pts[i].x(), pts[i + 1].y() - pts[i].y()) or 1.0
                 segs.append((pts[i], pts[i + 1], L))
                 total += L
-            pos = (t * (0.55 if lit else 0.18) * total + (hash(sid) % 40)) % total
+            speed = 0.65 if lit else 0.28
+            pos = (t * speed * total + (hash(sid) % 40)) % total
             acc = 0.0
             for a0, b0, L in segs:
                 if acc + L >= pos:
@@ -720,14 +735,16 @@ class CircuitBusOverlay(QWidget):
                     px = a0.x() + (b0.x() - a0.x()) * u
                     py = a0.y() + (b0.y() - a0.y()) * u
                     p.setPen(Qt.NoPen)
-                    p.setBrush(QColor(col.red(), col.green(), col.blue(), 220 if lit else 90))
-                    p.drawEllipse(QPointF(px, py), 3.5 if lit else 2.0, 3.5 if lit else 2.0)
+                    p.setBrush(QColor(col.red(), col.green(), col.blue(), 240 if lit else 160))
+                    p.drawEllipse(QPointF(px, py), 4.2 if lit else 2.8, 4.2 if lit else 2.8)
+                    p.setBrush(QColor(255, 255, 255, 200 if lit else 120))
+                    p.drawEllipse(QPointF(px, py), 1.6, 1.6)
                     break
                 acc += L
-            if lit:
-                p.setPen(Qt.NoPen)
-                p.setBrush(QColor(col.red(), col.green(), col.blue(), 200))
-                p.drawEllipse(end, 4.0, 4.0)
+            # conector na barrinha
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(col.red(), col.green(), col.blue(), 230 if lit else 140))
+            p.drawEllipse(end, 5.0 if lit else 3.5, 5.0 if lit else 3.5)
         p.end()
 
 
@@ -760,6 +777,10 @@ class SysMeterRow(QWidget):
         self._track = "rgba(0, 0, 0, 140)"
         self._track_border = "rgba(255, 255, 255, 28)"
         self._apply_chunk(accent)
+
+    @property
+    def bar_widget(self) -> QProgressBar:
+        return self._bar
 
     def apply_chrome(self, *, height: int = 16, track: str = "rgba(0,0,0,140)", border: str = "rgba(255,255,255,28)") -> None:
         self._bar.setFixedHeight(max(12, int(height)))
@@ -848,6 +869,10 @@ class SectorMeterRow(QWidget):
         self._track = "rgba(0, 0, 0, 140)"
         self._track_border = "rgba(255, 255, 255, 28)"
         self._apply_chunk(self._accent)
+
+    @property
+    def bar_widget(self) -> QProgressBar:
+        return self._bar
 
     def apply_chrome(self, *, height: int = 14, track: str = "rgba(0,0,0,140)", border: str = "rgba(255,255,255,28)") -> None:
         self._bar.setFixedHeight(max(10, int(height)))
@@ -1674,7 +1699,7 @@ class AceCrtConsole(QWidget):
         split.addWidget(self._build_center())
         split.setStretchFactor(0, 2)
         split.setStretchFactor(1, 5)
-        split.setSizes([300, 700])
+        split.setSizes([360, 720])
         root.addWidget(split, 1)
 
         # Abas ficam na janela Menu (escondida até F2 / botão)
@@ -3058,19 +3083,26 @@ class AceCrtConsole(QWidget):
     # ── data / actions ─────────────────────────────────────────────
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
-        self._scan.setGeometry(self.rect())
+        if hasattr(self, "_scan"):
+            self._scan.setGeometry(self.rect())
         if hasattr(self, "_circuit_bus"):
             self._circuit_bus.setGeometry(self.rect())
-            self._circuit_bus.raise_()
+            self._circuit_bus.raise_()  # acima das scanlines — linhas visiveis ate as barras
 
     def _wire_circuit_bus(self) -> None:
         bus = getattr(self, "_circuit_bus", None)
         if bus is None or not hasattr(self, "cubes"):
             return
         bus.setGeometry(self.rect())
+        meters = dict(getattr(self, "_sector_meters", {}) or {})
+        # tambem liga nas barras locais CPU/MEM/GPU
+        for key, attr in (("cpu", "meter_cpu"), ("mem", "meter_mem"), ("gpu", "meter_gpu")):
+            w = getattr(self, attr, None)
+            if w is not None:
+                meters[key] = w
         bus.bind(
             brain=self.cubes,
-            meters=getattr(self, "_sector_meters", {}) or {},
+            meters=meters,
             main_bar=getattr(self, "bar", None),
         )
         bus.raise_()
