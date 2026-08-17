@@ -4668,6 +4668,197 @@
     }
     body.tv-mode .mapa-kpis-top .arm-kpi .val { font-size: clamp(18px, 2.4vmin, 32px); }
     body.tv-mode .mapa-farol-overlay .big { font-size: clamp(34px, 4.2vmin, 56px); }
+    body.tv-mode #btnMapaGestao,
+    body.tv-mode .mapa-gestao-panel {
+      display: none !important;
+    }
+
+    /* Gestão do Mapa Operacional */
+    .mapa-gestao-panel {
+      position: absolute !important;
+      right: 8px !important;
+      top: 8px !important;
+      bottom: 52px !important;
+      width: min(420px, 34vw) !important;
+      z-index: 660 !important;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px 12px;
+      background: rgba(5, 10, 18, 0.82);
+      border: 1px solid rgba(51, 65, 85, 0.7);
+      border-radius: 10px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+      overflow: hidden;
+      pointer-events: auto;
+      backdrop-filter: blur(6px);
+    }
+    body.mapa-gestao-mode .mapa-gestao-panel {
+      display: flex !important;
+    }
+    body.mapa-gestao-mode .mapa-side,
+    body.mapa-gestao-mode .mapa-side-right {
+      display: none !important;
+    }
+    .mapa-gestao-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .mapa-gestao-head h2 {
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      font-weight: 800;
+    }
+    .mapa-gestao-head .meta {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 700;
+    }
+    .mapa-gestao-tools {
+      display: grid;
+      gap: 8px;
+    }
+    .mapa-gestao-tools input,
+    .mapa-gestao-tools select {
+      width: 100%;
+      box-sizing: border-box;
+      background: #020617;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .mapa-gestao-tools input:focus,
+    .mapa-gestao-tools select:focus {
+      outline: none;
+      border-color: #67e8f9;
+    }
+    .mapa-gestao-summary[hidden] { display: none !important; }
+    .mapa-gestao-placa {
+      font-size: clamp(18px, 2.2vmin, 26px);
+      font-weight: 900;
+      color: #facc15;
+      letter-spacing: 0.04em;
+      text-shadow: 0 0 12px rgba(250, 204, 21, 0.35);
+    }
+    .mapa-gestao-meta {
+      font-size: 12px;
+      color: #94a3b8;
+      margin: 2px 0 8px;
+      line-height: 1.35;
+    }
+    .mapa-gestao-kpis {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .mapa-gestao-kpis > div {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 6px 8px;
+      min-width: 0;
+    }
+    .mapa-gestao-kpis .k {
+      display: block;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .mapa-gestao-kpis strong {
+      font-size: 13px;
+      color: #e2e8f0;
+      font-variant-numeric: tabular-nums;
+    }
+    .mapa-gestao-stops-wrap {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .mapa-gestao-stops-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .mapa-gestao-stops {
+      flex: 1;
+      min-height: 120px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 2px;
+    }
+    .mapa-gestao-stop {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 8px;
+      align-items: start;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(2, 6, 23, 0.65);
+      border: 1px solid #1e293b;
+    }
+    .mapa-gestao-stop.is-done {
+      border-color: rgba(74, 222, 128, 0.35);
+    }
+    .mapa-gestao-stop.is-run {
+      border-color: rgba(56, 189, 248, 0.35);
+    }
+    .mapa-gestao-stop .seq {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 900;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .mapa-gestao-stop.is-done .seq {
+      background: #166534;
+      color: #bbf7d0;
+    }
+    .mapa-gestao-stop.is-run .seq {
+      background: #075985;
+      color: #bae6fd;
+    }
+    .mapa-gestao-stop .cli {
+      font-size: 12px;
+      font-weight: 800;
+      color: #f1f5f9;
+      line-height: 1.25;
+    }
+    .mapa-gestao-stop .sub {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+    .mapa-gestao-stop .st {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .mapa-gestao-stop.is-done .st { color: #4ade80; }
+    .mapa-gestao-stop.is-run .st { color: #38bdf8; }
+    .mapa-gestao-stop.is-pend .st { color: #fbbf24; }
+
     @media (max-width: 1100px) {
       .mapa-kpis-top { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .mapa-layout {
@@ -6723,6 +6914,8 @@
           </div>
         </div>
         <nav class="nav">
+          <button type="button" class="nav-btn active" id="btnMapaLive" data-mapa-view="live">Ao vivo</button>
+          <button type="button" class="nav-btn" id="btnMapaGestao" data-mapa-view="gestao">Gestão</button>
           <button type="button" class="nav-btn tv-btn" id="btnTvMapa" title="Modo TV / tela inteira (F)">TV</button>
         </nav>
         <div class="clock-box">
@@ -6793,6 +6986,36 @@
               <div class="mapa-list pop-stack" id="mapaLista"></div>
             </section>
             <div class="arm-err" id="mapaErr" hidden></div>
+          </aside>
+          <aside class="mapa-gestao-panel" id="mapaGestaoPanel" hidden aria-label="Gestão do mapa">
+            <header class="mapa-gestao-head">
+              <h2>Gestão · veículo</h2>
+              <div class="meta" id="mapaGestaoAtualizado">—</div>
+            </header>
+            <div class="mapa-gestao-tools">
+              <input type="search" id="mapaGestaoBusca" placeholder="Buscar placa, motorista, CTRC…" autocomplete="off" />
+              <select id="mapaGestaoSelect" aria-label="Selecionar veículo">
+                <option value="">Selecione um veículo…</option>
+              </select>
+            </div>
+            <div class="mapa-gestao-summary" id="mapaGestaoSummary" hidden>
+              <div class="mapa-gestao-placa" id="mapaGestaoPlaca">—</div>
+              <div class="mapa-gestao-meta" id="mapaGestaoMeta">—</div>
+              <div class="mapa-gestao-kpis">
+                <div><span class="k">Serviço</span><strong id="mapaGestaoServico">—</strong></div>
+                <div><span class="k">Frete ent.</span><strong id="mapaGestaoFreteEnt">—</strong></div>
+                <div><span class="k">Peso ent.</span><strong id="mapaGestaoPesoEnt">—</strong></div>
+                <div><span class="k">Frete col.</span><strong id="mapaGestaoFreteCol">—</strong></div>
+                <div><span class="k">Peso col.</span><strong id="mapaGestaoPesoCol">—</strong></div>
+                <div><span class="k">Km</span><strong id="mapaGestaoKm">—</strong></div>
+              </div>
+            </div>
+            <div class="mapa-gestao-stops-wrap">
+              <div class="mapa-gestao-stops-title">Paradas · entregue / pendente</div>
+              <div class="mapa-gestao-stops" id="mapaGestaoStops">
+                <div class="arm-rank-empty">Selecione um veículo</div>
+              </div>
+            </div>
           </aside>
         </section>
       </div>
@@ -7053,6 +7276,8 @@
     let mapaLeaflet = null;
     let mapaLayers = [];
     let mapaSelectedPlaca = null;
+    let mapaUiView = 'live'; // live | gestao
+    let mapaGestaoPlaca = null;
     let mapaFarolLeaflet = null;
     let mapaFarolLayer = null;
     let lastMapaFarolPct = null;
@@ -7868,6 +8093,7 @@
         if (isOpsSector(CURRENT_SECTOR)) setView('live');
         else if (CURRENT_SECTOR === 'armazem') applyArmViews();
         else if (CURRENT_SECTOR === 'reciclagem') applyRecViews();
+        if (mapaUiView === 'gestao') setMapaUiView('live');
         showTvHint();
         bumpTvIdle();
         if (syncHash) writeRouteHash({ tv: true, sector: CURRENT_SECTOR });
@@ -10493,6 +10719,150 @@
       }, MAPA_PLACA_MS);
     }
 
+    function setMapaUiView(view, { syncSelect = true } = {}) {
+      const next = view === 'gestao' ? 'gestao' : 'live';
+      if (TV_MODE && next === 'gestao') {
+        setTvMode(false, { syncHash: true });
+      }
+      mapaUiView = next;
+      document.body.classList.toggle('mapa-gestao-mode', mapaUiView === 'gestao');
+      document.getElementById('btnMapaLive')?.classList.toggle('active', mapaUiView === 'live');
+      document.getElementById('btnMapaGestao')?.classList.toggle('active', mapaUiView === 'gestao');
+      const panel = document.getElementById('mapaGestaoPanel');
+      if (panel) panel.hidden = mapaUiView !== 'gestao';
+      if (mapaUiView === 'gestao') {
+        stopMapaCarousels();
+        renderMapaGestaoList();
+        const placa = mapaGestaoPlaca || mapaSelectedPlaca
+          || (((lastMapaData && lastMapaData.veiculos) || [])[0] || {}).placa;
+        if (placa) selectMapaGestaoVeiculo(placa, { syncSelect });
+        else clearMapaGestaoDetail();
+        setTimeout(() => {
+          try { if (mapaLeaflet) mapaLeaflet.invalidateSize(); } catch (_) {}
+        }, 120);
+      } else if (lastMapaData) {
+        mapaGestaoPlaca = null;
+        paintMapa(lastMapaData);
+      }
+    }
+
+    function mapaVeiculoMatchesQuery(v, q) {
+      if (!q) return true;
+      const hay = [
+        v.placa, v.motorista, v.romaneio, v.tipo,
+        ...((v.paradas || []).map((p) => [p.cliente, p.ctrc, p.cidade].join(' '))),
+        ...((v.paradas_coleta || []).map((p) => [p.cliente, p.ctrc, p.cidade].join(' '))),
+      ].join(' ').toLowerCase();
+      return hay.includes(q);
+    }
+
+    function renderMapaGestaoList() {
+      const sel = document.getElementById('mapaGestaoSelect');
+      const busca = document.getElementById('mapaGestaoBusca');
+      const meta = document.getElementById('mapaGestaoAtualizado');
+      if (!sel) return;
+      const q = String(busca?.value || '').trim().toLowerCase();
+      const veics = ((lastMapaData && lastMapaData.veiculos) || [])
+        .filter((v) => mapaVeiculoMatchesQuery(v, q));
+      const cur = mapaGestaoPlaca || '';
+      sel.innerHTML = '<option value="">Selecione um veículo…</option>'
+        + veics.map((v) => {
+          const pct = Math.round(Number(v.servico_pct) || 0);
+          const label = `${v.placa || '—'} · ${v.motorista || '—'} · ${pct}%`;
+          return `<option value="${esc(String(v.placa || ''))}">${esc(label)}</option>`;
+        }).join('');
+      if (cur && [...sel.options].some((o) => o.value === String(cur))) {
+        sel.value = String(cur);
+      }
+      if (meta) {
+        meta.textContent = lastMapaData?.atualizado
+          ? `hoje · ${lastMapaData.atualizado}`
+          : (veics.length ? `${veics.length} veículo(s)` : '—');
+      }
+    }
+
+    function clearMapaGestaoDetail() {
+      const sum = document.getElementById('mapaGestaoSummary');
+      if (sum) sum.hidden = true;
+      const stops = document.getElementById('mapaGestaoStops');
+      if (stops) stops.innerHTML = '<div class="arm-rank-empty">Selecione um veículo</div>';
+    }
+
+    function mapaStopTone(p) {
+      const ace = String(p.status_ace || '').toLowerCase();
+      if (ace === 'realizada') return 'done';
+      if (ace === 'em_rota') return 'run';
+      return 'pend';
+    }
+
+    function selectMapaGestaoVeiculo(placa, { syncSelect = true } = {}) {
+      const veics = (lastMapaData && lastMapaData.veiculos) || [];
+      const v = veics.find((x) => String(x.placa) === String(placa));
+      if (!v) {
+        clearMapaGestaoDetail();
+        return;
+      }
+      mapaGestaoPlaca = String(v.placa || '');
+      if (syncSelect) {
+        const sel = document.getElementById('mapaGestaoSelect');
+        if (sel) sel.value = mapaGestaoPlaca;
+      }
+      stopMapaCarousels();
+      showMapaVehicleRoute(v, veics.indexOf(v));
+
+      const sum = document.getElementById('mapaGestaoSummary');
+      if (sum) sum.hidden = false;
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      const feitas = Number(v.servico_feitas) || 0;
+      const total = Number(v.servico_total) || 0;
+      const pct = Math.round(Number(v.servico_pct) || 0);
+      const tipo = String(v.tipo || 'entrega');
+      const tipoLab = tipo === 'coleta' ? 'COLETA' : (tipo === 'ambos' ? 'ENTREGA + COLETA' : 'ENTREGA');
+      set('mapaGestaoPlaca', String(v.placa || '—'));
+      set('mapaGestaoMeta', `${v.motorista || '—'} · ${tipoLab}`
+        + (v.romaneio ? ` · ${v.romaneio}` : ''));
+      set('mapaGestaoServico', total ? `${feitas}/${total} · ${pct}%` : `${pct}%`);
+      set('mapaGestaoFreteEnt', fmtMapaMoney(v.frete_entrega != null ? v.frete_entrega : v.frete));
+      set('mapaGestaoPesoEnt', fmtMapaPeso(v.peso_entrega != null ? v.peso_entrega : v.peso));
+      set('mapaGestaoFreteCol', fmtMapaMoney(v.frete_coleta));
+      set('mapaGestaoPesoCol', fmtMapaPeso(v.peso_coleta));
+      set('mapaGestaoKm', v.distance_km != null ? `${Number(v.distance_km).toFixed(1)} km` : '—');
+
+      const allStops = [
+        ...(v.paradas || []).map((p) => ({ ...p, _kind: 'E' })),
+        ...(v.paradas_coleta || []).map((p) => ({ ...p, _kind: 'C' })),
+      ].sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0));
+      const host = document.getElementById('mapaGestaoStops');
+      if (!host) return;
+      if (!allStops.length) {
+        host.innerHTML = '<div class="arm-rank-empty">Sem paradas neste veículo</div>';
+        return;
+      }
+      host.innerHTML = allStops.map((p, i) => {
+        const tone = mapaStopTone(p);
+        const stLab = tone === 'done' ? 'Entregue' : (tone === 'run' ? 'Em rota' : 'Pendente');
+        const cls = tone === 'done' ? 'is-done' : (tone === 'run' ? 'is-run' : 'is-pend');
+        const seq = p.seq != null ? p.seq : (i + 1);
+        const frete = Number(p.frete) || 0;
+        const peso = Number(p.peso) || 0;
+        const subParts = [
+          p._kind === 'C' ? 'Coleta' : 'Entrega',
+          p.ctrc ? `CTRC ${p.ctrc}` : '',
+          p.cidade || '',
+          frete ? fmtMapaMoney(frete) : '',
+          peso ? fmtMapaPeso(peso) : '',
+        ].filter(Boolean);
+        return `<div class="mapa-gestao-stop ${cls}">
+          <div class="seq">${esc(String(seq))}</div>
+          <div>
+            <div class="cli">${esc(p.cliente || '—')}</div>
+            <div class="sub">${esc(subParts.join(' · '))}</div>
+          </div>
+          <div class="st">${stLab}</div>
+        </div>`;
+      }).join('');
+    }
+
     function paintMapa(data) {
       lastMapaData = data || null;
       const aviso = document.getElementById('mapaAviso');
@@ -10512,6 +10882,10 @@
         clearMapaLayers();
         const cap = document.getElementById('mapaRouteCaption');
         if (cap) cap.hidden = true;
+        if (mapaUiView === 'gestao') {
+          renderMapaGestaoList();
+          clearMapaGestaoDetail();
+        }
         return;
       }
       const veics = Array.isArray(data.veiculos) ? data.veiculos : [];
@@ -10532,6 +10906,15 @@
         }
       }
       ensureMapaLeaflet();
+      if (mapaUiView === 'gestao') {
+        renderMapaGestaoList();
+        const keep = mapaGestaoPlaca
+          && veics.some((x) => String(x.placa) === String(mapaGestaoPlaca));
+        if (keep) selectMapaGestaoVeiculo(mapaGestaoPlaca);
+        else if (veics[0]) selectMapaGestaoVeiculo(veics[0].placa);
+        else clearMapaGestaoDetail();
+        return;
+      }
       mapaRouteCursor = 0;
       mapaPlacaCursor = 0;
       startMapaRouteCarousel();
@@ -13041,6 +13424,20 @@
     document.getElementById('btnTvContratacao')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvEmissao')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvMapa')?.addEventListener('click', () => toggleTvMode());
+    document.getElementById('btnMapaLive')?.addEventListener('click', () => setMapaUiView('live'));
+    document.getElementById('btnMapaGestao')?.addEventListener('click', () => setMapaUiView('gestao'));
+    document.getElementById('mapaGestaoSelect')?.addEventListener('change', (e) => {
+      const placa = e.target.value;
+      if (placa) selectMapaGestaoVeiculo(placa, { syncSelect: false });
+      else clearMapaGestaoDetail();
+    });
+    let mapaGestaoBuscaTimer = null;
+    document.getElementById('mapaGestaoBusca')?.addEventListener('input', () => {
+      clearTimeout(mapaGestaoBuscaTimer);
+      mapaGestaoBuscaTimer = setTimeout(() => {
+        renderMapaGestaoList();
+      }, 180);
+    });
     document.getElementById('btnTvReciclagem')?.addEventListener('click', () => toggleTvMode());
     document.querySelectorAll('.js-sector-menu').forEach((logo) => {
       logo.addEventListener('click', (e) => {
