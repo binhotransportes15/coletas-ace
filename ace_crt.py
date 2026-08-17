@@ -366,20 +366,22 @@ class BinhoCubesWidget(QWidget):
         self.update()
 
     def brain_anchor(self, sector: str | None = None) -> QPointF:
-        """Ponto de saida do circuito — borda direita do cerebro (rumo as barrinhas)."""
+        """Ponto do setor no cerebro (no interno) — saida real do circuito."""
         bx, by, bw, bh = self._brain_rect
         if bw <= 1 or bh <= 1:
-            return QPointF(self.width() * 0.92, self.height() * 0.55)
+            return QPointF(self.width() * 0.85, self.height() * 0.55)
         sid = str(sector or "")
-        # espalha saidas na borda direita conforme o setor
+        nodes = _BRAIN_REGIONS.get(sid)
+        if nodes:
+            # no mais a direita do setor = ponto de conexao
+            nx, ny = max(nodes, key=lambda p: p[0])
+            return QPointF(bx + nx * bw, by + ny * bh)
+        # CPU/MEM/GPU / barra principal: ancora na borda direita media
         y_map = {
-            "dist": 0.28, "78": 0.38, "31": 0.22, "73": 0.48,
-            "455": 0.62, "mapa": 0.78, "cpu": 0.42, "mem": 0.52, "gpu": 0.62,
-            "_main": 0.70,
+            "cpu": 0.40, "mem": 0.52, "gpu": 0.64, "_main": 0.72,
         }
         ny = y_map.get(sid, 0.55)
-        # ancora na silhueta + leve offset para a direita
-        return QPointF(bx + bw * 0.92, by + bh * ny)
+        return QPointF(bx + bw * 0.88, by + bh * ny)
 
     def set_fill_color(self, color: QColor) -> None:
         self._fill = QColor(color)
@@ -405,7 +407,7 @@ class BinhoCubesWidget(QWidget):
         """Recolore o cerebro e os circuitos conforme o tema do CRT."""
         self._accent = QColor(accent)
         self._glow = QColor(glow) if glow is not None else QColor(self._accent)
-        self._tint_alpha = max(0, min(220, int(tint_alpha)))
+        self._tint_alpha = max(0, min(160, int(tint_alpha)))
         if fill is not None:
             self._fill = QColor(fill)
         cols = [QColor(c) for c in (accents or []) if c]
@@ -540,7 +542,7 @@ class BinhoCubesWidget(QWidget):
             lit = full or (sid in active) or (sid == "_" and busy)
             base_a = 200 if lit else (70 if busy else 40)
             col = self._color_for_sector(sid) if sid != "_" else QColor(self._accent)
-            p.setPen(QPen(QColor(col.red(), col.green(), col.blue(), base_a), 1.6 if lit else 1.1))
+            p.setPen(QPen(QColor(col.red(), col.green(), col.blue(), base_a), 1.05 if lit else 0.8))
             poly = [QPointF(bx + x * bw, by + y * bh) for x, y in pts]
             for i in range(len(poly) - 1):
                 p.drawLine(poly[i], poly[i + 1])
@@ -705,20 +707,29 @@ class CircuitBusOverlay(QWidget):
                 continue
             col = self._color_for_sector(sid)
             lit = self._full or sid in active or (sid == "_main" and (self._full or bool(active)))
-            # caminho em degraus (PCB) ate a barra
-            mid_x = start.x() + max(24.0, (end.x() - start.x()) * 0.35)
+            # sai do NO do setor → borda do cerebro → degrau fino → barrinha
+            exit_x = start.x() + 14.0
+            mid_x = start.x() + max(28.0, (end.x() - start.x()) * 0.42)
             pts = [
                 start,
+                QPointF(exit_x, start.y()),
                 QPointF(mid_x, start.y()),
                 QPointF(mid_x, end.y()),
                 end,
             ]
-            base_a = 210 if lit else 95
-            width = 2.4 if lit else 1.5
-            # trilha base
-            p.setPen(QPen(QColor(col.red(), col.green(), col.blue(), base_a), width))
+            base_a = 200 if lit else 85
+            width = 1.15 if lit else 0.85
+            # trilha base (fina)
+            pen = QPen(QColor(col.red(), col.green(), col.blue(), base_a), width)
+            pen.setCapStyle(Qt.RoundCap)
+            pen.setJoinStyle(Qt.RoundJoin)
+            p.setPen(pen)
             for i in range(len(pts) - 1):
                 p.drawLine(pts[i], pts[i + 1])
+            # no no ponto do setor
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(col.red(), col.green(), col.blue(), 220 if lit else 130))
+            p.drawEllipse(start, 2.6 if lit else 1.8, 2.6 if lit else 1.8)
             # pulso viajando (sempre)
             segs = []
             total = 0.0
@@ -735,16 +746,16 @@ class CircuitBusOverlay(QWidget):
                     px = a0.x() + (b0.x() - a0.x()) * u
                     py = a0.y() + (b0.y() - a0.y()) * u
                     p.setPen(Qt.NoPen)
-                    p.setBrush(QColor(col.red(), col.green(), col.blue(), 240 if lit else 160))
-                    p.drawEllipse(QPointF(px, py), 4.2 if lit else 2.8, 4.2 if lit else 2.8)
+                    p.setBrush(QColor(col.red(), col.green(), col.blue(), 230 if lit else 150))
+                    p.drawEllipse(QPointF(px, py), 2.4 if lit else 1.7, 2.4 if lit else 1.7)
                     p.setBrush(QColor(255, 255, 255, 200 if lit else 120))
-                    p.drawEllipse(QPointF(px, py), 1.6, 1.6)
+                    p.drawEllipse(QPointF(px, py), 1.0, 1.0)
                     break
                 acc += L
-            # conector na barrinha
+            # conector fino na barrinha
             p.setPen(Qt.NoPen)
-            p.setBrush(QColor(col.red(), col.green(), col.blue(), 230 if lit else 140))
-            p.drawEllipse(end, 5.0 if lit else 3.5, 5.0 if lit else 3.5)
+            p.setBrush(QColor(col.red(), col.green(), col.blue(), 220 if lit else 120))
+            p.drawEllipse(end, 2.8 if lit else 2.0, 2.8 if lit else 2.0)
         p.end()
 
 

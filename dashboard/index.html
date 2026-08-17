@@ -6214,19 +6214,7 @@
           <span class="desc">CTEs · frete · picos · expedidores</span>
         </button>
       </div>
-      <div class="sector-prefs" aria-label="Preferências do mapa">
-        <label for="mapaRouteSec">Mapa · tempo de cada rota</label>
-        <select id="mapaRouteSec" title="Quanto tempo cada rota fica no mapa">
-          <option value="8000">8 s</option>
-          <option value="12000">12 s</option>
-          <option value="15000">15 s</option>
-          <option value="20000">20 s</option>
-          <option value="30000">30 s</option>
-          <option value="45000">45 s</option>
-          <option value="60000">60 s</option>
-        </select>
-        <p class="hint">Controla rota e placas juntos. Na TV, tempos maiores aliviam travamento.</p>
-      </div>
+      <!-- tempo do mapa: so no CRT (/tempo mapa / Editor TV) -->
     </div>
   </div>
 
@@ -7315,33 +7303,14 @@
     const MAPA_ROUTE_MS_DEFAULT = 15000;
     const MAPA_PLACA_VISIBLE = 4;
     function loadMapaRouteMs() {
-      try {
-        const n = parseInt(localStorage.getItem(MAPA_ROUTE_MS_KEY) || '', 10);
-        if (Number.isFinite(n) && n >= 5000 && n <= 120000) return n;
-      } catch (_) { /* ignore */ }
+      // Tempo vem do CRT (tv_layout.mapaRouteMs / /tempo mapa) — nao do menu do dashboard
       return MAPA_ROUTE_MS_DEFAULT;
     }
     let mapaRouteMs = loadMapaRouteMs();
-    function setMapaRouteMs(ms, { restart = true, persist = true } = {}) {
+    function setMapaRouteMs(ms, { restart = true, persist = false } = {}) {
       const n = Math.max(5000, Math.min(120000, Number(ms) || MAPA_ROUTE_MS_DEFAULT));
       mapaRouteMs = n;
-      if (persist) {
-        try { localStorage.setItem(MAPA_ROUTE_MS_KEY, String(n)); } catch (_) { /* ignore */ }
-      }
-      const sel = document.getElementById('mapaRouteSec');
-      if (sel) {
-        const opt = [...sel.options].find((o) => Number(o.value) === n);
-        if (opt) sel.value = String(n);
-        else {
-          let best = sel.options[0];
-          let bestDiff = Infinity;
-          [...sel.options].forEach((o) => {
-            const d = Math.abs(Number(o.value) - n);
-            if (d < bestDiff) { bestDiff = d; best = o; }
-          });
-          if (best) sel.value = best.value;
-        }
-      }
+      // persist ignorado: dono do tempo e o CRT (layout)
       if (restart && CURRENT_SECTOR === 'mapa' && lastMapaData) {
         startMapaRouteCarousel();
       }
@@ -13517,9 +13486,6 @@
     document.getElementById('btnCloseSetores')?.addEventListener('click', () => openSectorMenu(false));
     document.getElementById('sectorOverlay')?.addEventListener('click', (e) => {
       if (e.target.id === 'sectorOverlay') openSectorMenu(false);
-    });
-    document.getElementById('mapaRouteSec')?.addEventListener('change', (e) => {
-      setMapaRouteMs(e.target.value, { restart: true });
     });
     setMapaRouteMs(mapaRouteMs, { restart: false });
     document.querySelectorAll('#sectorGrid .sector-card').forEach((card) => {
