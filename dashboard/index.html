@@ -3099,6 +3099,44 @@
       text-transform: uppercase; color: #67e8f9;
     }
     .sector-card.soon .tag { color: #fbb03b; }
+    .sector-prefs {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #1e293b;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+    }
+    .sector-prefs label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .sector-prefs select {
+      background: #020617;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 700;
+      font-size: 13px;
+      min-width: 140px;
+      cursor: pointer;
+    }
+    .sector-prefs select:focus {
+      outline: none;
+      border-color: #67e8f9;
+    }
+    .sector-prefs .hint {
+      flex: 1 1 100%;
+      margin: 0;
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.4;
+    }
     @media (max-width: 720px) {
       .sector-grid { grid-template-columns: 1fr 1fr; }
     }
@@ -5941,6 +5979,19 @@
           <span class="desc">CTEs · frete · picos · expedidores</span>
         </button>
       </div>
+      <div class="sector-prefs" aria-label="Preferências do mapa">
+        <label for="mapaRouteSec">Mapa · tempo de cada rota</label>
+        <select id="mapaRouteSec" title="Quanto tempo cada rota fica no mapa">
+          <option value="8000">8 s</option>
+          <option value="12000">12 s</option>
+          <option value="15000">15 s</option>
+          <option value="20000">20 s</option>
+          <option value="30000">30 s</option>
+          <option value="45000">45 s</option>
+          <option value="60000">60 s</option>
+        </select>
+        <p class="hint">Na TV, tempos maiores aliviam travamento ao trocar de rota.</p>
+      </div>
     </div>
   </div>
 
@@ -6991,9 +7042,42 @@
     let mapaPlacaCursor = 0;
     let mapaPlacaTimer = null;
     let mapaZoneLayer = null;
-    const MAPA_ROUTE_MS = 9000;
+    const MAPA_ROUTE_MS_KEY = 'ace_mapa_route_ms';
+    const MAPA_ROUTE_MS_DEFAULT = 15000;
     const MAPA_PLACA_MS = 4500;
     const MAPA_PLACA_VISIBLE = 4;
+    function loadMapaRouteMs() {
+      try {
+        const n = parseInt(localStorage.getItem(MAPA_ROUTE_MS_KEY) || '', 10);
+        if (Number.isFinite(n) && n >= 5000 && n <= 120000) return n;
+      } catch (_) { /* ignore */ }
+      return MAPA_ROUTE_MS_DEFAULT;
+    }
+    let mapaRouteMs = loadMapaRouteMs();
+    function setMapaRouteMs(ms, { restart = true } = {}) {
+      const n = Math.max(5000, Math.min(120000, Number(ms) || MAPA_ROUTE_MS_DEFAULT));
+      mapaRouteMs = n;
+      try { localStorage.setItem(MAPA_ROUTE_MS_KEY, String(n)); } catch (_) { /* ignore */ }
+      const sel = document.getElementById('mapaRouteSec');
+      if (sel) {
+        const opt = [...sel.options].find((o) => Number(o.value) === n);
+        if (opt) sel.value = String(n);
+        else {
+          // valor custom salvo: usa o mais próximo da lista
+          let best = sel.options[0];
+          let bestDiff = Infinity;
+          [...sel.options].forEach((o) => {
+            const d = Math.abs(Number(o.value) - n);
+            if (d < bestDiff) { bestDiff = d; best = o; }
+          });
+          if (best) sel.value = best.value;
+        }
+      }
+      if (restart && CURRENT_SECTOR === 'mapa' && lastMapaData) {
+        startMapaRouteCarousel();
+      }
+      return mapaRouteMs;
+    }
     const MAPA_BASE_DEFAULT = {
       nome: 'BINHO TRANSPORTES',
       lat: -23.4265324,
@@ -10281,7 +10365,7 @@
         mapaRouteCursor = (mapaRouteCursor + 1) % list.length;
         const item = list[mapaRouteCursor];
         showMapaVehicleRoute(item.v, item.i);
-      }, MAPA_ROUTE_MS);
+      }, mapaRouteMs);
     }
 
     function focusMapaPlaca(placa) {
@@ -12940,6 +13024,10 @@
     document.getElementById('sectorOverlay')?.addEventListener('click', (e) => {
       if (e.target.id === 'sectorOverlay') openSectorMenu(false);
     });
+    document.getElementById('mapaRouteSec')?.addEventListener('change', (e) => {
+      setMapaRouteMs(e.target.value, { restart: true });
+    });
+    setMapaRouteMs(mapaRouteMs, { restart: false });
     document.querySelectorAll('#sectorGrid .sector-card').forEach((card) => {
       card.addEventListener('click', () => {
         const id = card.getAttribute('data-sector');
