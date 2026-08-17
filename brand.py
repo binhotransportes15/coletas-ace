@@ -24,10 +24,10 @@ def default_brand() -> dict[str, Any]:
         "version": 1,
         "visible": True,
         "mode": "file",  # file | url | hidden
-        "file": "brand-logo.png",
+        "file": "logo-binho.png",
         "url": "",
         "crtAsset": "brain-circuit.png",
-        "themeHint": "circuitos",
+        "themeHint": "",
         "updatedAt": "",
     }
 
@@ -53,7 +53,7 @@ def load_brand() -> dict[str, Any]:
     out["file"] = str(out.get("file") or "brand-logo.png").strip() or "brand-logo.png"
     out["url"] = str(out.get("url") or "").strip()
     out["crtAsset"] = str(out.get("crtAsset") or "brain-circuit.png").strip()
-    out["themeHint"] = str(out.get("themeHint") or "circuitos").strip()
+    out["themeHint"] = str(out.get("themeHint") or "").strip()
     return out
 
 
@@ -79,23 +79,20 @@ def resolve_crt_pixmap_path(brand: dict[str, Any] | None = None) -> Path:
     b = brand or load_brand()
     if b.get("mode") == "hidden" or not b.get("visible", True):
         return Path()  # empty → widget hides / draws nothing
-    # Prefer dashboard brand file if custom
-    if b.get("mode") == "file":
-        local = DASHBOARD / str(b.get("file") or "brand-logo.png")
-        if local.is_file():
-            return local
-    if b.get("mode") == "url" and b.get("url"):
-        cached = DASHBOARD / "brand-logo-remote.png"
-        if cached.is_file():
-            return cached
+    # CRT: cerebro de circuitos (independente da logo das dashboards)
     for cand in (
         ASSETS / str(b.get("crtAsset") or "brain-circuit.png"),
         DEFAULT_CRT_BRAIN,
-        DEFAULT_DASH_LOGO,
         DEFAULT_CRT_CUBES,
     ):
         if cand.is_file():
             return cand
+    if b.get("mode") == "url" and b.get("url"):
+        cached = DASHBOARD / "brand-logo-remote.png"
+        if cached.is_file():
+            return cached
+    if DEFAULT_DASH_LOGO.is_file():
+        return DEFAULT_DASH_LOGO
     return Path()
 
 
@@ -106,7 +103,7 @@ def resolve_dashboard_src(brand: dict[str, Any] | None = None) -> str:
         return ""
     if b.get("mode") == "url" and b.get("url"):
         return str(b["url"])
-    fname = str(b.get("file") or "brand-logo.png")
+    fname = str(b.get("file") or "logo-binho.png")
     if (DASHBOARD / fname).is_file():
         return fname
     if DEFAULT_DASH_LOGO.is_file():
@@ -127,16 +124,15 @@ def apply_logo_file(src: Path | str) -> dict[str, Any]:
         raise FileNotFoundError(f"Arquivo não encontrado: {path}")
     DASHBOARD.mkdir(parents=True, exist_ok=True)
     ASSETS.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(path, BRAND_LOGO)
-    # Espelha no nome legado usado pelo HTML e no CRT
+    # So dashboards — CRT continua com o cerebro em assets/brain-circuit.png
     shutil.copy2(path, DEFAULT_DASH_LOGO)
-    shutil.copy2(path, DEFAULT_CRT_BRAIN)
+    shutil.copy2(path, BRAND_LOGO)
     b = load_brand()
     b["visible"] = True
     b["mode"] = "file"
-    b["file"] = "brand-logo.png"
+    b["file"] = "logo-binho.png"
     b["url"] = ""
-    b["crtAsset"] = "brain-circuit.png"
+    b["crtAsset"] = str(b.get("crtAsset") or "brain-circuit.png")
     return save_brand(b)
 
 

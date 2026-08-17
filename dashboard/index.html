@@ -1169,9 +1169,9 @@
     body.brand-no-logo .brand { gap: 0; }
     /* Tema circuitos (opcional via brand.themeHint) */
     body.theme-circuitos {
-      --binho-blue: #22d3ee;
-      --binho-green: #67e8f9;
-      --binho-yellow: #fde047;
+      --binho-blue: #29abe2;
+      --binho-green: #8cc63f;
+      --binho-yellow: #fff200;
     }
     body.tv-mode .sector-soon-panel {
       height: 100%;
@@ -4210,23 +4210,23 @@
       display: inline-grid;
       place-items: center;
       --farol-level: 0%;
-      --farol-wave: #22d3ee;
-      --farol-wave-deep: #0891b2;
+      --farol-wave: #29abe2;
+      --farol-wave-deep: #1b1464;
     }
     .mapa-farol-pct-wrap > .big {
       grid-area: 1 / 1;
     }
     .mapa-farol-pct-wrap[data-tone="low"] {
-      --farol-wave: #38bdf8;
-      --farol-wave-deep: #0284c7;
+      --farol-wave: #ed1c24;
+      --farol-wave-deep: #c1272d;
     }
     .mapa-farol-pct-wrap[data-tone="mid"] {
-      --farol-wave: #4ade80;
-      --farol-wave-deep: #16a34a;
+      --farol-wave: #fff200;
+      --farol-wave-deep: #fbb03b;
     }
     .mapa-farol-pct-wrap[data-tone="good"] {
-      --farol-wave: #22c55e;
-      --farol-wave-deep: #15803d;
+      --farol-wave: #8cc63f;
+      --farol-wave-deep: #009245;
     }
     .mapa-farol-overlay .big {
       font-size: clamp(28px, 3.6vmin, 48px);
@@ -10302,11 +10302,11 @@
       } catch (_) {}
       window.__mapaZonas = {
         zonas: {
-          CENTRO: { label: 'Centro', color: '#FFF56A' },
-          LESTE: { label: 'Leste', color: '#7CFF4A' },
-          NORTE: { label: 'Norte', color: '#FFB347' },
-          OESTE: { label: 'Oeste', color: '#FF5AE8' },
-          SUL: { label: 'Sul', color: '#C9A0FF' },
+          CENTRO: { label: 'Centro', color: '#fff200' },
+          LESTE: { label: 'Leste', color: '#8cc63f' },
+          NORTE: { label: 'Norte', color: '#29abe2' },
+          OESTE: { label: 'Oeste', color: '#ed1c24' },
+          SUL: { label: 'Sul', color: '#fbb03b' },
         },
         distritos: {},
       };
@@ -10381,15 +10381,24 @@
         mapaFarolLayer = L.geoJSON(geo, {
           style: (feat) => {
             const p = feat.properties || {};
-            const color = p.zona_color
+            const zona = String(p.zona || '').toUpperCase();
+            const binhoZona = {
+              CENTRO: '#fff200',
+              LESTE: '#8cc63f',
+              NORTE: '#29abe2',
+              OESTE: '#ed1c24',
+              SUL: '#fbb03b',
+            };
+            const color = binhoZona[zona]
+              || p.zona_color
               || (zonas.distritos[p.name] && zonas.distritos[p.name].color)
-              || '#00f0ff';
+              || '#8cc63f';
             return {
-              color: '#f8fafc',
-              weight: 1.7,
-              opacity: 0.95,
+              color: '#0b1220',
+              weight: 1.4,
+              opacity: 0.9,
               fillColor: color,
-              fillOpacity: 0.58,
+              fillOpacity: 0.72,
               className: 'mapa-zona-neon',
             };
           },
