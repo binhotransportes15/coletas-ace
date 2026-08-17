@@ -1401,6 +1401,30 @@ QLabel#quickCmdBlurb {{
     font-size: 10px;
     background: transparent;
 }}
+QWidget#lockOverlay {{
+    background: rgba(3, 7, 18, 210);
+}}
+QFrame#lockCard {{
+    background: {t['panel']};
+    border: 1px solid {t['line']};
+    border-radius: {radius};
+}}
+QLabel#lockIcon {{
+    font-size: 72px;
+    background: transparent;
+}}
+QLabel#lockTitle {{
+    color: {t['text']};
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    background: transparent;
+}}
+QLabel#lockErr {{
+    color: #ed1c24;
+    font-size: 11px;
+    background: transparent;
+}}
 QPushButton#menuBtn {{
     min-width: 64px;
     padding: 5px 10px;
@@ -1539,6 +1563,8 @@ _FIELD_LABELS: dict[str, str] = {
     "mapa_intervalo": "Tempo · mapa",
     "reciclagem_in_loop": "Reciclagem no automático",
     "reciclagem_intervalo": "Tempo · reciclagem",
+    "dashboard_port": "Porta do dashboard",
+    "crt_lock_password": "Senha do cadeado (bloquear painel)",
     "headless": "Ocultar navegador",
 }
 
@@ -1592,6 +1618,9 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "publicar no site": "push",
     "parar": "parar",
     "stop": "parar",
+    "bloquear": "bloquear",
+    "lock": "bloquear",
+    "cadeado": "bloquear",
     "log": "/log",
     "/log": "/log",
     "limpar": "limpar",
@@ -1738,6 +1767,161 @@ class AutoLoopWorker(QThread):
             self.failed.emit(f"ERRO no loop: {err}\n{traceback.format_exc(limit=4)}")
 
 
+class LockOverlay(QWidget):
+    """Cadeado em tela cheia — bloqueia UI; automação/workers continuam."""
+
+    unlocked = Signal()
+
+    def __init__(self, host: QWidget) -> None:
+        super().__init__(host)
+        self.setObjectName("lockOverlay")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.hide()
+        self._pulse = 0.0
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(24, 24, 24, 24)
+        root.addStretch(1)
+
+        card = QFrame()
+        card.setObjectName("lockCard")
+        card.setMaximumWidth(420)
+        cl = QVBoxLayout(card)
+        cl.setContentsMargins(28, 28, 28, 28)
+        cl.setSpacing(12)
+
+        self._icon = QLabel("🔒")
+        self._icon.setObjectName("lockIcon")
+        self._icon.setAlignment(Qt.AlignCenter)
+        cl.addWidget(self._icon)
+
+        title = QLabel("PAINEL BLOQUEADO")
+        title.setObjectName("lockTitle")
+        title.setAlignment(Qt.AlignCenter)
+        cl.addWidget(title)
+
+        tip = QLabel(
+            "Automação e downloads continuam em segundo plano.\n"
+            "Digite a senha do cadeado para mexer no CRT."
+        )
+        tip.setObjectName("hint")
+        tip.setWordWrap(True)
+        tip.setAlignment(Qt.AlignCenter)
+        cl.addWidget(tip)
+
+        self._pwd = QLineEdit()
+        self._pwd.setEchoMode(QLineEdit.Password)
+        self._pwd.setPlaceholderText("Senha do cadeado")
+        self._pwd.returnPressed.connect(self._try_unlock)
+        cl.addWidget(self._pwd)
+
+        self._err = QLabel("")
+        self._err.setObjectName("lockErr")
+        self._err.setAlignment(Qt.AlignCenter)
+        self._err.setWordWrap(True)
+        cl.addWidget(self._err)
+
+        btn = QPushButton("Desbloquear")
+        btn.setObjectName("primary")
+        btn.clicked.connect(self._try_unlock)
+        cl.addWidget(btn)
+
+        row = QHBoxLayout()
+        row.addStretch(1)
+        row.addWidget(card)
+        row.addStretch(1)
+        root.addLayout(row)
+        root.addStretch(1)
+
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick_pulse)
+        self._expected = ""
+
+    def set_expected_password(self, password: str) -> None:
+        self._expected = str(password or "")
+
+    def lock(self, password: str) -> None:
+        self.set_expected_password(password)
+        self._pwd.clear()
+        self._err.setText("")
+        self.show()
+        self.raise_()
+        self._timer.start(50)
+        QTimer.singleShot(80, lambda: self._pwd.setFocus(Qt.OtherFocusReason))
+
+    def unlock(self) -> None:
+        self._timer.stop()
+        self.hide()
+        self._pwd.clear()
+        self._err.setText("")
+        self.unlocked.emit()
+
+    def is_locked(self) -> bool:
+        return self.isVisible()
+
+    def _try_unlock(self) -> None:
+        typed = self._pwd.text()
+        if not self._expected:
+            self._err.setText("Defina a senha em Menu → Configuração.")
+            return
+        if typed == self._expected:
+            self.unlock()
+            return
+        self._err.setText("Senha incorreta.")
+        self._pwd.selectAll()
+        self._pwd.setFocus(Qt.OtherFocusReason)
+
+    def _tick_pulse(self) -> None:
+        self._pulse += 0.05
+        # leve “respiração” no ícone
+        scale = 1.0 + 0.04 * math.sin(self._pulse)
+        self._icon.setStyleSheet(
+            f"font-size: {int(72 * scale)}px; background: transparent;"
+        )
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        if self.parentWidget() is not None:
+            self.setGeometry(self.parentWidget().rect())
+
+
+class AceCrtRapidoWindow(QWidget):
+    """Painel à parte para escolher um comando rápido."""
+
+    def __init__(self, owner: "AceCrtConsole", content: QWidget) -> None:
+        super().__init__(None)
+        self.setObjectName("crtRoot")
+        self.setWindowTitle("BINHO · Comandos rápidos")
+        self.setWindowFlags(
+            Qt.Tool
+            | Qt.WindowTitleHint
+            | Qt.WindowSystemMenuHint
+            | Qt.WindowCloseButtonHint
+        )
+        self._owner = owner
+        self.resize(520, 560)
+        self.setMinimumSize(400, 420)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(10, 10, 10, 10)
+        lay.setSpacing(6)
+        tip = QLabel(
+            "Escolha o relatório · fecha sozinho após clicar · "
+            "ou digite o comando no ACE>"
+        )
+        tip.setObjectName("hint")
+        tip.setWordWrap(True)
+        lay.addWidget(tip)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setWidget(content)
+        lay.addWidget(scroll, 1)
+
+    def closeEvent(self, event) -> None:  # noqa: N802
+        event.ignore()
+        self.hide()
+
+
 class AceCrtMenuWindow(QWidget):
     """Janela à parte com as abas de configuração (mesmo tema do CRT)."""
 
@@ -1806,10 +1990,10 @@ class AceCrtConsole(QWidget):
         self._tv_slot_btns: dict[int, QPushButton] = {}
         self._tv_selected: int = 1
         self._tv_loading = False
-        # centro: barras por setor (limpo) ou log CMD detalhado
-        self._cmd_view = "bars"  # bars | log
+        self._cmd_view = "log"  # log | bars (ambos visíveis; marca foco)
         self._sector_meters: dict[str, SectorMeterRow] = {}
         self._menu_win: AceCrtMenuWindow | None = None
+        self._rapido_win: AceCrtRapidoWindow | None = None
 
         # registra PID para spawn_crt não abrir duplicata
         try:
@@ -1834,6 +2018,12 @@ class AceCrtConsole(QWidget):
         head.addStretch(1)
         head.addWidget(self.mode)
         head.addSpacing(8)
+        self.btn_lock = QPushButton("Bloquear")
+        self.btn_lock.setObjectName("menuBtn")
+        self.btn_lock.setToolTip("Trava o painel com cadeado (automação continua)")
+        self.btn_lock.clicked.connect(self._lock_panel)
+        head.addWidget(self.btn_lock)
+        head.addSpacing(6)
         self.btn_menu = QPushButton("Menu")
         self.btn_menu.setObjectName("menuBtn")
         self.btn_menu.setToolTip("Abrir menu de configuração (F2)")
@@ -1869,6 +2059,10 @@ class AceCrtConsole(QWidget):
         self._circuit_bus = CircuitBusOverlay(self)
         self._circuit_bus.raise_()
         QTimer.singleShot(0, self._wire_circuit_bus)
+
+        self._lock = LockOverlay(self)
+        self._lock.unlocked.connect(self._on_panel_unlocked)
+        self._ui_locked = False
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._refresh_status)
@@ -2040,41 +2234,39 @@ class AceCrtConsole(QWidget):
         lay.setContentsMargins(10, 10, 10, 10)
         lay.setSpacing(8)
 
-        # Atalhos de reports (ligar/parar automação fica só em Gestão)
-        lay.addWidget(self._section("RÁPIDO"))
-        tip_rapido = QLabel(
-            "Clique para baixar o relatório no SSW. Código · o que atualiza no painel."
-        )
-        tip_rapido.setObjectName("hint")
-        tip_rapido.setWordWrap(True)
-        lay.addWidget(tip_rapido)
-        rapido_scroll = QScrollArea()
-        rapido_scroll.setWidgetResizable(True)
-        rapido_scroll.setFrameShape(QFrame.NoFrame)
-        rapido_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        rapido_scroll.setMinimumHeight(160)
-        rapido_scroll.setMaximumHeight(320)
-        rapido_scroll.setWidget(self._build_rapido_panel())
-        lay.addWidget(rapido_scroll)
+        # Cabeçalho do log + botão que abre o painel de comandos rápidos
+        head_log = QHBoxLayout()
+        self.cmd_section = self._section("CMD · log")
+        head_log.addWidget(self.cmd_section)
+        head_log.addStretch(1)
+        self.btn_rapido = QPushButton("Comandos rápidos")
+        self.btn_rapido.setObjectName("primary")
+        self.btn_rapido.setToolTip("Abre o painel para escolher o relatório (50, 78, mapa…)")
+        self.btn_rapido.clicked.connect(self._toggle_rapido_window)
+        head_log.addWidget(self.btn_rapido)
+        lay.addLayout(head_log)
 
-        head_cmd = QHBoxLayout()
-        self.cmd_section = self._section("AUTO · setores")
-        head_cmd.addWidget(self.cmd_section)
-        head_cmd.addStretch(1)
-        self.btn_toggle_view = QPushButton("/log")
-        self.btn_toggle_view.setToolTip("Alternar barrinhas ↔ log detalhado do CMD")
-        self.btn_toggle_view.setFixedWidth(72)
-        self.btn_toggle_view.clicked.connect(self._toggle_cmd_view)
-        head_cmd.addWidget(self.btn_toggle_view)
-        lay.addLayout(head_cmd)
+        # Log em cima · barrinhas embaixo (redimensionáveis)
+        split = QSplitter(Qt.Vertical)
+        split.setChildrenCollapsible(False)
+        split.setObjectName("centerSplit")
 
-        self.cmd_stack = QStackedWidget()
+        self.log = QTextEdit()
+        self.log.setObjectName("crtLog")
+        self.log.setReadOnly(True)
+        self.log.setMinimumHeight(120)
+        self.log.setAcceptRichText(True)
+        self._setup_opaque_log()
+        split.addWidget(self.log)
 
-        # Página 0 — barrinhas por setor
         bars_page = QWidget()
         bars_lay = QVBoxLayout(bars_page)
-        bars_lay.setContentsMargins(0, 0, 0, 0)
+        bars_lay.setContentsMargins(0, 4, 0, 0)
         bars_lay.setSpacing(6)
+        bars_head = QHBoxLayout()
+        bars_head.addWidget(self._section("AUTO · setores"))
+        bars_head.addStretch(1)
+        bars_lay.addLayout(bars_head)
         self.sector_status = QLabel("Automático parado · inicie na aba Automação")
         self.sector_status.setObjectName("hint")
         self.sector_status.setWordWrap(True)
@@ -2099,23 +2291,19 @@ class AceCrtConsole(QWidget):
             bars_lay.addWidget(meter)
         bars_lay.addStretch(1)
         tip_bars = QLabel(
-            "Barrinhas = % da automação + envio Sheets · digite /log para o console detalhado"
+            "Barrinhas = % da automação + envio Sheets · Comandos rápidos = botão acima"
         )
         tip_bars.setObjectName("hint")
         tip_bars.setWordWrap(True)
         bars_lay.addWidget(tip_bars)
-        self.cmd_stack.addWidget(bars_page)
+        split.addWidget(bars_page)
+        split.setStretchFactor(0, 3)
+        split.setStretchFactor(1, 2)
+        split.setSizes([360, 240])
+        self._center_split = split
+        lay.addWidget(split, 1)
 
-        # Página 1 — log CMD (fundo SEMPRE opaco — evita fantasma no tema fosco)
-        self.log = QTextEdit()
-        self.log.setObjectName("crtLog")
-        self.log.setReadOnly(True)
-        self.log.setMinimumHeight(220)
-        self.log.setAcceptRichText(True)
-        self._setup_opaque_log()
-        self.cmd_stack.addWidget(self.log)
-
-        lay.addWidget(self.cmd_stack, 1)
+        # Compat: /log e /bars só mudam o foco (ambos ficam visíveis)
         self._apply_cmd_view(self._cmd_view, announce=False)
 
         prompt_row = QHBoxLayout()
@@ -2131,9 +2319,11 @@ class AceCrtConsole(QWidget):
         lay.addLayout(prompt_row)
 
         hint = QLabel(
-            "Console · /log ou /bars · Menu = F2 · tela cheia = F11 · “parar” corta tudo"
+            "Log em cima · barrinhas embaixo · Comandos rápidos abre o painel · "
+            "Menu = F2 · tela cheia = F11 · “parar” corta tudo"
         )
         hint.setObjectName("hint")
+        hint.setWordWrap(True)
         lay.addWidget(hint)
         return box
 
@@ -2141,7 +2331,7 @@ class AceCrtConsole(QWidget):
         """Comandos rápidos agrupados por setor, com código SSW + o que faz."""
         wrap = QWidget()
         outer = QVBoxLayout(wrap)
-        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setContentsMargins(4, 4, 4, 4)
         outer.setSpacing(6)
 
         groups: list[tuple[str, list[tuple[str, str, str, str]]]] = [
@@ -2180,39 +2370,150 @@ class AceCrtConsole(QWidget):
             grid.setContentsMargins(0, 0, 0, 0)
             for i, (title, code, blurb, cmd) in enumerate(items):
                 btn = QuickCmdButton(title, code, blurb, cmd)
-                btn.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
+                btn.clicked.connect(lambda _=False, c=cmd: self._run_rapido_cmd(c))
                 grid.addWidget(btn, i // 2, i % 2)
             outer.addLayout(grid)
-
+        outer.addStretch(1)
         return wrap
 
+    def _lock_password(self) -> str:
+        p = self.payload or {}
+        return str(p.get("crt_lock_password") or "binho")
+
+    def _lock_panel(self) -> None:
+        """Trava a UI com cadeado no meio. Workers/automação seguem."""
+        pwd = self._lock_password().strip()
+        if not pwd:
+            QMessageBox.information(
+                self,
+                "Bloquear",
+                "Defina a senha do cadeado em Menu → Configuração → Bloqueio do painel.",
+            )
+            self._show_menu_window("config")
+            return
+        for attr in ("_menu_win", "_rapido_win"):
+            win = getattr(self, attr, None)
+            if win is not None and win.isVisible():
+                try:
+                    win.hide()
+                except Exception:
+                    pass
+        lock = getattr(self, "_lock", None)
+        if lock is None:
+            return
+        self._ui_locked = True
+        if hasattr(self, "mode"):
+            self.mode.setText("LOCKED")
+        if hasattr(self, "btn_lock"):
+            self.btn_lock.setEnabled(False)
+        lock.setGeometry(self.rect())
+        lock.lock(pwd)
+        lock.raise_()
+        self._append_log(
+            "sistema",
+            "Painel bloqueado · automação continua · digite a senha no cadeado para liberar.",
+            mirror=False,
+        )
+
+    def _on_panel_unlocked(self) -> None:
+        self._ui_locked = False
+        if hasattr(self, "mode"):
+            self.mode.setText("MENU")
+        if hasattr(self, "btn_lock"):
+            self.btn_lock.setEnabled(True)
+        self._append_log("ok", "Painel desbloqueado.", mirror=False)
+        try:
+            if hasattr(self, "prompt"):
+                self.prompt.setFocus(Qt.OtherFocusReason)
+        except Exception:
+            pass
+
+    def _is_ui_locked(self) -> bool:
+        lock = getattr(self, "_lock", None)
+        return bool(getattr(self, "_ui_locked", False) or (lock is not None and lock.is_locked()))
+
+    def _toggle_rapido_window(self) -> None:
+        if self._is_ui_locked():
+            return
+        win = getattr(self, "_rapido_win", None)
+        if win is None:
+            panel = self._build_rapido_panel()
+            win = AceCrtRapidoWindow(self, panel)
+            self._rapido_win = win
+            self._sync_rapido_window_chrome()
+        if win.isVisible():
+            win.raise_()
+            win.activateWindow()
+            return
+        # posiciona perto do botão / canto do CRT
+        try:
+            btn = getattr(self, "btn_rapido", None)
+            if btn is not None:
+                g = btn.mapToGlobal(btn.rect().bottomRight())
+                win.move(max(40, g.x() - win.width() + 20), g.y() + 8)
+            else:
+                g = self.mapToGlobal(self.rect().topRight())
+                win.move(max(40, g.x() - win.width() - 20), g.y() + 60)
+        except Exception:
+            pass
+        self._sync_rapido_window_chrome()
+        win.show()
+        win.raise_()
+        win.activateWindow()
+
+    def _sync_rapido_window_chrome(self) -> None:
+        win = getattr(self, "_rapido_win", None)
+        if win is None:
+            return
+        fa, fb = self._frost_alpha_val(), self._frost_blur_val()
+        tid = getattr(self, "_theme_id", DEFAULT_CRT_THEME)
+        win.setStyleSheet(build_crt_stylesheet(tid, frost_alpha=fa, frost_blur=fb))
+        meta = CRT_THEMES.get(tid) or {}
+        frost = bool(meta.get("frost"))
+        fp = frost_params(fa, fb) if frost else None
+        tint = int(fp["tint"]) if fp else int(meta.get("acrylic_tint") or 0x401A1A1A)
+        state = int(fp["state"]) if fp else 4
+        opacity = float(fp["opacity"]) if fp else 1.0
+        self._apply_frost_on_widget(win, frost, tint, state, opacity=opacity)
+
+    def _run_rapido_cmd(self, cmd: str) -> None:
+        win = getattr(self, "_rapido_win", None)
+        if win is not None:
+            win.hide()
+        self.run_command(cmd)
+
     def _toggle_cmd_view(self) -> None:
-        nxt = "log" if self._cmd_view != "log" else "bars"
+        nxt = "bars" if self._cmd_view == "log" else "log"
         self._apply_cmd_view(nxt, announce=True)
 
     def _apply_cmd_view(self, mode: str, *, announce: bool = True) -> None:
+        """Log e barras ficam sempre visíveis; /log e /bars só mudam o foco."""
         mode = "log" if str(mode).lower().strip() in {"log", "/log"} else "bars"
         self._cmd_view = mode
-        if hasattr(self, "cmd_stack"):
-            self.cmd_stack.setCurrentIndex(1 if mode == "log" else 0)
         if hasattr(self, "cmd_section"):
-            self.cmd_section.setText("CMD · log" if mode == "log" else "AUTO · setores")
-        if hasattr(self, "btn_toggle_view"):
-            self.btn_toggle_view.setText("/bars" if mode == "log" else "/log")
+            self.cmd_section.setText("CMD · log" if mode == "log" else "CMD · log (foco barras)")
+        try:
+            if mode == "log" and hasattr(self, "log"):
+                self.log.setFocus(Qt.OtherFocusReason)
+                self.log.ensureCursorVisible()
+            elif mode == "bars" and hasattr(self, "sector_status"):
+                self.sector_status.setFocus(Qt.OtherFocusReason)
+        except Exception:
+            pass
         if announce:
             if mode == "log":
                 self._append_log(
                     "sistema",
-                    "Vista LOG · mostrando o que o programa está fazendo no CMD. Digite /bars para barrinhas.",
+                    "Foco no LOG · barrinhas continuam embaixo. Comandos rápidos = botão acima.",
                 )
             else:
                 if hasattr(self, "sector_status"):
                     self.sector_status.setText(
-                        "Vista BARRAS · % automação + Sheets · digite /log para o console"
+                        "Vista BARRAS · log continua em cima · use Comandos rápidos para puxar relatório"
                     )
                 self._append_log(
                     "sistema",
-                    "Vista BARRAS · progresso da automação e Sheets. Digite /log para o console.",
+                    "Foco nas BARRAS · log continua em cima.",
                     mirror=False,
                 )
     def _build_right(self) -> QWidget:
@@ -2226,6 +2527,8 @@ class AceCrtConsole(QWidget):
         return tabs
 
     def _toggle_menu_window(self) -> None:
+        if self._is_ui_locked():
+            return
         win = getattr(self, "_menu_win", None)
         if win is None:
             return
@@ -2236,6 +2539,8 @@ class AceCrtConsole(QWidget):
             self._show_menu_window()
 
     def _show_menu_window(self, tab: str | int | None = None) -> None:
+        if self._is_ui_locked():
+            return
         win = getattr(self, "_menu_win", None)
         if win is None:
             return
@@ -2278,20 +2583,20 @@ class AceCrtConsole(QWidget):
     def _sync_menu_window_chrome(self) -> None:
         """Aplica o mesmo stylesheet + frost/opacidade na janela Menu."""
         win = getattr(self, "_menu_win", None)
-        if win is None:
-            return
-        fa, fb = self._frost_alpha_val(), self._frost_blur_val()
-        tid = getattr(self, "_theme_id", DEFAULT_CRT_THEME)
-        win.setStyleSheet(
-            build_crt_stylesheet(tid, frost_alpha=fa, frost_blur=fb)
-        )
-        meta = CRT_THEMES.get(tid) or {}
-        frost = bool(meta.get("frost"))
-        fp = frost_params(fa, fb) if frost else None
-        tint = int(fp["tint"]) if fp else int(meta.get("acrylic_tint") or 0x401A1A1A)
-        state = int(fp["state"]) if fp else 4
-        opacity = float(fp["opacity"]) if fp else 1.0
-        self._apply_frost_on_widget(win, frost, tint, state, opacity=opacity)
+        if win is not None:
+            fa, fb = self._frost_alpha_val(), self._frost_blur_val()
+            tid = getattr(self, "_theme_id", DEFAULT_CRT_THEME)
+            win.setStyleSheet(
+                build_crt_stylesheet(tid, frost_alpha=fa, frost_blur=fb)
+            )
+            meta = CRT_THEMES.get(tid) or {}
+            frost = bool(meta.get("frost"))
+            fp = frost_params(fa, fb) if frost else None
+            tint = int(fp["tint"]) if fp else int(meta.get("acrylic_tint") or 0x401A1A1A)
+            state = int(fp["state"]) if fp else 4
+            opacity = float(fp["opacity"]) if fp else 1.0
+            self._apply_frost_on_widget(win, frost, tint, state, opacity=opacity)
+        self._sync_rapido_window_chrome()
 
     def _build_config_tab(self) -> QWidget:
         from ace_cmd import EDITABLE
@@ -2387,6 +2692,10 @@ class AceCrtConsole(QWidget):
             "pendencia": ("Pendência", "Ajustes do setor 031."),
             "contratacao": ("Contratação", "Ajustes 073 → 200."),
             "automacao": ("Automação", "Use a aba Automação para setores e intervalos."),
+            "crt": (
+                "Bloqueio do painel",
+                "Senha do cadeado (botão Bloquear). Automação continua mesmo bloqueado. Padrão: binho",
+            ),
         }
         skip_keys = {
             "headless",
@@ -3327,6 +3636,11 @@ class AceCrtConsole(QWidget):
                 bus.show()
             bus.raise_()
             bus.update()
+        lock = getattr(self, "_lock", None)
+        if lock is not None:
+            lock.setGeometry(r)
+            if lock.is_locked():
+                lock.raise_()
         cubes = getattr(self, "cubes", None)
         if cubes is not None:
             cubes.update()
@@ -3837,6 +4151,13 @@ class AceCrtConsole(QWidget):
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         key = event.key()
+        if self._is_ui_locked():
+            # Só o overlay do cadeado recebe input (campo senha)
+            lock = getattr(self, "_lock", None)
+            if lock is not None:
+                lock.raise_()
+            event.accept()
+            return
         if key == Qt.Key_F2:
             self._toggle_menu_window()
             event.accept()
@@ -4153,6 +4474,26 @@ class AceCrtConsole(QWidget):
         if not raw:
             return
         low = raw.lower().strip()
+        if low in {"bloquear", "lock", "cadeado", "/bloquear", "/lock"}:
+            self._lock_panel()
+            return
+        if low in {"desbloquear", "unlock", "/desbloquear", "/unlock"}:
+            # Desbloqueio só pelo campo do cadeado (senha)
+            if self._is_ui_locked():
+                self._append_log(
+                    "sistema",
+                    "Painel bloqueado · digite a senha no cadeado no centro da tela.",
+                    mirror=False,
+                )
+            return
+        # Com painel bloqueado: só parar continua (emergência); resto bloqueado
+        if self._is_ui_locked() and low not in {"parar", "stop", "halt"}:
+            self._append_log(
+                "sistema",
+                "Painel bloqueado · use o cadeado no centro para liberar.",
+                mirror=False,
+            )
+            return
         if low in {"cls", "clear", "limpar", "/limpar", "/cls", "/clear"}:
             self._clear_cmd_log()
             return
@@ -4353,17 +4694,29 @@ class AceCrtConsole(QWidget):
         self._update_meta()
 
     def closeEvent(self, event) -> None:  # noqa: N802
+        if self._is_ui_locked():
+            event.ignore()
+            QMessageBox.information(
+                self,
+                "Bloqueado",
+                "Desbloqueie o painel (senha no cadeado) antes de fechar.",
+            )
+            lock = getattr(self, "_lock", None)
+            if lock is not None:
+                lock.raise_()
+            return
         if self._auto_worker and self._auto_worker.isRunning():
             self._auto_worker.request_stop()
             self._auto_worker.wait(3000)
-        win = getattr(self, "_menu_win", None)
-        if win is not None:
-            try:
-                win.hide()
-                win.deleteLater()
-            except Exception:
-                pass
-            self._menu_win = None
+        for attr in ("_menu_win", "_rapido_win"):
+            win = getattr(self, attr, None)
+            if win is not None:
+                try:
+                    win.hide()
+                    win.deleteLater()
+                except Exception:
+                    pass
+                setattr(self, attr, None)
         super().closeEvent(event)
 
     def _clear_cmd_log(self, *, announce: bool = True) -> None:

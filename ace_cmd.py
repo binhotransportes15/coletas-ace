@@ -90,6 +90,7 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "modo_local": ("local", "bool", False),
     "dashboard_lan": ("local", "bool", False),
     "dashboard_port": ("local", "int", False),
+    "crt_lock_password": ("crt", "str", True),
 }
 
 BOOL_TRUE = {"1", "true", "t", "yes", "y", "sim", "s", "on", "ligado"}
@@ -178,6 +179,7 @@ def _save_payload(payload: dict[str, Any]) -> None:
         crt_frost_blur=max(
             0, min(100, int(payload.get("crt_frost_blur", 70) or 0))
         ),
+        crt_lock_password=str(payload.get("crt_lock_password") or "binho"),
     )
     save_all(creds, settings)
 
@@ -689,6 +691,8 @@ def cmd_help() -> str:
             "  /viz on|off   Mostra ou oculta o navegador (headless).",
             "  show / config Lista a configuração atual no console.",
             "  gui           Abre o painel gráfico legado (se houver).",
+            "  bloquear      Trava o CRT com cadeado (automação continua).",
+            "                Senha: Menu → Configuração → Bloqueio do painel.",
             "  F2            Abre/fecha o Menu.",
             "  F11 / Esc     Entra/sai da tela cheia.",
             "  help / /help  Esta ajuda.",

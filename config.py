@@ -118,6 +118,8 @@ class AceSettings:
     # Tema fosco: transparência 0–100 (ver fundo) e blur 0–100 (fosco Windows)
     crt_frost_alpha: int = 55
     crt_frost_blur: int = 70
+    # Senha para bloquear/desbloquear o painel CRT (UI). Automação continua rodando.
+    crt_lock_password: str = "binho"
 
 
 def ensure_dirs() -> None:
@@ -219,6 +221,11 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         crt_frost_blur=max(
             0,
             min(100, int(payload.get("crt_frost_blur", defaults.crt_frost_blur) or 0)),
+        ),
+        crt_lock_password=str(
+            payload.get("crt_lock_password")
+            if payload.get("crt_lock_password") is not None
+            else defaults.crt_lock_password
         ),
     )
 
