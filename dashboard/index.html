@@ -9409,40 +9409,46 @@
     function renderPenTorres(ofensores) {
       const host = document.getElementById('penTorres');
       const pareto = document.getElementById('penPareto');
-      const items = (ofensores || []).slice(0, document.body.classList.contains('tv-mode') ? 6 : 8);
+      const all = ofensores || [];
+      const items = all.slice(0, document.body.classList.contains('tv-mode') ? 6 : 8);
       if (!items.length) {
         if (host) host.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
         if (pareto) pareto.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
         return;
       }
+      // % = participação no TODO (não acumulado, nem só entre os visíveis)
+      const totalAll = all.reduce((s, o) => s + (Number(o.qtd) || 0), 0) || 1;
       const max = Math.max(...items.map((o) => Number(o.qtd) || 0), 1);
-      const total = items.reduce((s, o) => s + (Number(o.qtd) || 0), 0) || 1;
       const skinsNeg = ['t-of', 't-of2', 't-of3', 't-of4', 't-of5', 't-of6', 't-of7'];
       const tv = document.body.classList.contains('tv-mode');
       let negIdx = 0;
-      let acc = 0;
+      const pctShare = (o) => {
+        const qtd = Number(o.qtd) || 0;
+        const raw = String(o.pct ?? '').trim().replace(',', '.');
+        const fromCsv = Number(raw);
+        if (Number.isFinite(fromCsv) && fromCsv >= 0) return Math.round(fromCsv);
+        return Math.round((qtd / totalAll) * 100);
+      };
       if (pareto) {
         let colorIdx = 0;
         pareto.innerHTML = items.map((o) => {
           const qtd = Number(o.qtd) || 0;
-          const pct = Math.round((qtd / total) * 100);
-          acc += pct;
-          const accShow = Math.min(100, acc);
+          const pct = pctShare(o);
           const cod = String(o.codigo || '').trim();
           const pol = String(o.polaridade || '').toLowerCase();
           const isPos = pol === 'pos' || cod === '63';
           const colorCls = penColorClass(o, colorIdx++);
           const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
           const lab = esc(tv ? shortPenLabel(nome, 42) : shortPenLabel(nome, 48));
-          const w = Math.max(6, Math.round((qtd / max) * 100));
+          const w = Math.max(4, Math.min(100, pct));
           const codHtml = cod
             ? `<span class="ds-pareto-cod">${esc(cod)}${isPos ? ' · SLA+' : ''}</span> · `
             : '';
-          return `<div class="ds-pareto-row ${isPos ? 'is-pos' : ''}" title="${esc(cod ? `${cod} · ${nome}` : nome)}">
+          return `<div class="ds-pareto-row ${isPos ? 'is-pos' : ''}" title="${esc(cod ? `${cod} · ${nome}` : nome)} · ${pct}% do total">
             <div class="ds-pareto-lab">${codHtml}${lab}</div>
             <div class="ds-pareto-track"><div class="ds-pareto-fill ${colorCls}" style="width:${w}%"></div></div>
             <div class="ds-pareto-n">${qtd}</div>
-            <div class="ds-pareto-acc">${accShow}%</div>
+            <div class="ds-pareto-acc">${pct}%</div>
           </div>`;
         }).join('');
       }
@@ -9450,7 +9456,7 @@
       negIdx = 0;
       host.innerHTML = items.map((o) => {
         const qtd = Number(o.qtd) || 0;
-        const pct = Math.round((qtd / total) * 100);
+        const pct = pctShare(o);
         const pol = String(o.polaridade || '').toLowerCase();
         const isPos = pol === 'pos' || String(o.codigo || '') === '63';
         const skin = isPos ? 't-pos' : (skinsNeg[negIdx++] || 't-of6');
@@ -9459,7 +9465,7 @@
         const labFull = esc(cod ? `${cod} · ${nome}${isPos ? ' · SLA+' : ''}` : nome);
         const lab = esc(tv ? nome : shortPenLabel(nome, 24));
         const h = alturaTorrePen(qtd, max);
-        return `<div class="torre ${skin}" title="${labFull}">
+        return `<div class="torre ${skin}" title="${labFull} · ${pct}% do total">
           <div class="pin"><span class="${qtd >= 100 ? 'pin-lg' : ''}">${qtd}</span></div>
           <div class="barra" style="height:${h}px"><strong>${pct}<span class="pct-sign">%</span></strong></div>
           <div class="base"><div class="lbl">${lab}</div></div>
