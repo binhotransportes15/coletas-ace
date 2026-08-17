@@ -1,7 +1,7 @@
 ﻿origem,origem_sigla,cavalo,carreta,manifesto,peso,peso_num,saida,prev_chegada,chegada,inicio_descarga,final_descarga,status,atrasado,tempo_descarga_min,tempo_descarga,peso_veiculo
-GOIANIA,GYN,TKZ4G04,FMM5F91,016133-1,11.439,11439,15/08 10:08,17/08 22:07,17/08 07:32,17/08 10:15 domingos,,atrasado,1,347,5h 47min (andamento),71.569
-GOIANIA,GYN,TKZ4G04,FMM5F91,016134-9,130,130,15/08 10:08,17/08 22:07,17/08 07:32,17/08 10:15 domingos,,atrasado,1,347,5h 47min (andamento),71.569
-GOIANIA,GYN,TKZ4G04,FMM5F91,016135-7,60.000,60000,15/08 10:17,17/08 22:17,17/08 07:32,17/08 10:15 domingos,,atrasado,1,347,5h 47min (andamento),71.569
+GOIANIA,GYN,TKZ4G04,FMM5F91,016133-1,11.439,11439,15/08 10:08,17/08 22:07,17/08 07:32,17/08 10:15 domingos,,atrasado,1,372,6h 12min (andamento),71.569
+GOIANIA,GYN,TKZ4G04,FMM5F91,016134-9,130,130,15/08 10:08,17/08 22:07,17/08 07:32,17/08 10:15 domingos,,atrasado,1,372,6h 12min (andamento),71.569
+GOIANIA,GYN,TKZ4G04,FMM5F91,016135-7,60.000,60000,15/08 10:17,17/08 22:17,17/08 07:32,17/08 10:15 domingos,,atrasado,1,372,6h 12min (andamento),71.569
 RIO DE JANEIRO,DCX,SUB3E54,EXO8B83,007239-7,13.083,13083,11/08 21:05,12/08 21:05,12/08 08:54,12/08 09:33 a.dias,12/08 15:03 a.dias,finalizado,0,330,5h 30min,18.511
 RIO DE JANEIRO,DCX,SUB3E54,EXO8B83,007240-1,342,342,11/08 21:05,12/08 21:05,12/08 08:54,12/08 09:33 a.dias,12/08 15:03 a.dias,finalizado,0,330,5h 30min,18.511
 RIO DE JANEIRO,DCX,SUB3E54,EXO8B83,007241-9,5.083,5083,11/08 21:05,12/08 21:05,12/08 08:54,12/08 09:33 a.dias,12/08 15:03 a.dias,finalizado,0,330,5h 30min,18.511
