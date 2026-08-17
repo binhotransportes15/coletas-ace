@@ -1349,6 +1349,31 @@
       background: #0a121e !important;
       box-shadow: none !important;
     }
+    /* Mapa: sem placa/fundo (vence a regra #0a121e acima) */
+    body.tv-mode #panel-mapa .arm-kpi,
+    body.tv-mode #panel-mapa .arm-kpi.ds-kpi,
+    body.tv-mode #panel-mapa .ds-kpi,
+    body.tv-mode #panel-mapa .mapa-kpis-top,
+    body.tv-mode #panel-mapa .mapa-kpis-top.dash-block,
+    body.tv-mode #panel-mapa .mapa-map-card,
+    body.tv-mode #panel-mapa .mapa-list-card,
+    body.tv-mode #panel-mapa .mapa-side,
+    body.tv-mode #panel-mapa .mapa-side-right,
+    body.tv-mode #panel-mapa .mapa-layout,
+    body.tv-mode #panel-mapa #mapaLeaflet,
+    body.tv-mode #panel-mapa #mapaLeaflet.leaflet-container {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    body.tv-mode #panel-mapa .mapa-map-card::after {
+      display: none !important;
+      content: none !important;
+    }
+    body.tv-mode #panel-mapa .ds-kpi::before,
+    body.tv-mode #panel-mapa .arm-kpi.ds-kpi::before {
+      display: none !important;
+    }
     body.tv-mode .resumo-card,
     body.tv-mode .arm-hero-card > header,
     body.tv-mode .arm-panel > header,
@@ -3971,12 +3996,17 @@
       flex: 0 0 auto;
     }
     .mapa-kpis-top .arm-kpi,
-    .mapa-kpis-top .arm-kpi.ds-kpi {
+    .mapa-kpis-top .arm-kpi.ds-kpi,
+    .mapa-kpis-top .ds-kpi {
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
       border-radius: 0 !important;
       padding: 4px 6px !important;
+    }
+    .mapa-kpis-top .arm-kpi.ds-kpi::before,
+    .mapa-kpis-top .ds-kpi::before {
+      display: none !important;
     }
     .mapa-kpis-top .arm-kpi .val {
       font-size: clamp(16px, 1.9vmin, 26px);
