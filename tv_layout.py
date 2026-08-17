@@ -248,6 +248,25 @@ def normalize_layout(raw: dict[str, Any] | None) -> dict[str, Any]:
         ws = "distribuicao"
     out["wallSector"] = ws
 
+    # Marca global (logo URL/arquivo/visível) — usado pelo dashboard + Sites
+    brand_in = raw.get("brand") if isinstance(raw.get("brand"), dict) else None
+    if brand_in:
+        out["brand"] = {
+            "version": int(brand_in.get("version") or 1),
+            "visible": bool(brand_in.get("visible", True)),
+            "mode": str(brand_in.get("mode") or "file").strip().lower(),
+            "file": str(brand_in.get("file") or "brand-logo.png").strip(),
+            "url": str(brand_in.get("url") or "").strip(),
+            "crtAsset": str(brand_in.get("crtAsset") or "brain-circuit.png").strip(),
+            "themeHint": str(brand_in.get("themeHint") or "").strip(),
+            "updatedAt": str(brand_in.get("updatedAt") or "").strip(),
+        }
+        if out["brand"]["mode"] not in ("file", "url", "hidden"):
+            out["brand"]["mode"] = "file"
+        data_url = str(brand_in.get("dataUrl") or "").strip()
+        if data_url.startswith("data:image/"):
+            out["brand"]["dataUrl"] = data_url
+
     defaults_in = raw.get("sectorDefaults") if isinstance(raw.get("sectorDefaults"), dict) else {}
     hubs_legacy = raw.get("hubs") if isinstance(raw.get("hubs"), dict) else {}
     if hubs_legacy and "distribuicao" not in defaults_in:

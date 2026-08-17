@@ -1,6 +1,6 @@
 {
-  "version": 22,
-  "updatedAt": "2026-08-17T15:58:14",
+  "version": 23,
+  "updatedAt": "2026-08-17T16:30:07",
   "rows": 2,
   "cols": 3,
   "syncSwap": false,
@@ -224,5 +224,15 @@
       "showLogo": null,
       "margins": null
     }
-  ]
+  ],
+  "brand": {
+    "version": 1,
+    "visible": true,
+    "mode": "file",
+    "file": "brand-logo.png",
+    "url": "",
+    "crtAsset": "brain-circuit.png",
+    "themeHint": "circuitos",
+    "updatedAt": "2026-08-17T16:30:07"
+  }
 }

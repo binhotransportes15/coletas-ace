@@ -1160,6 +1160,19 @@
     body.tv-mode.tv-no-logo .arm-brand img,
     body.tv-mode.tv-no-logo .sector-soon-panel img { display: none !important; }
     body.tv-mode.tv-no-logo .arm-brand { gap: 0; }
+    /* Marca global (Menu CRT → Marca): esconde logo em hub e TV */
+    body.brand-no-logo .brand img,
+    body.brand-no-logo .arm-brand img,
+    body.brand-no-logo .js-sector-menu,
+    body.brand-no-logo .sector-soon-panel img { display: none !important; }
+    body.brand-no-logo .arm-brand,
+    body.brand-no-logo .brand { gap: 0; }
+    /* Tema circuitos (opcional via brand.themeHint) */
+    body.theme-circuitos {
+      --binho-blue: #22d3ee;
+      --binho-green: #67e8f9;
+      --binho-yellow: #fde047;
+    }
     body.tv-mode .sector-soon-panel {
       height: 100%;
       min-height: 100%;
@@ -8339,6 +8352,46 @@
       return null;
     }
 
+    async function fetchBrandRemote() {
+      try {
+        const res = await fetch(`brand.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (res.ok) return await res.json();
+      } catch (_) { /* ignore */ }
+      return null;
+    }
+
+    function resolveBrandSrc(brand) {
+      if (!brand || brand.mode === 'hidden' || brand.visible === false) return '';
+      if (brand.dataUrl && String(brand.dataUrl).startsWith('data:image/')) return String(brand.dataUrl);
+      if (brand.mode === 'url' && brand.url) return String(brand.url);
+      const file = String(brand.file || 'brand-logo.png').trim() || 'brand-logo.png';
+      return file + (file.includes('?') ? '' : `?v=${encodeURIComponent(String(brand.updatedAt || Date.now()))}`);
+    }
+
+    function applyBrandChrome(brand) {
+      const b = brand || (TV_LAYOUT && TV_LAYOUT.brand) || window.__ACE_BRAND__ || null;
+      const hidden = !b || b.mode === 'hidden' || b.visible === false;
+      document.body.classList.toggle('brand-no-logo', !!hidden);
+      const hint = String((b && b.themeHint) || '').toLowerCase();
+      document.body.classList.toggle('theme-circuitos', hint === 'circuitos' || hint === 'circuit');
+      if (hidden) return;
+      const src = resolveBrandSrc(b);
+      if (!src) return;
+      document.querySelectorAll('img.js-sector-menu, .brand img, .arm-brand img').forEach((img) => {
+        if (img.getAttribute('src') === src) return;
+        img.setAttribute('src', src);
+        img.setAttribute('alt', 'BINHO Transportes');
+      });
+    }
+
+    async function loadBrandAndApply() {
+      let brand = (TV_LAYOUT && TV_LAYOUT.brand) || null;
+      if (!brand) brand = await fetchBrandRemote();
+      if (brand) window.__ACE_BRAND__ = brand;
+      applyBrandChrome(brand);
+      return brand;
+    }
+
     async function loadTvLayout() {
       // Preview no CRT injeta o rascunho — não sobrescrever com planilha
       if (window.__ACE_CRT_PREVIEW__ && window.__ACE_CRT_LAYOUT__) {
@@ -8346,6 +8399,7 @@
         if (TV_SLOT) TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT);
         applyTvChrome();
         applyDashboardChrome();
+        applyBrandChrome(TV_LAYOUT && TV_LAYOUT.brand);
         applyMapaRouteMsFromLayout(TV_LAYOUT);
         return TV_LAYOUT;
       }
@@ -8354,6 +8408,7 @@
       if (TV_SLOT) TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT);
       applyTvChrome();
       applyDashboardChrome();
+      await loadBrandAndApply();
       applyMapaRouteMsFromLayout(TV_LAYOUT);
       return TV_LAYOUT;
     }
@@ -8540,6 +8595,7 @@
         document.body.style.removeProperty('--mosaic-cols');
         document.body.style.removeProperty('--mosaic-rows');
         applyDashboardChrome();
+        applyBrandChrome((TV_LAYOUT && TV_LAYOUT.brand) || window.__ACE_BRAND__);
         return;
       }
       if (detectTvInFrame()) document.documentElement.classList.add('tv-in-frame');
@@ -8548,6 +8604,7 @@
         // Sem layout do CRT: TV parede = tela cheia sem moldura
         document.body.classList.add('tv-no-margins');
         applyDashboardChrome();
+        applyBrandChrome((TV_LAYOUT && TV_LAYOUT.brand) || window.__ACE_BRAND__);
         return;
       }
       document.body.classList.toggle('tv-no-logo', !eff.showLogo);
@@ -8570,6 +8627,7 @@
         document.body.style.removeProperty('--mosaic-rows');
       }
       applyDashboardChrome();
+      applyBrandChrome((TV_LAYOUT && TV_LAYOUT.brand) || window.__ACE_BRAND__);
     }
 
     function syncedOpsViewIndex(swapMs) {

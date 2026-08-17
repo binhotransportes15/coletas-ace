@@ -2,9 +2,9 @@
 BINHO · ACE CRT — painel de gestão widescreen (cara de CMD).
 
 Layout:
-  esq  → cubos animados + CPU/MEM/GPU + status
+  esq  → cérebro de circuitos (acende ao rodar) + CPU/MEM/GPU + status
   centro → atalhos + log + prompt de comandos
-  Menu (janela) → abas Configuração | Automação | Local | TV | Gestão
+  Menu (janela) → Configuração | Automação | Local | TV | Marca | Gestão
 
   python ace_crt.py
   ace.bat crt
@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QComboBox,
+    QFileDialog,
     QFormLayout,
     QFrame,
     QGridLayout,
@@ -62,6 +63,7 @@ from crt_bridge import append_log, publish, read_log_since, read_status, STATUS_
 
 _ROOT = Path(__file__).resolve().parent
 _CUBES = _ROOT / "assets" / "cubes-binho.png"
+_BRAIN = _ROOT / "assets" / "brain-circuit.png"
 _LOGO = _ROOT / "assets" / "logo-binho.png"
 _FONT_SHARE_TECH = _ROOT / "assets" / "fonts" / "ShareTechMono-Regular.ttf"
 
@@ -222,6 +224,28 @@ CRT_THEMES: dict[str, dict[str, object]] = {
         "acrylic_tint": 0x381A1A1A,
         "meter_h": 18,
     },
+    "circuitos": {
+        "label": "Circuitos (cérebro)",
+        "bg": "#030712",
+        "panel": "#070f1c",
+        "line": "#164e63",
+        "text": "#67e8f9",
+        "dim": "#94a3b8",
+        "muted": "#475569",
+        "input_bg": "#06101c",
+        "input_text": "#e0f2fe",
+        "btn_bg": "#0c1a2e",
+        "btn_hover": "#12304a",
+        "btn_press": "#1a4568",
+        "btn_dis_bd": "#0f2030",
+        "sel": "#0e7490",
+        "prog_bg": "#06101c",
+        "chunk0": "#0891b2",
+        "chunk1": "#22d3ee",
+        "chunk2": "#fde047",
+        "scan": True,
+        "brain_glow": True,
+    },
 }
 
 
@@ -265,19 +289,45 @@ DEFAULT_CRT_THEME = "binho"
 
 
 class BinhoCubesWidget(QWidget):
-    """Cubos Binho com animação contínua (flutuação + pulse + scan)."""
+    """Cérebro de circuitos BINHO — acende quando há comando/loop rodando."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setMinimumHeight(132)
         self.setMaximumHeight(168)
         self._t = 0.0
-        self._pm = QPixmap(str(_CUBES)) if _CUBES.is_file() else QPixmap()
-        self._fill = QColor("#050505")
-        self._green_glow = True
+        self._busy = False
+        self._fill = QColor("#030712")
+        self._green_glow = False
+        self._cyan_glow = True
+        self._hidden_brand = False
+        self._pm = QPixmap()
+        self.reload_brand_asset()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(33)  # ~30 fps
+
+    def reload_brand_asset(self) -> None:
+        path = Path()
+        try:
+            from brand import resolve_crt_pixmap_path, load_brand
+
+            b = load_brand()
+            self._hidden_brand = b.get("mode") == "hidden" or not b.get("visible", True)
+            path = resolve_crt_pixmap_path(b)
+        except Exception:
+            self._hidden_brand = False
+            path = _BRAIN if _BRAIN.is_file() else _CUBES
+        self._pm = QPixmap(str(path)) if path.is_file() else QPixmap()
+        if self._pm.isNull() and _BRAIN.is_file():
+            self._pm = QPixmap(str(_BRAIN))
+        if self._pm.isNull() and _CUBES.is_file():
+            self._pm = QPixmap(str(_CUBES))
+        self.update()
+
+    def set_busy(self, busy: bool) -> None:
+        self._busy = bool(busy)
+        self.update()
 
     def set_fill_color(self, color: QColor) -> None:
         self._fill = QColor(color)
@@ -285,6 +335,10 @@ class BinhoCubesWidget(QWidget):
 
     def set_green_glow(self, on: bool) -> None:
         self._green_glow = bool(on)
+        self.update()
+
+    def set_cyan_glow(self, on: bool) -> None:
+        self._cyan_glow = bool(on)
         self.update()
 
     def _tick(self) -> None:
@@ -298,14 +352,22 @@ class BinhoCubesWidget(QWidget):
         w, h = self.width(), self.height()
         p.fillRect(0, 0, w, h, self._fill)
 
+        if self._hidden_brand:
+            p.setPen(QColor(100, 116, 139, 160))
+            p.setFont(crt_font(10))
+            p.drawText(self.rect(), Qt.AlignCenter, "marca oculta")
+            p.end()
+            return
+
         t = self._t
-        bob = math.sin(t * 1.35) * 4.0
-        sway = math.sin(t * 0.85) * 3.0
-        pulse = 0.92 + 0.08 * (0.5 + 0.5 * math.sin(t * 2.2))
-        angle = math.sin(t * 0.55) * 2.4
+        busy = self._busy
+        bob = math.sin(t * (2.4 if busy else 1.1)) * (5.5 if busy else 2.5)
+        sway = math.sin(t * (1.6 if busy else 0.7)) * (3.5 if busy else 1.5)
+        pulse = (0.94 + 0.10 * (0.5 + 0.5 * math.sin(t * (4.2 if busy else 1.6))))
+        angle = math.sin(t * 0.45) * (3.2 if busy else 1.4)
 
         if not self._pm.isNull():
-            target_h = int(min(h - 12, 128) * pulse)
+            target_h = int(min(h - 10, 140) * pulse)
             scaled = self._pm.scaledToHeight(target_h, Qt.SmoothTransformation)
             x = (w - scaled.width()) / 2.0 + sway
             y = (h - scaled.height()) / 2.0 + bob - 2
@@ -313,27 +375,100 @@ class BinhoCubesWidget(QWidget):
             p.translate(x + scaled.width() / 2.0, y + scaled.height() / 2.0)
             p.rotate(angle)
             p.translate(-scaled.width() / 2.0, -scaled.height() / 2.0)
-            p.setOpacity(0.88 + 0.12 * (0.5 + 0.5 * math.sin(t * 1.7)))
+            base_op = 0.78 + (0.22 if busy else 0.12) * (0.5 + 0.5 * math.sin(t * (3.1 if busy else 1.4)))
+            p.setOpacity(base_op)
             p.drawPixmap(0, 0, scaled)
             p.restore()
-        else:
-            self._paint_fallback_cubes(p, w, h, t, bob, sway, pulse)
 
-        # scanline CRT suave
+            # Nós de circuito acendendo (sobre o cérebro)
+            self._paint_circuit_nodes(p, w, h, t, busy, x, y, scaled.width(), scaled.height())
+        else:
+            self._paint_fallback_brain(p, w, h, t, bob, sway, pulse, busy)
+
+        # scanline CRT
         p.setPen(Qt.NoPen)
-        p.setBrush(QColor(0, 0, 0, 28))
+        p.setBrush(QColor(0, 0, 0, 28 if not busy else 18))
         step = 3
-        y0 = int((t * 18) % step)
+        y0 = int((t * (28 if busy else 16)) % step)
         for yy in range(y0, h, step):
             p.drawRect(0, yy, w, 1)
 
-        # brilho inferior (só temas BINHO — fosco fica neutro)
-        if self._green_glow:
+        # brilho inferior
+        if self._cyan_glow or busy:
+            glow = QLinearGradient(0, h * 0.45, 0, h)
+            glow.setColorAt(0.0, QColor(0, 0, 0, 0))
+            a = 70 if busy else 38
+            glow.setColorAt(1.0, QColor(34, 211, 238, a))
+            p.fillRect(0, int(h * 0.45), w, int(h * 0.55), glow)
+        elif self._green_glow:
             glow = QLinearGradient(0, h * 0.55, 0, h)
             glow.setColorAt(0.0, QColor(0, 0, 0, 0))
             glow.setColorAt(1.0, QColor(140, 198, 63, 35))
             p.fillRect(0, int(h * 0.55), w, int(h * 0.45), glow)
         p.end()
+
+    def _paint_circuit_nodes(
+        self,
+        p: QPainter,
+        w: int,
+        h: int,
+        t: float,
+        busy: bool,
+        bx: float,
+        by: float,
+        bw: float,
+        bh: float,
+    ) -> None:
+        # Pontos relativos à bounding box da imagem
+        nodes = (
+            (0.28, 0.32), (0.42, 0.22), (0.58, 0.28), (0.70, 0.40),
+            (0.35, 0.48), (0.52, 0.45), (0.64, 0.55), (0.40, 0.62),
+            (0.55, 0.68), (0.48, 0.78),
+        )
+        p.setPen(Qt.NoPen)
+        for i, (nx, ny) in enumerate(nodes):
+            phase = t * (5.5 if busy else 1.8) + i * 0.85
+            lit = (math.sin(phase) > (0.15 if busy else 0.55)) or (
+                busy and math.sin(phase * 1.7 + i) > 0.2
+            )
+            if not lit and not busy:
+                continue
+            cx = bx + nx * bw
+            cy = by + ny * bh
+            r = (3.2 if busy else 2.2) + (1.6 if lit else 0)
+            col = QColor(253, 224, 71, 230) if (busy and i % 3 == 0) else QColor(103, 232, 249, 210 if lit else 90)
+            p.setBrush(col)
+            p.drawEllipse(QPointF(cx, cy), r, r)
+            if lit and busy:
+                p.setBrush(QColor(col.red(), col.green(), col.blue(), 50))
+                p.drawEllipse(QPointF(cx, cy), r * 2.4, r * 2.4)
+
+    def _paint_fallback_brain(
+        self,
+        p: QPainter,
+        w: int,
+        h: int,
+        t: float,
+        bob: float,
+        sway: float,
+        pulse: float,
+        busy: bool,
+    ) -> None:
+        cx, cy = w / 2.0 + sway, h / 2.0 + bob
+        # Silhueta oval + traços
+        p.setPen(QPen(QColor(34, 211, 238, 200 if busy else 140), 2))
+        p.setBrush(QColor(6, 20, 36, 180))
+        rw, rh = 52 * pulse, 40 * pulse
+        p.drawEllipse(QPointF(cx, cy), rw, rh)
+        p.setPen(QPen(QColor(103, 232, 249, 160), 1.5))
+        for i in range(6):
+            a0 = t * (2 if busy else 0.8) + i * 0.9
+            x0 = cx + math.cos(a0) * rw * 0.55
+            y0 = cy + math.sin(a0 * 1.2) * rh * 0.5
+            x1 = cx + math.cos(a0 + 1.1) * rw * 0.85
+            y1 = cy + math.sin(a0 + 0.7) * rh * 0.75
+            p.drawLine(QPointF(x0, y0), QPointF(x1, y1))
+        self._paint_circuit_nodes(p, w, h, t, busy, cx - rw, cy - rh, rw * 2, rh * 2)
 
     def _paint_fallback_cubes(
         self,
@@ -345,6 +480,7 @@ class BinhoCubesWidget(QWidget):
         sway: float,
         pulse: float,
     ) -> None:
+        # legado (quase não usado)
         cx, cy = w / 2.0 + sway, h / 2.0 + bob
         size = 28.0 * pulse
         offsets = ((-38, -18), (22, -28), (-30, 22), (26, 18))
@@ -1627,6 +1763,7 @@ class AceCrtConsole(QWidget):
         tabs.addTab(self._build_automacao_tab(), "Automação")
         tabs.addTab(self._build_local_tab(), "Local")
         tabs.addTab(self._build_tv_tab(), "TV")
+        tabs.addTab(self._build_marca_tab(), "Marca")
         tabs.addTab(self._build_gestao_tab(), "Gestão")
         self._right_tabs = tabs
         return tabs
@@ -1669,6 +1806,9 @@ class AceCrtConsole(QWidget):
             "automação": "autom",
             "local": "local",
             "tv": "tv",
+            "marca": "marc",
+            "logo": "marc",
+            "brand": "marc",
             "gestao": "gest",
             "gestão": "gest",
         }
@@ -2397,6 +2537,209 @@ class AceCrtConsole(QWidget):
         wall = "PAREDE" if (self._tv_layout or {}).get("wallMode") else "NORMAL"
         self._tv_persist(title="Layout TV", body=f"Layout salvo ({wall}).")
 
+    def _build_marca_tab(self) -> QWidget:
+        wrap = QWidget()
+        outer = QVBoxLayout(wrap)
+        outer.setContentsMargins(0, 0, 0, 0)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        body = QWidget()
+        lay = QVBoxLayout(body)
+        lay.setContentsMargins(10, 10, 10, 10)
+        lay.setSpacing(8)
+
+        lay.addWidget(self._section("Logo BINHO (todas as dashboards)"))
+        tip = QLabel(
+            "Troca a logo do CRT e das TVs (GitHub Pages, Sites e local). "
+            "Use arquivo, URL online, exportar, ou remover de tudo."
+        )
+        tip.setObjectName("hint")
+        tip.setWordWrap(True)
+        lay.addWidget(tip)
+
+        self._brand_preview = QLabel()
+        self._brand_preview.setAlignment(Qt.AlignCenter)
+        self._brand_preview.setMinimumHeight(120)
+        self._brand_preview.setMaximumHeight(160)
+        self._brand_preview.setStyleSheet("background:#030712;border:1px solid #164e63;")
+        lay.addWidget(self._brand_preview)
+
+        self._brand_status = QLabel("—")
+        self._brand_status.setObjectName("hint")
+        self._brand_status.setWordWrap(True)
+        lay.addWidget(self._brand_status)
+
+        row = QHBoxLayout()
+        btn_file = QPushButton("Escolher imagem…")
+        btn_file.setObjectName("primary")
+        btn_file.clicked.connect(self._brand_pick_file)
+        btn_export = QPushButton("Exportar imagem…")
+        btn_export.clicked.connect(self._brand_export)
+        row.addWidget(btn_file)
+        row.addWidget(btn_export)
+        lay.addLayout(row)
+
+        lay.addWidget(self._section("URL online"))
+        url_row = QHBoxLayout()
+        self._brand_url = QLineEdit()
+        self._brand_url.setPlaceholderText("https://…/logo.png")
+        btn_url = QPushButton("Usar URL")
+        btn_url.clicked.connect(self._brand_apply_url)
+        url_row.addWidget(self._brand_url, 1)
+        url_row.addWidget(btn_url)
+        lay.addLayout(url_row)
+
+        lay.addWidget(self._section("Visibilidade"))
+        vis = QHBoxLayout()
+        btn_show = QPushButton("Mostrar em tudo")
+        btn_show.clicked.connect(self._brand_show_all)
+        btn_hide = QPushButton("Remover de tudo")
+        btn_hide.clicked.connect(self._brand_hide_all)
+        vis.addWidget(btn_show)
+        vis.addWidget(btn_hide)
+        lay.addLayout(vis)
+
+        lay.addWidget(self._section("Tema + publicar"))
+        btn_theme = QPushButton("Aplicar tema Circuitos")
+        btn_theme.clicked.connect(lambda: self._apply_theme("circuitos", persist=True))
+        lay.addWidget(btn_theme)
+        btn_pub = QPushButton("Publicar marca (Sites / GitHub / local)")
+        btn_pub.setObjectName("primary")
+        btn_pub.clicked.connect(self._brand_publish)
+        lay.addWidget(btn_pub)
+
+        btn_refresh = QPushButton("Atualizar preview")
+        btn_refresh.clicked.connect(self._brand_refresh_preview)
+        lay.addWidget(btn_refresh)
+
+        lay.addStretch(1)
+        scroll.setWidget(body)
+        outer.addWidget(scroll)
+        self._brand_refresh_preview()
+        return wrap
+
+    def _brand_refresh_preview(self) -> None:
+        try:
+            from brand import load_brand, resolve_crt_pixmap_path, resolve_dashboard_src
+
+            b = load_brand()
+            path = resolve_crt_pixmap_path(b)
+            src = resolve_dashboard_src(b)
+            mode = b.get("mode")
+            vis = b.get("visible", True)
+            self._brand_status.setText(
+                f"modo={mode} · visível={vis} · src={src or '—'} · arquivo={path.name if path.is_file() else '—'}"
+            )
+            if hasattr(self, "_brand_url") and b.get("url"):
+                self._brand_url.setText(str(b.get("url") or ""))
+            lab = getattr(self, "_brand_preview", None)
+            if lab is None:
+                return
+            if mode == "hidden" or not vis:
+                lab.setPixmap(QPixmap())
+                lab.setText("logo oculta")
+                return
+            if path.is_file():
+                pm = QPixmap(str(path))
+                if not pm.isNull():
+                    lab.setText("")
+                    lab.setPixmap(pm.scaled(140, 140, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    return
+            lab.setText("(sem imagem)")
+            lab.setPixmap(QPixmap())
+        except Exception as e:  # noqa: BLE001
+            if hasattr(self, "_brand_status"):
+                self._brand_status.setText(str(e))
+
+    def _brand_after_change(self, note: str) -> None:
+        self._append_log("ok", note)
+        self._brand_refresh_preview()
+        if hasattr(self, "cubes"):
+            try:
+                self.cubes.reload_brand_asset()
+            except Exception:
+                pass
+
+    def _brand_pick_file(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Escolher logo",
+            str(_ROOT),
+            "Imagens (*.png *.jpg *.jpeg *.webp *.svg);;Todos (*.*)",
+        )
+        if not path:
+            return
+        try:
+            from brand import apply_logo_file
+
+            apply_logo_file(path)
+            self._brand_after_change(f"Logo aplicada: {Path(path).name}")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Marca", str(e))
+
+    def _brand_apply_url(self) -> None:
+        url = (self._brand_url.text() if hasattr(self, "_brand_url") else "").strip()
+        if not url:
+            QMessageBox.information(self, "Marca", "Cole uma URL de imagem.")
+            return
+        try:
+            from brand import apply_logo_url
+
+            apply_logo_url(url)
+            self._brand_after_change(f"Logo via URL: {url[:80]}")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Marca", str(e))
+
+    def _brand_export(self) -> None:
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Exportar logo",
+            str(_ROOT / "logo-binho-export.png"),
+            "PNG (*.png);;Todos (*.*)",
+        )
+        if not path:
+            return
+        try:
+            from brand import export_logo
+
+            out = export_logo(path)
+            self._append_log("ok", f"Logo exportada: {out}")
+            QMessageBox.information(self, "Marca", f"Salvo em:\n{out}")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Marca", str(e))
+
+    def _brand_hide_all(self) -> None:
+        try:
+            from brand import hide_everywhere
+
+            hide_everywhere()
+            self._brand_after_change("Logo removida de todas as dashboards")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Marca", str(e))
+
+    def _brand_show_all(self) -> None:
+        try:
+            from brand import show_everywhere
+
+            show_everywhere()
+            self._brand_after_change("Logo visível em todas as dashboards")
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Marca", str(e))
+
+    def _brand_publish(self) -> None:
+        try:
+            from brand import publish_brand
+
+            ok, msg = publish_brand(push_sheets=True, push_git=True)
+            kind = "ok" if ok else "erro"
+            self._append_log(kind, f"Publicar marca: {msg}")
+            QMessageBox.information(self, "Marca · publicar", msg)
+            self._brand_refresh_preview()
+            if hasattr(self, "cubes"):
+                self.cubes.reload_brand_asset()
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Marca", str(e))
+
     def _build_gestao_tab(self) -> QWidget:
         wrap = QWidget()
         outer = QVBoxLayout(wrap)
@@ -2665,7 +3008,9 @@ class AceCrtConsole(QWidget):
             self._scan.set_enabled(on)
             self._scan.setVisible(on)
         if hasattr(self, "cubes"):
+            brainish = tid in {"circuitos", "painel"} or bool(meta.get("brain_glow"))
             self.cubes.set_green_glow(not frost and tid == "binho")
+            self.cubes.set_cyan_glow(not frost and (brainish or tid != "binho"))
             if frost:
                 cube_a = max(10, min(120, int(140 - fa * 1.2)))
                 self.cubes.set_fill_color(QColor(10, 14, 20, cube_a))
@@ -2675,8 +3020,14 @@ class AceCrtConsole(QWidget):
                 self.cubes.set_fill_color(QColor("#050a14"))
             elif tid == "ops":
                 self.cubes.set_fill_color(QColor("#080b09"))
+            elif tid == "circuitos":
+                self.cubes.set_fill_color(QColor("#030712"))
             else:
                 self.cubes.set_fill_color(QColor("#050505"))
+            try:
+                self.cubes.reload_brand_asset()
+            except Exception:
+                pass
         meter_h = int(meta.get("meter_h") or (18 if frost else 14))
         track = "rgba(0,0,0,160)" if frost else "#0a0a0a"
         border = "rgba(255,255,255,30)" if frost else "#222"
@@ -3570,6 +3921,11 @@ class AceCrtConsole(QWidget):
             return
         auto_on = bool(self._auto_worker and self._auto_worker.isRunning())
         cmd_busy = bool(self._worker and self._worker.isRunning())
+        if hasattr(self, "cubes"):
+            try:
+                self.cubes.set_busy(cmd_busy or auto_on)
+            except Exception:
+                pass
         rows: list[dict] = []
         if isinstance(st, dict) and isinstance(st.get("sectors"), list):
             rows = [r for r in st["sectors"] if isinstance(r, dict)]
