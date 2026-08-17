@@ -231,19 +231,24 @@ _CMD_TO_SECTOR: dict[str, str] = {
     "078": "78",
     "177": "78",
     "armazem": "78",
+    "armazém": "78",
     "sync78": "78",
     "31": "31",
     "031": "31",
     "pendencia": "31",
+    "pendência": "31",
     "sync31": "31",
     "73": "73",
     "073": "73",
     "076": "73",
     "200": "73",
     "contratacao": "73",
+    "contratação": "73",
     "455": "455",
     "emissao": "455",
+    "emissão": "455",
     "sync455": "455",
+    "syncemissao": "455",
     "reciclagem": "reciclagem",
     "recicla": "reciclagem",
     "019": "reciclagem",
@@ -253,13 +258,24 @@ _CMD_TO_SECTOR: dict[str, str] = {
 }
 
 
+def _norm_cmd_head(raw: str) -> str:
+    """Normaliza cabeçalho do comando (acentos / maiúsculas) para mapear barrinha."""
+    import unicodedata
+
+    s = (raw or "").strip().lower().lstrip("/")
+    # NFKD: emissão → emissao
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.category(ch).startswith("M"))
+    return s
+
+
 def sectors_for_command(raw: str) -> list[str]:
     """Mapeia comando digitado → id(s) de barrinha."""
     parts = (raw or "").strip().split()
     if not parts:
         return []
-    head = parts[0].lower().lstrip("/")
-    sid = _CMD_TO_SECTOR.get(head)
+    head = _norm_cmd_head(parts[0])
+    sid = _CMD_TO_SECTOR.get(head) or _CMD_TO_SECTOR.get(parts[0].lower().lstrip("/"))
     if sid:
         return [sid]
     # atalhos compostos: "atualizar tudo" já resolvido; sync all
@@ -339,10 +355,11 @@ def _manual_status_tick(msg: str, *, kind: str = "work") -> None:
     from crt_bridge import publish
 
     if not _MANUAL_RUNNING and not _MANUAL_PROGRESS:
-        # sem contexto: só status principal (não zera barrinhas do loop)
+        # sem contexto: só status principal — NÃO limpa barrinhas (mode OK zerava sectors)
         online = kind != "err"
         label = "ONLINE" if online else "ERR"
-        mode = {"ok": "OK", "err": "ERR", "work": "RUN"}.get(kind, "RUN")
+        # Mantém RUN enquanto há trabalho; OK/ERR só no fim do comando (end_manual)
+        mode = "ERR" if kind == "err" else "RUN"
         publish(online=online, label=label, pct=0, detail=msg[:100], mode=mode)
         return
 

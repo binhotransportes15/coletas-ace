@@ -554,8 +554,14 @@ def analyze_reports_455(
         mes_nome = ""
 
     atualizado = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    # periodo SSW "1708" → exibição "17/08"
+    periodo_show = (periodo or "").strip()
+    if re.fullmatch(r"\d{4}", periodo_show):
+        periodo_show = f"{periodo_show[:2]}/{periodo_show[2:]}"
+    elif re.fullmatch(r"\d{6}", periodo_show):
+        periodo_show = f"{periodo_show[:2]}/{periodo_show[2:4]}/{periodo_show[4:]}"
     resumo = {
-        "periodo": periodo or "",
+        "periodo": periodo_show or periodo or "",
         "mes": mes_nome,
         "atualizado": atualizado,
         "ctes": ctes,

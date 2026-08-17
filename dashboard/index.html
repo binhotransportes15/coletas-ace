@@ -235,9 +235,23 @@
     }
     .ds-pareto-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--crit-dark), var(--warn));
+      background: linear-gradient(90deg, #b91c1c, #f87171);
       min-width: 4px;
     }
+    .ds-pareto-fill.c-pos { background: linear-gradient(90deg, #15803d, #4ade80); }
+    .ds-pareto-fill.c-0 { background: linear-gradient(90deg, #db2777, #f9a8d4); }
+    .ds-pareto-fill.c-1 { background: linear-gradient(90deg, #d97706, #fbbf24); }
+    .ds-pareto-fill.c-2 { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    .ds-pareto-fill.c-3 { background: linear-gradient(90deg, #6d28d9, #a78bfa); }
+    .ds-pareto-fill.c-4 { background: linear-gradient(90deg, #0f766e, #2dd4bf); }
+    .ds-pareto-fill.c-5 { background: linear-gradient(90deg, #475569, #94a3b8); }
+    .ds-pareto-fill.c-6 { background: linear-gradient(90deg, #b91c1c, #f87171); }
+    .ds-pareto-fill.c-7 { background: linear-gradient(90deg, #c2410c, #fb923c); }
+    .ds-pareto-row.is-pos .ds-pareto-lab { color: #4ade80; }
+    .ds-pareto-row.is-pos .ds-pareto-n { color: #4ade80; }
+    .ds-pareto-row.is-pos .ds-pareto-acc { color: #86efac; }
+    .ds-pareto-cod { font-weight: 800; letter-spacing: 0.04em; }
+    .ds-pareto-row.is-pos .ds-pareto-cod { color: #86efac; }
     .ds-pareto-n, .ds-pareto-acc {
       font-weight: 900;
       font-size: clamp(20px, 2.4vw, 34px);
@@ -1468,21 +1482,32 @@
     }
     body.tv-mode .agenda-layout:not(.has-blocks) {
       display: grid !important;
-      grid-template-columns: minmax(0, 1.55fr) minmax(200px, 0.65fr) !important;
-      /* min-content na 1ª linha: KPIs não somem quando chart/amanhã competem por altura */
-      grid-template-rows: minmax(min-content, auto) minmax(0, 1fr) minmax(110px, 0.3fr) !important;
-      gap: clamp(6px, 0.9vmin, 12px) !important;
+      grid-template-columns: minmax(0, 1.7fr) minmax(190px, 0.65fr) !important;
+      /* KPIs · pizza/status · amanhã — todas as faixas com altura real (sem cortar) */
+      grid-template-rows: auto minmax(0, 1.15fr) minmax(130px, 0.52fr) !important;
+      gap: clamp(6px, 0.8vmin, 12px) !important;
       height: 100% !important;
       min-height: 0 !important;
       flex: 1 1 auto !important;
       overflow: hidden !important;
+      align-content: stretch !important;
     }
-    /* TV: agendamento — pizza/torres cabem na tela (sem empilhar por min-height) */
+    /* TV: agendamento — tudo escala dentro do viewport */
     body.tv-mode .agenda-arena {
       display: flex !important;
       flex-direction: column !important;
       overflow: hidden !important;
       min-height: 0 !important;
+      height: 100% !important;
+      padding: 4px 8px 6px !important;
+      gap: 6px !important;
+    }
+    body.tv-mode .agenda-head {
+      flex-shrink: 0 !important;
+      padding: 0 2px !important;
+    }
+    body.tv-mode .agenda-head .sub {
+      font-size: clamp(11px, 1.3vmin, 15px) !important;
     }
     body.tv-mode .agenda-layout .dash-block {
       min-height: 0 !important;
@@ -1492,12 +1517,22 @@
       display: grid !important;
       min-height: min-content !important;
       height: auto !important;
+      overflow: hidden !important;
+      gap: clamp(4px, 0.6vmin, 8px) !important;
+    }
+    body.tv-mode .agenda-kpi {
+      padding: clamp(5px, 0.85vmin, 10px) clamp(5px, 0.85vmin, 10px) !important;
+      border-radius: 10px !important;
+    }
+    body.tv-mode .agenda-kpi.is-secondary small {
+      display: none !important;
     }
     body.tv-mode .agenda-chart-stage {
       display: flex !important;
       flex-direction: column !important;
       min-height: 0 !important;
       overflow: hidden !important;
+      padding: 0 !important;
     }
     body.tv-mode .torres.agenda-torres,
     body.tv-mode.dash-scale-large .torres.agenda-torres,
@@ -1517,12 +1552,59 @@
     body.tv-mode .agenda-pizza-wrap {
       height: 100% !important;
       min-height: 0 !important;
+      overflow: hidden !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
     }
     body.tv-mode .agenda-pizza {
-      width: min(100%, 100%) !important;
-      height: min(100%, 92%) !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
       max-height: 100% !important;
       min-height: 0 !important;
+    }
+    body.tv-mode .agenda-tower-side {
+      overflow: hidden !important;
+      padding: clamp(8px, 1.1vmin, 14px) !important;
+      gap: clamp(6px, 0.9vmin, 10px) !important;
+    }
+    body.tv-mode .agenda-tower-side .tower-side-title {
+      font-size: clamp(11px, 1.35vmin, 15px) !important;
+    }
+    body.tv-mode .agenda-tower-side .tower-bar .lab {
+      font-size: clamp(12px, 1.5vmin, 16px) !important;
+    }
+    body.tv-mode .agenda-amanha-wrap {
+      overflow: hidden !important;
+      min-height: 0 !important;
+      height: 100% !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    body.tv-mode .agenda-amanha-wrap .agenda-table-head {
+      padding: 6px 10px !important;
+      flex-shrink: 0 !important;
+    }
+    body.tv-mode .agenda-cards {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      gap: clamp(6px, 0.8vmin, 10px) !important;
+      padding: 6px 8px 8px !important;
+      overflow: hidden !important;
+      align-items: stretch !important;
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+    }
+    body.tv-mode .agenda-card {
+      flex: 1 1 0 !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      padding: clamp(6px, 0.9vmin, 10px) !important;
+      gap: 4px !important;
+    }
+    body.tv-mode .agenda-card .dest {
+      -webkit-line-clamp: 2;
     }
     body.dash-hide-status .agenda-layout:not(.has-blocks) [data-block="chart"] {
       grid-column: 1 / -1;
@@ -2009,8 +2091,9 @@
       flex: 1;
       min-height: 0;
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr);
-      grid-template-rows: auto minmax(0, 1fr) minmax(150px, 0.42fr);
+      grid-template-columns: minmax(0, 1.4fr) minmax(200px, 0.7fr);
+      /* amanhã com piso real para cards não sumirem */
+      grid-template-rows: auto minmax(0, 1.1fr) minmax(140px, 0.5fr);
       gap: clamp(8px, 1vw, 14px);
       overflow: hidden;
       position: relative;
@@ -2153,13 +2236,15 @@
       border-radius: 14px;
       border: 1px solid #1e293b;
       background: rgba(2,6,23,.55);
-      overflow: auto;
+      overflow: hidden;
     }
     body.live-mode .agenda-tower-side { display: flex; }
     body.live-mode .agenda-tower-side .tower-bars {
-      gap: 16px;
+      gap: 12px;
       flex: 1;
-      align-content: start;
+      min-height: 0;
+      align-content: stretch;
+      overflow: hidden;
     }
     body.live-mode .agenda-tower-side .tower-bar .track { height: 14px; }
     .tower-side-title {
@@ -2250,22 +2335,36 @@
       overflow: hidden;
     }
     body.live-mode .agenda-amanha-wrap { display: flex; }
+    body.live-mode .agenda-cards {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: clamp(6px, 0.8vw, 10px);
+      overflow: hidden;
+      align-items: stretch;
+    }
+    body.live-mode .agenda-card {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    body.live-mode .agenda-card.empty {
+      flex: 1 1 auto;
+    }
     .agenda-cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 8px;
       padding: 10px 12px 12px;
-      overflow: auto;
+      overflow: hidden;
       flex: 1 1 auto;
       min-height: 0;
-      align-content: start;
+      align-content: stretch;
     }
     .agenda-card {
       border-radius: 12px;
       border: 1px solid #334155;
       background: linear-gradient(180deg, #122033, #0b1220);
-      padding: 12px 12px 14px;
-      min-height: 108px;
+      padding: 10px 12px 12px;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -2410,7 +2509,7 @@
     .agenda-pizza .callout-pct {
       fill: #ffffff;
       font-weight: 900;
-      font-size: 48px;
+      font-size: 34px;
       font-family: "Segoe UI", system-ui, sans-serif;
       letter-spacing: -0.02em;
     }
@@ -2421,14 +2520,14 @@
     .agenda-pizza .callout-lab {
       fill: #e2e8f0;
       font-weight: 800;
-      font-size: 18px;
+      font-size: 15px;
       letter-spacing: 0.1em;
       font-family: "Segoe UI", system-ui, sans-serif;
     }
     .agenda-pizza .callout-count {
       fill: #94a3b8;
       font-weight: 600;
-      font-size: 16px;
+      font-size: 13px;
       font-family: "Segoe UI", system-ui, sans-serif;
     }
     .agenda-side { display: none !important; }
@@ -2625,53 +2724,56 @@
     body.live-mode .agenda-gestao-only { display: none !important; }
     body.live-mode .agenda-head h2 { display: none; }
     body.live-mode .agenda-kpi b {
-      font-size: clamp(40px, 5vw, 72px);
+      font-size: clamp(28px, 3.6vw, 52px);
     }
     body.live-mode .agenda-kpi.k-peso b,
     body.live-mode .agenda-kpi.k-frete b {
-      font-size: clamp(22px, 2.8vw, 44px);
+      font-size: clamp(16px, 2.2vw, 32px);
     }
     body.live-mode .agenda-kpi span {
-      font-size: clamp(12px, 1.3vw, 15px);
+      font-size: clamp(11px, 1.2vw, 14px);
     }
     body.live-mode .agenda-kpi small {
-      font-size: 12px;
+      font-size: clamp(10px, 1.1vw, 12px);
     }
     body.live-mode .agenda-pizza {
-      width: min(100%, 1200px);
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
     }
-    body.live-mode .agenda-pizza .callout-pct { font-size: 56px; }
-    body.live-mode .agenda-pizza .callout-lab { font-size: 20px; }
-    body.live-mode .agenda-pizza .callout-count { font-size: 18px; }
+    /* Callouts cabem no viewBox 900×520 (não estouram as bordas) */
+    body.live-mode .agenda-pizza .callout-pct { font-size: 34px; }
+    body.live-mode .agenda-pizza .callout-lab { font-size: 15px; }
+    body.live-mode .agenda-pizza .callout-count { font-size: 13px; }
     body.tv-mode.live-mode .agenda-kpi b {
-      font-size: clamp(48px, 6.5vmin, 88px);
+      font-size: clamp(22px, 3.2vmin, 42px);
     }
     body.tv-mode.live-mode .agenda-kpi.k-peso b,
     body.tv-mode.live-mode .agenda-kpi.k-frete b {
-      font-size: clamp(24px, 3.2vmin, 48px);
+      font-size: clamp(14px, 2.2vmin, 28px);
     }
     body.tv-mode.live-mode .agenda-kpi span {
-      font-size: clamp(12px, 1.5vmin, 18px);
+      font-size: clamp(9px, 1.15vmin, 13px);
     }
     body.tv-mode.live-mode .tower-bar .val,
     body.tv-mode.live-mode .tower-alert .num {
-      font-size: clamp(32px, 4.2vmin, 56px);
+      font-size: clamp(20px, 2.8vmin, 36px);
     }
     body.tv-mode.live-mode .agenda-card .ctrc {
-      font-size: clamp(20px, 2.6vmin, 32px);
+      font-size: clamp(13px, 1.7vmin, 20px);
     }
     body.tv-mode.live-mode .agenda-card .when {
-      font-size: clamp(16px, 2vmin, 26px);
+      font-size: clamp(12px, 1.5vmin, 17px);
     }
-    body.tv-mode.live-mode .agenda-pizza .callout-pct { font-size: 72px; }
-    body.tv-mode.live-mode .agenda-pizza .callout-lab { font-size: 24px; }
-    body.tv-mode.live-mode .agenda-pizza .callout-count { font-size: 22px; }
+    body.tv-mode.live-mode .agenda-pizza .callout-pct { font-size: 32px; }
+    body.tv-mode.live-mode .agenda-pizza .callout-lab { font-size: 14px; }
+    body.tv-mode.live-mode .agenda-pizza .callout-count { font-size: 12px; }
     body.tv-mode.live-mode .tower-bar .track { height: 18px; }
     @media (max-width: 980px) {
       /* Só empilha em telas realmente estreitas — Sites/TV iframe usa o grid 2 colunas */
       body.live-mode:not(.tv-mode) .agenda-layout:not(.has-blocks) {
         grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(220px, 1fr) auto minmax(140px, 0.45fr);
+        grid-template-rows: auto minmax(180px, 1fr) auto minmax(120px, 0.5fr);
       }
       body.live-mode:not(.tv-mode) .agenda-layout:not(.has-blocks) [data-block="chart"] {
         grid-column: 1;
@@ -2680,19 +2782,23 @@
       body.live-mode:not(.tv-mode) .agenda-layout:not(.has-blocks) [data-block="status"] {
         grid-column: 1;
         grid-row: 3;
-        max-height: 220px;
+        max-height: 180px;
+        overflow: hidden;
       }
       body.live-mode:not(.tv-mode) .agenda-layout:not(.has-blocks) [data-block="amanha"] {
         grid-column: 1;
         grid-row: 4;
+      }
+      body.live-mode:not(.tv-mode) .agenda-kpis {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
     }
     /* iframe Sites / TV: nunca colapsar Agendamento em coluna única */
     html.tv-in-frame .agenda-layout:not(.has-blocks),
     body.tv-mode .agenda-layout:not(.has-blocks) {
       display: grid !important;
-      grid-template-columns: minmax(0, 1.55fr) minmax(180px, 0.6fr) !important;
-      grid-template-rows: minmax(min-content, auto) minmax(0, 1fr) minmax(110px, 0.3fr) !important;
+      grid-template-columns: minmax(0, 1.7fr) minmax(190px, 0.65fr) !important;
+      grid-template-rows: auto minmax(0, 1.15fr) minmax(130px, 0.52fr) !important;
       overflow: hidden !important;
     }
     html.tv-in-frame .agenda-layout:not(.has-blocks) [data-block="kpis"],
@@ -2712,7 +2818,7 @@
       grid-row: 2 !important;
       max-height: none !important;
       min-height: 0 !important;
-      overflow: auto !important;
+      overflow: hidden !important;
     }
     html.tv-in-frame .agenda-layout:not(.has-blocks) [data-block="amanha"],
     body.tv-mode .agenda-layout:not(.has-blocks) [data-block="amanha"] {
@@ -2727,10 +2833,6 @@
     html.tv-in-frame .agenda-kpis,
     body.tv-mode .agenda-kpis {
       grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
-    }
-    html.tv-in-frame .agenda-cards,
-    body.tv-mode .agenda-cards {
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
     }
     @keyframes sirenBlink {
       0%, 100% { opacity: 1; }
@@ -3363,49 +3465,180 @@
       padding: clamp(12px, 1.8vw, 28px) clamp(10px, 1.4vw, 22px);
     }
 
-    /* Emissão 455 — mesmo padrão visual dos outros setores (dark TV) */
+    /* Emissão 455 — wallboard operacional (performance → status → volume) */
     .emi-wrap {
       height: 100vh;
-      padding: 12px 14px;
+      padding: 10px 12px;
       display: grid;
       grid-template-rows: auto 1fr;
-      gap: 10px;
+      gap: 8px;
       max-width: 1680px;
       margin: 0 auto;
     }
     .emi-layout {
       display: grid;
       grid-template-columns: 1fr;
-      grid-template-rows: auto auto minmax(0, 1fr);
-      gap: clamp(8px, 1vw, 14px);
+      grid-template-rows: auto minmax(0, 1.35fr) minmax(0, 0.95fr);
+      gap: clamp(8px, 1vw, 12px);
       height: 100%;
       min-height: 0;
       overflow: hidden;
     }
-    .emi-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .emi-kpis-shift { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 0; }
-    .emi-main {
+    .emi-perf {
       display: grid;
-      grid-template-columns: minmax(0, 1.65fr) minmax(240px, 0.7fr);
-      gap: clamp(8px, 1vw, 14px);
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: clamp(6px, 0.8vw, 10px);
+    }
+    .emi-kpi {
+      background: var(--panel, #0f172a);
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: clamp(8px, 1vmin, 12px) clamp(8px, 1vmin, 12px);
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .emi-kpi .lbl {
+      font-size: clamp(10px, 1.1vmin, 12px);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .emi-kpi .val {
+      font-size: clamp(22px, 3.2vmin, 40px);
+      font-weight: 900;
+      line-height: 1;
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+    }
+    .emi-kpi .sub {
+      font-size: clamp(10px, 1.1vmin, 12px);
+      color: #64748b;
+      font-weight: 600;
+    }
+    .emi-kpi.is-ok .val { color: #4ade80; }
+    .emi-kpi.is-run .val { color: #38bdf8; }
+    .emi-kpi.is-warn .val { color: #fbbf24; }
+    .emi-kpi.is-crit .val { color: #f87171; }
+    .emi-kpi.is-muted .val { color: #94a3b8; }
+    .emi-mid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(220px, 0.75fr);
+      gap: clamp(8px, 1vw, 12px);
       min-height: 0;
     }
-    .emi-hero-card header {
+    .emi-bot {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      gap: clamp(8px, 1vw, 12px);
+      min-height: 0;
+    }
+    .emi-card {
+      background: rgba(2, 6, 23, 0.55);
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .emi-card > header {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
+      padding: 10px 12px 6px;
+      flex-shrink: 0;
     }
-    .emi-hero-card header h2 { margin: 0; }
+    .emi-card > header h2 {
+      margin: 0;
+      font-size: clamp(12px, 1.35vmin, 15px);
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #e2e8f0;
+    }
+    .emi-card > header .meta {
+      font-size: clamp(11px, 1.2vmin, 13px);
+      color: #64748b;
+      font-weight: 600;
+    }
+    .emi-mid > .emi-card,
+    .emi-bot > .emi-card {
+      height: 100%;
+      min-height: 0;
+    }
+    .emi-card-body {
+      flex: 1;
+      min-height: 0;
+      padding: 4px 12px 12px;
+      display: flex;
+      flex-direction: column;
+    }
+    .emi-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: clamp(12px, 1.4vmin, 16px);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #334155;
+      background: rgba(15, 23, 42, 0.8);
+      color: #e2e8f0;
+    }
+    .emi-status-pill::before {
+      content: "";
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+    .emi-status-pill.is-ok { color: #86efac; border-color: rgba(74, 222, 128, 0.35); }
+    .emi-status-pill.is-ok::before { background: #22c55e; }
+    .emi-status-pill.is-warn { color: #fde68a; border-color: rgba(251, 191, 36, 0.4); }
+    .emi-status-pill.is-warn::before { background: #f59e0b; }
+    .emi-status-pill.is-crit { color: #fca5a5; border-color: rgba(248, 113, 113, 0.45); }
+    .emi-status-pill.is-crit::before { background: #ef4444; }
+    .emi-chart-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
     .emi-chart {
       flex: 1;
       display: grid;
       grid-template-columns: repeat(24, minmax(0, 1fr));
       align-items: end;
       gap: 3px;
-      padding: 10px 6px 26px;
-      min-height: clamp(220px, 42vh, 520px);
+      padding: 8px 4px 22px;
+      min-height: clamp(160px, 28vh, 360px);
+      position: relative;
+      z-index: 1;
+    }
+    .emi-meta-line {
+      position: absolute;
+      left: 4px; right: 4px;
+      border-top: 2px dashed rgba(251, 191, 36, 0.65);
+      z-index: 2;
+      pointer-events: none;
+      top: auto;
+    }
+    .emi-meta-line span {
+      position: absolute;
+      right: 0;
+      top: -16px;
+      font-size: 10px;
+      font-weight: 800;
+      color: #fbbf24;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
     .emi-bar {
       display: flex;
@@ -3413,7 +3646,7 @@
       align-items: center;
       justify-content: flex-end;
       height: 100%;
-      gap: 4px;
+      gap: 3px;
       position: relative;
     }
     .emi-bar .val {
@@ -3423,72 +3656,193 @@
       line-height: 1;
     }
     .emi-bar .col {
-      width: 72%;
+      width: 70%;
       min-height: 2px;
       border-radius: 4px 4px 0 0;
       background: linear-gradient(180deg, #38bdf8, #0369a1);
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+    .emi-bar.is-above .col {
+      background: linear-gradient(180deg, #4ade80, #15803d);
+    }
+    .emi-bar.is-below .col {
+      background: linear-gradient(180deg, #94a3b8, #475569);
     }
     .emi-bar .h {
       position: absolute;
-      bottom: -18px;
+      bottom: -16px;
       font-size: 9px;
       font-weight: 700;
-      color: #94a3b8;
+      color: #64748b;
       white-space: nowrap;
     }
-    .emi-side {
-      display: grid;
-      grid-template-rows: 1fr auto;
-      gap: clamp(8px, 1vw, 12px);
+    .emi-status-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      flex: 1;
       min-height: 0;
     }
-    .emi-exp-list { overflow: auto; min-height: 0; padding-right: 4px; }
+    .emi-status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #1e293b;
+      font-size: clamp(13px, 1.35vmin, 16px);
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+    .emi-status-row:last-child { border-bottom: 0; }
+    .emi-status-row .k { color: #94a3b8; font-weight: 700; font-size: 0.92em; }
+    .emi-status-row .v {
+      font-variant-numeric: tabular-nums;
+      color: #f8fafc;
+      font-weight: 800;
+    }
+    .emi-status-row.is-ok .v { color: #4ade80; }
+    .emi-status-row.is-warn .v { color: #fbbf24; }
+    .emi-status-row.is-crit .v { color: #f87171; }
+    .emi-turno {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 8px;
+    }
+    .emi-turno-box {
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .emi-turno-box .t {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .emi-turno-box .n {
+      font-size: clamp(18px, 2.4vmin, 28px);
+      font-weight: 900;
+      color: #e2e8f0;
+      font-variant-numeric: tabular-nums;
+    }
+    .emi-exp-list { overflow: auto; min-height: 0; padding-right: 2px; flex: 1; }
     .emi-exp-row {
       display: grid;
-      grid-template-columns: minmax(140px, 1.15fr) 1.4fr 48px;
+      grid-template-columns: minmax(100px, 1.1fr) minmax(0, 1.4fr) auto;
       gap: 8px;
       align-items: center;
-      margin-bottom: 8px;
-      font-size: clamp(12px, 1.1vw, 15px);
+      margin-bottom: 10px;
+      font-size: clamp(12px, 1.15vw, 15px);
       font-weight: 700;
       color: #e2e8f0;
     }
-    .emi-exp-row > span:first-child {
+    .emi-exp-row .emi-exp-name {
+      min-width: 0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .emi-exp-row .emi-exp-meta {
+      grid-column: 1 / -1;
+      font-size: clamp(11px, 1.1vmin, 13px);
+      color: #64748b;
+      font-weight: 600;
+      margin-top: -6px;
+      margin-bottom: 2px;
+    }
     .emi-exp-bar {
-      height: 12px;
-      border-radius: 999px;
-      background: rgba(148, 163, 184, 0.18);
+      height: 11px;
+      border-radius: 4px;
+      background: rgba(148, 163, 184, 0.15);
       overflow: hidden;
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      border: 1px solid rgba(148, 163, 184, 0.2);
     }
     .emi-exp-bar > i {
       display: block;
       height: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, #4ade80, #16a34a);
+      background: linear-gradient(90deg, #38bdf8, #0284c7);
     }
     .emi-exp-row .qtd {
       text-align: right;
       font-variant-numeric: tabular-nums;
       color: #f8fafc;
+      min-width: 2.5ch;
+    }
+    .emi-vol-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 14px;
+      flex: 1;
+      align-content: start;
+    }
+    .emi-vol-item .k {
+      font-size: clamp(10px, 1.1vmin, 12px);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .emi-vol-item .v {
+      font-size: clamp(16px, 2vmin, 24px);
+      font-weight: 800;
+      color: #f1f5f9;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.15;
+    }
+    .emi-vol-span { grid-column: 1 / -1; }
+    .emi-derived {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid #1e293b;
+    }
+    .emi-derived .box {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 8px;
+    }
+    .emi-derived .box .k {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .emi-derived .box .v {
+      font-size: clamp(14px, 1.7vmin, 18px);
+      font-weight: 800;
+      color: #e2e8f0;
+      font-variant-numeric: tabular-nums;
     }
     .emi-mes-pill {
       font-size: clamp(14px, 1.6vw, 20px);
       font-weight: 800;
       letter-spacing: 0.08em;
-      color: #fbbf24;
+      color: #94a3b8;
     }
-    @media (max-width: 900px) {
-      .emi-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .emi-kpis-shift { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .emi-main { grid-template-columns: 1fr; }
+    .emi-top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 980px) {
+      .emi-perf { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .emi-mid, .emi-bot { grid-template-columns: 1fr; }
       .emi-wrap { height: auto; min-height: 100vh; }
+      .emi-layout { grid-template-rows: auto auto auto; height: auto; overflow: visible; }
     }
+    body.tv-mode .emi-perf { gap: clamp(6px, 0.7vmin, 10px); }
+    body.tv-mode .emi-kpi .val { font-size: clamp(26px, 3.6vmin, 48px); }
+    body.tv-mode .emi-chart { min-height: clamp(180px, 32vh, 420px); }
 
     .pen-torres {
       height: 100%;
@@ -5081,7 +5435,7 @@
             </div>
           </div>
           <div class="agenda-pizza-wrap" id="agendaPizzaWrap" hidden>
-            <svg id="agendaPizza" class="agenda-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de agendamentos"></svg>
+              <svg id="agendaPizza" class="agenda-pizza" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Gráfico pizza de agendamentos"></svg>
           </div>
         </div>
 
@@ -5511,12 +5865,15 @@
           />
           <div class="arm-titles">
             <div class="kicker" id="emiKicker">BINHO · OPERACIONAL · 455</div>
-            <h1 id="emiTitle">EMISSÃO <span class="emi-mes-pill" id="emiMes">—</span></h1>
+            <h1 id="emiTitle">EMISSÃO DE CT-e <span class="emi-mes-pill" id="emiMes">—</span></h1>
           </div>
         </div>
-        <nav class="nav">
-          <button type="button" class="nav-btn tv-btn" id="btnTvEmissao" title="Modo TV / tela inteira (F)">TV</button>
-        </nav>
+        <div class="emi-top-actions">
+          <div class="emi-status-pill is-ok" id="emiStatusPill" title="Status operacional">OPERAÇÃO NORMAL</div>
+          <nav class="nav">
+            <button type="button" class="nav-btn tv-btn" id="btnTvEmissao" title="Modo TV / tela inteira (F)">TV</button>
+          </nav>
+        </div>
         <div class="clock-box">
           <div class="lbl">Tempo real</div>
           <div class="time" id="emiClock">--:--:--</div>
@@ -5525,41 +5882,157 @@
       </div>
 
       <div class="emi-layout" id="emiLayout">
-        <div class="arm-kpis emi-kpis-shift dash-block ds-kpi-row" data-block="shift">
-          <div class="arm-kpi chegou ds-kpi is-run"><div class="lbl">Dia</div><div class="val" id="emiDia">0</div></div>
-          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Noite</div><div class="val" id="emiNoite">0</div></div>
-          <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Cubagem</div><div class="val" id="emiCubagem" style="font-size:clamp(14px,1.6vw,22px)">0</div></div>
-          <div class="arm-kpi atrasado ds-kpi is-crit"><div class="lbl">Cancelados</div><div class="val" id="emiCancelados">0</div></div>
+        <!-- PERFORMANCE -->
+        <div class="emi-perf dash-block" data-block="kpis" aria-label="Performance">
+          <div class="emi-kpi is-run">
+            <div class="lbl">CT-e emitidos</div>
+            <div class="val" id="emiCtes">0</div>
+            <div class="sub" id="emiPeriodo">—</div>
+          </div>
+          <div class="emi-kpi is-muted">
+            <div class="lbl">Pendentes</div>
+            <div class="val" id="emiPendentes">—</div>
+            <div class="sub">sem fonte 455</div>
+          </div>
+          <div class="emi-kpi is-muted">
+            <div class="lbl">Erros</div>
+            <div class="val" id="emiErros">—</div>
+            <div class="sub">sem fonte 455</div>
+          </div>
+          <div class="emi-kpi is-crit">
+            <div class="lbl">Cancelados</div>
+            <div class="val" id="emiCancelados">0</div>
+            <div class="sub" id="emiCancelPct">—</div>
+          </div>
+          <div class="emi-kpi is-run">
+            <div class="lbl">Prod./h</div>
+            <div class="val" id="emiProdH">0</div>
+            <div class="sub">ritmo do período</div>
+          </div>
+          <div class="emi-kpi is-warn">
+            <div class="lbl">Meta/h</div>
+            <div class="val" id="emiMetaH">—</div>
+            <div class="sub" id="emiMetaHint">referência</div>
+          </div>
+          <!-- IDs legados mantidos (ocultos) para compat -->
+          <span id="emiDia" hidden>0</span>
+          <span id="emiNoite" hidden>0</span>
         </div>
 
-        <div class="arm-kpis emi-kpis dash-block ds-kpi-row" data-block="kpis">
-          <div class="arm-kpi ds-kpi is-ok"><div class="lbl">CTEs</div><div class="val" id="emiCtes">0</div></div>
-          <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Peso</div><div class="val" id="emiPeso" style="font-size:clamp(13px,1.5vw,20px)">0</div></div>
-          <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Valor mercadoria</div><div class="val" id="emiValor" style="font-size:clamp(12px,1.35vw,18px)">R$ 0</div></div>
-          <div class="arm-kpi chegou ds-kpi is-run"><div class="lbl">Volumes</div><div class="val" id="emiVolumes">0</div></div>
-          <div class="arm-kpi descarregando ds-kpi is-warn"><div class="lbl">Frete</div><div class="val" id="emiFrete" style="font-size:clamp(12px,1.35vw,18px)">R$ 0</div></div>
-        </div>
-
-        <div class="emi-main dash-block" data-block="chart">
-          <section class="arm-hero-card emi-hero-card">
+        <!-- PRODUÇÃO + STATUS -->
+        <div class="emi-mid dash-block" data-block="chart">
+          <section class="emi-card emi-hero-card">
             <header>
-              <h2>Picos de emissão</h2>
+              <h2>Produção de CT-e por hora</h2>
               <div class="pen-hero-meta">
-                <div class="meta" id="emiPeriodo">—</div>
+                <div class="meta" id="emiChartSub">Emitidos por hora</div>
                 <div class="meta" id="emiAtualizado">atualizado —</div>
               </div>
             </header>
-            <div class="emi-chart" id="emiChart" aria-label="Picos de emissão por hora"></div>
+            <div class="emi-card-body">
+              <div class="emi-chart-wrap">
+                <div class="emi-meta-line" id="emiMetaLine" hidden><span id="emiMetaLineLab">META</span></div>
+                <div class="emi-chart" id="emiChart" aria-label="Produção de CT-e por hora"></div>
+              </div>
+            </div>
           </section>
-          <aside class="emi-side">
-            <section class="arm-hero-card">
-              <header>
-                <h2>Expedidores</h2>
-                <div class="meta">nome completo</div>
-              </header>
-              <div class="emi-exp-list" id="emiExpedidores"></div>
-            </section>
+          <aside class="emi-card" aria-label="Status da operação">
+            <header>
+              <h2>Status da operação</h2>
+              <div class="meta" id="emiStatusLabel">—</div>
+            </header>
+            <div class="emi-card-body">
+              <div class="emi-status-list">
+                <div class="emi-status-row" id="emiRowUltima">
+                  <span class="k">Última emissão</span>
+                  <span class="v" id="emiUltima">—</span>
+                </div>
+                <div class="emi-status-row" id="emiRowDesde">
+                  <span class="k">Tempo desde última</span>
+                  <span class="v" id="emiDesde">—</span>
+                </div>
+                <div class="emi-status-row is-ok" id="emiRowPend">
+                  <span class="k">Pendências</span>
+                  <span class="v" id="emiStatPend">—</span>
+                </div>
+                <div class="emi-status-row is-ok" id="emiRowErr">
+                  <span class="k">Erros</span>
+                  <span class="v" id="emiStatErr">—</span>
+                </div>
+                <div class="emi-status-row" id="emiRowCanc">
+                  <span class="k">Cancelamentos</span>
+                  <span class="v" id="emiStatCanc">0</span>
+                </div>
+              </div>
+              <div class="emi-turno" aria-label="Produção por turno">
+                <div class="emi-turno-box">
+                  <div class="t">Turno dia · 6–18h</div>
+                  <div class="n"><span id="emiTurnoDia">0</span> <small style="font-size:0.45em;color:#64748b">CT-e</small></div>
+                </div>
+                <div class="emi-turno-box">
+                  <div class="t">Turno noite · 18–6h</div>
+                  <div class="n"><span id="emiTurnoNoite">0</span> <small style="font-size:0.45em;color:#64748b">CT-e</small></div>
+                </div>
+              </div>
+            </div>
           </aside>
+        </div>
+
+        <!-- EXPEDIDORES + VOLUME -->
+        <div class="emi-bot">
+          <section class="emi-card dash-block" data-block="expedidores">
+            <header>
+              <h2>Produtividade por expedidor</h2>
+              <div class="meta">CT-e · % · ritmo/h</div>
+            </header>
+            <div class="emi-card-body">
+              <div class="emi-exp-list" id="emiExpedidores"></div>
+            </div>
+          </section>
+          <section class="emi-card dash-block" data-block="volume">
+            <header>
+              <h2>Volume operacional</h2>
+              <div class="meta">movimentação do período</div>
+            </header>
+            <div class="emi-card-body">
+              <div class="emi-vol-grid">
+                <div class="emi-vol-item">
+                  <div class="k">Peso</div>
+                  <div class="v" id="emiPeso">0</div>
+                </div>
+                <div class="emi-vol-item">
+                  <div class="k">Volumes</div>
+                  <div class="v" id="emiVolumes">0</div>
+                </div>
+                <div class="emi-vol-item">
+                  <div class="k">Cubagem</div>
+                  <div class="v" id="emiCubagem">0</div>
+                </div>
+                <div class="emi-vol-item">
+                  <div class="k">Valor mercadoria</div>
+                  <div class="v" id="emiValor">R$ 0</div>
+                </div>
+                <div class="emi-vol-item emi-vol-span">
+                  <div class="k">Frete</div>
+                  <div class="v" id="emiFrete">R$ 0</div>
+                </div>
+              </div>
+              <div class="emi-derived" aria-label="Indicadores derivados">
+                <div class="box">
+                  <div class="k">Frete médio / CT-e</div>
+                  <div class="v" id="emiFreteMed">—</div>
+                </div>
+                <div class="box">
+                  <div class="k">Peso médio / CT-e</div>
+                  <div class="v" id="emiPesoMed">—</div>
+                </div>
+                <div class="box">
+                  <div class="k">Volumes / CT-e</div>
+                  <div class="v" id="emiVolMed">—</div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
         <div class="arm-err" id="emiErr" hidden></div>
       </div>
@@ -5622,6 +6095,8 @@
     let lastGoodEmiResumo = null;
     let lastGoodEmiExp = [];
     let lastGoodEmiHoras = [];
+    let lastEmiAtualizadoTs = null;
+    let lastEmiActiveHours = 0;
     let emiRefreshTimer = null;
     let lastGoodRecData = null;
     let recRefreshTimer = null;
@@ -5773,6 +6248,9 @@
         emiDate.textContent = now.toLocaleDateString('pt-BR', {
           weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
         });
+      }
+      if (typeof updateEmiDesdeUltima === 'function') {
+        try { updateEmiDesdeUltima(now); } catch (_) { /* ignore */ }
       }
       const recClock = document.getElementById('recClock');
       const recDate = document.getElementById('recDate');
@@ -7251,10 +7729,50 @@
       return String(raw || '').trim().replace(/\s+[a-zA-Z_.À-ú]{2,}$/i, '').trim();
     }
 
-    /** Exibe data/hora alinhada ao relógio (HOJE → dd/mm). */
+    /**
+     * Se o campo ainda tem "HOJE" mas a linha já tem outra data absoluta (ex.: fim 14/08),
+     * ancora o HOJE nesse dia — corrige CSV antigo que “deslizou” para o dia atual.
+     */
+    function armAnchorHojeField(raw, hintRaw) {
+      const full = String(raw || '').trim();
+      const clean = armStripOperador(full);
+      if (!clean || !/^HOJE\s+/i.test(clean)) return full;
+      const hintDt = parseArmDt(armStripOperador(hintRaw));
+      const m = clean.match(/^HOJE\s+(\d{1,2}):(\d{2})$/i);
+      if (!hintDt || !m) return full;
+      const opMatch = full.match(/\s+([a-zA-Z_.À-ú]{2,})$/i);
+      const op = opMatch ? ` ${opMatch[1]}` : '';
+      return `${pad(hintDt.getDate())}/${pad(hintDt.getMonth() + 1)} ${pad(+m[1])}:${pad(+m[2])}${op}`;
+    }
+
+    function armNormalizeVeicMoments(v) {
+      const hint = v.final_descarga || v.chegada || v.prev_chegada || v.saida || '';
+      if (!hint || !/^\d{1,2}\//.test(armStripOperador(hint))) return v;
+      const out = { ...v };
+      ['chegada', 'inicio_descarga', 'final_descarga', 'prev_chegada', 'saida'].forEach((k) => {
+        if (/^HOJE\s+/i.test(armStripOperador(out[k]))) {
+          out[k] = armAnchorHojeField(out[k], hint);
+        }
+      });
+      return out;
+    }
+
+    /**
+     * Exibe data/hora. dd/mm absoluto NÃO é reescrito (evita 14/08 virar 17/08).
+     * Só "HOJE HH:mm" vira o dia corrente do relógio.
+     */
     function armFmtMomento(raw) {
       const clean = armStripOperador(raw);
       if (!clean) return '—';
+      let m = clean.match(/^(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?\s+(\d{1,2}):(\d{2})$/);
+      if (m) {
+        return `${pad(+m[1])}/${pad(+m[2])} ${pad(+m[3])}:${pad(+m[4])}`;
+      }
+      m = clean.match(/^HOJE\s+(\d{1,2}):(\d{2})$/i);
+      if (m) {
+        const hoje = new Date();
+        return `${pad(hoje.getDate())}/${pad(hoje.getMonth() + 1)} ${pad(+m[1])}:${pad(+m[2])}`;
+      }
       const dt = parseArmDt(clean);
       if (!dt || Number.isNaN(dt.getTime())) return clean;
       return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
@@ -7272,7 +7790,7 @@
 
     /**
      * Tempo de descarga ao vivo: fim−início, ou agora−início se ainda em andamento.
-     * Evita o CSV “congelar” (ex.: 1h47) enquanto o relógio da tela avança.
+     * Início no futuro (ex.: HOJE sticky) → não inventa "0min (andamento)".
      */
     function armTempoDescargaLive(v) {
       const ini = armStripOperador(v.inicio_descarga);
@@ -7283,7 +7801,12 @@
         return armFmtDuracao((fimDt - iniDt) / 60000) || (v.tempo_descarga || '—');
       }
       if (iniDt && !fim) {
-        const mins = Math.max(0, Math.floor((Date.now() - iniDt.getTime()) / 60000));
+        const deltaMs = Date.now() - iniDt.getTime();
+        // Início >1 min no futuro = dado inconsistente (HOJE que deslizou de outro dia)
+        if (deltaMs < -60000) {
+          return (v.tempo_descarga || '').trim() || '—';
+        }
+        const mins = Math.max(0, Math.floor(deltaMs / 60000));
         const txt = armFmtDuracao(mins);
         return txt ? `${txt} (andamento)` : '—';
       }
@@ -7297,7 +7820,11 @@
       const ini = armStripOperador(v.inicio_descarga);
       if (!ini) return false;
       const dt = parseArmDt(ini);
-      if (dt && (Date.now() - dt.getTime()) > ARM_DESC_ATR_MS) return true;
+      if (dt) {
+        const deltaMs = Date.now() - dt.getTime();
+        if (deltaMs < -60000) return false; // início futuro → não é atraso
+        if (deltaMs > ARM_DESC_ATR_MS) return true;
+      }
       // fallback se data inválida: usa minutos do CSV (só na falta do parse)
       if (!dt) {
         const minsCsv = Number(v.tempo_descarga_min);
@@ -7309,16 +7836,27 @@
     function armStatusEfetivo(v) {
       const fim = armStripOperador(v.final_descarga);
       if (fim) return 'finalizado';
-      if (armDescargaAtrasada(v)) return 'atrasado';
-      const st = String(v.status || '').toLowerCase();
-      if (armStripOperador(v.inicio_descarga)) {
-        return st === 'atrasado' ? 'atrasado' : 'descarregando';
+      const stCsv = String(v.status || '').toLowerCase();
+      // CSV já consolidou como finalizado (mesmo se final veio vazio por falha de parse)
+      if (stCsv === 'finalizado') return 'finalizado';
+      const ini = armStripOperador(v.inicio_descarga);
+      const iniDt = parseArmDt(ini);
+      // Início no futuro (HOJE sticky) → não marcar descarregando
+      if (iniDt && (iniDt.getTime() - Date.now()) > 60000) {
+        if (armStripOperador(v.chegada)) return 'chegou';
+        return stCsv === 'atrasado' ? 'atrasado' : (stCsv || 'aguardando');
       }
-      return st || 'aguardando';
+      if (armDescargaAtrasada(v)) return 'atrasado';
+      if (ini) {
+        return stCsv === 'atrasado' ? 'atrasado' : 'descarregando';
+      }
+      return stCsv || 'aguardando';
     }
 
     /** Tabela: só pátio + descarregando + descarga >3h. Finalizado só no contador. */
     function armShowInTabela(v) {
+      // Cinto de segurança: com fim de descarga, fora da fila ao vivo
+      if (armStripOperador(v.final_descarga)) return false;
       const st = armStatusEfetivo(v);
       if (st === 'finalizado' || st === 'aguardando') return false;
       if (st === 'chegou' || st === 'descarregando') return true;
@@ -7466,7 +8004,11 @@
 
     function paintArmazemDashboard({ resumo, veicRows, confRows, resumo177 }) {
       const r = resumo || {};
-      const veics = aggVeiculosArm(veicRows || []);
+      const veics = aggVeiculosArm(veicRows || []).map((v) => {
+        const n = armNormalizeVeicMoments(v);
+        n.status = armStatusEfetivo(n);
+        return n;
+      });
       const live = { atrasado: 0, descarregando: 0, chegou: 0, aguardando: 0, finalizado: 0 };
       for (const v of veics) {
         const st = armStatusEfetivo(v);
@@ -7842,6 +8384,17 @@
       return ((sp > 8 ? cut.slice(0, sp) : cut).trim() + '…');
     }
 
+    function penColorClass(o, negIdx) {
+      const pol = String(o.polaridade || '').toLowerCase();
+      const cod = String(o.codigo || '').trim();
+      if (pol === 'pos' || cod === '63') return 'c-pos';
+      // cor estável por código (mesmo código = mesma cor entre atualizações)
+      let h = 0;
+      for (let i = 0; i < cod.length; i++) h = ((h << 5) - h + cod.charCodeAt(i)) | 0;
+      const idx = cod ? Math.abs(h) % 8 : (negIdx % 8);
+      return `c-${idx}`;
+    }
+
     function renderPenTorres(ofensores) {
       const host = document.getElementById('penTorres');
       const pareto = document.getElementById('penPareto');
@@ -7858,18 +8411,25 @@
       let negIdx = 0;
       let acc = 0;
       if (pareto) {
+        let colorIdx = 0;
         pareto.innerHTML = items.map((o) => {
           const qtd = Number(o.qtd) || 0;
           const pct = Math.round((qtd / total) * 100);
           acc += pct;
           const accShow = Math.min(100, acc);
           const cod = String(o.codigo || '').trim();
+          const pol = String(o.polaridade || '').toLowerCase();
+          const isPos = pol === 'pos' || cod === '63';
+          const colorCls = penColorClass(o, colorIdx++);
           const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
           const lab = esc(tv ? shortPenLabel(nome, 42) : shortPenLabel(nome, 48));
           const w = Math.max(6, Math.round((qtd / max) * 100));
-          return `<div class="ds-pareto-row" title="${esc(cod ? `${cod} · ${nome}` : nome)}">
-            <div class="ds-pareto-lab">${cod ? `<span style="color:var(--muted);font-weight:700">${esc(cod)}</span> · ${lab}` : lab}</div>
-            <div class="ds-pareto-track"><div class="ds-pareto-fill" style="width:${w}%"></div></div>
+          const codHtml = cod
+            ? `<span class="ds-pareto-cod">${esc(cod)}${isPos ? ' · SLA+' : ''}</span> · `
+            : '';
+          return `<div class="ds-pareto-row ${isPos ? 'is-pos' : ''}" title="${esc(cod ? `${cod} · ${nome}` : nome)}">
+            <div class="ds-pareto-lab">${codHtml}${lab}</div>
+            <div class="ds-pareto-track"><div class="ds-pareto-fill ${colorCls}" style="width:${w}%"></div></div>
             <div class="ds-pareto-n">${qtd}</div>
             <div class="ds-pareto-acc">${accShow}%</div>
           </div>`;
@@ -8235,26 +8795,132 @@
       }).join('');
     }
 
-    function renderEmiChart(horas) {
-      const host = document.getElementById('emiChart');
-      if (!host) return;
-      const items = Array.from({ length: 24 }, (_, h) => {
+    function emiParseNum(v) {
+      if (v == null || v === '') return 0;
+      if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+      const s = String(v).trim();
+      if (!s) return 0;
+      // Número puro (CSV: 5627.33 / 1751.4)
+      if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
+      // Formatado BR: "R$ 1.751,40" / "5.627,33" / "3,55 m3"
+      const cleaned = s
+        .replace(/R\$\s?/gi, '')
+        .replace(/\s*m3\s*/gi, '')
+        .replace(/\s*kg\s*/gi, '')
+        .replace(/\./g, '')
+        .replace(',', '.')
+        .replace(/[^\d.-]/g, '');
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function emiHorasItems(horas) {
+      return Array.from({ length: 24 }, (_, h) => {
         const found = (horas || []).find((x) => Number(x.hora) === h);
         return { hora: h, qtd: Number(found?.qtd) || 0 };
       });
-      const max = Math.max(...items.map((x) => x.qtd), 1);
+    }
+
+    function emiActiveHourSpan(items) {
+      const active = (items || []).filter((x) => x.qtd > 0);
+      if (!active.length) return { hours: 0, first: null, last: null, avg: 0 };
+      const first = active[0].hora;
+      const last = active[active.length - 1].hora;
+      const span = Math.max(1, last - first + 1);
+      const avg = active.reduce((s, x) => s + x.qtd, 0) / active.length;
+      return { hours: span, first, last, avg, activeCount: active.length };
+    }
+
+    function parseEmiAtualizado(raw) {
+      const s = String(raw || '').trim();
+      if (!s) return null;
+      // 17/08/2026 09:41:23  |  17/08/26 09:41
+      let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+      if (m) {
+        let yy = Number(m[3]);
+        if (yy < 100) yy += 2000;
+        const d = new Date(yy, Number(m[2]) - 1, Number(m[1]), Number(m[4]), Number(m[5]), Number(m[6] || 0));
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+      const d2 = new Date(s);
+      return Number.isNaN(d2.getTime()) ? null : d2;
+    }
+
+    function fmtEmiDesde(ms) {
+      if (ms == null || !Number.isFinite(ms) || ms < 0) return '—';
+      const totalSec = Math.floor(ms / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      if (h > 0) return `Há ${h}h ${String(m).padStart(2, '0')}min`;
+      if (m > 0) return `Há ${m} min`;
+      return `Há ${s}s`;
+    }
+
+    function setEmiStatus(level, label) {
+      const pill = document.getElementById('emiStatusPill');
+      const lab = document.getElementById('emiStatusLabel');
+      if (pill) {
+        pill.classList.remove('is-ok', 'is-warn', 'is-crit');
+        pill.classList.add(level === 'crit' ? 'is-crit' : level === 'warn' ? 'is-warn' : 'is-ok');
+        pill.textContent = label;
+      }
+      if (lab) lab.textContent = label;
+    }
+
+    function updateEmiDesdeUltima(now) {
+      const el = document.getElementById('emiDesde');
+      const row = document.getElementById('emiRowDesde');
+      if (!el) return;
+      if (!lastEmiAtualizadoTs) {
+        el.textContent = '—';
+        if (row) row.classList.remove('is-warn', 'is-crit', 'is-ok');
+        return;
+      }
+      const ms = (now || new Date()).getTime() - lastEmiAtualizadoTs.getTime();
+      el.textContent = fmtEmiDesde(ms);
+      if (row) {
+        row.classList.remove('is-warn', 'is-crit', 'is-ok');
+        const mins = ms / 60000;
+        if (mins >= 60) row.classList.add('is-crit');
+        else if (mins >= 40) row.classList.add('is-warn');
+        else row.classList.add('is-ok');
+      }
+    }
+
+    function renderEmiChart(horas, metaH) {
+      const host = document.getElementById('emiChart');
+      if (!host) return;
+      const items = emiHorasItems(horas);
+      const meta = Number(metaH) || 0;
+      const max = Math.max(...items.map((x) => x.qtd), meta, 1);
+      const line = document.getElementById('emiMetaLine');
+      if (line) {
+        if (meta > 0) {
+          line.hidden = false;
+          // Alinha à área das barras (desconta labels inferiores ~22px)
+          const frac = Math.max(0.04, Math.min(0.96, meta / max));
+          line.style.bottom = `calc(22px + ${frac * 100}% * 0.72)`;
+          const lab = document.getElementById('emiMetaLineLab');
+          if (lab) lab.textContent = `META ${meta} CT-e/h`;
+        } else {
+          line.hidden = true;
+        }
+      }
       host.innerHTML = items.map((x) => {
-        const pct = Math.max(2, Math.round((x.qtd / max) * 100));
+        const pct = Math.max(x.qtd > 0 ? 4 : 2, Math.round((x.qtd / max) * 100));
         const show = x.qtd > 0 ? String(x.qtd) : '';
-        return `<div class="emi-bar" title="${x.hora}:00 · ${x.qtd}">
+        let cls = 'emi-bar';
+        if (meta > 0 && x.qtd > 0) cls += x.qtd >= meta ? ' is-above' : ' is-below';
+        return `<div class="${cls}" title="${x.hora}:00 · ${x.qtd}${meta ? ` · meta ${meta}` : ''}">
           <span class="val">${show}</span>
           <i class="col" style="height:${pct}%"></i>
-          <span class="h">${x.hora}:00</span>
+          <span class="h">${String(x.hora).padStart(2, '0')}</span>
         </div>`;
       }).join('');
     }
 
-    function renderEmiExpedidores(rows) {
+    function renderEmiExpedidores(rows, activeHours) {
       const host = document.getElementById('emiExpedidores');
       if (!host) return;
       const items = (rows || []).slice(0, 10);
@@ -8262,30 +8928,185 @@
         host.innerHTML = '<div class="arm-rank-empty">Sem expedidores</div>';
         return;
       }
+      const total = items.reduce((s, r) => s + (Number(r.qtd) || 0), 0) || 1;
       const max = Math.max(...items.map((r) => Number(r.qtd) || 0), 1);
+      const hrs = Math.max(1, Number(activeHours) || lastEmiActiveHours || 1);
       host.innerHTML = items.map((r) => {
         const qtd = Number(r.qtd) || 0;
         const w = Math.max(4, Math.round((qtd / max) * 100));
+        const pct = ((qtd / total) * 100);
+        const pctLab = Number.isFinite(Number(r.pct)) ? Number(r.pct) : pct;
+        const prod = qtd / hrs;
         const nome = esc(String(r.nome_exibicao || r.nome || '—'));
         return `<div class="emi-exp-row">
-          <span title="${nome}">${nome}</span>
+          <span class="emi-exp-name" title="${nome}">${nome}</span>
           <div class="emi-exp-bar"><i style="width:${w}%"></i></div>
           <span class="qtd">${qtd}</span>
+          <div class="emi-exp-meta">${pctLab.toFixed(1).replace('.', ',')}% do total · ${prod.toFixed(1).replace('.', ',')} CT-e/h</div>
         </div>`;
       }).join('');
+    }
+
+    function formatEmiPeriodo(raw) {
+      const s = String(raw || '').trim();
+      if (!s) return '—';
+      // Já formatado: 17/08 ou 17/08/26
+      if (/^\d{1,2}\/\d{1,2}/.test(s)) return s;
+      // SSW DDMM (1708) ou DDMMYY (170826)
+      const m = s.match(/^(\d{2})(\d{2})(\d{2,4})?$/);
+      if (m) {
+        const dd = m[1], mm = m[2];
+        if (m[3] && m[3].length >= 2) {
+          const yy = m[3].length === 2 ? m[3] : m[3].slice(-2);
+          return `${dd}/${mm}/${yy}`;
+        }
+        return `${dd}/${mm}`;
+      }
+      return s;
+    }
+
+    function paintEmissaoWallboard(resumo, horas, exp) {
+      const set = (id, v) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = v;
+      };
+      const ctes = emiParseNum(resumo.ctes);
+      const cancelados = emiParseNum(resumo.cancelados);
+      const items = emiHorasItems(horas);
+      const span = emiActiveHourSpan(items);
+      lastEmiActiveHours = span.hours || 0;
+
+      // Meta operacional = média das horas com emissão (referência visual; sem fonte externa)
+      const metaH = span.activeCount >= 2 ? Math.max(1, Math.round(span.avg)) : 0;
+      const prodH = span.hours > 0 && ctes > 0
+        ? (ctes / span.hours)
+        : (ctes > 0 ? ctes : 0);
+
+      set('emiDia', resumo.dia ?? '0');
+      set('emiNoite', resumo.noite ?? '0');
+      set('emiTurnoDia', resumo.dia ?? '0');
+      set('emiTurnoNoite', resumo.noite ?? '0');
+      set('emiCubagem', resumo.cubagem_fmt || resumo.cubagem || '0');
+      set('emiMes', String(resumo.mes || '—').toUpperCase());
+      set('emiCtes', resumo.ctes ?? '0');
+      {
+        const p = resumo.peso_fmt || resumo.peso || '0';
+        set('emiPeso', /kg/i.test(String(p)) ? String(p) : `${p} kg`);
+      }
+      set('emiValor', resumo.valor_mercadoria_fmt || resumo.valor_mercadoria || 'R$ 0');
+      set('emiVolumes', resumo.volumes ?? '0');
+      set('emiFrete', resumo.frete_fmt || resumo.frete || 'R$ 0');
+      set('emiCancelados', resumo.cancelados ?? '0');
+      set('emiStatCanc', resumo.cancelados ?? '0');
+      set('emiPendentes', '—');
+      set('emiErros', '—');
+      set('emiStatPend', '—');
+      set('emiStatErr', '—');
+      set('emiPeriodo', formatEmiPeriodo(resumo.periodo || ''));
+      set('emiAtualizado', resumo.atualizado ? `atualizado ${resumo.atualizado}` : 'atualizado —');
+      set('emiProdH', prodH > 0 ? prodH.toFixed(1).replace('.', ',') : '0');
+      set('emiMetaH', metaH > 0 ? String(metaH) : '—');
+      set('emiMetaHint', metaH > 0 ? 'média das horas ativas' : 'sem referência');
+
+      const chartSub = document.getElementById('emiChartSub');
+      if (chartSub) {
+        chartSub.textContent = metaH > 0
+          ? `Emitidos por hora · Meta operacional: ${metaH} CT-e/h`
+          : 'Emitidos por hora';
+      }
+
+      // Cancelados: cor semântica
+      const kpiCanc = document.getElementById('emiCancelados')?.closest('.emi-kpi');
+      if (kpiCanc) {
+        kpiCanc.classList.toggle('is-crit', cancelados > 0);
+        kpiCanc.classList.toggle('is-ok', cancelados === 0);
+      }
+      const rowCanc = document.getElementById('emiRowCanc');
+      if (rowCanc) {
+        rowCanc.classList.remove('is-ok', 'is-warn', 'is-crit');
+        rowCanc.classList.add(cancelados > 0 ? 'is-crit' : 'is-ok');
+      }
+      set('emiCancelPct', ctes > 0
+        ? `${((cancelados / ctes) * 100).toFixed(1).replace('.', ',')}% do total`
+        : '—');
+
+      // Derivados
+      const peso = emiParseNum(resumo.peso);
+      const vols = emiParseNum(resumo.volumes);
+      const frete = emiParseNum(resumo.frete);
+      if (ctes > 0) {
+        set('emiFreteMed', 'R$ ' + (frete / ctes).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        set('emiPesoMed', (peso / ctes).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' kg');
+        set('emiVolMed', (vols / ctes).toLocaleString('pt-BR', { maximumFractionDigits: 1 }));
+      } else {
+        set('emiFreteMed', '—');
+        set('emiPesoMed', '—');
+        set('emiVolMed', '—');
+      }
+
+      // Última emissão (proxy: timestamp do scrape 455)
+      const ts = parseEmiAtualizado(resumo.atualizado);
+      lastEmiAtualizadoTs = ts;
+      if (ts) {
+        set('emiUltima', ts.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      } else {
+        set('emiUltima', '—');
+      }
+      updateEmiDesdeUltima(new Date());
+
+      // Status operacional
+      const mins = ts ? (Date.now() - ts.getTime()) / 60000 : null;
+      let level = 'ok';
+      let label = 'OPERAÇÃO NORMAL';
+      if (cancelados > 0 && ctes > 0 && (cancelados / ctes) >= 0.05) {
+        level = 'crit';
+        label = 'OPERAÇÃO CRÍTICA';
+      } else if (cancelados > 0 || (mins != null && mins >= 60)) {
+        level = 'crit';
+        label = 'OPERAÇÃO CRÍTICA';
+      } else if (mins != null && mins >= 40) {
+        level = 'warn';
+        label = 'ATENÇÃO';
+      } else if (metaH > 0 && prodH > 0 && prodH < metaH * 0.7) {
+        level = 'warn';
+        label = 'ATENÇÃO';
+      }
+      setEmiStatus(level, label);
+
+      const kick = document.getElementById('emiKicker');
+      if (kick) {
+        const perLab = formatEmiPeriodo(resumo.periodo || '');
+        kick.textContent = `BINHO · OPERACIONAL · 455 · ${perLab !== '—' ? perLab : 'mês'}`;
+      }
+
+      renderEmiChart(horas, metaH);
+      renderEmiExpedidores(exp, span.hours || 1);
     }
 
     async function refreshEmissao() {
       if (CURRENT_SECTOR !== 'emissao') return;
       const err = document.getElementById('emiErr');
       try {
+        // Local: stamp.json da 455 (meta.json da distribuição não muda só com emissão)
         let remoteVer = null;
         try {
-          remoteVer = await fetchDataVersion();
+          if (PREFER_LOCAL_CSV) {
+            const res = await fetch('data/emissao/stamp.json?t=' + Date.now(), { cache: 'no-store' });
+            if (res.ok) {
+              const j = await res.json();
+              remoteVer = String(j.ts || j.atualizado || '');
+            }
+            // fallback: campo atualizado do resumo (CSV já em cache)
+            if (!remoteVer && lastGoodEmiResumo && lastGoodEmiResumo.atualizado) {
+              remoteVer = String(lastGoodEmiResumo.atualizado);
+            }
+          } else {
+            remoteVer = await fetchDataVersion();
+          }
           if (remoteVer != null && lastEmiDataVersion != null && remoteVer === lastEmiDataVersion) {
             return;
           }
-        } catch (_) { /* segue */ }
+        } catch (_) { /* segue e recarrega */ }
 
         let resumo = {};
         let exp = [];
@@ -8333,29 +9154,13 @@
         if (exp.length) lastGoodEmiExp = exp.slice();
         if (horas.length) lastGoodEmiHoras = horas.slice();
 
-        const set = (id, v) => {
-          const el = document.getElementById(id);
-          if (el) el.textContent = v;
-        };
-        set('emiDia', resumo.dia ?? '0');
-        set('emiNoite', resumo.noite ?? '0');
-        set('emiCubagem', resumo.cubagem_fmt || resumo.cubagem || '0');
-        set('emiMes', String(resumo.mes || '—').toUpperCase());
-        set('emiCtes', resumo.ctes ?? '0');
-        set('emiPeso', resumo.peso_fmt || resumo.peso || '0');
-        set('emiValor', resumo.valor_mercadoria_fmt || resumo.valor_mercadoria || 'R$ 0');
-        set('emiVolumes', resumo.volumes ?? '0');
-        set('emiFrete', resumo.frete_fmt || resumo.frete || 'R$ 0');
-        set('emiCancelados', resumo.cancelados ?? '0');
-        set('emiPeriodo', resumo.periodo || '—');
-        set('emiAtualizado', resumo.atualizado ? `atualizado ${resumo.atualizado}` : 'atualizado —');
-        const kick = document.getElementById('emiKicker');
-        if (kick) kick.textContent = `BINHO · OPERACIONAL · 455 · ${resumo.periodo || 'mês'}`;
-        renderEmiChart(horas);
-        renderEmiExpedidores(exp);
+        paintEmissaoWallboard(resumo, horas, exp);
         if (err) err.hidden = true;
-        if (remoteVer != null) lastEmiDataVersion = remoteVer;
-        else {
+        if (remoteVer) {
+          lastEmiDataVersion = remoteVer;
+        } else if (resumo.atualizado) {
+          lastEmiDataVersion = String(resumo.atualizado);
+        } else if (!PREFER_LOCAL_CSV) {
           try { lastEmiDataVersion = await fetchDataVersion(); } catch (_) {}
         }
       } catch (e) {
@@ -9691,7 +10496,12 @@
       const parts = (partsIn || []).filter(p => p.value > 0);
       const total = parts.reduce((s, p) => s + p.value, 0);
       const W = 900, H = 520;
-      const cx = 450, cy = 268, r = 178, explode = 18, depthY = 14;
+      const tv = document.body.classList.contains('tv-mode')
+        || document.documentElement.classList.contains('tv-in-frame');
+      const cx = 450, cy = 268;
+      const r = tv ? 158 : 178;
+      const explode = tv ? 12 : 18;
+      const depthY = tv ? 10 : 14;
       if (!total) {
         svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#1e293b"/><text x="${cx}" y="${cy}" text-anchor="middle" fill="#64748b" font-size="14" font-weight="700">Sem dados</text>`;
         return;
@@ -9701,6 +10511,8 @@
       const slices = [];
       const depths = [];
       const callouts = [];
+      const labelPad = tv ? 54 : 70;
+      const ruleW = tv ? 56 : 70;
 
       parts.forEach((p) => {
         const sweep = (p.value / total) * 360;
@@ -9718,27 +10530,30 @@
         const ax = anchor.x + off.x;
         const ay = anchor.y + off.y;
         const right = Math.cos((mid - 90) * Math.PI / 180) >= 0;
-        const elbow = polar(cx, cy, r + 36, mid);
+        const elbow = polar(cx, cy, r + (tv ? 28 : 36), mid);
         const ex = elbow.x + off.x;
         const ey = elbow.y + off.y;
-        const lx = right ? Math.min(W - 28, Math.max(ex + 70, cx + r + 90)) : Math.max(28, Math.min(ex - 70, cx - r - 90));
-        const ly = Math.max(42, Math.min(H - 56, ey));
+        const lx = right
+          ? Math.min(W - 24, Math.max(ex + labelPad, cx + r + 72))
+          : Math.max(24, Math.min(ex - labelPad, cx - r - 72));
+        const ly = Math.max(36, Math.min(H - 48, ey));
         const anchorText = right ? 'start' : 'end';
-        const ruleX1 = right ? lx : lx - 70;
-        const ruleX2 = right ? lx + 70 : lx;
+        const ruleX1 = right ? lx : lx - ruleW;
+        const ruleX2 = right ? lx + ruleW : lx;
 
         callouts.push(`
           <circle class="callout-dot ${p.cls}" cx="${ax}" cy="${ay}" r="5.5" />
           <path class="callout-line" d="M ${ax} ${ay} L ${ex} ${ey} L ${lx} ${ly}" />
-          <text class="callout-pct" x="${lx}" y="${ly - 10}" text-anchor="${anchorText}">${pct}%</text>
-          <line class="callout-rule" x1="${ruleX1}" y1="${ly - 2}" x2="${ruleX2}" y2="${ly - 2}" />
-          <text class="callout-lab" x="${lx}" y="${ly + 16}" text-anchor="${anchorText}">${p.label}</text>
-          <text class="callout-count" x="${lx}" y="${ly + 34}" text-anchor="${anchorText}">${p.value} · ${p.desc}</text>
+          <text class="callout-pct" x="${lx}" y="${ly - 8}" text-anchor="${anchorText}">${pct}%</text>
+          <line class="callout-rule" x1="${ruleX1}" y1="${ly}" x2="${ruleX2}" y2="${ly}" />
+          <text class="callout-lab" x="${lx}" y="${ly + 14}" text-anchor="${anchorText}">${p.label}</text>
+          <text class="callout-count" x="${lx}" y="${ly + 30}" text-anchor="${anchorText}">${p.value} · ${p.desc}</text>
         `);
         angle = end;
       });
 
       svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
       svg.innerHTML = depths.join('') + slices.join('') + callouts.join('');
     }
 
@@ -9880,7 +10695,13 @@
         if (!amanhaRows.length) {
           cards.innerHTML = '<div class="agenda-card empty">Nenhum agendamento para amanhã</div>';
         } else {
-          cards.innerHTML = amanhaRows.map(r => {
+          const live = document.body.classList.contains('live-mode')
+            || document.body.classList.contains('tv-mode')
+            || document.documentElement.classList.contains('tv-in-frame');
+          const maxCards = live ? 6 : 12;
+          const shown = amanhaRows.slice(0, maxCards);
+          const extra = amanhaRows.length - shown.length;
+          cards.innerHTML = shown.map(r => {
             const rawWhen = String(r.agendado_para || r.agendado_para_data || '');
             const hora = extractHora225(rawWhen);
             const data = String(r.agendado_para_data || '').trim()
@@ -9891,7 +10712,9 @@
               <div class="dest">${esc(r.destinatario || r.remetente || '—')}</div>
               <div class="when">${esc(data)} · ${esc(hora)}</div>
             </div>`;
-          }).join('');
+          }).join('') + (extra > 0
+            ? `<div class="agenda-card empty">+${extra} mais</div>`
+            : '');
         }
       }
 

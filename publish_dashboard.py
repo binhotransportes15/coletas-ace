@@ -146,7 +146,7 @@ def publish_pendencia_local(*, on_status: StatusCallback | None = None) -> dict[
 
 
 def _copy_emissao_to_dashboard() -> dict[str, str]:
-    """Copia CSVs 455 para dashboard/data/emissao/."""
+    """Copia CSVs 455 para dashboard/data/emissao/ + stamp para a TV detectar mudança."""
     data_dir = DASHBOARD_DIR / "data" / "emissao"
     data_dir.mkdir(parents=True, exist_ok=True)
     out: dict[str, str] = {}
@@ -170,6 +170,44 @@ def _copy_emissao_to_dashboard() -> dict[str, str]:
         elif not dest.exists():
             dest.write_text(defaults[name], encoding="utf-8-sig")
             out[f"emissao/{name}"] = str(dest)
+
+    atualizado = ""
+    resumo_dest = data_dir / "resumo_455.csv"
+    if resumo_dest.exists():
+        try:
+            with resumo_dest.open(encoding="utf-8-sig", newline="") as fh:
+                row = next(csv.DictReader(fh), {}) or {}
+                atualizado = str(row.get("atualizado") or "")
+        except Exception:
+            atualizado = ""
+    stamp = {
+        "ts": datetime.now().timestamp(),
+        "atualizado": atualizado or datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+    }
+    stamp_path = data_dir / "stamp.json"
+    stamp_path.write_text(json.dumps(stamp, ensure_ascii=False), encoding="utf-8")
+    out["emissao/stamp.json"] = str(stamp_path)
+
+    # Bump meta.json para fetchDataVersion() na TV (senão o painel congela)
+    try:
+        meta_path = DASHBOARD_DIR / "data" / "meta.json"
+        meta: dict[str, Any] = {}
+        if meta_path.is_file():
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                meta = {}
+        if not isinstance(meta, dict):
+            meta = {}
+        files = meta.get("files") if isinstance(meta.get("files"), dict) else {}
+        files.update(out)
+        meta["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        meta["files"] = files
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+        out["meta.json"] = str(meta_path)
+    except Exception:
+        pass
     return out
 
 

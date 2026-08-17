@@ -1,9 +1,9 @@
 {
   "setor": "pendencia",
-  "updated_at": "2026-08-17T09:10:08",
+  "updated_at": "2026-08-17T09:33:42",
   "resumo_31": {
     "periodo": "01/08/26 – 17/08/26",
-    "atualizado": "17/08/2026 09:10:08",
+    "atualizado": "17/08/2026 09:33:42",
     "total_ctrcs": "314",
     "total_codigos": "4",
     "solucionadas": "113",
@@ -11,7 +11,7 @@
     "sla_pct": "36,0",
     "topo_codigo": "60",
     "topo_label": "FALTA COM BUSCA / RECONFERENCIA",
-    "topo_qtd": "134"
+    "topo_qtd": "133"
   },
   "ofensores": [
     {
@@ -24,8 +24,8 @@
     {
       "codigo": "60",
       "label": "FALTA COM BUSCA / RECONFERENCIA",
-      "qtd": "134",
-      "pct": "42,7",
+      "qtd": "133",
+      "pct": "42,4",
       "polaridade": "neg"
     },
     {
@@ -38,8 +38,8 @@
     {
       "codigo": "80",
       "label": "PENDENCIA EM TRATATIVA",
-      "qtd": "14",
-      "pct": "4,5",
+      "qtd": "15",
+      "pct": "4,8",
       "polaridade": "neg"
     }
   ]

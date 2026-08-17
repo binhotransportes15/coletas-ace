@@ -96,16 +96,16 @@ _JOB_TAG_ALIAS: dict[str, str] = {
 
 # Degraus de progresso (só sobe). Keywords curtas/ambíguas causavam 100% cedo.
 _PROGRESS_LADDER: tuple[tuple[float, tuple[str, ...]], ...] = (
-    (5.0, ("iniciando", "ciclo paralelo", "cleanup", "limpeza downloads")),
+    (5.0, ("iniciando", "ciclo paralelo", "cleanup", "limpeza downloads", "ace emiss", "ace armazém", "ace armazem", "ace pend", "pipeline")),
     (12.0, ("efetuando login", "login no ssw", "credenc", "abrindo navegador", "sessão", "sessao")),
     (18.0, ("login concluido", "login concluído", "já conectada")),
-    (28.0, ("download", "baixando", "relatório", "relatorio", "fila 156", "aguardando arquivo", "gerando", "abrindo opcao", "abrindo programa")),
-    (45.0, ("analisando", "processando", "lendo", "parse", "conferent", "ofensor", "sla")),
-    (58.0, ("cache", "dashboard", "json local", "modo local", "persist")),
+    (28.0, ("download", "baixando", "relatório", "relatorio", "fila 156", "aguardando arquivo", "gerando", "abrindo opcao", "abrindo programa", "fretes")),
+    (45.0, ("analisando", "analisado", "processando", "lendo", "parse", "conferent", "ofensor", "sla")),
+    (58.0, ("cache", "dashboard", "json local", "modo local", "persist", "publish", "arquivo(s)")),
     (70.0, ("sheets", "planilha", "apps script", "preparando envio")),
     (82.0, ("enviando", "lote", "atualizando aba", "batch")),
     (92.0, ("sheets:", "atualizada", "sem mudança", "pulou sync")),
-    (100.0, ("bloco ok", "pipeline ok", "sync ok", "automação + sheets")),
+    (100.0, ("bloco ok", "pipeline ok", "sync ok", "automação + sheets", "ctes=", "455 ok", "031 ok", "078 ok")),
 )
 
 _DONE_MARKERS = ("bloco ok", "pipeline ok", "sync ok", "automação + sheets")

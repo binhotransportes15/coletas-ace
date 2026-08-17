@@ -1479,7 +1479,10 @@ def run_pipeline_455(
     from publish_dashboard import publish_emissao_local
     from ssw_455 import download_reports_455
 
-    status(f"ACE EMISSAO · 455 | {datetime.now():%d/%m %H:%M:%S}")
+    def emit(msg: str) -> None:
+        status(f"[455] {msg}")
+
+    emit(f"ACE EMISSAO · 455 | {datetime.now():%d/%m %H:%M:%S}")
     use_headless = cfg.headless if headless is None else headless
     dl = download_reports_455(
         unidade=unidade or "SPO",
@@ -1488,25 +1491,25 @@ def run_pipeline_455(
         credentials=creds,
         settings=cfg,
         headless=use_headless,
-        on_status=status,
+        on_status=emit,
         clean_downloads=clean_downloads,
     )
     analysis = analyze_reports_455(
         dl.get("files") or [],
         periodo=str(dl.get("periodo_fmt") or dl.get("period") or ""),
-        on_status=status,
+        on_status=emit,
     )
     if _should_use_local_store(cfg):
-        status("455 analisado — modo local (JSON/CSV, sem Sheets)…")
+        emit("455 analisado — modo local (JSON/CSV, sem Sheets)…")
         sheets: dict[str, Any] = {"ok": True, "local": True}
     else:
         from sheets_sync_455 import sync_sheets_455
 
-        status("455 analisado — sync Sheets (Sites/TV)…")
-        sheets = sync_sheets_455(settings=cfg, on_status=status)
-    pub = publish_emissao_local(on_status=status)
+        emit("455 analisado — sync Sheets (Sites/TV)…")
+        sheets = sync_sheets_455(settings=cfg, on_status=emit)
+    pub = publish_emissao_local(on_status=emit)
     resumo = analysis.get("resumo") or {}
-    status(
+    emit(
         f"OK · CTEs={resumo.get('ctes')} frete={resumo.get('frete_fmt')} "
         f"dia={resumo.get('dia')} noite={resumo.get('noite')}"
     )

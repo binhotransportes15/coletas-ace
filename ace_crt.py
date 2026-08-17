@@ -1033,6 +1033,8 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "pendências": "31",
     "contratacao": "73",
     "contratação": "73",
+    "emissao": "455",
+    "emissão": "455",
     "reciclagem": "reciclagem",
     "recicla": "reciclagem",
     "019": "reciclagem",
@@ -3243,7 +3245,17 @@ class AceCrtConsole(QWidget):
         self._append_log("cmd", raw)
         self.btn_run.setEnabled(False)
         self.mode.setText("RUN")
-        publish(online=True, label="RUN", pct=5, detail=raw[:80], mode="RUN")
+        # Barrinha sobe já no clique (antes do worker) — evita tela parada no modo /bars
+        try:
+            from ace_cmd import begin_manual_sectors, sectors_for_command
+
+            secs = sectors_for_command(raw)
+            if secs:
+                begin_manual_sectors(secs, detail=f"exec · {raw[:60]}")
+            else:
+                publish(online=True, label="RUN", pct=5, detail=raw[:80], mode="RUN")
+        except Exception:
+            publish(online=True, label="RUN", pct=5, detail=raw[:80], mode="RUN")
 
         self._worker = CmdWorker(raw, self.payload)
         self._worker.status.connect(self._on_worker_status)
@@ -3279,33 +3291,56 @@ class AceCrtConsole(QWidget):
         else:
             self._append_log("out", msg)
         online = "erro" not in (msg or "").lower() and "falhou" not in (msg or "").lower()
-        idle = self._idle_sector_rows_from_config()
+        # Preserva barrinhas do end_manual (100%/erro); não zera com idle na hora
+        try:
+            st_now = read_status()
+            keep_sectors = st_now.get("sectors") if isinstance(st_now.get("sectors"), list) else None
+        except Exception:
+            keep_sectors = None
+        if not keep_sectors:
+            keep_sectors = self._idle_sector_rows_from_config()
         publish(
             online=online,
             label="ONLINE" if online else "ERR",
-            pct=0,
+            pct=100.0 if online else 0.0,
             detail=(msg or "ok")[:100],
             mode="OK" if online else "ERR",
-            sectors=idle,
+            sectors=keep_sectors,
         )
         self.mode.setText("OK" if online else "ERR")
         self._drain_pending()
+        # Depois de 2,5s volta ao idle visual (sem apagar se já começou outro comando)
+        QTimer.singleShot(2500, self._maybe_seed_idle_after_cmd)
+
+    def _maybe_seed_idle_after_cmd(self) -> None:
+        if self._worker and self._worker.isRunning():
+            return
+        if self._auto_worker and self._auto_worker.isRunning():
+            return
+        self._seed_sector_bars_from_config(persist=True)
 
     def _on_cmd_fail(self, msg: str) -> None:
         self.btn_run.setEnabled(True)
         self._worker_cmd = ""
         self._append_log("erro", msg)
-        idle = self._idle_sector_rows_from_config()
+        try:
+            st_now = read_status()
+            keep_sectors = st_now.get("sectors") if isinstance(st_now.get("sectors"), list) else None
+        except Exception:
+            keep_sectors = None
+        if not keep_sectors:
+            keep_sectors = self._idle_sector_rows_from_config()
         publish(
             online=False,
             label="ERR",
             pct=0,
             detail=msg[:100],
             mode="ERR",
-            sectors=idle,
+            sectors=keep_sectors,
         )
         self.mode.setText("ERR")
         self._drain_pending()
+        QTimer.singleShot(2500, self._maybe_seed_idle_after_cmd)
 
     def _reload_payload_silent(self) -> None:
         """Atualiza campos sem spam no log."""
@@ -3527,6 +3562,7 @@ class AceCrtConsole(QWidget):
         if not getattr(self, "_sector_meters", None):
             return
         auto_on = bool(self._auto_worker and self._auto_worker.isRunning())
+        cmd_busy = bool(self._worker and self._worker.isRunning())
         rows: list[dict] = []
         if isinstance(st, dict) and isinstance(st.get("sectors"), list):
             rows = [r for r in st["sectors"] if isinstance(r, dict)]
@@ -3538,10 +3574,46 @@ class AceCrtConsole(QWidget):
         except Exception:
             age = 9999.0
 
-        # Loop externo (CMD) ou CRT: status RUN recente com sectors = válido
+        # Loop / comando único (455, 78, …) / CRT: status RUN recente com sectors = válido
         live_loop = mode_u in {"RUN", "LOOP"} or label_u in {"LOOP", "RUN"}
         status_fresh = age < 180.0
-        external_or_auto = auto_on or (live_loop and status_fresh and bool(rows))
+        external_or_auto = (
+            auto_on
+            or cmd_busy
+            or (live_loop and status_fresh and bool(rows))
+        )
+
+        # Com comando único rodando: NUNCA reseedar idle (zerava a barrinha da emissão)
+        if cmd_busy or auto_on:
+            if not rows:
+                # ainda sem publish do worker — mantém UI; não grava idle
+                return
+            by_id = {str(r.get("id")): r for r in rows}
+            running = False
+            for sid, meter in self._sector_meters.items():
+                row = by_id.get(sid)
+                if row is None:
+                    continue
+                meter.set_row(row)
+                if str(row.get("state") or "") == "run":
+                    running = True
+            if hasattr(self, "sector_status"):
+                if running:
+                    self.sector_status.setText(
+                        str((st or {}).get("detail") or "Executando…")[:120]
+                    )
+                elif auto_on:
+                    self.sector_status.setText(
+                        str(
+                            (st or {}).get("detail")
+                            or "Automático ligado · aguardando próximos ciclos"
+                        )[:120]
+                    )
+                else:
+                    self.sector_status.setText(
+                        str((st or {}).get("detail") or "Comando em andamento…")[:120]
+                    )
+            return
 
         # Só re-seed idle quando parado de verdade (MENU/STOP/OK / sem sectors)
         if not external_or_auto:
@@ -3567,7 +3639,7 @@ class AceCrtConsole(QWidget):
                 self.sector_status.setText(
                     str((st or {}).get("detail") or "Executando setores…")[:120]
                 )
-            elif auto_on or live_loop:
+            elif live_loop:
                 self.sector_status.setText(
                     str(
                         (st or {}).get("detail")

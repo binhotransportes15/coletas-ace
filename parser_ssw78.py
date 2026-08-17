@@ -106,6 +106,28 @@ def _parse_dt(value: str, *, hoje: date | None = None) -> datetime | None:
         return None
 
 
+def _freeze_moment(value: str, *, hoje: date | None = None) -> str:
+    """
+    Congela 'HOJE HH:mm' em 'dd/mm HH:mm' no dia da coleta.
+    Evita o bug da TV: CSV antigo com HOJE vira o dia atual (ex.: início 13:40
+    de uma descarga já finalizada aparece como se fosse hoje de manhã).
+    Preserva o operador no fim (msantos, hernande…).
+    """
+    raw = _clean(value)
+    if not raw:
+        return ""
+    ref = hoje or date.today()
+    op = ""
+    m_op = re.search(r"\s+([A-Za-zÀ-ÿ_.]{2,})$", raw)
+    if m_op:
+        op = f" {m_op.group(1)}"
+        raw = raw[: m_op.start()].strip()
+    m = re.match(r"^HOJE\s+(\d{1,2}):(\d{2})$", raw, flags=re.I)
+    if not m:
+        return _clean(value)
+    return f"{ref.day:02d}/{ref.month:02d} {int(m.group(1)):02d}:{m.group(2)}{op}"
+
+
 def _fmt_duracao(minutes: int | None) -> str:
     if minutes is None or minutes < 0:
         return ""
@@ -354,6 +376,7 @@ def analyze_78(
     items.sort(key=lambda x: (rank.get(x.status, 9), x.prev_chegada or "", x.cavalo))
 
     linha_rows = []
+    scrape_day = now.date()
     for i in items:
         linha_rows.append({
             "origem": i.origem,
@@ -363,11 +386,12 @@ def analyze_78(
             "manifesto": i.manifesto,
             "peso": i.peso,
             "peso_num": f"{i.peso_num:.0f}",
-            "saida": i.saida,
-            "prev_chegada": i.prev_chegada,
-            "chegada": i.chegada,
-            "inicio_descarga": i.inicio_descarga,
-            "final_descarga": i.final_descarga,
+            # Congela HOJE → dd/mm no dia do scrape (não “desliza” no dia seguinte)
+            "saida": _freeze_moment(i.saida, hoje=scrape_day),
+            "prev_chegada": _freeze_moment(i.prev_chegada, hoje=scrape_day),
+            "chegada": _freeze_moment(i.chegada, hoje=scrape_day),
+            "inicio_descarga": _freeze_moment(i.inicio_descarga, hoje=scrape_day),
+            "final_descarga": _freeze_moment(i.final_descarga, hoje=scrape_day),
             "status": i.status,
             "atrasado": "1" if i.atrasado else "0",
             "tempo_descarga_min": "" if i.tempo_descarga_min is None else str(i.tempo_descarga_min),
