@@ -4036,55 +4036,56 @@
       position: relative;
       background: transparent;
       box-shadow: none;
-      grid-area: 1 / 1;
       z-index: 1;
     }
     .mapa-map-card::after { display: none; }
-    /* Mapa full-bleed; farol + placas flutuam por cima (sem painéis laterais) */
+    /* Mapa full-bleed; farol + placas flutuam DENTRO do mapa (sem colunas/painéis) */
     .mapa-layout {
-      display: grid;
-      grid-template-columns: 1fr;
-      grid-template-rows: 1fr;
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      grid-template-rows: 1fr !important;
       position: relative;
       min-height: 0;
       height: 100%;
       overflow: hidden;
+      background: transparent !important;
+    }
+    .mapa-map-card {
+      position: relative !important;
+      grid-area: auto !important;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .mapa-side,
+    .mapa-side-right {
+      position: absolute !important;
+      top: 8px !important;
+      bottom: 52px !important;
+      z-index: 650 !important;
+      display: flex !important;
+      flex-direction: column;
+      gap: 0;
+      min-height: 0;
+      overflow: hidden;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      pointer-events: none;
     }
     .mapa-side {
-      position: absolute;
-      left: 6px;
-      top: 6px;
-      bottom: 48px;
-      width: min(200px, 18vw);
-      z-index: 650;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      min-height: 0;
-      overflow: hidden;
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      pointer-events: none;
+      left: 8px !important;
+      right: auto !important;
+      width: min(210px, 17vw) !important;
     }
     .mapa-side-right {
-      position: absolute;
-      right: 6px;
-      top: 6px;
-      bottom: 48px;
-      width: min(300px, 24vw);
-      z-index: 650;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      min-height: 0;
-      overflow: hidden;
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      pointer-events: none;
+      right: 8px !important;
+      left: auto !important;
+      width: min(300px, 24vw) !important;
     }
-    .mapa-side-right .mapa-placa-pop {
+    .mapa-side-right .mapa-placa-pop,
+    .mapa-side .mapa-farol-hero {
       pointer-events: auto;
     }
     /* Farol SP — silhueta neon clara, % no centro */
@@ -4445,9 +4446,12 @@
       border: none;
     }
     #mapaLeaflet {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
-      min-height: 320px;
+      min-height: 0;
+      z-index: 1;
       background: transparent;
     }
     .mapa-aviso {
@@ -4491,9 +4495,36 @@
       display: grid !important;
       grid-template-columns: 1fr !important;
       grid-template-rows: 1fr !important;
+      background: transparent !important;
+    }
+    body.tv-mode #panel-mapa .mapa-map-card {
+      position: relative !important;
+      width: 100% !important;
+      height: 100% !important;
     }
     body.tv-mode #panel-mapa .mapa-side,
     body.tv-mode #panel-mapa .mapa-side-right {
+      position: absolute !important;
+      top: 8px !important;
+      bottom: 52px !important;
+      z-index: 650 !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    body.tv-mode #panel-mapa .mapa-side {
+      left: 8px !important;
+      width: min(220px, 16vw) !important;
+    }
+    body.tv-mode #panel-mapa .mapa-side-right {
+      right: 8px !important;
+      width: min(320px, 22vw) !important;
+    }
+    body.tv-mode #panel-mapa .mapa-farol-hero,
+    body.tv-mode #panel-mapa .mapa-list-card,
+    body.tv-mode #panel-mapa .mapa-list-card header,
+    body.tv-mode #panel-mapa #mapaFarolLeaflet,
+    body.tv-mode #panel-mapa #mapaFarolLeaflet.leaflet-container {
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
@@ -4503,16 +4534,16 @@
     @media (max-width: 1100px) {
       .mapa-kpis-top { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .mapa-layout {
-        grid-template-columns: 1fr;
-        grid-template-rows: 1fr;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 1fr !important;
       }
       .mapa-side {
-        width: min(140px, 28vw);
-        bottom: auto;
-        height: min(180px, 28vh);
+        width: min(140px, 28vw) !important;
+        bottom: auto !important;
+        height: min(180px, 28vh) !important;
       }
       .mapa-side-right {
-        width: min(220px, 42vw);
+        width: min(220px, 42vw) !important;
       }
       .mapa-wrap { height: auto; min-height: 100vh; }
     }
@@ -6585,32 +6616,32 @@
         </div>
       </div>
       <div class="mapa-layout" id="mapaLayout">
-        <aside class="mapa-side" aria-label="São Paulo serviço">
-          <section class="mapa-farol-hero" aria-label="Serviço realizado São Paulo">
-            <div id="mapaFarolLeaflet" aria-label="Mapa farol São Paulo"></div>
-            <div class="mapa-farol-overlay">
-              <div class="big" id="mapaFarolPct">—</div>
-              <div class="lab" id="mapaFarolLab" hidden>realizado</div>
-              <div class="meta" id="mapaFarolMeta" hidden>coleta + entrega</div>
-            </div>
-          </section>
-        </aside>
         <section class="mapa-map-card">
           <div id="mapaLeaflet" aria-label="Mapa de rotas"></div>
           <div class="mapa-route-caption" id="mapaRouteCaption" hidden></div>
           <div class="mapa-zone-legend" id="mapaZoneLegend" hidden></div>
           <div class="mapa-aviso" id="mapaAviso" hidden></div>
+          <aside class="mapa-side" aria-label="São Paulo serviço">
+            <section class="mapa-farol-hero" aria-label="Serviço realizado São Paulo">
+              <div id="mapaFarolLeaflet" aria-label="Mapa farol São Paulo"></div>
+              <div class="mapa-farol-overlay">
+                <div class="big" id="mapaFarolPct">—</div>
+                <div class="lab" id="mapaFarolLab" hidden>realizado</div>
+                <div class="meta" id="mapaFarolMeta" hidden>coleta + entrega</div>
+              </div>
+            </section>
+          </aside>
+          <aside class="mapa-side-right">
+            <section class="mapa-list-card">
+              <header>
+                <h2>Veículos</h2>
+                <div class="meta" id="mapaAtualizado">—</div>
+              </header>
+              <div class="mapa-list pop-stack" id="mapaLista"></div>
+            </section>
+            <div class="arm-err" id="mapaErr" hidden></div>
+          </aside>
         </section>
-        <aside class="mapa-side-right">
-          <section class="mapa-list-card">
-            <header>
-              <h2>Veículos</h2>
-              <div class="meta" id="mapaAtualizado">—</div>
-            </header>
-            <div class="mapa-list pop-stack" id="mapaLista"></div>
-          </section>
-          <div class="arm-err" id="mapaErr" hidden></div>
-        </aside>
       </div>
     </div>
   </div>
@@ -9808,6 +9839,10 @@
         el.style.background = 'transparent';
         const container = mapaFarolLeaflet.getContainer();
         if (container) container.style.background = 'transparent';
+        const pane = container && container.querySelector('.leaflet-pane');
+        if (pane) pane.style.background = 'transparent';
+        const tilePane = mapaFarolLeaflet.getPane('tilePane');
+        if (tilePane) tilePane.style.display = 'none';
       } catch (_) {}
       return mapaFarolLeaflet;
     }
