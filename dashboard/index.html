@@ -197,50 +197,114 @@
     .ds-pareto {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: clamp(10px, 1.4vh, 18px);
       height: 100%;
       min-height: 0;
-      padding: 8px 4px;
-      justify-content: center;
+      padding: clamp(8px, 1.2vmin, 18px) clamp(6px, 1vmin, 14px);
+      justify-content: space-evenly;
+      box-sizing: border-box;
     }
     .ds-pareto-row {
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 2fr) auto auto;
-      gap: 8px;
+      grid-template-columns: minmax(140px, 1.15fr) minmax(0, 2.6fr) minmax(56px, auto) minmax(64px, auto);
+      gap: clamp(10px, 1.2vw, 18px);
       align-items: center;
+      flex: 1 1 0;
+      min-height: 0;
     }
     .ds-pareto-lab {
-      font-size: clamp(11px, 1.2vw, 15px);
-      font-weight: 700;
+      font-size: clamp(14px, 1.6vw, 22px);
+      font-weight: 800;
       color: var(--text);
-      white-space: nowrap;
+      letter-spacing: 0.02em;
+      line-height: 1.15;
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
       overflow: hidden;
-      text-overflow: ellipsis;
+      word-break: break-word;
     }
     .ds-pareto-track {
-      height: 14px;
+      height: clamp(28px, 4.2vh, 44px);
       background: #0f172a;
       border: 1px solid #1e293b;
-      border-radius: 4px;
+      border-radius: 6px;
       overflow: hidden;
+      align-self: center;
     }
     .ds-pareto-fill {
       height: 100%;
       background: linear-gradient(90deg, var(--crit-dark), var(--warn));
+      min-width: 4px;
     }
     .ds-pareto-n, .ds-pareto-acc {
-      font-variant-numeric: tabular-nums;
-      font-weight: 800;
-      font-size: clamp(12px, 1.3vw, 16px);
+      font-weight: 900;
+      font-size: clamp(20px, 2.4vw, 34px);
+      line-height: 1;
+      text-align: right;
     }
-    .ds-pareto-acc { color: var(--muted); min-width: 3.5ch; text-align: right; }
+    .ds-pareto-n { color: var(--text); min-width: 2.5ch; }
+    .ds-pareto-acc { color: var(--warn); min-width: 3.5ch; }
+    /* Pendência / TV: Pareto ocupa a parede */
+    body.tv-mode .ds-pareto {
+      gap: clamp(12px, 1.8vmin, 22px) !important;
+      padding: clamp(10px, 1.6vmin, 24px) clamp(12px, 2vmin, 28px) !important;
+    }
+    body.tv-mode .ds-pareto-row {
+      grid-template-columns: minmax(180px, 1.1fr) minmax(0, 2.8fr) minmax(72px, auto) minmax(88px, auto) !important;
+      gap: clamp(14px, 1.8vmin, 28px) !important;
+    }
+    body.tv-mode .ds-pareto-lab {
+      font-size: clamp(20px, 2.6vmin, 34px) !important;
+      font-weight: 800 !important;
+      -webkit-line-clamp: 2;
+    }
+    body.tv-mode .ds-pareto-track {
+      height: clamp(36px, 5.5vmin, 64px) !important;
+      border-radius: 0 !important;
+      border-color: #243044 !important;
+    }
+    body.tv-mode .ds-pareto-n,
+    body.tv-mode .ds-pareto-acc {
+      font-size: clamp(28px, 4vmin, 52px) !important;
+    }
+    body.tv-mode .pen-layout .arm-kpi.ds-kpi .val,
+    body.tv-mode .pen-kpis .arm-kpi .val {
+      font-size: clamp(36px, 5vmin, 64px) !important;
+    }
+    body.tv-mode .pen-layout .arm-kpi.ds-kpi .lbl,
+    body.tv-mode .pen-kpis .arm-kpi .lbl {
+      font-size: clamp(14px, 1.8vmin, 22px) !important;
+    }
+    body.tv-mode .pen-layout .arm-hero-card > header h2 {
+      font-size: clamp(20px, 2.6vmin, 32px) !important;
+      letter-spacing: 0.1em;
+    }
+    body.tv-mode .pen-layout .pen-hero-meta .meta {
+      font-size: clamp(14px, 1.8vmin, 22px) !important;
+    }
     #coletaTorres[hidden],
     #coletaHStatus[hidden],
     #penTorres[hidden],
     #penPareto[hidden] { display: none !important; }
     #coletaHStatus:not([hidden]) { display: flex; }
-    #penPareto:not([hidden]) { display: flex; flex: 1; min-height: 0; }
-    .pen-towers-wrap { position: relative; }
+    #penPareto:not([hidden]) {
+      display: flex !important;
+      flex: 1 1 auto !important;
+      width: 100%;
+      min-height: 0 !important;
+      height: 100% !important;
+    }
+    .pen-towers-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .pen-towers-wrap.is-pareto {
+      min-height: clamp(320px, 58vh, 720px);
+    }
 
     body.tv-mode .ds-header,
     body.tv-mode .topbar.ds-header,
@@ -1458,6 +1522,7 @@
       width: min(100%, 100%) !important;
       height: min(100%, 92%) !important;
       max-height: 100% !important;
+      min-height: 0 !important;
     }
     body.dash-hide-status .agenda-layout:not(.has-blocks) [data-block="chart"] {
       grid-column: 1 / -1;
@@ -2240,13 +2305,23 @@
     }
     .agenda-pizza-wrap {
       position: relative;
-      display: grid;
+      display: none;
       place-items: center;
       flex: 1;
       min-height: 0;
       width: 100%;
+      height: 100%;
     }
-    .agenda-pizza-wrap[hidden] { display: none !important; }
+    .agenda-pizza-wrap.is-on,
+    body.dash-chart-pizza .agenda-pizza-wrap.is-on {
+      display: grid !important;
+    }
+    .agenda-pizza-wrap[hidden],
+    body.dash-chart-pizza .agenda-pizza-wrap[hidden],
+    body.dash-chart-towers .agenda-pizza-wrap,
+    body.dash-chart-bars .agenda-pizza-wrap {
+      display: none !important;
+    }
     .agenda-towers-wrap {
       flex: 1;
       min-height: 0;
@@ -2256,7 +2331,14 @@
       justify-content: center;
       padding: clamp(8px, 1.2vmin, 18px) 0;
     }
-    .agenda-towers-wrap[hidden] { display: none !important; }
+    .agenda-towers-wrap[hidden],
+    body.dash-chart-pizza .agenda-towers-wrap,
+    body.dash-chart-bars .agenda-towers-wrap {
+      display: none !important;
+    }
+    body.dash-chart-towers .agenda-towers-wrap:not([hidden]) {
+      display: flex !important;
+    }
     .torres.agenda-torres {
       width: min(100%, 920px);
       height: 100%;
@@ -2295,19 +2377,13 @@
     body.dash-hide-kpis .arm-layout [data-block="kpis"] { display: none !important; }
     body.dash-hide-chart .arm-layout [data-block="chart"] { display: none !important; }
     body.dash-hide-tabela .arm-layout [data-block="tabela"] { display: none !important; }
-    body.dash-chart-pizza .agenda-towers-wrap { display: none !important; }
-    body.dash-chart-pizza .agenda-pizza-wrap { display: grid !important; }
-    body.dash-chart-towers .agenda-pizza-wrap { display: none !important; }
-    body.dash-chart-towers .agenda-towers-wrap { display: flex !important; }
-    body.dash-chart-bars .agenda-towers-wrap { display: none !important; }
-    body.dash-chart-bars .agenda-pizza-wrap { display: none !important; }
-    body.dash-chart-bars .agenda-tower-side { display: block !important; flex: 1; max-width: none; }
     .agenda-pizza {
       width: min(100%, 980px);
       height: 100%;
       max-height: 100%;
-      filter: drop-shadow(0 22px 40px rgba(0,0,0,.5));
+      min-height: clamp(220px, 36vh, 420px);
     }
+    body.dash-chart-bars .agenda-tower-side { display: block !important; flex: 1; max-width: none; }
     .agenda-pizza .slice {
       stroke: rgba(7,11,20,.55);
       stroke-width: 1.2;
@@ -3763,6 +3839,10 @@
       min-height: 0 !important;
       padding: clamp(12px, 1.8vmin, 28px) clamp(14px, 2vmin, 32px) !important;
     }
+    body.tv-mode .pen-towers-wrap.is-pareto {
+      min-height: 0 !important;
+      height: 100% !important;
+    }
     body.tv-mode .pen-torres {
       height: 100% !important;
       max-height: none !important;
@@ -3953,30 +4033,34 @@
       display: none;
       place-items: center;
       flex: 1 1 auto;
-      min-height: 0;
+      min-height: clamp(220px, 40vh, 520px);
       width: 100%;
       height: 100%;
       overflow: hidden;
     }
-    .entrega-pizza-wrap[hidden] { display: none !important; }
-    body.dash-chart-pizza #entregaPizzaWrap {
+    .entrega-pizza-wrap.is-on,
+    body.dash-chart-pizza #entregaPizzaWrap.is-on {
       display: grid !important;
     }
-    body.dash-chart-pizza #entregaCylWrap {
-      display: none !important;
-    }
+    .entrega-pizza-wrap[hidden],
+    body.dash-chart-pizza #entregaPizzaWrap[hidden],
     body.dash-chart-towers #entregaPizzaWrap,
     body.dash-chart-bars #entregaPizzaWrap {
       display: none !important;
     }
-    body.dash-chart-towers #entregaCylWrap,
-    body.dash-chart-bars #entregaCylWrap {
+    body.dash-chart-pizza #entregaCylWrap,
+    #entregaCylWrap[hidden] {
+      display: none !important;
+    }
+    body.dash-chart-towers #entregaCylWrap:not([hidden]),
+    body.dash-chart-bars #entregaCylWrap:not([hidden]) {
       display: grid !important;
     }
     .entrega-pizza {
       width: min(100%, 1100px);
       height: 100%;
       max-height: 100%;
+      min-height: clamp(200px, 34vh, 480px);
     }
     body.live-mode .entrega-pizza {
       width: min(100%, 1200px);
@@ -6632,15 +6716,25 @@
       if (!ui.showChart) document.body.classList.add('dash-hide-chart');
       if (!ui.showAmanha) document.body.classList.add('dash-hide-amanha');
       if (!ui.showStatus) document.body.classList.add('dash-hide-status');
+
+      const setChartPane = (el, on) => {
+        if (!el) return;
+        el.hidden = !on;
+        el.classList.toggle('is-on', !!on);
+        if (on) el.removeAttribute('hidden');
+        else el.setAttribute('hidden', '');
+      };
+
       const pizzaWrap = document.getElementById('agendaPizzaWrap');
       const towersWrap = document.getElementById('agendaTowersWrap');
-      if (pizzaWrap) pizzaWrap.hidden = ui.chart !== 'pizza';
-      if (towersWrap) towersWrap.hidden = ui.chart !== 'towers';
+      setChartPane(pizzaWrap, ui.chart === 'pizza');
+      setChartPane(towersWrap, ui.chart === 'towers');
+
       const entPizza = document.getElementById('entregaPizzaWrap');
       const entCyl = document.getElementById('entregaCylWrap');
       const entSub = document.getElementById('entChartSub');
-      if (entPizza) entPizza.hidden = ui.chart !== 'pizza';
-      if (entCyl) entCyl.hidden = ui.chart === 'pizza';
+      setChartPane(entPizza, ui.chart === 'pizza');
+      setChartPane(entCyl, ui.chart !== 'pizza');
       if (entSub) entSub.textContent = ui.chart === 'pizza' ? 'Pizza · entregas' : 'Faixas %';
 
       // Coleta: faixas horizontais (mapa) — torres ficam de fallback se chart=towers
@@ -6650,18 +6744,40 @@
         const useBars = CURRENT_SECTOR === 'distribuicao'
           && CURRENT_VIEW === 'coleta'
           && ui.chart !== 'towers';
-        colTorres.hidden = useBars;
-        colH.hidden = !useBars;
+        setChartPane(colTorres, !useBars);
+        setChartPane(colH, useBars);
       }
       const penTorres = document.getElementById('penTorres');
       const penPareto = document.getElementById('penPareto');
+      const penWrap = document.getElementById('penTorresWrap');
       if (penTorres && penPareto) {
         const usePareto = CURRENT_SECTOR === 'pendencia';
-        penTorres.hidden = usePareto;
-        penPareto.hidden = !usePareto;
+        setChartPane(penTorres, !usePareto);
+        setChartPane(penPareto, usePareto);
+        if (penWrap) penWrap.classList.toggle('is-pareto', usePareto);
       }
 
       document.documentElement.style.setProperty('--dash-font', String(ui.fontZoom || 1));
+
+      // Re-pinta pizza depois do pane ficar visível (evita SVG “vazio” no WebEngine)
+      if (CURRENT_SECTOR === 'distribuicao') {
+        requestAnimationFrame(() => {
+          if (CURRENT_VIEW === 'entrega' && lastCountsEnt) {
+            renderEntregaPizza(
+              lastCountsEnt.realizada || 0,
+              lastCountsEnt.em_rota || 0,
+              lastCountsEnt.parado || 0
+            );
+          }
+          if (CURRENT_VIEW === 'agendamento' && lastAgendaTorreCounts) {
+            renderAgendaPizza(
+              lastAgendaTorreCounts.rota,
+              lastAgendaTorreCounts.parado,
+              lastAgendaTorreCounts.ok
+            );
+          }
+        });
+      }
 
       // Layout das TVs é fixo (CSS). Grades arrastáveis do CRT foram desativadas.
       applyBlockLayout(document.getElementById('agendaLayout'), [], { active: false });
@@ -6897,6 +7013,7 @@
       if (ve) ve.classList.toggle('active', live && CURRENT_VIEW === 'entrega');
       if (va) va.classList.toggle('active', live && CURRENT_VIEW === 'agendamento');
       if (live && CURRENT_VIEW === 'agendamento') renderAgendamento();
+      if (live && CURRENT_VIEW === 'entrega' && lastCountsEnt) renderCilindroEntrega(lastCountsEnt);
       document.body.setAttribute('data-view', CURRENT_VIEW);
       updateOpsBrandTitle();
       // Troca Coleta/Entrega/Agendamento: reaplica pizza vs torres
@@ -6905,6 +7022,14 @@
       if (live) {
         requestAnimationFrame(() => {
           rerenderTorres();
+          if (CURRENT_VIEW === 'entrega' && lastCountsEnt) renderCilindroEntrega(lastCountsEnt);
+          if (CURRENT_VIEW === 'agendamento' && lastAgendaTorreCounts) {
+            renderAgendaPizza(
+              lastAgendaTorreCounts.rota,
+              lastAgendaTorreCounts.parado,
+              lastAgendaTorreCounts.ok
+            );
+          }
           setTimeout(rerenderTorres, 120);
         });
       }
@@ -7720,7 +7845,7 @@
     function renderPenTorres(ofensores) {
       const host = document.getElementById('penTorres');
       const pareto = document.getElementById('penPareto');
-      const items = (ofensores || []).slice(0, 8);
+      const items = (ofensores || []).slice(0, document.body.classList.contains('tv-mode') ? 6 : 8);
       if (!items.length) {
         if (host) host.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
         if (pareto) pareto.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
@@ -7740,10 +7865,10 @@
           const accShow = Math.min(100, acc);
           const cod = String(o.codigo || '').trim();
           const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
-          const lab = esc(tv ? shortPenLabel(nome, 28) : shortPenLabel(nome, 36));
-          const w = Math.max(4, Math.round((qtd / max) * 100));
+          const lab = esc(tv ? shortPenLabel(nome, 42) : shortPenLabel(nome, 48));
+          const w = Math.max(6, Math.round((qtd / max) * 100));
           return `<div class="ds-pareto-row" title="${esc(cod ? `${cod} · ${nome}` : nome)}">
-            <div class="ds-pareto-lab">${lab}</div>
+            <div class="ds-pareto-lab">${cod ? `<span style="color:var(--muted);font-weight:700">${esc(cod)}</span> · ${lab}` : lab}</div>
             <div class="ds-pareto-track"><div class="ds-pareto-fill" style="width:${w}%"></div></div>
             <div class="ds-pareto-n">${qtd}</div>
             <div class="ds-pareto-acc">${accShow}%</div>

@@ -1,17 +1,17 @@
 {
   "setor": "reciclagem",
-  "updated_at": "2026-08-17T08:22:24",
+  "updated_at": "2026-08-17T08:56:37",
   "sem_transferencia": {
     "programa": "019",
     "titulo": "SEM TRANSFERÊNCIA",
     "resumo": {
-      "atualizado": "17/08/2026 08:20",
+      "atualizado": "17/08/2026 08:55",
       "periodo": "17/08/2026",
-      "qtd": 141,
-      "frete": 125622.1599999998,
-      "frete_fmt": "R$ 125.622,16",
-      "peso": 189201.39500000008,
-      "peso_fmt": "189.201"
+      "qtd": 143,
+      "frete": 126097.41999999981,
+      "frete_fmt": "R$ 126.097,42",
+      "peso": 189276.5950000001,
+      "peso_fmt": "189.277"
     },
     "por_filial": [
       {
@@ -19,9 +19,9 @@
         "uf": "GO",
         "cidade_uf": "GOIANIA/GO",
         "filial": "GYN",
-        "qtd": 20,
-        "frete": 3676.7400000000016,
-        "peso": 35509.2,
+        "qtd": 21,
+        "frete": 3835.4500000000016,
+        "peso": 35524.399999999994,
         "dias_max": 63
       },
       {
@@ -242,13 +242,13 @@
     "programa": "081",
     "titulo": "SEM SAÍDA PARA ENTREGA",
     "resumo": {
-      "atualizado": "17/08/2026 08:22",
+      "atualizado": "17/08/2026 08:56",
       "periodo": "18/08/2026",
       "qtd": 90,
       "frete": 0.0,
       "frete_fmt": "R$ 0,00",
-      "peso": 285036.08400000003,
-      "peso_fmt": "285.036"
+      "peso": 349500.08400000003,
+      "peso_fmt": "349.500"
     },
     "top_cte": [
       {
@@ -366,13 +366,6 @@
         "peso": 105.0
       },
       {
-        "cliente": "RUA PROFESSOR ORACY GOMES 121 ENTREGA HORARIO COMERCIAL - CONFORME JA INFORMADO NO CADASTR",
-        "dias_max": 0,
-        "qtd": 3,
-        "frete": 0.0,
-        "peso": 363.0
-      },
-      {
         "cliente": "AV. PADRE ANCHIETA 740A",
         "dias_max": 0,
         "qtd": 3,
@@ -392,6 +385,13 @@
         "qtd": 3,
         "frete": 0.0,
         "peso": 36.0
+      },
+      {
+        "cliente": "R.CORONEL MORAIS 282",
+        "dias_max": 0,
+        "qtd": 3,
+        "frete": 0.0,
+        "peso": 30.0
       }
     ]
   }
