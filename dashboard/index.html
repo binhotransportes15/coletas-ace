@@ -1635,7 +1635,6 @@
     body.tv-mode #panel-armazem .arm-wrap,
     body.tv-mode #panel-pendencia .pen-wrap,
     body.tv-mode #panel-contratacao .ctr-wrap,
-    body.tv-mode #panel-emissao .emi-wrap,
     body.tv-mode #panel-mapa .mapa-wrap {
       flex: 1 1 auto !important;
       min-height: 0 !important;
@@ -1646,6 +1645,21 @@
       overflow: hidden !important;
       display: grid !important;
       grid-template-rows: auto minmax(0, 1fr) !important;
+    }
+    /* Emissão: wrap dedicado (evita o layout TV genérico que estoura o gráfico) */
+    body.tv-mode #panel-emissao .emi-wrap {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      height: 100% !important;
+      max-width: none !important;
+      width: 100% !important;
+      margin: 0 !important;
+      overflow: hidden !important;
+      display: grid !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+      gap: clamp(6px, 0.8vmin, 10px) !important;
+      padding: clamp(8px, 1vmin, 12px) clamp(10px, 1.2vmin, 16px) !important;
+      box-sizing: border-box !important;
     }
     /* Regra genérica .torre .barra { max-height:38vh } não vale pro armazém */
     body.tv-mode .torres.arm-torres .barra,
@@ -3841,26 +3855,94 @@
     @media (max-width: 980px) {
       .emi-perf { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .emi-mid, .emi-bot { grid-template-columns: 1fr; }
-      .emi-wrap { height: auto; min-height: 100vh; }
-      .emi-layout { grid-template-rows: auto auto auto; height: auto; overflow: visible; }
+      body:not(.tv-mode) .emi-wrap { height: auto; min-height: 100vh; }
+      body:not(.tv-mode) .emi-layout { grid-template-rows: auto auto auto; height: auto; overflow: visible; }
     }
-    body.tv-mode .emi-perf { gap: clamp(6px, 0.7vmin, 10px); }
-    body.tv-mode .emi-kpi .val { font-size: clamp(26px, 3.6vmin, 48px); }
-    body.tv-mode .emi-chart { min-height: clamp(180px, 32vh, 420px); }
+    /* TV Emissão — proporções do modo normal (sem forçar altura do gráfico) */
+    html.tv-in-frame body.tv-mode #panel-emissao .emi-wrap,
+    body.tv-mode #panel-emissao .emi-wrap {
+      padding: clamp(8px, 1vmin, 12px) clamp(10px, 1.2vmin, 16px) !important;
+    }
+    body.tv-mode #emiLayout {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      grid-template-rows: auto minmax(0, 1.35fr) minmax(0, 0.95fr) !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      gap: clamp(6px, 0.9vmin, 12px) !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode #emiLayout > .emi-perf {
+      grid-row: 1;
+      align-self: start;
+      min-height: min-content !important;
+      height: auto !important;
+      overflow: visible !important;
+      gap: clamp(6px, 0.7vmin, 10px);
+    }
+    body.tv-mode #emiLayout > .emi-mid {
+      grid-row: 2;
+      min-height: 0 !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode #emiLayout > .emi-bot {
+      grid-row: 3;
+      min-height: 0 !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode #emiLayout .emi-card,
+    body.tv-mode #emiLayout .emi-card-body,
+    body.tv-mode #emiLayout .emi-chart-wrap,
+    body.tv-mode #emiLayout .emi-exp-list,
+    body.tv-mode #emiLayout .emi-status-list {
+      min-height: 0 !important;
+    }
+    body.tv-mode #emiLayout .emi-card-body,
+    body.tv-mode #emiLayout .emi-chart-wrap {
+      overflow: hidden !important;
+      flex: 1 1 auto;
+    }
+    body.tv-mode .emi-kpi {
+      padding: clamp(6px, 0.8vmin, 10px) clamp(8px, 1vmin, 12px) !important;
+    }
+    body.tv-mode .emi-kpi .val {
+      font-size: clamp(20px, 2.6vmin, 34px);
+    }
+    body.tv-mode .emi-kpi .lbl {
+      font-size: clamp(10px, 1.15vmin, 13px);
+    }
+    body.tv-mode .emi-chart {
+      min-height: 0 !important;
+      height: 100%;
+      padding: 6px 4px 18px;
+    }
+    body.tv-mode .emi-card > header {
+      padding: 8px 12px 4px;
+    }
+    body.tv-mode .emi-top.arm-top {
+      flex-shrink: 0;
+    }
 
     /* —— Mapa Operacional —— */
     .mapa-wrap {
       height: 100vh;
       padding: 10px 12px;
       display: grid;
-      grid-template-rows: auto 1fr;
+      grid-template-rows: auto auto 1fr;
       gap: 8px;
       max-width: 1800px;
       margin: 0 auto;
     }
+    .mapa-kpis-top {
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      flex: 0 0 auto;
+    }
+    .mapa-kpis-top .arm-kpi .val {
+      font-size: clamp(16px, 1.9vmin, 26px);
+    }
     .mapa-layout {
       display: grid;
-      grid-template-columns: minmax(200px, 0.72fr) minmax(0, 1.7fr) minmax(260px, 0.95fr);
+      grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.55fr) minmax(240px, 0.85fr);
       gap: 10px;
       min-height: 0;
       height: 100%;
@@ -3875,39 +3957,11 @@
     .mapa-side-right {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
       min-height: 0;
       overflow: hidden;
     }
-    .mapa-kpis {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      flex: 0 0 auto;
-    }
-    .mapa-kpi {
-      background: rgba(2, 6, 23, 0.55);
-      border: 1px solid #1e293b;
-      border-radius: 10px;
-      padding: 8px 10px;
-    }
-    .mapa-kpi.wide {
-      grid-column: 1 / -1;
-    }
-    .mapa-kpi .lbl {
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #94a3b8;
-    }
-    .mapa-kpi .val {
-      font-size: clamp(18px, 2.4vmin, 28px);
-      font-weight: 900;
-      color: #f8fafc;
-      font-variant-numeric: tabular-nums;
-    }
-    /* Farol SP — silhueta grande na lateral, % por cima */
+    /* Farol SP — silhueta limpa, % branca fixa no centro */
     .mapa-farol-hero {
       position: relative;
       flex: 1 1 auto;
@@ -3916,6 +3970,15 @@
       overflow: hidden;
       background: transparent;
       border: none;
+      box-shadow: none;
+    }
+    .mapa-farol-hero #mapaFarolLeaflet,
+    .mapa-farol-hero #mapaFarolLeaflet.leaflet-container,
+    .mapa-farol-hero .leaflet-container,
+    .mapa-farol-hero .leaflet-pane,
+    .mapa-farol-hero .leaflet-overlay-pane,
+    .mapa-farol-hero .leaflet-map-pane {
+      background: transparent !important;
     }
     .mapa-farol-hero #mapaFarolLeaflet {
       position: absolute;
@@ -3924,7 +3987,6 @@
       height: 100%;
       min-height: 0;
       border-radius: 0;
-      background: transparent;
     }
     .mapa-farol-overlay {
       position: absolute;
@@ -3937,32 +3999,20 @@
       z-index: 500;
       text-align: center;
       padding: 12px;
-      background: radial-gradient(ellipse at center, rgba(2,6,23,0.35) 0%, transparent 65%);
+      background: none;
     }
     .mapa-farol-overlay .big {
-      font-size: clamp(48px, 8vmin, 92px);
+      font-size: clamp(52px, 9vmin, 104px);
       font-weight: 900;
       line-height: 0.95;
+      color: #ffffff !important;
       font-variant-numeric: tabular-nums;
-      text-shadow: 0 0 24px currentColor, 0 4px 20px rgba(0,0,0,0.65);
-      transition: color 0.8s ease;
+      text-shadow: 0 2px 18px rgba(0,0,0,0.55);
+      letter-spacing: -0.02em;
     }
-    .mapa-farol-overlay .lab {
-      margin-top: 8px;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #e2e8f0;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
-    }
+    .mapa-farol-overlay .lab,
     .mapa-farol-overlay .meta {
-      margin-top: 4px;
-      font-size: 11px;
-      font-weight: 700;
-      color: #94a3b8;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
-      max-width: 90%;
+      display: none;
     }
     .mapa-list-card {
       flex: 1;
@@ -3975,16 +4025,25 @@
       overflow: hidden;
     }
     .mapa-list-card header {
-      padding: 4px 2px 8px;
+      padding: 2px 2px 6px;
       display: flex;
       justify-content: space-between;
       gap: 8px;
+      background: transparent;
+      border: none;
     }
     .mapa-list-card header h2 {
       margin: 0;
-      font-size: 13px;
+      font-size: 12px;
       letter-spacing: 0.1em;
       text-transform: uppercase;
+      color: #94a3b8;
+      font-weight: 800;
+    }
+    .mapa-list-card header .meta {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 700;
     }
     .mapa-list {
       position: relative;
@@ -3992,7 +4051,9 @@
       padding: 0;
       flex: 1;
       min-height: 180px;
+      background: transparent;
     }
+    /* Placas estilo distribuição — sem fundo, sobem e somem */
     .mapa-placa-pop {
       position: absolute;
       left: 0;
@@ -4001,14 +4062,16 @@
       grid-template-columns: 52px 1fr auto;
       gap: 10px;
       align-items: center;
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: rgba(2, 6, 23, 0.82);
-      border: 1px solid #1e293b;
+      padding: 8px 4px;
+      border-radius: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
       opacity: 0;
-      transform: translateY(12px) scale(0.96);
-      transition: opacity 0.45s ease, transform 0.45s ease, border-color 0.3s, box-shadow 0.3s;
+      transform: translateY(28px) scale(0.96);
+      transition: opacity 0.45s ease, transform 0.55s cubic-bezier(.2,.8,.2,1), top 0.55s cubic-bezier(.2,.8,.2,1);
       cursor: pointer;
+      pointer-events: auto;
     }
     .mapa-placa-pop.show {
       opacity: 1;
@@ -4016,44 +4079,191 @@
     }
     .mapa-placa-pop.leaving {
       opacity: 0;
-      transform: translateY(-10px) scale(0.96);
+      transform: translateY(-36px) scale(0.96);
     }
-    .mapa-placa-pop.active {
-      border-color: rgba(250, 204, 21, 0.65);
-      box-shadow: 0 0 24px rgba(250, 204, 21, 0.18);
+    .mapa-placa-pop.active .name {
+      color: #facc15;
+      text-shadow: 0 0 12px rgba(250, 204, 21, 0.45);
     }
     .mapa-placa-pop .name {
       font-weight: 900;
       font-variant-numeric: tabular-nums;
       color: #f8fafc;
-      font-size: 15px;
+      font-size: clamp(15px, 1.7vmin, 20px);
     }
     .mapa-placa-pop .meta {
       font-size: 11px;
-      color: #64748b;
+      color: #94a3b8;
     }
     .mapa-placa-pop .badge {
       font-weight: 900;
-      font-size: 16px;
-      color: #94a3b8;
+      font-size: clamp(18px, 2.2vmin, 26px);
+      color: #e2e8f0;
       font-variant-numeric: tabular-nums;
     }
     .mapa-placa-pop .badge.up { color: #8cc63f; }
-    .mapa-placa-pop .donut { width: 46px; height: 46px; position: relative; }
-    .mapa-placa-pop .donut svg { width: 46px; height: 46px; }
+    .mapa-placa-pop .donut { width: 48px; height: 48px; position: relative; }
+    .mapa-placa-pop .donut svg { width: 48px; height: 48px; }
     .mapa-placa-pop .donut .pct {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 10px; font-weight: 900; color: #e2e8f0;
+      font-size: 11px; font-weight: 900; color: #f8fafc;
     }
     .mapa-map-card {
       min-height: 0;
-      border: 1px solid #1e293b;
+      border: 1px solid rgba(0, 240, 255, 0.22);
       border-radius: 12px;
       overflow: hidden;
       position: relative;
-      background: #020617;
+      background:
+        radial-gradient(ellipse at 30% 20%, rgba(0, 240, 255, 0.08), transparent 55%),
+        radial-gradient(ellipse at 80% 80%, rgba(255, 42, 109, 0.06), transparent 50%),
+        #0b0f14;
+      box-shadow:
+        0 0 0 1px rgba(255, 42, 109, 0.08),
+        0 0 28px rgba(0, 240, 255, 0.1);
     }
+    .mapa-map-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 450;
+      background:
+        linear-gradient(rgba(0, 240, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 255, 0.055) 1px, transparent 1px);
+      background-size: 100% 4px, 48px 48px;
+      mix-blend-mode: screen;
+      opacity: 0.55;
+    }
+    .leaflet-div-icon.cyber-base-icon {
+      background: transparent;
+      border: none;
+    }
+    .cyber-base {
+      position: relative;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #ffd166;
+      box-shadow:
+        0 0 0 4px rgba(255, 209, 102, 0.22),
+        0 0 18px rgba(255, 226, 122, 0.9),
+        0 0 36px rgba(255, 209, 102, 0.45);
+    }
+    .cyber-base::after {
+      content: '';
+      position: absolute;
+      inset: -12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 226, 122, 0.42);
+      animation: cyber-pulse 2.4s ease-out infinite;
+    }
+    .cyber-base-label {
+      margin-top: 6px;
+      white-space: nowrap;
+      color: #ffe27a;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      font-size: 11px;
+      text-shadow: 0 0 14px rgba(255, 209, 102, 0.45);
+    }
+    @keyframes cyber-pulse {
+      0% { transform: scale(0.7); opacity: 0.85; }
+      100% { transform: scale(1.55); opacity: 0; }
+    }
+    /* Bolinhas E/C — padrão CyberMap */
+    .mapa-op-stop {
+      --op-main: #00f0ff;
+      --op-soft: #8defff;
+      --op-ring: rgba(0, 240, 255, 0.22);
+      --op-glow: rgba(0, 240, 255, 0.82);
+      --op-text: #05070a;
+      position: relative;
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,0.98) 0%, var(--op-soft) 18%, var(--op-main) 50%, var(--op-soft) 100%);
+      border: 2px solid rgba(255,255,255,0.9);
+      box-shadow:
+        0 0 0 4px var(--op-ring),
+        0 0 16px var(--op-glow);
+      box-sizing: border-box;
+    }
+    .mapa-op-stop span {
+      color: var(--op-text);
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: 0.02em;
+    }
+    .mapa-op-stop.is-entrega {
+      --op-main: #00f0ff;
+      --op-soft: #8defff;
+      --op-ring: rgba(0, 240, 255, 0.22);
+      --op-glow: rgba(0, 240, 255, 0.85);
+    }
+    .mapa-op-stop.is-coleta {
+      --op-main: #ffd166;
+      --op-soft: #ffe27a;
+      --op-ring: rgba(255, 209, 102, 0.22);
+      --op-glow: rgba(255, 209, 102, 0.85);
+      --op-text: #0b0f14;
+    }
+    .mapa-op-stop.is-done {
+      --op-main: #1ed27e;
+      --op-soft: #50dc9a;
+      --op-ring: rgba(30, 210, 126, 0.22);
+      --op-glow: rgba(30, 210, 126, 0.85);
+      animation: none !important;
+    }
+    .mapa-op-stop.mapa-blink {
+      animation: mapaOpBlink 1.05s ease-in-out infinite;
+    }
+    @keyframes mapaOpBlink {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 4px var(--op-ring), 0 0 16px var(--op-glow);
+      }
+      50% {
+        opacity: 0.35;
+        transform: scale(0.86);
+        box-shadow: 0 0 0 2px var(--op-ring), 0 0 6px var(--op-glow);
+      }
+    }
+    .leaflet-div-icon.mapa-stop-icon {
+      background: transparent !important;
+      border: none !important;
+    }
+    .mapa-zone-legend {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      z-index: 800;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(11, 15, 20, 0.9);
+      border: 1px solid rgba(0, 240, 255, 0.28);
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.12);
+      font-size: 11px;
+      font-weight: 800;
+      color: #e6f1ff;
+      pointer-events: none;
+    }
+    .mapa-zone-legend span {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .mapa-zone-legend div { margin: 3px 0; letter-spacing: 0.04em; }
     .mapa-route-caption {
       position: absolute;
       left: 12px;
@@ -4061,9 +4271,10 @@
       z-index: 800;
       padding: 8px 12px;
       border-radius: 10px;
-      background: rgba(2, 6, 23, 0.82);
-      border: 1px solid rgba(250, 204, 21, 0.35);
-      color: #f8fafc;
+      background: rgba(11, 15, 20, 0.9);
+      border: 1px solid rgba(0, 240, 255, 0.28);
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.12);
+      color: #e6f1ff;
       font-size: 13px;
       font-weight: 800;
       pointer-events: none;
@@ -4074,29 +4285,29 @@
       margin-top: 2px;
       font-size: 11px;
       font-weight: 600;
-      color: #94a3b8;
-    }
-    .mapa-base-label {
-      color: #facc15 !important;
-      font-weight: 900 !important;
-      font-size: 12px !important;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      text-shadow: 0 0 12px rgba(250, 204, 21, 0.8), 0 2px 6px rgba(0,0,0,0.9);
+      color: #7aa2c2;
     }
     .leaflet-tooltip.mapa-base-tooltip {
       background: transparent;
       border: none;
       box-shadow: none;
-      color: #facc15;
+      color: #ffe27a;
       padding: 0;
     }
     .leaflet-tooltip.mapa-base-tooltip::before { display: none; }
+    @keyframes mapaBlink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.28; transform: scale(0.82); }
+    }
+    .leaflet-div-icon.mapa-stop-icon {
+      background: transparent;
+      border: none;
+    }
     #mapaLeaflet {
       width: 100%;
       height: 100%;
       min-height: 320px;
-      background: #020617;
+      background: #0b0f14;
     }
     .mapa-aviso {
       position: absolute;
@@ -4114,8 +4325,10 @@
       max-width: none;
       width: 100%;
     }
-    body.tv-mode .mapa-kpi .val { font-size: clamp(22px, 3vmin, 36px); }
+    body.tv-mode .mapa-kpis-top .arm-kpi .val { font-size: clamp(18px, 2.4vmin, 32px); }
+    body.tv-mode .mapa-farol-overlay .big { font-size: clamp(64px, 10vmin, 120px); }
     @media (max-width: 1100px) {
+      .mapa-kpis-top { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .mapa-layout {
         grid-template-columns: 1fr;
         grid-template-rows: minmax(180px, 28vh) minmax(360px, 1fr) auto;
@@ -6156,55 +6369,64 @@
           <div class="date" id="mapaDate">—</div>
         </div>
       </div>
+      <div class="arm-kpis mapa-kpis-top dash-block ds-kpi-row" data-block="kpis" aria-label="Totais do dia">
+        <div class="arm-kpi ds-kpi is-ok">
+          <div class="lbl">Coleta</div>
+          <div class="val" id="mapaTotCol">—</div>
+        </div>
+        <div class="arm-kpi ds-kpi is-run">
+          <div class="lbl">Entrega</div>
+          <div class="val" id="mapaTotEnt">—</div>
+        </div>
+        <div class="arm-kpi ds-kpi is-neutral">
+          <div class="lbl">Na rua</div>
+          <div class="val" id="mapaVeic">0</div>
+        </div>
+        <div class="arm-kpi ds-kpi is-neutral">
+          <div class="lbl">Paradas</div>
+          <div class="val" id="mapaParadas">0</div>
+        </div>
+        <div class="arm-kpi ds-kpi is-neutral">
+          <div class="lbl">Frete entrega</div>
+          <div class="val" id="mapaFreteEnt">R$ 0</div>
+        </div>
+        <div class="arm-kpi peso ds-kpi is-neutral">
+          <div class="lbl">Peso entrega</div>
+          <div class="val" id="mapaPesoEnt">0 kg</div>
+        </div>
+        <div class="arm-kpi ds-kpi is-warn">
+          <div class="lbl">Frete coleta</div>
+          <div class="val" id="mapaFreteCol">R$ 0</div>
+        </div>
+        <div class="arm-kpi peso ds-kpi is-warn">
+          <div class="lbl">Peso coleta</div>
+          <div class="val" id="mapaPesoCol">0 kg</div>
+        </div>
+      </div>
       <div class="mapa-layout" id="mapaLayout">
         <aside class="mapa-side" aria-label="São Paulo serviço">
           <section class="mapa-farol-hero" aria-label="Serviço realizado São Paulo">
             <div id="mapaFarolLeaflet" aria-label="Mapa farol São Paulo"></div>
             <div class="mapa-farol-overlay">
               <div class="big" id="mapaFarolPct">—</div>
-              <div class="lab" id="mapaFarolLab">realizado</div>
-              <div class="meta" id="mapaFarolMeta">coleta + entrega</div>
+              <div class="lab" id="mapaFarolLab" hidden>realizado</div>
+              <div class="meta" id="mapaFarolMeta" hidden>coleta + entrega</div>
             </div>
           </section>
         </aside>
         <section class="mapa-map-card">
           <div id="mapaLeaflet" aria-label="Mapa de rotas"></div>
           <div class="mapa-route-caption" id="mapaRouteCaption" hidden></div>
+          <div class="mapa-zone-legend" id="mapaZoneLegend" hidden></div>
           <div class="mapa-aviso" id="mapaAviso" hidden></div>
         </section>
         <aside class="mapa-side-right">
-          <div class="mapa-kpis">
-            <div class="mapa-kpi">
-              <div class="lbl">Na rua</div>
-              <div class="val" id="mapaVeic">0</div>
-            </div>
-            <div class="mapa-kpi">
-              <div class="lbl">Paradas</div>
-              <div class="val" id="mapaParadas">0</div>
-            </div>
-            <div class="mapa-kpi">
-              <div class="lbl">Frete entrega</div>
-              <div class="val" id="mapaFreteEnt" style="font-size:clamp(14px,1.8vmin,22px)">R$ 0</div>
-            </div>
-            <div class="mapa-kpi">
-              <div class="lbl">Peso entrega</div>
-              <div class="val" id="mapaPesoEnt" style="font-size:clamp(14px,1.8vmin,22px)">0 kg</div>
-            </div>
-            <div class="mapa-kpi">
-              <div class="lbl">Frete coleta</div>
-              <div class="val" id="mapaFreteCol" style="font-size:clamp(14px,1.8vmin,22px)">R$ 0</div>
-            </div>
-            <div class="mapa-kpi">
-              <div class="lbl">Peso coleta</div>
-              <div class="val" id="mapaPesoCol" style="font-size:clamp(14px,1.8vmin,22px)">0 kg</div>
-            </div>
-          </div>
           <section class="mapa-list-card">
             <header>
               <h2>Veículos</h2>
               <div class="meta" id="mapaAtualizado">—</div>
             </header>
-            <div class="mapa-list" id="mapaLista"></div>
+            <div class="mapa-list pop-stack" id="mapaLista"></div>
           </section>
           <div class="arm-err" id="mapaErr" hidden></div>
         </aside>
@@ -6473,12 +6695,14 @@
     let mapaRouteTimer = null;
     let mapaPlacaCursor = 0;
     let mapaPlacaTimer = null;
+    let mapaZoneLayer = null;
     const MAPA_ROUTE_MS = 9000;
     const MAPA_PLACA_MS = 4500;
+    const MAPA_PLACA_VISIBLE = 4;
     const MAPA_BASE_DEFAULT = {
       nome: 'BINHO TRANSPORTES',
-      lat: -23.422851,
-      lon: -46.415482,
+      lat: -23.4265324,
+      lon: -46.3946075,
       endereco: 'Av. Amâncio Gaioli, 1197 - Água Chata, Guarulhos - SP',
     };
     const JANELA_MIN = 120;
@@ -9341,7 +9565,7 @@
         return { tone: 'ok', color: '#64748b', label: 'sem dados' };
       }
       const p = Math.max(0, Math.min(100, pct)) / 100;
-      // vermelho → amarelo → verde (gradual)
+      // vermelho → amarelo → verde (gradual) — só no texto %
       const hue = p < 0.5 ? (p * 2) * 48 : 48 + ((p - 0.5) * 2) * 72;
       const color = `hsl(${Math.round(hue)} 92% 52%)`;
       let label = 'em andamento';
@@ -9350,6 +9574,28 @@
       else if (pct > 70) { label = 'no ritmo'; tone = 'ok'; }
       else { label = 'atenção'; tone = 'warn'; }
       return { tone, color, label };
+    }
+
+    async function loadMapaZonas() {
+      if (window.__mapaZonas) return window.__mapaZonas;
+      try {
+        const res = await fetch('data/mapa/sp_zonas.json?t=' + Date.now(), { cache: 'no-store' });
+        if (res.ok) {
+          window.__mapaZonas = await res.json();
+          return window.__mapaZonas;
+        }
+      } catch (_) {}
+      window.__mapaZonas = {
+        zonas: {
+          CENTRO: { label: 'Centro', color: '#E8DC4A' },
+          LESTE: { label: 'Leste', color: '#9ADD41' },
+          NORTE: { label: 'Norte', color: '#D97720' },
+          OESTE: { label: 'Oeste', color: '#CF4CC8' },
+          SUL: { label: 'Sul', color: '#8A63E8' },
+        },
+        distritos: {},
+      };
+      return window.__mapaZonas;
     }
 
     function ensureMapaFarolLeaflet() {
@@ -9370,6 +9616,11 @@
         tap: false,
       });
       mapaFarolLeaflet.setView([-23.55, -46.63], 10);
+      try {
+        el.style.background = 'transparent';
+        const container = mapaFarolLeaflet.getContainer();
+        if (container) container.style.background = 'transparent';
+      } catch (_) {}
       return mapaFarolLeaflet;
     }
 
@@ -9386,53 +9637,49 @@
       const pctEl = document.getElementById('mapaFarolPct');
       const lab = document.getElementById('mapaFarolLab');
       const meta = document.getElementById('mapaFarolMeta');
-      const info = mapaFarolTone(pct);
       if (pctEl) {
         pctEl.textContent = pct == null || !Number.isFinite(pct)
           ? '—'
           : `${Math.round(pct)}%`;
-        pctEl.style.color = info.color;
+        pctEl.style.color = '#ffffff';
       }
-      if (lab) lab.textContent = info.label;
-      if (meta) meta.textContent = detail || 'coleta + entrega';
+      if (lab) lab.hidden = true;
+      if (meta) meta.hidden = true;
 
       const map = ensureMapaFarolLeaflet();
       if (!map) return;
-      const color = info.color;
-      const applyStyle = () => {
-        if (mapaFarolLayer) {
-          mapaFarolLayer.setStyle({
-            color: 'rgba(15,23,42,0.35)',
-            weight: 0.4,
-            fillColor: color,
-            fillOpacity: 0.9,
-          });
-        }
-      };
-      if (mapaFarolLayer) {
-        applyStyle();
-        setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 60);
-        return;
-      }
-      loadMapaFarolGeo().then((geo) => {
+
+      const paintZones = async () => {
+        const zonas = await loadMapaZonas();
+        const geo = await loadMapaFarolGeo();
         if (mapaFarolLayer) {
           try { map.removeLayer(mapaFarolLayer); } catch (_) {}
           mapaFarolLayer = null;
         }
         mapaFarolLayer = L.geoJSON(geo, {
-          style: {
-            color: 'rgba(15,23,42,0.35)',
-            weight: 0.4,
-            fillColor: color,
-            fillOpacity: 0.9,
+          style: (feat) => {
+            const p = feat.properties || {};
+            const color = p.zona_color
+              || (zonas.distritos[p.name] && zonas.distritos[p.name].color)
+              || '#64748b';
+            return {
+              color: 'rgba(2,6,23,0.55)',
+              weight: 0.7,
+              fillColor: color,
+              fillOpacity: 0.88,
+            };
           },
         }).addTo(map);
         try {
           map.fitBounds(mapaFarolLayer.getBounds(), { padding: [4, 4], maxZoom: 11 });
         } catch (_) {}
         setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 80);
-      }).catch(() => {
-        if (lab) lab.textContent = 'mapa SP indisponível';
+      };
+      paintZones().catch(() => {
+        if (lab) {
+          lab.hidden = false;
+          lab.textContent = 'mapa SP indisponível';
+        }
       });
     }
 
@@ -9440,7 +9687,6 @@
       try {
         let col = null;
         let ent = null;
-        // Prefer CSV locais da distribuição
         try {
           const rows = await loadCsvLocal('data/resumo_103.csv');
           col = rows && rows[0];
@@ -9460,11 +9706,13 @@
         const real = colReal + entReal;
         const tot = colTot + entTot;
         const pct = tot > 0 ? (real / tot) * 100 : null;
-        const detail = [
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set('mapaTotCol', colTot ? `${colReal}/${colTot}` : '—');
+        set('mapaTotEnt', entTot ? `${entReal}/${entTot}` : '—');
+        paintMapaFarol(pct, [
           colTot ? `coleta ${colReal}/${colTot}` : null,
           entTot ? `entrega ${entReal}/${entTot}` : null,
-        ].filter(Boolean).join(' · ') || 'coleta + entrega';
-        paintMapaFarol(pct, detail);
+        ].filter(Boolean).join(' · ') || 'coleta + entrega');
       } catch (_) {
         paintMapaFarol(null, 'coleta + entrega');
       }
@@ -9489,10 +9737,46 @@
         setTimeout(() => { try { mapaLeaflet.invalidateSize(); } catch (_) {} }, 80);
         return mapaLeaflet;
       }
-      mapaLeaflet = L.map(el, { zoomControl: true, attributionControl: false });
+      const base = MAPA_BASE_DEFAULT;
+      mapaLeaflet = L.map(el, {
+        zoomControl: true,
+        attributionControl: false,
+        preferCanvas: true,
+      });
+      mapaLeaflet.setView([base.lat, base.lon], 11);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
+        subdomains: 'abcd',
       }).addTo(mapaLeaflet);
+      // zonas SP capital — overlay cyberpunk (opacidade CyberMap)
+      loadMapaFarolGeo().then(async (geo) => {
+        const zonas = await loadMapaZonas();
+        if (mapaZoneLayer) {
+          try { mapaLeaflet.removeLayer(mapaZoneLayer); } catch (_) {}
+        }
+        mapaZoneLayer = L.geoJSON(geo, {
+          style: (feat) => {
+            const p = feat.properties || {};
+            const color = p.zona_color
+              || (zonas.distritos[p.name] && zonas.distritos[p.name].color)
+              || '#334155';
+            return {
+              color: 'rgba(0,240,255,0.18)',
+              weight: 1.1,
+              fillColor: color,
+              fillOpacity: 0.18,
+            };
+          },
+          interactive: false,
+        }).addTo(mapaLeaflet);
+        const leg = document.getElementById('mapaZoneLegend');
+        if (leg && zonas.zonas) {
+          leg.hidden = false;
+          leg.innerHTML = Object.values(zonas.zonas).map((z) =>
+            `<div><span style="background:${z.color}"></span>${esc(z.label)}</div>`
+          ).join('');
+        }
+      }).catch(() => {});
       return mapaLeaflet;
     }
 
@@ -9504,26 +9788,47 @@
       mapaLayers = [];
     }
 
+    function mapaStopAce(p) {
+      const raw = String(p.status_ace || p.status || '').toLowerCase();
+      if (raw === 'realizada' || /realizad|baixad|entregue|coletada|pre-?entreg/.test(raw)) {
+        return 'realizada';
+      }
+      if (raw === 'em_rota' || raw === 'pendencia' || raw === 'coleta' || !raw) {
+        return 'em_rota';
+      }
+      if (/cancel/.test(raw)) return 'cancelada';
+      return 'em_rota';
+    }
+
     function drawMapaBaseMarker(map, base) {
       const b = Object.assign({}, MAPA_BASE_DEFAULT, base || {});
       const lat = Number(b.lat);
       const lon = Number(b.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-      const halo = L.circleMarker([lat, lon], {
-        radius: 32, color: '#facc15', fillColor: '#facc15', fillOpacity: 0.12, weight: 0,
+      const icon = L.divIcon({
+        className: 'cyber-base-icon',
+        html: `<div class="cyber-base"></div><div class="cyber-base-label">${esc(b.nome || 'BINHO TRANSPORTES')}</div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
       });
-      const mid = L.circleMarker([lat, lon], {
-        radius: 16, color: '#facc15', fillColor: '#facc15', fillOpacity: 0.22, weight: 0,
-      });
-      const core = L.circleMarker([lat, lon], {
-        radius: 8, color: '#fffbeb', fillColor: '#facc15', fillOpacity: 1, weight: 2,
-      }).bindTooltip(
-        `<div class="mapa-base-label">${esc(b.nome || 'BINHO TRANSPORTES')}</div>`
-        + `<div style="color:#cbd5e1;font-size:11px;margin-top:2px">${esc(b.endereco || MAPA_BASE_DEFAULT.endereco)}</div>`,
-        { permanent: true, direction: 'right', offset: [12, 0], className: 'mapa-base-tooltip' }
+      const mk = L.marker([lat, lon], { icon, zIndexOffset: 900 }).bindTooltip(
+        `<div class="cyber-base-label">${esc(b.nome || 'BINHO TRANSPORTES')}</div>`
+        + `<div style="color:#7aa2c2;font-size:11px;margin-top:2px">${esc(b.endereco || MAPA_BASE_DEFAULT.endereco)}</div>`,
+        { direction: 'right', offset: [14, 0], className: 'mapa-base-tooltip' }
       );
-      halo.addTo(map); mid.addTo(map); core.addTo(map);
-      mapaLayers.push(halo, mid, core);
+      // anel suave (CyberMap Circle ~1.8km visual light)
+      const ring = L.circle([lat, lon], {
+        radius: 900,
+        color: '#ffd166',
+        weight: 1,
+        opacity: 0.35,
+        fillColor: '#ffd166',
+        fillOpacity: 0.04,
+        interactive: false,
+      });
+      ring.addTo(map);
+      mk.addTo(map);
+      mapaLayers.push(ring, mk);
       return [lat, lon];
     }
 
@@ -9538,17 +9843,19 @@
       clearMapaLayers();
       const base = (lastMapaData && lastMapaData.base) || MAPA_BASE_DEFAULT;
       const basePt = drawMapaBaseMarker(map, base);
-      const color = mapaPlateColor(idx);
       const allPts = [];
       if (basePt) allPts.push(basePt);
 
       const poly = (v.polyline || []).filter((p) => p && p.length >= 2);
       if (poly.length >= 2) {
-        const glow = L.polyline(poly, { color: '#0f172a', weight: 9, opacity: 0.55 });
+        // dual-glow CyberMap (route_outer / route_inner)
+        const glow = L.polyline(poly, {
+          color: '#ffd166', weight: 10, opacity: 0.16, interactive: false,
+        });
         const line = L.polyline(poly, {
-          color: v.tipo === 'coleta' ? '#facc15' : color,
-          weight: 5,
-          opacity: 0.98,
+          color: v.tipo === 'coleta' ? '#00f0ff' : '#ffe27a',
+          weight: 4.5,
+          opacity: 0.9,
           dashArray: v.tipo === 'coleta' ? '10 7' : undefined,
         });
         glow.addTo(map); line.addTo(map);
@@ -9557,24 +9864,39 @@
       }
       const polyC = (v.polyline_coleta || []).filter((p) => p && p.length >= 2);
       if (polyC.length >= 2) {
-        const lineC = L.polyline(polyC, { color: '#facc15', weight: 4, opacity: 0.9, dashArray: '10 7' });
-        lineC.addTo(map);
-        mapaLayers.push(lineC);
+        const glowC = L.polyline(polyC, {
+          color: '#00f0ff', weight: 9, opacity: 0.14, interactive: false,
+        });
+        const lineC = L.polyline(polyC, {
+          color: '#8defff', weight: 4, opacity: 0.9, dashArray: '10 7',
+        });
+        glowC.addTo(map); lineC.addTo(map);
+        mapaLayers.push(glowC, lineC);
         polyC.forEach((p) => allPts.push(p));
       }
       const allStops = [...(v.paradas || []), ...(v.paradas_coleta || [])];
       allStops.forEach((p) => {
         if (p.lat == null || p.lon == null) return;
         allPts.push([p.lat, p.lon]);
-        const isCol = p.tipo === 'coleta' || v.tipo === 'coleta';
-        const mk = L.circleMarker([p.lat, p.lon], {
-          radius: isCol ? 7 : 6,
-          color: '#020617',
-          fillColor: isCol ? '#22d3ee' : color,
-          fillOpacity: 0.95,
-          weight: 1,
-        }).bindTooltip(
-          (`${v.placa} · ${isCol ? 'C' : 'E'} ${p.seq || ''} ${p.cliente || ''}`
+        const ace = mapaStopAce(p);
+        const done = ace === 'realizada';
+        const fromColeta = (v.paradas_coleta || []).includes(p);
+        const isCol = p.tipo === 'coleta'
+          || fromColeta
+          || String(p.status || '').toLowerCase() === 'coleta'
+          || (v.tipo === 'coleta' && p.tipo !== 'entrega');
+        const letter = isCol ? 'C' : 'E';
+        const kindCls = isCol ? 'is-coleta' : 'is-entrega';
+        const stateCls = done ? 'is-done' : 'mapa-blink';
+        const icon = L.divIcon({
+          className: 'mapa-stop-icon',
+          html: `<div class="mapa-op-stop ${kindCls} ${stateCls}"><span>${letter}</span></div>`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+        const mk = L.marker([p.lat, p.lon], { icon, interactive: true }).bindTooltip(
+          (`${v.placa} · ${letter} ${p.seq || ''} ${p.cliente || ''}`
+          + ` · ${done ? 'realizado' : 'em rota'}`
           + (p.frete || p.peso
             ? ` · R$ ${Number(p.frete || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} · ${Number(p.peso || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg`
             : '')).trim()
@@ -9657,7 +9979,7 @@
         stack.innerHTML = '<div class="arm-rank-empty">Nenhum veículo em rota</div>';
         return;
       }
-      const nVis = Math.min(5, veics.length);
+      const nVis = Math.min(MAPA_PLACA_VISIBLE, veics.length);
       const visible = [];
       for (let i = 0; i < nVis; i++) {
         visible.push({ v: veics[(mapaPlacaCursor + i) % veics.length], i: (mapaPlacaCursor + i) % veics.length });
@@ -9665,7 +9987,7 @@
       Array.from(stack.querySelectorAll('.mapa-placa-pop')).forEach((el) => {
         el.classList.remove('show');
         el.classList.add('leaving');
-        setTimeout(() => { try { el.remove(); } catch (_) {} }, 420);
+        setTimeout(() => { try { el.remove(); } catch (_) {} }, 480);
       });
       setTimeout(() => {
         if (!document.getElementById('mapaLista')) return;
@@ -9692,13 +10014,8 @@
           animateDonut(el, pct);
           return el;
         });
-        let top = 0;
-        nodes.forEach((node, i) => {
-          node.style.top = top + 'px';
-          node.style.zIndex = String(100 - i);
-          top += (node.offsetHeight || 64) + 8;
-        });
-      }, 100);
+        layoutPops(stack, nodes);
+      }, 120);
     }
 
     function startMapaPlacaCarousel() {
@@ -9706,10 +10023,10 @@
       const veics = (lastMapaData && lastMapaData.veiculos) || [];
       if (!veics.length) return;
       renderMapaPlacaPops();
-      if (veics.length <= 5) return;
+      if (veics.length <= MAPA_PLACA_VISIBLE) return;
       mapaPlacaTimer = setInterval(() => {
         const list = (lastMapaData && lastMapaData.veiculos) || [];
-        if (list.length <= 5) return;
+        if (list.length <= MAPA_PLACA_VISIBLE) return;
         mapaPlacaCursor = (mapaPlacaCursor + 1) % list.length;
         renderMapaPlacaPops();
       }, MAPA_PLACA_MS);
@@ -9727,6 +10044,8 @@
         set('mapaPesoEnt', '0 kg');
         set('mapaFreteCol', 'R$ 0');
         set('mapaPesoCol', '0 kg');
+        set('mapaTotCol', '—');
+        set('mapaTotEnt', '—');
         const list = document.getElementById('mapaLista');
         if (list) list.innerHTML = '<div class="arm-rank-empty">Sem dados — rode `mapa`</div>';
         clearMapaLayers();
@@ -9742,7 +10061,7 @@
       set('mapaPesoEnt', fmtMapaPeso(tot.peso_entrega != null ? tot.peso_entrega : tot.peso));
       set('mapaFreteCol', fmtMapaMoney(tot.frete_coleta));
       set('mapaPesoCol', fmtMapaPeso(tot.peso_coleta));
-      set('mapaAtualizado', data.atualizado ? `atualizado ${data.atualizado}` : '—');
+      set('mapaAtualizado', data.atualizado ? `hoje · atualizado ${data.atualizado}` : 'hoje');
       if (aviso) {
         if (data.aviso) {
           aviso.hidden = false;

@@ -87,16 +87,83 @@ def _num(v: Any) -> float:
         return 0.0
 
 
-def _is_on_street_status(status: str) -> bool:
+def _status_ace_from_ocorrencia(status: str) -> str:
+    """Normaliza status SSW/CyberMap → em_rota | realizada | pendencia | outro."""
     s = " ".join(str(status or "").upper().split())
-    if not s:
-        return True  # blank no 36 ACE = em_rota
-    if any(tok in s for tok in _ON_STREET_TOKENS):
-        return True
-    # não inclui realizados / baixados
-    if any(x in s for x in ("REALIZAD", "BAIXAD", "ENTREGUE", "PRE-ENTREG", "PRE ENTREG")):
-        return False
-    return False
+    if not s or s in {"COLETA", "PENDENTE", "EM ROTA", "EM TRANSITO", "EM TRÂNSITO"}:
+        return "em_rota"
+    if any(
+        tok in s
+        for tok in (
+            "SAIDA PARA ENTREGA",
+            "SAÍDA PARA ENTREGA",
+            "SAIU PARA ENTREGA",
+            "EM ROTA",
+            "EM TRANSITO",
+            "EM TRÂNSITO",
+        )
+    ):
+        return "em_rota"
+    if any(
+        tok in s
+        for tok in (
+            "REALIZAD",
+            "BAIXAD",
+            "ENTREGUE",
+            "PRE-ENTREG",
+            "PRE ENTREG",
+            "COLETADA",
+        )
+    ):
+        return "realizada"
+    if "CANCEL" in s:
+        return "cancelada"
+    return "pendencia"
+
+
+def _is_on_street_status(status: str) -> bool:
+    return _status_ace_from_ocorrencia(status) == "em_rota"
+
+
+def _is_mapa_stop_status(status: str) -> bool:
+    """No mapa do dia: em rota (pisca) ou realizado (verde)."""
+    return _status_ace_from_ocorrencia(status) in {"em_rota", "realizada", "pendencia"}
+
+
+def _delivery_is_today(d: Any) -> bool:
+    """Filtra entregas do dia atual (ocorrência / emissão)."""
+    from datetime import date
+
+    today = date.today()
+    for attr in ("occurrence_date", "emission_date", "data_ocorrencia"):
+        raw = getattr(d, attr, None)
+        if raw is None:
+            continue
+        text = str(raw).strip()
+        if not text:
+            continue
+        # ISO / YYYY-MM-DD
+        if len(text) >= 10 and text[4] == "-":
+            try:
+                return date.fromisoformat(text[:10]) == today
+            except Exception:
+                pass
+        # DD/MM/YYYY or DD/MM
+        if "/" in text:
+            parts = text.replace("-", "/").split("/")
+            try:
+                if len(parts) >= 3:
+                    dd, mm, yy = int(parts[0]), int(parts[1]), int(parts[2])
+                    if yy < 100:
+                        yy += 2000
+                    return date(yy, mm, dd) == today
+                if len(parts) == 2:
+                    dd, mm = int(parts[0]), int(parts[1])
+                    return dd == today.day and mm == today.month
+            except Exception:
+                pass
+    # Sem data explícita: mantém (relatório já é do ciclo do dia)
+    return True
 
 
 def _ace_em_rota_plates() -> set[str]:
@@ -444,6 +511,7 @@ def _build_coleta_vehicles(
                     "cidade": city,
                     "bairro": bairro,
                     "status": "coleta",
+                    "status_ace": "em_rota",
                     "cep": cep,
                     "peso": round(w, 2),
                     "frete": round(f, 2),
@@ -537,18 +605,12 @@ def _merge_coleta_into_veiculos(
 
 
 def _base_ll() -> tuple[str, float, float]:
-    """Base BINHO — Av. Amâncio Gaioli, 1197 · Água Chata, Guarulhos-SP."""
-    try:
-        from map_renderer import load_project
+    """Base BINHO — Av. Amâncio Gaioli, 1197 · Água Chata, Guarulhos-SP.
 
-        p = load_project()
-        return (
-            str(p.base.name or "BINHO TRANSPORTES"),
-            float(p.base.latitude),
-            float(p.base.longitude),
-        )
-    except Exception:
-        return ("BINHO TRANSPORTES", -23.422851, -46.415482)
+    Não usa o `cybermap_project.json` (lá a base aponta p/ Ministro Marcos Freire).
+    Coords Nominatim da Av. Amâncio Gaiolli / Água Chata (CEP 07251).
+    """
+    return ("BINHO TRANSPORTES", -23.4265324, -46.3946075)
 
 
 def _base_payload() -> dict[str, Any]:
@@ -619,25 +681,50 @@ def _build_from_cybermap_report(
     on_status(f"Mapa: parse CyberMap {report.name}")
     stats = parse_report_36(str(report))
     ace_plates = _ace_em_rota_plates()
+    # placas com atividade hoje (em rota ou já realizadas no CSV ACE)
+    ace_today: set[str] = set(ace_plates)
+    if ENTREGAS_36_CSV.is_file():
+        with ENTREGAS_36_CSV.open(encoding="utf-8-sig", newline="") as fh:
+            for row in csv.DictReader(fh):
+                if str(row.get("excluido") or "") in {"1", "true", "True"}:
+                    continue
+                st = str(row.get("status_ace") or "").strip().lower()
+                if st in {"em_rota", "realizada", "pendencia"}:
+                    pl = _norm_plate(row.get("placa") or "")
+                    if pl:
+                        ace_today.add(pl)
+
     by_plate: dict[str, list[Any]] = defaultdict(list)
 
     for d in stats.deliveries:
-        if not _is_on_street_status(getattr(d, "status", "") or ""):
+        if not _delivery_is_today(d):
+            continue
+        st_ace = _status_ace_from_ocorrencia(getattr(d, "status", "") or "")
+        if st_ace not in {"em_rota", "realizada", "pendencia"}:
             continue
         pl = _norm_plate(getattr(d, "plate", "") or "")
         if not pl:
             continue
-        # Se ACE tem em_rota, restringe a essas placas; senão usa filtro de status do relatório
-        if ace_plates and pl not in ace_plates:
-            continue
+        # Prioriza placas do dia no ACE; se vazio, usa todas do relatório de hoje
+        if ace_today and pl not in ace_today:
+            # ainda inclui se estiver em rota no relatório
+            if st_ace != "em_rota":
+                continue
         by_plate[pl].append(d)
 
-    if not by_plate and ace_plates:
-        # fallback: qualquer entrega das placas em_rota do ACE (mesmo já baixada parcial)
+    if not by_plate and ace_today:
         for d in stats.deliveries:
+            if not _delivery_is_today(d):
+                continue
             pl = _norm_plate(getattr(d, "plate", "") or "")
-            if pl in ace_plates:
+            if pl in ace_today and _is_mapa_stop_status(getattr(d, "status", "") or ""):
                 by_plate[pl].append(d)
+
+    # Prefere placas ainda na rua; completa com realizadas do dia
+    if ace_plates:
+        preferred = {pl: rows for pl, rows in by_plate.items() if pl in ace_plates}
+        if preferred:
+            by_plate = defaultdict(list, preferred)
 
     base_name, base_lat, base_lon = _base_ll()
     base_pt = (base_lat, base_lon)
@@ -669,6 +756,8 @@ def _build_from_cybermap_report(
                 continue
             lat, lon = float(pt[0]), float(pt[1])
             coords.append((lat, lon))
+            st_raw = str(getattr(d, "status", "") or "")
+            st_ace = _status_ace_from_ocorrencia(st_raw)
             stops_out.append(
                 {
                     "seq": i,
@@ -678,7 +767,8 @@ def _build_from_cybermap_report(
                     "cliente": str(getattr(d, "destinatario", "") or ""),
                     "cidade": str(getattr(d, "city", "") or ""),
                     "bairro": str(getattr(d, "bairro", "") or ""),
-                    "status": str(getattr(d, "status", "") or ""),
+                    "status": st_raw,
+                    "status_ace": st_ace,
                     "cep": str(getattr(d, "cep", "") or ""),
                     "peso": round(w, 2),
                     "frete": round(f, 2),
@@ -749,6 +839,7 @@ def _build_from_cybermap_report(
 
     return {
         "atualizado": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        "periodo": "hoje",
         "fonte": str(report),
         "base": _base_payload(),
         "veiculos": veiculos,
@@ -777,7 +868,7 @@ def _build_from_cybermap_report(
 def _build_from_ace_csv(*, on_status: StatusCallback) -> dict[str, Any]:
     """Fallback sem relatório bruto: lista placas em_rota (sem polyline completa)."""
     on_status("Mapa: sem relatório 36 bruto — lista em_rota do CSV ACE")
-    base_name, base_lat, base_lon = "BINHO TRANSPORTES", -23.422851, -46.415482
+    base_name, base_lat, base_lon = "BINHO TRANSPORTES", -23.4265324, -46.3946075
     try:
         root = _ensure_cybermap(on_status)
         if root:
@@ -789,7 +880,8 @@ def _build_from_ace_csv(*, on_status: StatusCallback) -> dict[str, Any]:
     if ENTREGAS_36_CSV.is_file():
         with ENTREGAS_36_CSV.open(encoding="utf-8-sig", newline="") as fh:
             for row in csv.DictReader(fh):
-                if str(row.get("status_ace") or "").strip().lower() != "em_rota":
+                st = str(row.get("status_ace") or "").strip().lower()
+                if st not in {"em_rota", "realizada", "pendencia"}:
                     continue
                 if str(row.get("excluido") or "") in {"1", "true", "True"}:
                     continue
@@ -839,7 +931,9 @@ def _build_from_ace_csv(*, on_status: StatusCallback) -> dict[str, Any]:
                         "cliente": r.get("destinatario") or "",
                         "cidade": r.get("cidade") or "",
                         "bairro": r.get("bairro") or "",
-                        "status": r.get("ocorrencia") or "em_rota",
+                        "status": r.get("ocorrencia") or r.get("status_ace") or "em_rota",
+                        "status_ace": str(r.get("status_ace") or "em_rota").strip().lower()
+                        or "em_rota",
                         "cep": r.get("cep") or "",
                     }
                     for j, r in enumerate(rows[:_MAX_PARADAS])
@@ -865,6 +959,7 @@ def _build_from_ace_csv(*, on_status: StatusCallback) -> dict[str, Any]:
 
     return {
         "atualizado": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        "periodo": "hoje",
         "fonte": "entregas_36.csv",
         "base": _base_payload(),
         "aviso": "Rotas aproximadas — rode `mapa` para puxar 50+36 e geocode real.",
