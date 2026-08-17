@@ -10229,7 +10229,9 @@
       }
 
       mapaSelectedPlaca = String(v.placa || '');
-      syncMapaPlacaHighlight(mapaSelectedPlaca);
+      document.querySelectorAll('.mapa-placa-pop').forEach((row) => {
+        row.classList.toggle('active', row.getAttribute('data-placa') === mapaSelectedPlaca);
+      });
       const cap = document.getElementById('mapaRouteCaption');
       if (cap) {
         const tipo = String(v.tipo || 'entrega');
@@ -10243,40 +10245,44 @@
       }
     }
 
-    function syncMapaPlacaHighlight(placa) {
+    /** Placas atualmente na lista da direita (janela do carrossel). */
+    function getMapaVisibleVeiculos() {
       const veics = (lastMapaData && lastMapaData.veiculos) || [];
-      const idx = veics.findIndex((x) => String(x.placa) === String(placa));
-      if (idx >= 0 && veics.length > MAPA_PLACA_VISIBLE) {
-        let inView = false;
-        const nVis = Math.min(MAPA_PLACA_VISIBLE, veics.length);
-        for (let i = 0; i < nVis; i++) {
-          if ((mapaPlacaCursor + i) % veics.length === idx) {
-            inView = true;
-            break;
-          }
-        }
-        if (!inView) {
-          mapaPlacaCursor = idx;
-          renderMapaPlacaPops();
-          return;
-        }
+      if (!veics.length) return [];
+      const nVis = Math.min(MAPA_PLACA_VISIBLE, veics.length);
+      const out = [];
+      for (let i = 0; i < nVis; i++) {
+        const idx = (mapaPlacaCursor + i) % veics.length;
+        out.push({ v: veics[idx], i: idx });
       }
-      document.querySelectorAll('.mapa-placa-pop').forEach((row) => {
-        row.classList.toggle('active', row.getAttribute('data-placa') === String(placa || ''));
-      });
+      return out;
+    }
+
+    /** Rota só de um carro que está aparecendo na lista da direita. */
+    function showMapaRouteFromVisible(preferWithin) {
+      const visible = getMapaVisibleVeiculos();
+      if (!visible.length) return;
+      let within = preferWithin;
+      if (within == null || within < 0 || within >= visible.length) {
+        const keep = visible.findIndex((x) => String(x.v.placa) === String(mapaSelectedPlaca));
+        within = keep >= 0 ? keep : 0;
+      }
+      mapaRouteCursor = within;
+      const item = visible[within];
+      showMapaVehicleRoute(item.v, item.i);
     }
 
     function startMapaRouteCarousel() {
       if (mapaRouteTimer) clearInterval(mapaRouteTimer);
-      const veics = (lastMapaData && lastMapaData.veiculos) || [];
-      if (!veics.length) return;
-      mapaRouteCursor = mapaRouteCursor % veics.length;
-      showMapaVehicleRoute(veics[mapaRouteCursor], mapaRouteCursor);
+      const visible = getMapaVisibleVeiculos();
+      if (!visible.length) return;
+      showMapaRouteFromVisible(0);
       mapaRouteTimer = setInterval(() => {
-        const list = (lastMapaData && lastMapaData.veiculos) || [];
+        const list = getMapaVisibleVeiculos();
         if (!list.length) return;
         mapaRouteCursor = (mapaRouteCursor + 1) % list.length;
-        showMapaVehicleRoute(list[mapaRouteCursor], mapaRouteCursor);
+        const item = list[mapaRouteCursor];
+        showMapaVehicleRoute(item.v, item.i);
       }, MAPA_ROUTE_MS);
     }
 
@@ -10284,15 +10290,13 @@
       const veics = (lastMapaData && lastMapaData.veiculos) || [];
       const idx = veics.findIndex((x) => String(x.placa) === String(placa));
       if (idx < 0) return;
-      mapaRouteCursor = idx;
+      // traz a placa clicada para o topo da lista visível e mostra a rota dela
+      mapaPlacaCursor = idx;
+      mapaRouteCursor = 0;
+      renderMapaPlacaPops();
       showMapaVehicleRoute(veics[idx], idx);
-      if (mapaRouteTimer) clearInterval(mapaRouteTimer);
-      mapaRouteTimer = setInterval(() => {
-        const list = (lastMapaData && lastMapaData.veiculos) || [];
-        if (!list.length) return;
-        mapaRouteCursor = (mapaRouteCursor + 1) % list.length;
-        showMapaVehicleRoute(list[mapaRouteCursor], mapaRouteCursor);
-      }, MAPA_ROUTE_MS);
+      startMapaRouteCarousel();
+      startMapaPlacaCarousel();
     }
 
     function fmtMapaMoney(v) {
@@ -10366,6 +10370,9 @@
         if (list.length <= MAPA_PLACA_VISIBLE) return;
         mapaPlacaCursor = (mapaPlacaCursor + 1) % list.length;
         renderMapaPlacaPops();
+        // janela da direita mudou → rota só entre os que estão aparecendo
+        mapaRouteCursor = 0;
+        showMapaRouteFromVisible(0);
       }, MAPA_PLACA_MS);
     }
 
