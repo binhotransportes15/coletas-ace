@@ -288,8 +288,28 @@ def frost_params(
 DEFAULT_CRT_THEME = "binho"
 
 
+
+# Zonas do cerebro -> id das barrinhas do CRT
+_BRAIN_REGIONS: dict[str, tuple[tuple[float, float], ...]] = {
+    "dist": ((0.32, 0.34), (0.40, 0.28), (0.36, 0.42), (0.44, 0.36)),
+    "78": ((0.52, 0.30), (0.58, 0.36), (0.54, 0.44)),
+    "31": ((0.46, 0.18), (0.52, 0.22), (0.48, 0.26)),
+    "73": ((0.64, 0.42), (0.70, 0.48), (0.66, 0.56)),
+    "455": ((0.38, 0.56), (0.46, 0.60), (0.42, 0.66)),
+    "mapa": ((0.50, 0.74), (0.56, 0.78), (0.48, 0.82)),
+}
+_SECTOR_TRACE_COLORS: dict[str, str] = {
+    "dist": "#8cc63f",
+    "78": "#29abe2",
+    "31": "#fff200",
+    "73": "#ed1c24",
+    "455": "#fbb03b",
+    "mapa": "#009245",
+}
+
+
 class BinhoCubesWidget(QWidget):
-    """Cérebro de circuitos BINHO — acende quando há comando/loop rodando."""
+    """Cerebro BINHO parado — circuitos acendem por setor / automacao."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -297,15 +317,18 @@ class BinhoCubesWidget(QWidget):
         self.setMaximumHeight(168)
         self._t = 0.0
         self._busy = False
+        self._full = False
+        self._active: set[str] = set()
         self._fill = QColor("#030712")
         self._green_glow = False
         self._cyan_glow = True
         self._hidden_brand = False
         self._pm = QPixmap()
+        self._brain_rect = (0.0, 0.0, 0.0, 0.0)
         self.reload_brand_asset()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
-        self._timer.start(33)  # ~30 fps
+        self._timer.start(33)
 
     def reload_brand_asset(self) -> None:
         path = Path()
@@ -328,6 +351,23 @@ class BinhoCubesWidget(QWidget):
     def set_busy(self, busy: bool) -> None:
         self._busy = bool(busy)
         self.update()
+
+    def set_activity(self, sectors: set[str] | list[str] | None, *, full: bool = False) -> None:
+        self._active = {str(s) for s in (sectors or []) if str(s)}
+        self._full = bool(full)
+        self._busy = self._full or bool(self._active)
+        self.update()
+
+    def brain_anchor(self, sector: str | None = None) -> QPointF:
+        bx, by, bw, bh = self._brain_rect
+        if bw <= 1 or bh <= 1:
+            return QPointF(self.width() / 2.0, self.height() * 0.72)
+        sid = str(sector or "")
+        nodes = _BRAIN_REGIONS.get(sid) if sid else None
+        if nodes:
+            nx, ny = nodes[0]
+            return QPointF(bx + nx * bw, by + ny * bh)
+        return QPointF(bx + bw * 0.55, by + bh * 0.72)
 
     def set_fill_color(self, color: QColor) -> None:
         self._fill = QColor(color)
@@ -353,6 +393,7 @@ class BinhoCubesWidget(QWidget):
         p.fillRect(0, 0, w, h, self._fill)
 
         if self._hidden_brand:
+            self._brain_rect = (0.0, 0.0, 0.0, 0.0)
             p.setPen(QColor(100, 116, 139, 160))
             p.setFont(crt_font(10))
             p.drawText(self.rect(), Qt.AlignCenter, "marca oculta")
@@ -361,165 +402,247 @@ class BinhoCubesWidget(QWidget):
 
         t = self._t
         busy = self._busy
-        bob = math.sin(t * (2.4 if busy else 1.1)) * (5.5 if busy else 2.5)
-        sway = math.sin(t * (1.6 if busy else 0.7)) * (3.5 if busy else 1.5)
-        pulse = (0.94 + 0.10 * (0.5 + 0.5 * math.sin(t * (4.2 if busy else 1.6))))
-        angle = math.sin(t * 0.45) * (3.2 if busy else 1.4)
+        full = self._full
+        active = set(self._active)
+        if full:
+            active = set(_BRAIN_REGIONS.keys())
 
         if not self._pm.isNull():
-            target_h = int(min(h - 10, 140) * pulse)
+            target_h = int(min(h - 10, 140))
             scaled = self._pm.scaledToHeight(target_h, Qt.SmoothTransformation)
-            x = (w - scaled.width()) / 2.0 + sway
-            y = (h - scaled.height()) / 2.0 + bob - 2
-            p.save()
-            p.translate(x + scaled.width() / 2.0, y + scaled.height() / 2.0)
-            p.rotate(angle)
-            p.translate(-scaled.width() / 2.0, -scaled.height() / 2.0)
-            base_op = 0.78 + (0.22 if busy else 0.12) * (0.5 + 0.5 * math.sin(t * (3.1 if busy else 1.4)))
-            p.setOpacity(base_op)
-            p.drawPixmap(0, 0, scaled)
-            p.restore()
-
-            # Nós de circuito acendendo (sobre o cérebro)
-            self._paint_circuit_nodes(p, w, h, t, busy, x, y, scaled.width(), scaled.height())
+            x = (w - scaled.width()) / 2.0
+            y = (h - scaled.height()) / 2.0
+            self._brain_rect = (x, y, float(scaled.width()), float(scaled.height()))
+            p.setOpacity(0.92 if busy else 0.84)
+            p.drawPixmap(int(x), int(y), scaled)
+            p.setOpacity(1.0)
+            self._paint_region_glow(p, x, y, scaled.width(), scaled.height(), active, full, t)
+            self._paint_circuit_traces(p, x, y, scaled.width(), scaled.height(), active, full, t, busy)
+            self._paint_circuit_nodes(p, x, y, scaled.width(), scaled.height(), active, full, t, busy)
         else:
-            self._paint_fallback_brain(p, w, h, t, bob, sway, pulse, busy)
+            self._paint_fallback_brain(p, w, h, t, busy, active, full)
 
-        # scanline CRT
         p.setPen(Qt.NoPen)
-        p.setBrush(QColor(0, 0, 0, 28 if not busy else 18))
+        p.setBrush(QColor(0, 0, 0, 22))
         step = 3
-        y0 = int((t * (28 if busy else 16)) % step)
+        y0 = int((t * 14) % step)
         for yy in range(y0, h, step):
             p.drawRect(0, yy, w, 1)
 
-        # brilho inferior
         if self._cyan_glow or busy:
-            glow = QLinearGradient(0, h * 0.45, 0, h)
+            glow = QLinearGradient(0, h * 0.55, 0, h)
             glow.setColorAt(0.0, QColor(0, 0, 0, 0))
-            a = 70 if busy else 38
-            glow.setColorAt(1.0, QColor(34, 211, 238, a))
-            p.fillRect(0, int(h * 0.45), w, int(h * 0.55), glow)
+            glow.setColorAt(1.0, QColor(34, 211, 238, 55 if busy else 28))
+            p.fillRect(0, int(h * 0.55), w, int(h * 0.45), glow)
         elif self._green_glow:
             glow = QLinearGradient(0, h * 0.55, 0, h)
             glow.setColorAt(0.0, QColor(0, 0, 0, 0))
-            glow.setColorAt(1.0, QColor(140, 198, 63, 35))
+            glow.setColorAt(1.0, QColor(140, 198, 63, 30))
             p.fillRect(0, int(h * 0.55), w, int(h * 0.45), glow)
         p.end()
 
-    def _paint_circuit_nodes(
-        self,
-        p: QPainter,
-        w: int,
-        h: int,
-        t: float,
-        busy: bool,
-        bx: float,
-        by: float,
-        bw: float,
-        bh: float,
+    def _paint_region_glow(
+        self, p: QPainter, bx: float, by: float, bw: float, bh: float,
+        active: set[str], full: bool, t: float,
     ) -> None:
-        # Pontos relativos à bounding box da imagem
-        nodes = (
-            (0.28, 0.32), (0.42, 0.22), (0.58, 0.28), (0.70, 0.40),
-            (0.35, 0.48), (0.52, 0.45), (0.64, 0.55), (0.40, 0.62),
-            (0.55, 0.68), (0.48, 0.78),
-        )
+        if not active and not full:
+            return
         p.setPen(Qt.NoPen)
-        for i, (nx, ny) in enumerate(nodes):
-            phase = t * (5.5 if busy else 1.8) + i * 0.85
-            lit = (math.sin(phase) > (0.15 if busy else 0.55)) or (
-                busy and math.sin(phase * 1.7 + i) > 0.2
-            )
-            if not lit and not busy:
+        for sid, nodes in _BRAIN_REGIONS.items():
+            if sid not in active:
                 continue
-            cx = bx + nx * bw
-            cy = by + ny * bh
-            r = (3.2 if busy else 2.2) + (1.6 if lit else 0)
-            col = QColor(253, 224, 71, 230) if (busy and i % 3 == 0) else QColor(103, 232, 249, 210 if lit else 90)
-            p.setBrush(col)
-            p.drawEllipse(QPointF(cx, cy), r, r)
-            if lit and busy:
-                p.setBrush(QColor(col.red(), col.green(), col.blue(), 50))
-                p.drawEllipse(QPointF(cx, cy), r * 2.4, r * 2.4)
+            col = QColor(_SECTOR_TRACE_COLORS.get(sid, "#67e8f9"))
+            pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(t * 3.2 + (hash(sid) % 7)))
+            for nx, ny in nodes:
+                cx = bx + nx * bw
+                cy = by + ny * bh
+                r = 10 + 6 * pulse
+                p.setBrush(QColor(col.red(), col.green(), col.blue(), int(55 + 50 * pulse)))
+                p.drawEllipse(QPointF(cx, cy), r, r)
+
+    def _paint_circuit_traces(
+        self, p: QPainter, bx: float, by: float, bw: float, bh: float,
+        active: set[str], full: bool, t: float, busy: bool,
+    ) -> None:
+        paths: list[tuple[str, list[tuple[float, float]]]] = [
+            ("dist", [(0.28, 0.40), (0.36, 0.40), (0.36, 0.30), (0.44, 0.30)]),
+            ("78", [(0.48, 0.34), (0.56, 0.34), (0.56, 0.42), (0.62, 0.42)]),
+            ("31", [(0.44, 0.24), (0.50, 0.24), (0.50, 0.18), (0.56, 0.18)]),
+            ("73", [(0.60, 0.48), (0.68, 0.48), (0.68, 0.56), (0.74, 0.56)]),
+            ("455", [(0.34, 0.58), (0.42, 0.58), (0.42, 0.66), (0.50, 0.66)]),
+            ("mapa", [(0.46, 0.72), (0.54, 0.72), (0.54, 0.80), (0.60, 0.80)]),
+            ("_", [(0.30, 0.50), (0.40, 0.50), (0.40, 0.60), (0.52, 0.60), (0.52, 0.70)]),
+            ("_", [(0.58, 0.28), (0.66, 0.28), (0.66, 0.38)]),
+        ]
+        for sid, pts in paths:
+            lit = full or (sid in active) or (sid == "_" and busy)
+            base_a = 200 if lit else (70 if busy else 40)
+            col = QColor(_SECTOR_TRACE_COLORS.get(sid, "#67e8f9"))
+            p.setPen(QPen(QColor(col.red(), col.green(), col.blue(), base_a), 1.6 if lit else 1.1))
+            poly = [QPointF(bx + x * bw, by + y * bh) for x, y in pts]
+            for i in range(len(poly) - 1):
+                p.drawLine(poly[i], poly[i + 1])
+            if len(poly) < 2:
+                continue
+            segs = []
+            total = 0.0
+            for i in range(len(poly) - 1):
+                L = math.hypot(poly[i + 1].x() - poly[i].x(), poly[i + 1].y() - poly[i].y()) or 1.0
+                segs.append((poly[i], poly[i + 1], L))
+                total += L
+            speed = 0.35 if lit else 0.12
+            pos = (t * speed * total + (0 if sid == "_" else hash(sid) % 50)) % total
+            acc = 0.0
+            for a, bpt, L in segs:
+                if acc + L >= pos:
+                    u = (pos - acc) / L
+                    px = a.x() + (bpt.x() - a.x()) * u
+                    py = a.y() + (bpt.y() - a.y()) * u
+                    p.setPen(Qt.NoPen)
+                    p.setBrush(QColor(col.red(), col.green(), col.blue(), 230 if lit else 120))
+                    p.drawEllipse(QPointF(px, py), 3.2 if lit else 2.2, 3.2 if lit else 2.2)
+                    p.setBrush(QColor(255, 255, 255, 160 if lit else 80))
+                    p.drawEllipse(QPointF(px, py), 1.4, 1.4)
+                    break
+                acc += L
+
+    def _paint_circuit_nodes(
+        self, p: QPainter, bx: float, by: float, bw: float, bh: float,
+        active: set[str], full: bool, t: float, busy: bool,
+    ) -> None:
+        p.setPen(Qt.NoPen)
+        for sid, nodes in _BRAIN_REGIONS.items():
+            lit_region = full or sid in active
+            col = QColor(_SECTOR_TRACE_COLORS.get(sid, "#67e8f9"))
+            for i, (nx, ny) in enumerate(nodes):
+                phase = t * (4.5 if lit_region else 1.4) + i * 0.9
+                blink = math.sin(phase) > (0.05 if lit_region else 0.65)
+                if not blink and not lit_region:
+                    continue
+                cx = bx + nx * bw
+                cy = by + ny * bh
+                r = 3.6 if lit_region else 2.2
+                p.setBrush(QColor(col.red(), col.green(), col.blue(), 230 if lit_region else 130))
+                p.drawEllipse(QPointF(cx, cy), r, r)
+                if lit_region:
+                    p.setBrush(QColor(col.red(), col.green(), col.blue(), 45))
+                    p.drawEllipse(QPointF(cx, cy), r * 2.6, r * 2.6)
 
     def _paint_fallback_brain(
-        self,
-        p: QPainter,
-        w: int,
-        h: int,
-        t: float,
-        bob: float,
-        sway: float,
-        pulse: float,
-        busy: bool,
+        self, p: QPainter, w: int, h: int, t: float, busy: bool,
+        active: set[str], full: bool,
     ) -> None:
-        cx, cy = w / 2.0 + sway, h / 2.0 + bob
-        # Silhueta oval + traços
-        p.setPen(QPen(QColor(34, 211, 238, 200 if busy else 140), 2))
+        cx, cy = w / 2.0, h / 2.0
+        rw, rh = 52.0, 40.0
+        self._brain_rect = (cx - rw, cy - rh, rw * 2, rh * 2)
+        p.setPen(QPen(QColor(34, 211, 238, 180), 2))
         p.setBrush(QColor(6, 20, 36, 180))
-        rw, rh = 52 * pulse, 40 * pulse
         p.drawEllipse(QPointF(cx, cy), rw, rh)
-        p.setPen(QPen(QColor(103, 232, 249, 160), 1.5))
-        for i in range(6):
-            a0 = t * (2 if busy else 0.8) + i * 0.9
-            x0 = cx + math.cos(a0) * rw * 0.55
-            y0 = cy + math.sin(a0 * 1.2) * rh * 0.5
-            x1 = cx + math.cos(a0 + 1.1) * rw * 0.85
-            y1 = cy + math.sin(a0 + 0.7) * rh * 0.75
-            p.drawLine(QPointF(x0, y0), QPointF(x1, y1))
-        self._paint_circuit_nodes(p, w, h, t, busy, cx - rw, cy - rh, rw * 2, rh * 2)
-
-    def _paint_fallback_cubes(
-        self,
-        p: QPainter,
-        w: int,
-        h: int,
-        t: float,
-        bob: float,
-        sway: float,
-        pulse: float,
-    ) -> None:
-        # legado (quase não usado)
-        cx, cy = w / 2.0 + sway, h / 2.0 + bob
-        size = 28.0 * pulse
-        offsets = ((-38, -18), (22, -28), (-30, 22), (26, 18))
-        for i, (ox, oy) in enumerate(offsets):
-            phase = t * (1.1 + i * 0.17) + i
-            dx = ox + math.sin(phase) * 5
-            dy = oy + math.cos(phase * 0.9) * 4
-            s = size * (0.85 + 0.15 * math.sin(phase * 1.3))
-            self._draw_iso_cube(p, cx + dx, cy + dy, s, _CUBE_COLORS[i % 4])
+        self._paint_circuit_traces(p, cx - rw, cy - rh, rw * 2, rh * 2, active, full, t, busy)
+        self._paint_circuit_nodes(p, cx - rw, cy - rh, rw * 2, rh * 2, active, full, t, busy)
 
     @staticmethod
     def _draw_iso_cube(p: QPainter, x: float, y: float, s: float, color: QColor) -> None:
-        top = QColor(color)
-        top = top.lighter(130)
+        top = QColor(color).lighter(130)
         left = QColor(color)
         right = QColor(color).darker(125)
         hx, hy = s * 0.55, s * 0.32
-        pts_top = [
-            QPointF(x, y - hy),
-            QPointF(x + hx, y),
-            QPointF(x, y + hy),
-            QPointF(x - hx, y),
-        ]
-        pts_left = [
-            QPointF(x - hx, y),
-            QPointF(x, y + hy),
-            QPointF(x, y + hy + s * 0.55),
-            QPointF(x - hx, y + s * 0.55),
-        ]
-        pts_right = [
-            QPointF(x + hx, y),
-            QPointF(x, y + hy),
-            QPointF(x, y + hy + s * 0.55),
-            QPointF(x + hx, y + s * 0.55),
-        ]
+        pts_top = [QPointF(x, y - hy), QPointF(x + hx, y), QPointF(x, y + hy), QPointF(x - hx, y)]
+        pts_left = [QPointF(x - hx, y), QPointF(x, y + hy), QPointF(x, y + hy + s * 0.55), QPointF(x - hx, y + s * 0.55)]
+        pts_right = [QPointF(x + hx, y), QPointF(x, y + hy), QPointF(x, y + hy + s * 0.55), QPointF(x + hx, y + s * 0.55)]
         p.setPen(QPen(QColor(0, 0, 0, 90), 1))
         for pts, col in ((pts_top, top), (pts_left, left), (pts_right, right)):
             p.setBrush(QBrush(col))
             p.drawPolygon(QPolygonF(pts))
+
+
+class CircuitBusOverlay(QWidget):
+    """Linhas de circuito do cerebro ate as barras de progresso."""
+
+    def __init__(self, host: QWidget) -> None:
+        super().__init__(host)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self._t = 0.0
+        self._brain: BinhoCubesWidget | None = None
+        self._meters: dict[str, QWidget] = {}
+        self._main_bar: QWidget | None = None
+        self._active: set[str] = set()
+        self._full = False
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start(33)
+
+    def bind(self, *, brain: BinhoCubesWidget, meters: dict[str, QWidget], main_bar: QWidget | None = None) -> None:
+        self._brain = brain
+        self._meters = dict(meters or {})
+        self._main_bar = main_bar
+        self.update()
+
+    def set_activity(self, sectors: set[str] | list[str] | None, *, full: bool = False) -> None:
+        self._active = {str(s) for s in (sectors or []) if str(s)}
+        self._full = bool(full)
+        self.update()
+
+    def _tick(self) -> None:
+        self._t += 0.033
+        if self._full or self._active or (int(self._t * 10) % 8 == 0):
+            self.update()
+
+    def _map_pt(self, widget: QWidget, local: QPointF) -> QPointF:
+        gp = widget.mapTo(self, local.toPoint())
+        return QPointF(float(gp.x()), float(gp.y()))
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        if self._brain is None:
+            return
+        active = set(self._meters.keys()) if self._full else set(self._active)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+        t = self._t
+        targets: list[tuple[str, QWidget]] = []
+        if self._full or active:
+            for sid, meter in self._meters.items():
+                if (self._full or sid in active) and meter is not None and meter.isVisible():
+                    targets.append((sid, meter))
+        elif self._main_bar is not None and self._main_bar.isVisible():
+            targets.append(("_main", self._main_bar))
+        for sid, dest in targets:
+            try:
+                start = self._map_pt(self._brain, self._brain.brain_anchor(None if sid == "_main" else sid))
+                end = self._map_pt(dest, QPointF(8, dest.height() / 2.0))
+            except Exception:
+                continue
+            col = QColor(_SECTOR_TRACE_COLORS.get(sid, "#67e8f9"))
+            mid_x = start.x() + (end.x() - start.x()) * 0.45
+            pts = [start, QPointF(mid_x, start.y()), QPointF(mid_x, end.y()), end]
+            lit = self._full or sid in active or sid == "_main"
+            p.setPen(QPen(QColor(col.red(), col.green(), col.blue(), 160 if lit else 40), 1.5 if lit else 1.0))
+            for i in range(len(pts) - 1):
+                p.drawLine(pts[i], pts[i + 1])
+            segs = []
+            total = 0.0
+            for i in range(len(pts) - 1):
+                L = math.hypot(pts[i + 1].x() - pts[i].x(), pts[i + 1].y() - pts[i].y()) or 1.0
+                segs.append((pts[i], pts[i + 1], L))
+                total += L
+            pos = (t * (0.55 if lit else 0.18) * total + (hash(sid) % 40)) % total
+            acc = 0.0
+            for a0, b0, L in segs:
+                if acc + L >= pos:
+                    u = (pos - acc) / L
+                    px = a0.x() + (b0.x() - a0.x()) * u
+                    py = a0.y() + (b0.y() - a0.y()) * u
+                    p.setPen(Qt.NoPen)
+                    p.setBrush(QColor(col.red(), col.green(), col.blue(), 220 if lit else 90))
+                    p.drawEllipse(QPointF(px, py), 3.5 if lit else 2.0, 3.5 if lit else 2.0)
+                    break
+                acc += L
+            if lit:
+                p.setPen(Qt.NoPen)
+                p.setBrush(QColor(col.red(), col.green(), col.blue(), 200))
+                p.drawEllipse(end, 4.0, 4.0)
+        p.end()
 
 
 class SysMeterRow(QWidget):
@@ -1480,6 +1603,10 @@ class AceCrtConsole(QWidget):
         self._scan.setAttribute(Qt.WA_TransparentForMouseEvents)
         self._scan.raise_()
 
+        self._circuit_bus = CircuitBusOverlay(self)
+        self._circuit_bus.raise_()
+        QTimer.singleShot(0, self._wire_circuit_bus)
+
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._refresh_status)
         self._timer.start(250)
@@ -1554,7 +1681,7 @@ class AceCrtConsole(QWidget):
         lay.setContentsMargins(10, 10, 10, 10)
         lay.setSpacing(8)
 
-        # Cubos animados + identidade da máquina + medidores
+        # Cerebro de circuitos + identidade da maquina + medidores
         self.cubes = BinhoCubesWidget()
         lay.addWidget(self.cubes)
 
@@ -2846,6 +2973,55 @@ class AceCrtConsole(QWidget):
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         self._scan.setGeometry(self.rect())
+        if hasattr(self, "_circuit_bus"):
+            self._circuit_bus.setGeometry(self.rect())
+            self._circuit_bus.raise_()
+
+    def _wire_circuit_bus(self) -> None:
+        bus = getattr(self, "_circuit_bus", None)
+        if bus is None or not hasattr(self, "cubes"):
+            return
+        bus.setGeometry(self.rect())
+        bus.bind(
+            brain=self.cubes,
+            meters=getattr(self, "_sector_meters", {}) or {},
+            main_bar=getattr(self, "bar", None),
+        )
+        bus.raise_()
+
+    def _sync_brain_activity(self, *, cmd_busy: bool, auto_on: bool, rows: list | None = None) -> None:
+        active: set[str] = set()
+        full = bool(auto_on)
+        if cmd_busy:
+            try:
+                from ace_cmd import sectors_for_command
+
+                active.update(sectors_for_command(getattr(self, "_worker_cmd", "") or ""))
+            except Exception:
+                pass
+        for r in rows or []:
+            if not isinstance(r, dict):
+                continue
+            if str(r.get("state") or "") == "run":
+                sid = str(r.get("id") or "")
+                if sid:
+                    active.add(sid)
+        if full:
+            active = set((getattr(self, "_sector_meters", {}) or {}).keys())
+        if hasattr(self, "cubes"):
+            try:
+                self.cubes.set_activity(active, full=full)
+            except Exception:
+                try:
+                    self.cubes.set_busy(cmd_busy or auto_on)
+                except Exception:
+                    pass
+        bus = getattr(self, "_circuit_bus", None)
+        if bus is not None:
+            try:
+                bus.set_activity(active, full=full)
+            except Exception:
+                pass
 
     def _load_logo(self) -> None:
         # Mantido por compatibilidade; painel esquerdo usa BinhoCubesWidget.
@@ -3921,14 +4097,10 @@ class AceCrtConsole(QWidget):
             return
         auto_on = bool(self._auto_worker and self._auto_worker.isRunning())
         cmd_busy = bool(self._worker and self._worker.isRunning())
-        if hasattr(self, "cubes"):
-            try:
-                self.cubes.set_busy(cmd_busy or auto_on)
-            except Exception:
-                pass
         rows: list[dict] = []
         if isinstance(st, dict) and isinstance(st.get("sectors"), list):
             rows = [r for r in st["sectors"] if isinstance(r, dict)]
+        self._sync_brain_activity(cmd_busy=cmd_busy, auto_on=auto_on, rows=rows)
 
         mode_u = str((st or {}).get("mode") or "").upper()
         label_u = str((st or {}).get("label") or "").upper()
