@@ -4077,7 +4077,7 @@
     .mapa-side {
       left: 8px !important;
       right: auto !important;
-      width: min(210px, 17vw) !important;
+      width: min(300px, 24vw) !important;
     }
     .mapa-side-right {
       right: 8px !important;
@@ -4130,13 +4130,90 @@
       padding: 12px;
       background: none;
     }
+    .mapa-farol-pct-wrap {
+      position: relative;
+      width: min(78%, 190px);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+    }
+    .mapa-farol-wave {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      overflow: hidden;
+      background: rgba(0, 12, 24, 0.18);
+      box-shadow:
+        inset 0 0 0 2px rgba(255, 255, 255, 0.22),
+        0 0 18px rgba(0, 240, 255, 0.22);
+      --farol-level: 0%;
+      --farol-wave: #22d3ee;
+      --farol-wave-deep: #0891b2;
+    }
+    .mapa-farol-wave[data-tone="low"] {
+      --farol-wave: #38bdf8;
+      --farol-wave-deep: #0284c7;
+    }
+    .mapa-farol-wave[data-tone="mid"] {
+      --farol-wave: #4ade80;
+      --farol-wave-deep: #16a34a;
+    }
+    .mapa-farol-wave[data-tone="good"] {
+      --farol-wave: #22c55e;
+      --farol-wave-deep: #15803d;
+      box-shadow:
+        inset 0 0 0 2px rgba(255, 255, 255, 0.28),
+        0 0 22px rgba(34, 197, 94, 0.45);
+    }
+    .mapa-farol-liquid {
+      position: absolute;
+      left: -8%;
+      right: -8%;
+      bottom: 0;
+      height: var(--farol-level);
+      transition: height 0.9s cubic-bezier(.2,.8,.2,1), background 0.8s ease;
+      background: linear-gradient(
+        180deg,
+        var(--farol-wave) 0%,
+        var(--farol-wave-deep) 100%
+      );
+      opacity: 0.9;
+    }
+    .mapa-farol-liquid::before,
+    .mapa-farol-liquid::after {
+      content: "";
+      position: absolute;
+      left: -25%;
+      width: 150%;
+      height: 22px;
+      top: -12px;
+      border-radius: 48%;
+      background: var(--farol-wave);
+      opacity: 0.95;
+      animation: mapaFarolWave 2.8s linear infinite;
+    }
+    .mapa-farol-liquid::after {
+      top: -16px;
+      opacity: 0.45;
+      animation-duration: 4.2s;
+      animation-direction: reverse;
+      background: #ffffff;
+    }
+    @keyframes mapaFarolWave {
+      from { transform: translateX(0) rotate(0deg); }
+      to { transform: translateX(-18%) rotate(360deg); }
+    }
     .mapa-farol-overlay .big {
+      position: relative;
+      z-index: 2;
       font-size: clamp(52px, 9vmin, 104px);
       font-weight: 900;
       line-height: 0.95;
       color: #ffffff !important;
       font-variant-numeric: tabular-nums;
-      text-shadow: 0 2px 18px rgba(0,0,0,0.55);
+      text-shadow:
+        0 2px 14px rgba(0,0,0,0.65),
+        0 0 18px rgba(0,0,0,0.35);
       letter-spacing: -0.02em;
     }
     .mapa-farol-overlay .lab,
@@ -4514,11 +4591,14 @@
     }
     body.tv-mode #panel-mapa .mapa-side {
       left: 8px !important;
-      width: min(220px, 16vw) !important;
+      width: min(320px, 22vw) !important;
     }
     body.tv-mode #panel-mapa .mapa-side-right {
       right: 8px !important;
       width: min(320px, 22vw) !important;
+    }
+    body.tv-mode .mapa-farol-pct-wrap {
+      width: min(82%, 230px);
     }
     body.tv-mode #panel-mapa .mapa-farol-hero,
     body.tv-mode #panel-mapa .mapa-list-card,
@@ -6625,7 +6705,12 @@
             <section class="mapa-farol-hero" aria-label="Serviço realizado São Paulo">
               <div id="mapaFarolLeaflet" aria-label="Mapa farol São Paulo"></div>
               <div class="mapa-farol-overlay">
-                <div class="big" id="mapaFarolPct">—</div>
+                <div class="mapa-farol-pct-wrap">
+                  <div class="mapa-farol-wave" id="mapaFarolWave" data-tone="low" aria-hidden="true">
+                    <div class="mapa-farol-liquid" id="mapaFarolLiquid"></div>
+                  </div>
+                  <div class="big" id="mapaFarolPct">—</div>
+                </div>
                 <div class="lab" id="mapaFarolLab" hidden>realizado</div>
                 <div class="meta" id="mapaFarolMeta" hidden>coleta + entrega</div>
               </div>
@@ -9852,11 +9937,19 @@
       const pctEl = document.getElementById('mapaFarolPct');
       const lab = document.getElementById('mapaFarolLab');
       const meta = document.getElementById('mapaFarolMeta');
+      const wave = document.getElementById('mapaFarolWave');
+      const level = (pct != null && Number.isFinite(pct))
+        ? Math.max(0, Math.min(100, pct))
+        : 0;
       if (pctEl) {
         pctEl.textContent = pct == null || !Number.isFinite(pct)
           ? '—'
           : `${Math.round(pct)}%`;
         pctEl.style.color = '#ffffff';
+      }
+      if (wave) {
+        wave.style.setProperty('--farol-level', `${level}%`);
+        wave.dataset.tone = level >= 70 ? 'good' : level >= 35 ? 'mid' : 'low';
       }
       if (lab) lab.hidden = true;
       if (meta) meta.hidden = true;
