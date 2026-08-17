@@ -325,6 +325,10 @@ class BinhoCubesWidget(QWidget):
         self._hidden_brand = False
         self._pm = QPixmap()
         self._brain_rect = (0.0, 0.0, 0.0, 0.0)
+        self._accent = QColor("#67e8f9")
+        self._glow = QColor("#22d3ee")
+        self._tint_alpha = 175
+        self._theme_sector_colors: dict[str, QColor] = {}
         self.reload_brand_asset()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
@@ -381,6 +385,63 @@ class BinhoCubesWidget(QWidget):
         self._cyan_glow = bool(on)
         self.update()
 
+    def set_theme_palette(
+        self,
+        *,
+        accent: QColor | str,
+        glow: QColor | str | None = None,
+        accents: list[QColor | str] | None = None,
+        tint_alpha: int = 175,
+        fill: QColor | None = None,
+    ) -> None:
+        """Recolore o cerebro e os circuitos conforme o tema do CRT."""
+        self._accent = QColor(accent)
+        self._glow = QColor(glow) if glow is not None else QColor(self._accent)
+        self._tint_alpha = max(0, min(220, int(tint_alpha)))
+        if fill is not None:
+            self._fill = QColor(fill)
+        cols = [QColor(c) for c in (accents or []) if c]
+        if not cols:
+            cols = [self._accent, self._glow, QColor("#fde047")]
+        while len(cols) < 6:
+            cols.append(cols[len(cols) % max(1, len(cols))])
+        order = ("dist", "78", "31", "73", "455", "mapa")
+        self._theme_sector_colors = {sid: cols[i] for i, sid in enumerate(order)}
+        self.update()
+
+    def _color_for_sector(self, sid: str) -> QColor:
+        if sid in self._theme_sector_colors:
+            return QColor(self._theme_sector_colors[sid])
+        hex_c = _SECTOR_TRACE_COLORS.get(sid, None)
+        if hex_c:
+            return QColor(hex_c)
+        return QColor(self._accent)
+
+    def _themed_pixmap(self, src: QPixmap) -> QPixmap:
+        """Mantem luminosidade da arte e aplica a matiz do tema."""
+        if src.isNull() or self._tint_alpha <= 0:
+            return src
+        out = QPixmap(src.size())
+        out.fill(Qt.transparent)
+        qp = QPainter(out)
+        qp.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        qp.drawPixmap(0, 0, src)
+        try:
+            qp.setCompositionMode(QPainter.CompositionMode_Color)
+        except Exception:
+            qp.setCompositionMode(QPainter.CompositionMode_SourceAtop)
+        tint = QColor(self._accent)
+        tint.setAlpha(self._tint_alpha)
+        qp.fillRect(out.rect(), tint)
+        # leve brilho do tema nas areas claras
+        qp.setCompositionMode(QPainter.CompositionMode_Plus)
+        qp.setOpacity(0.18)
+        glow = QColor(self._glow)
+        glow.setAlpha(90)
+        qp.fillRect(out.rect(), glow)
+        qp.end()
+        return out
+
     def _tick(self) -> None:
         self._t += 0.033
         self.update()
@@ -410,11 +471,12 @@ class BinhoCubesWidget(QWidget):
         if not self._pm.isNull():
             target_h = int(min(h - 10, 140))
             scaled = self._pm.scaledToHeight(target_h, Qt.SmoothTransformation)
-            x = (w - scaled.width()) / 2.0
-            y = (h - scaled.height()) / 2.0
-            self._brain_rect = (x, y, float(scaled.width()), float(scaled.height()))
-            p.setOpacity(0.92 if busy else 0.84)
-            p.drawPixmap(int(x), int(y), scaled)
+            themed = self._themed_pixmap(scaled)
+            x = (w - themed.width()) / 2.0
+            y = (h - themed.height()) / 2.0
+            self._brain_rect = (x, y, float(themed.width()), float(themed.height()))
+            p.setOpacity(0.94 if busy else 0.88)
+            p.drawPixmap(int(x), int(y), themed)
             p.setOpacity(1.0)
             self._paint_region_glow(p, x, y, scaled.width(), scaled.height(), active, full, t)
             self._paint_circuit_traces(p, x, y, scaled.width(), scaled.height(), active, full, t, busy)
@@ -429,15 +491,12 @@ class BinhoCubesWidget(QWidget):
         for yy in range(y0, h, step):
             p.drawRect(0, yy, w, 1)
 
-        if self._cyan_glow or busy:
+        if self._cyan_glow or self._green_glow or busy:
             glow = QLinearGradient(0, h * 0.55, 0, h)
             glow.setColorAt(0.0, QColor(0, 0, 0, 0))
-            glow.setColorAt(1.0, QColor(34, 211, 238, 55 if busy else 28))
-            p.fillRect(0, int(h * 0.55), w, int(h * 0.45), glow)
-        elif self._green_glow:
-            glow = QLinearGradient(0, h * 0.55, 0, h)
-            glow.setColorAt(0.0, QColor(0, 0, 0, 0))
-            glow.setColorAt(1.0, QColor(140, 198, 63, 30))
+            gc = QColor(self._glow)
+            gc.setAlpha(70 if busy else 34)
+            glow.setColorAt(1.0, gc)
             p.fillRect(0, int(h * 0.55), w, int(h * 0.45), glow)
         p.end()
 
@@ -451,7 +510,7 @@ class BinhoCubesWidget(QWidget):
         for sid, nodes in _BRAIN_REGIONS.items():
             if sid not in active:
                 continue
-            col = QColor(_SECTOR_TRACE_COLORS.get(sid, "#67e8f9"))
+            col = self._color_for_sector(sid)
             pulse = 0.55 + 0.45 * (0.5 + 0.5 * math.sin(t * 3.2 + (hash(sid) % 7)))
             for nx, ny in nodes:
                 cx = bx + nx * bw
@@ -477,7 +536,7 @@ class BinhoCubesWidget(QWidget):
         for sid, pts in paths:
             lit = full or (sid in active) or (sid == "_" and busy)
             base_a = 200 if lit else (70 if busy else 40)
-            col = QColor(_SECTOR_TRACE_COLORS.get(sid, "#67e8f9"))
+            col = self._color_for_sector(sid) if sid != "_" else QColor(self._accent)
             p.setPen(QPen(QColor(col.red(), col.green(), col.blue(), base_a), 1.6 if lit else 1.1))
             poly = [QPointF(bx + x * bw, by + y * bh) for x, y in pts]
             for i in range(len(poly) - 1):
@@ -513,7 +572,7 @@ class BinhoCubesWidget(QWidget):
         p.setPen(Qt.NoPen)
         for sid, nodes in _BRAIN_REGIONS.items():
             lit_region = full or sid in active
-            col = QColor(_SECTOR_TRACE_COLORS.get(sid, "#67e8f9"))
+            col = self._color_for_sector(sid)
             for i, (nx, ny) in enumerate(nodes):
                 phase = t * (4.5 if lit_region else 1.4) + i * 0.9
                 blink = math.sin(phase) > (0.05 if lit_region else 0.65)
@@ -535,8 +594,10 @@ class BinhoCubesWidget(QWidget):
         cx, cy = w / 2.0, h / 2.0
         rw, rh = 52.0, 40.0
         self._brain_rect = (cx - rw, cy - rh, rw * 2, rh * 2)
-        p.setPen(QPen(QColor(34, 211, 238, 180), 2))
-        p.setBrush(QColor(6, 20, 36, 180))
+        ac = QColor(self._accent)
+        ac.setAlpha(200)
+        p.setPen(QPen(ac, 2))
+        p.setBrush(QColor(self._fill))
         p.drawEllipse(QPointF(cx, cy), rw, rh)
         self._paint_circuit_traces(p, cx - rw, cy - rh, rw * 2, rh * 2, active, full, t, busy)
         self._paint_circuit_nodes(p, cx - rw, cy - rh, rw * 2, rh * 2, active, full, t, busy)
@@ -569,9 +630,34 @@ class CircuitBusOverlay(QWidget):
         self._main_bar: QWidget | None = None
         self._active: set[str] = set()
         self._full = False
+        self._theme_sector_colors: dict[str, QColor] = {}
+        self._accent = QColor("#67e8f9")
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(33)
+
+    def set_theme_palette(
+        self,
+        *,
+        accent: QColor | str,
+        accents: list[QColor | str] | None = None,
+    ) -> None:
+        self._accent = QColor(accent)
+        cols = [QColor(c) for c in (accents or []) if c]
+        if not cols:
+            cols = [self._accent]
+        while len(cols) < 6:
+            cols.append(cols[len(cols) % max(1, len(cols))])
+        order = ("dist", "78", "31", "73", "455", "mapa")
+        self._theme_sector_colors = {sid: cols[i] for i, sid in enumerate(order)}
+        self.update()
+
+    def _color_for_sector(self, sid: str) -> QColor:
+        if sid in self._theme_sector_colors:
+            return QColor(self._theme_sector_colors[sid])
+        if sid in _SECTOR_TRACE_COLORS:
+            return QColor(_SECTOR_TRACE_COLORS[sid])
+        return QColor(self._accent)
 
     def bind(self, *, brain: BinhoCubesWidget, meters: dict[str, QWidget], main_bar: QWidget | None = None) -> None:
         self._brain = brain
@@ -613,7 +699,7 @@ class CircuitBusOverlay(QWidget):
                 end = self._map_pt(dest, QPointF(8, dest.height() / 2.0))
             except Exception:
                 continue
-            col = QColor(_SECTOR_TRACE_COLORS.get(sid, "#67e8f9"))
+            col = self._color_for_sector(sid)
             mid_x = start.x() + (end.x() - start.x()) * 0.45
             pts = [start, QPointF(mid_x, start.y()), QPointF(mid_x, end.y()), end]
             lit = self._full or sid in active or sid == "_main"
@@ -3186,24 +3272,55 @@ class AceCrtConsole(QWidget):
         if hasattr(self, "cubes"):
             brainish = tid in {"circuitos", "painel"} or bool(meta.get("brain_glow"))
             self.cubes.set_green_glow(not frost and tid == "binho")
-            self.cubes.set_cyan_glow(not frost and (brainish or tid != "binho"))
+            self.cubes.set_cyan_glow(not frost)
             if frost:
                 cube_a = max(10, min(120, int(140 - fa * 1.2)))
-                self.cubes.set_fill_color(QColor(10, 14, 20, cube_a))
+                fill = QColor(10, 14, 20, cube_a)
             elif tid == "claro":
-                self.cubes.set_fill_color(QColor("#e8edf2"))
+                fill = QColor("#e8edf2")
             elif tid == "painel":
-                self.cubes.set_fill_color(QColor("#050a14"))
+                fill = QColor("#050a14")
             elif tid == "ops":
-                self.cubes.set_fill_color(QColor("#080b09"))
+                fill = QColor("#080b09")
             elif tid == "circuitos":
-                self.cubes.set_fill_color(QColor("#030712"))
+                fill = QColor("#030712")
             else:
-                self.cubes.set_fill_color(QColor("#050505"))
+                fill = QColor(str(meta.get("bg") or "#050505"))
+                if fill.alpha() == 0 or str(meta.get("bg")) == "transparent":
+                    fill = QColor("#0a0e14")
+            accents = [
+                str(meta.get("chunk0") or meta.get("text")),
+                str(meta.get("chunk1") or meta.get("text")),
+                str(meta.get("chunk2") or meta.get("text")),
+                str(meta.get("text") or "#67e8f9"),
+                str(meta.get("dim") or meta.get("text")),
+                str(meta.get("chunk1") or meta.get("text")),
+            ]
+            # tema claro: usa chunk (mais vivo) em vez do texto escuro
+            accent = str(meta.get("chunk1") or meta.get("text") or "#38bdf8")
+            if tid == "binho":
+                accent = str(meta.get("chunk2") or "#8cc63f")
+            tint_alpha = 120 if tid == "claro" else (155 if frost else 180)
+            try:
+                self.cubes.set_theme_palette(
+                    accent=accent,
+                    glow=str(meta.get("chunk1") or accent),
+                    accents=accents,
+                    tint_alpha=tint_alpha,
+                    fill=fill,
+                )
+            except Exception:
+                self.cubes.set_fill_color(fill)
             try:
                 self.cubes.reload_brand_asset()
             except Exception:
                 pass
+            bus = getattr(self, "_circuit_bus", None)
+            if bus is not None:
+                try:
+                    bus.set_theme_palette(accent=accent, accents=accents)
+                except Exception:
+                    pass
         meter_h = int(meta.get("meter_h") or (18 if frost else 14))
         track = "rgba(0,0,0,160)" if frost else "#0a0a0a"
         border = "rgba(255,255,255,30)" if frost else "#222"
