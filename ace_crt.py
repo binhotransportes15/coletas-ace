@@ -1768,9 +1768,10 @@ class AutoLoopWorker(QThread):
 
 
 class LockOverlay(QWidget):
-    """Cadeado em tela cheia — bloqueia UI; automação/workers continuam."""
+    """Bloqueio invisível: cadeado só aparece se alguém tentar mexer; some sozinho."""
 
     unlocked = Signal()
+    HIDE_PROMPT_MS = 5000
 
     def __init__(self, host: QWidget) -> None:
         super().__init__(host)
@@ -1778,15 +1779,18 @@ class LockOverlay(QWidget):
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.hide()
         self._pulse = 0.0
+        self._armed = False
+        self._prompt_on = False
+        self._expected = ""
 
         root = QVBoxLayout(self)
         root.setContentsMargins(24, 24, 24, 24)
         root.addStretch(1)
 
-        card = QFrame()
-        card.setObjectName("lockCard")
-        card.setMaximumWidth(420)
-        cl = QVBoxLayout(card)
+        self._card = QFrame()
+        self._card.setObjectName("lockCard")
+        self._card.setMaximumWidth(420)
+        cl = QVBoxLayout(self._card)
         cl.setContentsMargins(28, 28, 28, 28)
         cl.setSpacing(12)
 
@@ -1801,8 +1805,8 @@ class LockOverlay(QWidget):
         cl.addWidget(title)
 
         tip = QLabel(
-            "Automação e downloads continuam em segundo plano.\n"
-            "Digite a senha do cadeado para mexer no CRT."
+            "Automação continua em segundo plano.\n"
+            "Digite a senha para liberar · some sozinho em alguns segundos."
         )
         tip.setObjectName("hint")
         tip.setWordWrap(True)
@@ -1813,6 +1817,7 @@ class LockOverlay(QWidget):
         self._pwd.setEchoMode(QLineEdit.Password)
         self._pwd.setPlaceholderText("Senha do cadeado")
         self._pwd.returnPressed.connect(self._try_unlock)
+        self._pwd.textChanged.connect(lambda _t: self._bump_hide_timer())
         cl.addWidget(self._pwd)
 
         self._err = QLabel("")
@@ -1828,41 +1833,130 @@ class LockOverlay(QWidget):
 
         row = QHBoxLayout()
         row.addStretch(1)
-        row.addWidget(card)
+        row.addWidget(self._card)
         row.addStretch(1)
         root.addLayout(row)
         root.addStretch(1)
 
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._tick_pulse)
-        self._expected = ""
+        self._card.hide()
+
+        self._pulse_timer = QTimer(self)
+        self._pulse_timer.timeout.connect(self._tick_pulse)
+
+        self._hide_timer = QTimer(self)
+        self._hide_timer.setSingleShot(True)
+        self._hide_timer.timeout.connect(self.hide_prompt)
+
+    def is_armed(self) -> bool:
+        return bool(self._armed)
+
+    def is_locked(self) -> bool:
+        """Compat: painel está bloqueado (mesmo com cadeado oculto)."""
+        return self.is_armed()
+
+    def is_prompt_visible(self) -> bool:
+        return bool(self._armed and self._prompt_on)
 
     def set_expected_password(self, password: str) -> None:
         self._expected = str(password or "")
 
-    def lock(self, password: str) -> None:
+    def arm(self, password: str) -> None:
+        """Ativa bloqueio sem mostrar o cadeado (só captura cliques/teclas)."""
         self.set_expected_password(password)
+        self._armed = True
+        self._prompt_on = False
         self._pwd.clear()
+        self._err.setText("")
+        self._card.hide()
+        self._hide_timer.stop()
+        self._pulse_timer.stop()
+        self._set_catcher_chrome(prompt=False)
+        self.show()
+        self.raise_()
+        self.setFocus(Qt.OtherFocusReason)
+
+    def lock(self, password: str) -> None:
+        """Compat: arma o bloqueio (cadeado só ao tentar mexer)."""
+        self.arm(password)
+
+    def show_prompt(self) -> None:
+        """Exibe o cadeado no centro (some após alguns segundos sem mexer)."""
+        if not self._armed:
+            return
+        self._prompt_on = True
+        self._set_catcher_chrome(prompt=True)
+        self._card.show()
         self._err.setText("")
         self.show()
         self.raise_()
-        self._timer.start(50)
-        QTimer.singleShot(80, lambda: self._pwd.setFocus(Qt.OtherFocusReason))
+        self._pulse_timer.start(50)
+        QTimer.singleShot(40, lambda: self._pwd.setFocus(Qt.OtherFocusReason))
+        self._bump_hide_timer()
 
-    def unlock(self) -> None:
-        self._timer.stop()
-        self.hide()
+    def hide_prompt(self) -> None:
+        """Esconde o cadeado, mas mantém o bloqueio ativo."""
+        if not self._armed:
+            return
+        self._prompt_on = False
+        self._hide_timer.stop()
+        self._pulse_timer.stop()
+        self._card.hide()
         self._pwd.clear()
         self._err.setText("")
+        self._set_catcher_chrome(prompt=False)
+        self.show()
+        self.raise_()
+        self.setFocus(Qt.OtherFocusReason)
+
+    def unlock(self) -> None:
+        self._armed = False
+        self._prompt_on = False
+        self._hide_timer.stop()
+        self._pulse_timer.stop()
+        self._card.hide()
+        self._pwd.clear()
+        self._err.setText("")
+        self.hide()
         self.unlocked.emit()
 
-    def is_locked(self) -> bool:
-        return self.isVisible()
+    def _bump_hide_timer(self) -> None:
+        if self._armed and self._prompt_on:
+            self._hide_timer.start(self.HIDE_PROMPT_MS)
+
+    def _set_catcher_chrome(self, *, prompt: bool) -> None:
+        if prompt:
+            self.setStyleSheet(
+                "QWidget#lockOverlay { background: rgba(3, 7, 18, 210); }"
+            )
+        else:
+            # Quase invisível (alpha 1) — em alguns Windows alpha 0 não captura clique
+            self.setStyleSheet(
+                "QWidget#lockOverlay { background: rgba(0, 0, 0, 1); }"
+            )
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        if self._armed and not self._prompt_on:
+            self.show_prompt()
+            event.accept()
+            return
+        if self._prompt_on:
+            self._bump_hide_timer()
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        if self._armed and not self._prompt_on:
+            self.show_prompt()
+            event.accept()
+            return
+        if self._prompt_on:
+            self._bump_hide_timer()
+        super().keyPressEvent(event)
 
     def _try_unlock(self) -> None:
         typed = self._pwd.text()
         if not self._expected:
             self._err.setText("Defina a senha em Menu → Configuração.")
+            self._bump_hide_timer()
             return
         if typed == self._expected:
             self.unlock()
@@ -1870,10 +1964,12 @@ class LockOverlay(QWidget):
         self._err.setText("Senha incorreta.")
         self._pwd.selectAll()
         self._pwd.setFocus(Qt.OtherFocusReason)
+        self._bump_hide_timer()
 
     def _tick_pulse(self) -> None:
+        if not self._prompt_on:
+            return
         self._pulse += 0.05
-        # leve “respiração” no ícone
         scale = 1.0 + 0.04 * math.sin(self._pulse)
         self._icon.setStyleSheet(
             f"font-size: {int(72 * scale)}px; background: transparent;"
@@ -2392,7 +2488,7 @@ class AceCrtConsole(QWidget):
         return str(p.get("crt_lock_password") or "binho")
 
     def _lock_panel(self) -> None:
-        """Trava a UI com cadeado no meio. Workers/automação seguem."""
+        """Trava a UI. Cadeado só aparece se alguém tentar mexer."""
         pwd = self._lock_password().strip()
         if not pwd:
             QMessageBox.information(
@@ -2417,12 +2513,14 @@ class AceCrtConsole(QWidget):
             self.mode.setText("LOCKED")
         if hasattr(self, "btn_lock"):
             self.btn_lock.setEnabled(False)
+            self.btn_lock.setText("Bloqueado")
         lock.setGeometry(self.rect())
-        lock.lock(pwd)
+        lock.arm(pwd)
         lock.raise_()
         self._append_log(
             "sistema",
-            "Painel bloqueado · automação continua · digite a senha no cadeado para liberar.",
+            "Painel bloqueado · cadeado só aparece se alguém tentar mexer · "
+            "some sozinho após alguns segundos.",
             mirror=False,
         )
 
@@ -2432,6 +2530,7 @@ class AceCrtConsole(QWidget):
             self.mode.setText("MENU")
         if hasattr(self, "btn_lock"):
             self.btn_lock.setEnabled(True)
+            self.btn_lock.setText("Bloquear")
         self._append_log("ok", "Painel desbloqueado.", mirror=False)
         try:
             if hasattr(self, "prompt"):
@@ -2441,10 +2540,22 @@ class AceCrtConsole(QWidget):
 
     def _is_ui_locked(self) -> bool:
         lock = getattr(self, "_lock", None)
-        return bool(getattr(self, "_ui_locked", False) or (lock is not None and lock.is_locked()))
+        if getattr(self, "_ui_locked", False):
+            return True
+        return bool(lock is not None and lock.is_armed())
+
+    def _challenge_lock(self) -> None:
+        """Mostra o cadeado ao tentar mexer no painel bloqueado."""
+        lock = getattr(self, "_lock", None)
+        if lock is None or not lock.is_armed():
+            return
+        lock.setGeometry(self.rect())
+        lock.show_prompt()
+        lock.raise_()
 
     def _toggle_rapido_window(self) -> None:
         if self._is_ui_locked():
+            self._challenge_lock()
             return
         win = getattr(self, "_rapido_win", None)
         if win is None:
@@ -2539,6 +2650,7 @@ class AceCrtConsole(QWidget):
 
     def _toggle_menu_window(self) -> None:
         if self._is_ui_locked():
+            self._challenge_lock()
             return
         win = getattr(self, "_menu_win", None)
         if win is None:
@@ -2551,6 +2663,7 @@ class AceCrtConsole(QWidget):
 
     def _show_menu_window(self, tab: str | int | None = None) -> None:
         if self._is_ui_locked():
+            self._challenge_lock()
             return
         win = getattr(self, "_menu_win", None)
         if win is None:
@@ -3696,7 +3809,7 @@ class AceCrtConsole(QWidget):
         lock = getattr(self, "_lock", None)
         if lock is not None:
             lock.setGeometry(r)
-            if lock.is_locked():
+            if lock.is_armed():
                 lock.raise_()
         cubes = getattr(self, "cubes", None)
         if cubes is not None:
@@ -4211,9 +4324,7 @@ class AceCrtConsole(QWidget):
         key = event.key()
         if self._is_ui_locked():
             # Só o overlay do cadeado recebe input (campo senha)
-            lock = getattr(self, "_lock", None)
-            if lock is not None:
-                lock.raise_()
+            self._challenge_lock()
             event.accept()
             return
         if key == Qt.Key_F2:
@@ -4538,19 +4649,11 @@ class AceCrtConsole(QWidget):
         if low in {"desbloquear", "unlock", "/desbloquear", "/unlock"}:
             # Desbloqueio só pelo campo do cadeado (senha)
             if self._is_ui_locked():
-                self._append_log(
-                    "sistema",
-                    "Painel bloqueado · digite a senha no cadeado no centro da tela.",
-                    mirror=False,
-                )
+                self._challenge_lock()
             return
-        # Com painel bloqueado: só parar continua (emergência); resto bloqueado
+        # Com painel bloqueado: só parar continua (emergência); resto pede cadeado
         if self._is_ui_locked() and low not in {"parar", "stop", "halt"}:
-            self._append_log(
-                "sistema",
-                "Painel bloqueado · use o cadeado no centro para liberar.",
-                mirror=False,
-            )
+            self._challenge_lock()
             return
         if low in {"cls", "clear", "limpar", "/limpar", "/cls", "/clear"}:
             self._clear_cmd_log()
@@ -4755,14 +4858,7 @@ class AceCrtConsole(QWidget):
     def closeEvent(self, event) -> None:  # noqa: N802
         if self._is_ui_locked():
             event.ignore()
-            QMessageBox.information(
-                self,
-                "Bloqueado",
-                "Desbloqueie o painel (senha no cadeado) antes de fechar.",
-            )
-            lock = getattr(self, "_lock", None)
-            if lock is not None:
-                lock.raise_()
+            self._challenge_lock()
             return
         if self._auto_worker and self._auto_worker.isRunning():
             self._auto_worker.request_stop()

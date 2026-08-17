@@ -1377,15 +1377,20 @@
     body.tv-mode #panel-mapa .mapa-side,
     body.tv-mode #panel-mapa .mapa-side-right,
     body.tv-mode #panel-mapa .mapa-layout,
-    body.tv-mode #panel-mapa .mapa-farol-hero,
     body.tv-mode #panel-mapa #mapaLeaflet,
     body.tv-mode #panel-mapa #mapaLeaflet.leaflet-container,
-    body.tv-mode #panel-mapa #mapaFarolLeaflet,
-    body.tv-mode #panel-mapa #mapaFarolLeaflet.leaflet-container,
     body.tv-mode #panel-mapa .leaflet-container,
     body.tv-mode #panel-mapa .leaflet-pane,
     body.tv-mode #panel-mapa .leaflet-map-pane {
       background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    /* Farol SP: fundo escuro mesmo em TV (zonas por cima) */
+    body.tv-mode #panel-mapa .mapa-farol-hero,
+    body.tv-mode #panel-mapa #mapaFarolLeaflet,
+    body.tv-mode #panel-mapa #mapaFarolLeaflet.leaflet-container {
+      background: #030712 !important;
       border: none !important;
       box-shadow: none !important;
     }
@@ -4156,36 +4161,38 @@
     .mapa-side .mapa-farol-hero {
       pointer-events: auto;
     }
-    /* Farol SP — mais escuro + contorno (sem painel/quadrão atrás) */
+    /* Farol SP — fundo escuro + zonas por cima */
     .mapa-farol-hero {
       position: relative;
       flex: 1 1 auto;
       min-height: 0;
       border-radius: 0;
-      overflow: visible;
-      background: transparent !important;
+      overflow: hidden;
+      background: #030712 !important;
       border: none !important;
       box-shadow: none !important;
-      filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.75))
-              drop-shadow(0 0 18px rgba(0, 0, 0, 0.45));
+      filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.8))
+              drop-shadow(0 0 16px rgba(0, 0, 0, 0.5));
     }
     .mapa-farol-hero::before {
       display: none !important;
       content: none !important;
     }
-    /* Vinheta escura — mantém regiões legíveis, visual cyberpunk profissional */
+    /* Vinheta suave sobre o fundo escuro */
     .mapa-farol-hero::after {
       content: '';
       position: absolute;
-      inset: -2%;
+      inset: 0;
       pointer-events: none;
       z-index: 400;
       background:
-        radial-gradient(ellipse 70% 65% at 50% 48%, transparent 28%, rgba(2, 6, 14, 0.42) 72%, rgba(2, 6, 14, 0.72) 100%);
+        radial-gradient(ellipse 68% 62% at 50% 48%, transparent 30%, rgba(2, 6, 14, 0.35) 75%, rgba(2, 6, 14, 0.65) 100%);
     }
     .mapa-farol-hero #mapaFarolLeaflet,
     .mapa-farol-hero #mapaFarolLeaflet.leaflet-container,
-    .mapa-farol-hero .leaflet-container,
+    .mapa-farol-hero .leaflet-container {
+      background: #030712 !important;
+    }
     .mapa-farol-hero .leaflet-pane,
     .mapa-farol-hero .leaflet-overlay-pane,
     .mapa-farol-hero .leaflet-map-pane {
@@ -4698,12 +4705,16 @@
       right: 8px !important;
       width: min(320px, 22vw) !important;
     }
-    body.tv-mode #panel-mapa .mapa-farol-hero,
     body.tv-mode #panel-mapa .mapa-list-card,
-    body.tv-mode #panel-mapa .mapa-list-card header,
+    body.tv-mode #panel-mapa .mapa-list-card header {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    body.tv-mode #panel-mapa .mapa-farol-hero,
     body.tv-mode #panel-mapa #mapaFarolLeaflet,
     body.tv-mode #panel-mapa #mapaFarolLeaflet.leaflet-container {
-      background: transparent !important;
+      background: #030712 !important;
       border: none !important;
       box-shadow: none !important;
     }
@@ -10318,11 +10329,9 @@
       });
       mapaFarolLeaflet.setView([-23.55, -46.63], 10);
       try {
-        el.style.background = 'transparent';
+        el.style.background = '#030712';
         const container = mapaFarolLeaflet.getContainer();
-        if (container) container.style.background = 'transparent';
-        const pane = container && container.querySelector('.leaflet-pane');
-        if (pane) pane.style.background = 'transparent';
+        if (container) container.style.background = '#030712';
         const tilePane = mapaFarolLeaflet.getPane('tilePane');
         if (tilePane) tilePane.style.display = 'none';
       } catch (_) {}
