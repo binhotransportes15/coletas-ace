@@ -1386,11 +1386,11 @@
       border: none !important;
       box-shadow: none !important;
     }
-    /* Farol SP: fundo escuro mesmo em TV (zonas por cima) */
+    /* Farol SP: transparente em TV (sem quadrado escuro) */
     body.tv-mode #panel-mapa .mapa-farol-hero,
     body.tv-mode #panel-mapa #mapaFarolLeaflet,
     body.tv-mode #panel-mapa #mapaFarolLeaflet.leaflet-container {
-      background: #030712 !important;
+      background: transparent !important;
       border: none !important;
       box-shadow: none !important;
     }
@@ -4161,38 +4161,31 @@
     .mapa-side .mapa-farol-hero {
       pointer-events: auto;
     }
-    /* Farol SP — fundo escuro + zonas por cima */
+    /* Farol SP — zonas flutuantes (sem painel/quadrão atrás) */
     .mapa-farol-hero {
       position: relative;
       flex: 1 1 auto;
       min-height: 0;
       border-radius: 0;
-      overflow: hidden;
-      background: #030712 !important;
+      overflow: visible;
+      background: transparent !important;
       border: none !important;
       box-shadow: none !important;
-      filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.8))
-              drop-shadow(0 0 16px rgba(0, 0, 0, 0.5));
+      filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.35))
+              drop-shadow(0 0 12px rgba(140, 198, 63, 0.28))
+              drop-shadow(0 0 16px rgba(41, 171, 226, 0.22));
     }
     .mapa-farol-hero::before {
       display: none !important;
       content: none !important;
     }
-    /* Vinheta suave sobre o fundo escuro */
     .mapa-farol-hero::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 400;
-      background:
-        radial-gradient(ellipse 68% 62% at 50% 48%, transparent 30%, rgba(2, 6, 14, 0.35) 75%, rgba(2, 6, 14, 0.65) 100%);
+      display: none !important;
+      content: none !important;
     }
     .mapa-farol-hero #mapaFarolLeaflet,
     .mapa-farol-hero #mapaFarolLeaflet.leaflet-container,
-    .mapa-farol-hero .leaflet-container {
-      background: #030712 !important;
-    }
+    .mapa-farol-hero .leaflet-container,
     .mapa-farol-hero .leaflet-pane,
     .mapa-farol-hero .leaflet-overlay-pane,
     .mapa-farol-hero .leaflet-map-pane {
@@ -4257,9 +4250,8 @@
       z-index: 1;
       color: #ffffff !important;
       text-shadow:
-        0 2px 18px rgba(0,0,0,0.85),
-        0 0 24px rgba(0,0,0,0.55),
-        0 0 2px rgba(0,0,0,1);
+        0 2px 14px rgba(0,0,0,0.65),
+        0 0 18px rgba(0,0,0,0.35);
     }
     .mapa-farol-pct-fill {
       position: relative;
@@ -4445,21 +4437,21 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: 900; color: #f8fafc;
     }
-    /* Farol SP — zonas BINHO escuras e nítidas (cyberpunk profissional) */
+    /* Farol SP — zonas BINHO iluminadas (sem caixa atrás) */
     #mapaFarolLeaflet path.mapa-zona-neon,
     .mapa-farol-hero path {
-      filter: brightness(0.68) saturate(1.2) contrast(1.18)
-              drop-shadow(0 0 1px rgba(0, 0, 0, 0.85))
-              drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
-      stroke: rgba(6, 10, 18, 0.95) !important;
-      stroke-width: 1.15px !important;
-      stroke-opacity: 0.95 !important;
+      filter: brightness(1.18) saturate(1.25) contrast(1.05)
+              drop-shadow(0 0 1px rgba(15, 23, 42, 0.55))
+              drop-shadow(0 0 6px rgba(255, 255, 255, 0.18));
+      stroke: rgba(248, 250, 252, 0.92) !important;
+      stroke-width: 1.35px !important;
+      stroke-opacity: 0.9 !important;
     }
-    /* Mapa principal (rotas) — zonas mais discretas sobre tiles dark */
+    /* Mapa principal (rotas) — zonas discretas sobre tiles dark */
     #mapaLeaflet path.mapa-zona-neon {
-      filter: brightness(0.78) saturate(1.1) contrast(1.08)
-              drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
-      stroke-opacity: 0.65 !important;
+      filter: brightness(0.9) saturate(1.1) contrast(1.05)
+              drop-shadow(0 0 2px rgba(0, 0, 0, 0.45));
+      stroke-opacity: 0.7 !important;
     }
     .leaflet-div-icon.cyber-base-icon {
       background: transparent;
@@ -4714,7 +4706,7 @@
     body.tv-mode #panel-mapa .mapa-farol-hero,
     body.tv-mode #panel-mapa #mapaFarolLeaflet,
     body.tv-mode #panel-mapa #mapaFarolLeaflet.leaflet-container {
-      background: #030712 !important;
+      background: transparent !important;
       border: none !important;
       box-shadow: none !important;
     }
@@ -10329,9 +10321,11 @@
       });
       mapaFarolLeaflet.setView([-23.55, -46.63], 10);
       try {
-        el.style.background = '#030712';
+        el.style.background = 'transparent';
         const container = mapaFarolLeaflet.getContainer();
-        if (container) container.style.background = '#030712';
+        if (container) container.style.background = 'transparent';
+        const pane = container && container.querySelector('.leaflet-pane');
+        if (pane) pane.style.background = 'transparent';
         const tilePane = mapaFarolLeaflet.getPane('tilePane');
         if (tilePane) tilePane.style.display = 'none';
       } catch (_) {}
@@ -10378,23 +10372,22 @@
             const p = feat.properties || {};
             const zona = String(p.zona || '').toUpperCase();
             const binhoZona = {
-              // tons mais profundos (ainda reconhecíveis na legenda Binho)
-              CENTRO: '#c9b100',
-              LESTE: '#4f8a22',
-              NORTE: '#1578a8',
-              OESTE: '#b5121a',
-              SUL: '#c47a18',
+              CENTRO: '#fff200',
+              LESTE: '#8cc63f',
+              NORTE: '#29abe2',
+              OESTE: '#ed1c24',
+              SUL: '#fbb03b',
             };
             const color = binhoZona[zona]
               || p.zona_color
               || (zonas.distritos[p.name] && zonas.distritos[p.name].color)
-              || '#4f8a22';
+              || '#8cc63f';
             return {
-              color: '#05080f',
-              weight: 1.15,
-              opacity: 0.95,
+              color: '#0b1220',
+              weight: 1.4,
+              opacity: 0.9,
               fillColor: color,
-              fillOpacity: 0.52,
+              fillOpacity: 0.88,
               className: 'mapa-zona-neon',
             };
           },
@@ -10491,10 +10484,10 @@
               || '#00f0ff';
             return {
               color: color,
-              weight: 1.1,
-              opacity: 0.45,
+              weight: 1.2,
+              opacity: 0.55,
               fillColor: color,
-              fillOpacity: 0.18,
+              fillOpacity: 0.28,
               className: 'mapa-zona-neon',
             };
           },
