@@ -1688,23 +1688,32 @@
       flex-direction: column !important;
       overflow: hidden !important;
       box-sizing: border-box !important;
-      width: 100vw !important;
+      width: 100% !important;
       max-width: none !important;
       height: 100dvh !important;
+      max-height: 100dvh !important;
       margin: 0 !important;
     }
     body.tv-mode #panel-armazem .arm-wrap,
     body.tv-mode #panel-pendencia .pen-wrap,
-    body.tv-mode #panel-contratacao .ctr-wrap {
+    body.tv-mode #panel-contratacao .ctr-wrap,
+    body.tv-mode #panel-emissao .emi-wrap {
       flex: 1 1 auto !important;
       min-height: 0 !important;
       height: auto !important;
+      max-height: 100% !important;
       max-width: none !important;
       width: 100% !important;
       margin: 0 !important;
       overflow: hidden !important;
       display: grid !important;
       grid-template-rows: auto minmax(0, 1fr) !important;
+      box-sizing: border-box !important;
+    }
+    /* Emissão: padding/gap no wrap (igual proporção do modo normal) */
+    body.tv-mode #panel-emissao .emi-wrap {
+      gap: clamp(6px, 0.8vmin, 10px) !important;
+      padding: clamp(8px, 1vmin, 12px) clamp(10px, 1.2vmin, 16px) !important;
     }
     /* Mapa: 3 linhas (header · KPIs · layout) — sem fundo nas placas/mapa */
     body.tv-mode #panel-mapa .mapa-wrap {
@@ -1717,21 +1726,6 @@
       overflow: hidden !important;
       display: grid !important;
       grid-template-rows: auto auto minmax(0, 1fr) !important;
-      gap: clamp(6px, 0.8vmin, 10px) !important;
-      padding: clamp(8px, 1vmin, 12px) clamp(10px, 1.2vmin, 16px) !important;
-      box-sizing: border-box !important;
-    }
-    /* Emissão: wrap dedicado (evita o layout TV genérico que estoura o gráfico) */
-    body.tv-mode #panel-emissao .emi-wrap {
-      flex: 1 1 auto !important;
-      min-height: 0 !important;
-      height: 100% !important;
-      max-width: none !important;
-      width: 100% !important;
-      margin: 0 !important;
-      overflow: hidden !important;
-      display: grid !important;
-      grid-template-rows: auto minmax(0, 1fr) !important;
       gap: clamp(6px, 0.8vmin, 10px) !important;
       padding: clamp(8px, 1vmin, 12px) clamp(10px, 1.2vmin, 16px) !important;
       box-sizing: border-box !important;
@@ -3936,16 +3930,20 @@
     /* TV Emissão — proporções do modo normal (sem forçar altura do gráfico) */
     html.tv-in-frame body.tv-mode #panel-emissao .emi-wrap,
     body.tv-mode #panel-emissao .emi-wrap {
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: 100% !important;
       padding: clamp(8px, 1vmin, 12px) clamp(10px, 1.2vmin, 16px) !important;
     }
     body.tv-mode #emiLayout {
       display: grid !important;
       grid-template-columns: 1fr !important;
-      grid-template-rows: auto minmax(0, 1.35fr) minmax(0, 0.95fr) !important;
+      grid-template-rows: auto minmax(0, 1.2fr) minmax(0, 0.9fr) !important;
       height: 100% !important;
       min-height: 0 !important;
       gap: clamp(6px, 0.9vmin, 12px) !important;
       overflow: hidden !important;
+      align-content: stretch !important;
     }
     body.tv-mode #emiLayout > .emi-perf {
       grid-row: 1;
