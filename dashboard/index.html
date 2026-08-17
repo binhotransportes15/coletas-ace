@@ -7073,16 +7073,17 @@
       return MAPA_ROUTE_MS_DEFAULT;
     }
     let mapaRouteMs = loadMapaRouteMs();
-    function setMapaRouteMs(ms, { restart = true } = {}) {
+    function setMapaRouteMs(ms, { restart = true, persist = true } = {}) {
       const n = Math.max(5000, Math.min(120000, Number(ms) || MAPA_ROUTE_MS_DEFAULT));
       mapaRouteMs = n;
-      try { localStorage.setItem(MAPA_ROUTE_MS_KEY, String(n)); } catch (_) { /* ignore */ }
+      if (persist) {
+        try { localStorage.setItem(MAPA_ROUTE_MS_KEY, String(n)); } catch (_) { /* ignore */ }
+      }
       const sel = document.getElementById('mapaRouteSec');
       if (sel) {
         const opt = [...sel.options].find((o) => Number(o.value) === n);
         if (opt) sel.value = String(n);
         else {
-          // valor custom salvo: usa o mais próximo da lista
           let best = sel.options[0];
           let bestDiff = Infinity;
           [...sel.options].forEach((o) => {
@@ -7096,6 +7097,11 @@
         startMapaRouteCarousel();
       }
       return mapaRouteMs;
+    }
+    function applyMapaRouteMsFromLayout(lay) {
+      const n = Number(lay && lay.mapaRouteMs);
+      if (!Number.isFinite(n) || n < 5000) return;
+      setMapaRouteMs(n, { restart: true, persist: true });
     }
     const MAPA_BASE_DEFAULT = {
       nome: 'BINHO TRANSPORTES',
@@ -7991,6 +7997,7 @@
         cols,
         syncSwap: true,
         swapMs: SWAP_MS,
+        mapaRouteMs: MAPA_ROUTE_MS_DEFAULT,
         hubs: {
           A: { name: 'Hub A', showLogo: true, margins: 'none' },
           B: { name: 'Hub B', showLogo: false, margins: 'none' },
@@ -8077,6 +8084,7 @@
           : ((slot.margins == null ? defaults.margins : slot.margins) === 'none' ? 'none' : 'normal'),
         syncSwap: wall && (sector === 'distribuicao' || sector === 'armazem') && lay.syncSwap !== false,
         swapMs: Math.max(5000, Number(lay.swapMs) || SWAP_MS),
+        mapaRouteMs: Math.max(5000, Math.min(120000, Number(lay.mapaRouteMs) || MAPA_ROUTE_MS_DEFAULT)),
         layoutVersion: Number(lay.version) || 0,
       };
     }
@@ -8102,6 +8110,7 @@
         if (TV_SLOT) TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT);
         applyTvChrome();
         applyDashboardChrome();
+        applyMapaRouteMsFromLayout(TV_LAYOUT);
         return TV_LAYOUT;
       }
       const remote = await fetchTvLayoutRemote();
@@ -8109,6 +8118,7 @@
       if (TV_SLOT) TV_EFFECTIVE = resolveTvEffective(TV_LAYOUT, TV_SLOT);
       applyTvChrome();
       applyDashboardChrome();
+      applyMapaRouteMsFromLayout(TV_LAYOUT);
       return TV_LAYOUT;
     }
 

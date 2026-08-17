@@ -139,6 +139,7 @@ def default_layout() -> dict[str, Any]:
         "cols": 3,
         "syncSwap": True,
         "swapMs": 15000,
+        "mapaRouteMs": 15000,
         "wallMode": False,
         "wallSector": "distribuicao",
         "sectorDefaults": {
@@ -235,6 +236,10 @@ def normalize_layout(raw: dict[str, Any] | None) -> dict[str, Any]:
         out["swapMs"] = max(5000, int(raw.get("swapMs") or 15000))
     except (TypeError, ValueError):
         out["swapMs"] = 15000
+    try:
+        out["mapaRouteMs"] = max(5000, min(120000, int(raw.get("mapaRouteMs") or 15000)))
+    except (TypeError, ValueError):
+        out["mapaRouteMs"] = 15000
     out["wallMode"] = bool(raw.get("wallMode", raw.get("painelUnico", False)))
     ws = str(raw.get("wallSector") or "distribuicao").lower()
     if ws in OPS_VIEWS:
@@ -369,6 +374,7 @@ def resolve_slot(layout: dict[str, Any], slot_id: int) -> dict[str, Any]:
         "margins": margins,
         "syncSwap": bool(lay["syncSwap"]) and wall and sector in ("distribuicao", "armazem"),
         "swapMs": int(lay["swapMs"]),
+        "mapaRouteMs": int(lay.get("mapaRouteMs") or 15000),
         "layoutVersion": int(lay.get("version") or 1),
         "updatedAt": str(lay.get("updatedAt") or ""),
     }

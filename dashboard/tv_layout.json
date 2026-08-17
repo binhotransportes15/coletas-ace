@@ -5,6 +5,7 @@
   "cols": 3,
   "syncSwap": false,
   "swapMs": 15000,
+  "mapaRouteMs": 15000,
   "wallMode": false,
   "wallSector": "armazem",
   "sectorDefaults": {

@@ -445,6 +445,31 @@ class TvEditorDialog(QDialog):
         self.tv_sync.stateChanged.connect(self._wall_global_changed)
         lay.addWidget(self.tv_sync)
 
+        route_row = QHBoxLayout()
+        route_row.addWidget(QLabel("Mapa · tempo de cada rota"))
+        self.tv_mapa_route = QComboBox()
+        for sec, label in (
+            (8, "8 s"),
+            (12, "12 s"),
+            (15, "15 s"),
+            (20, "20 s"),
+            (30, "30 s"),
+            (45, "45 s"),
+            (60, "60 s"),
+        ):
+            self.tv_mapa_route.addItem(label, sec * 1000)
+        self.tv_mapa_route.setToolTip(
+            "Quanto tempo cada rota fica no Mapa Operacional antes de trocar.\n"
+            "Tempos maiores aliviam travamento na TV."
+        )
+        self.tv_mapa_route.currentIndexChanged.connect(self._wall_global_changed)
+        route_row.addWidget(self.tv_mapa_route, 1)
+        lay.addLayout(route_row)
+        route_hint = QLabel("Vale para a TV do Mapa. Salve e publique o layout.")
+        route_hint.setObjectName("hint")
+        route_hint.setWordWrap(True)
+        lay.addWidget(route_hint)
+
         self.wall_status = QLabel("")
         lay.addWidget(self.wall_status)
 
@@ -747,6 +772,19 @@ class TvEditorDialog(QDialog):
     def _reload_forms(self) -> None:
         self._loading = True
         self.tv_sync.setChecked(bool(self._layout.get("syncSwap", True)))
+        try:
+            route_ms = int(self._layout.get("mapaRouteMs") or 15000)
+        except (TypeError, ValueError):
+            route_ms = 15000
+        ri = self.tv_mapa_route.findData(route_ms)
+        if ri < 0:
+            best_i, best_d = 0, 10**9
+            for i in range(self.tv_mapa_route.count()):
+                d = abs(int(self.tv_mapa_route.itemData(i) or 0) - route_ms)
+                if d < best_d:
+                    best_d, best_i = d, i
+            ri = best_i
+        self.tv_mapa_route.setCurrentIndex(ri)
         ws = str(self._layout.get("wallSector") or "distribuicao")
         i = self.wall_sector.findData(ws)
         if i >= 0:
@@ -859,6 +897,10 @@ class TvEditorDialog(QDialog):
         if self._loading:
             return
         self._layout["syncSwap"] = self.tv_sync.isChecked()
+        try:
+            self._layout["mapaRouteMs"] = int(self.tv_mapa_route.currentData() or 15000)
+        except (TypeError, ValueError):
+            self._layout["mapaRouteMs"] = 15000
 
     def _wall_on(self) -> None:
         sector = str(self.wall_sector.currentData() or "distribuicao")
