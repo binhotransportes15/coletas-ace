@@ -1575,7 +1575,7 @@ class AceCrtConsole(QWidget):
 
         prompt_row = QHBoxLayout()
         self.prompt = QLineEdit()
-        self.prompt.setPlaceholderText("ACE>  digite aqui (ex.: Coletas, /log, parar)")
+        self.prompt.setPlaceholderText("ACE>  ex.: /tempo mapa 50s · mapa · parar")
         self.prompt.returnPressed.connect(self._submit_prompt)
         self.btn_run = QPushButton("Enviar")
         self.btn_run.setObjectName("primary")

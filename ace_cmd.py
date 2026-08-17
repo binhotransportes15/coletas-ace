@@ -589,6 +589,8 @@ def cmd_help() -> str:
             "    73 sem200   sem manifesto 200",
             "  Mapa Operacional",
             "    mapa   puxa 36 + monta rotas (CyberMap)",
+            "    /tempo mapa 50s   tempo de troca de rota na TV (5s–5m)",
+            "    /tempo mapa       mostra o tempo atual",
             "",
             "SYNC (so envia planilha / nao baixa SSW)",
             "    sync      distribuicao (50/103/36/225)",
@@ -1438,6 +1440,55 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
         raise
 
 
+def cmd_tempo_mapa(parts: list[str]) -> str:
+    """`/tempo mapa 50s` — tempo de troca de rota/placa no Mapa Operacional (TV)."""
+    from interval_parse import format_duration_long, parse_duration
+    from tv_layout import load_layout, push_layout_to_sheets, save_layout
+
+    toks = [str(p).strip().lower().lstrip("/") for p in (parts or []) if str(p).strip()]
+    if len(toks) < 2 or toks[1] not in {"mapa", "map", "rota", "rotas", "placa", "placas"}:
+        return (
+            "Use: /tempo mapa 50s\n"
+            "     /tempo mapa        (ver atual)\n"
+            "Aliases: /tempo rota 30s · /tempo placa 1m"
+        )
+
+    lay = load_layout()
+    cur_ms = int(lay.get("mapaRouteMs") or 15000)
+    if len(toks) == 2:
+        sec = max(1, cur_ms // 1000)
+        return (
+            f"Mapa · tempo de rota atual: {sec}s "
+            f"({format_duration_long(sec)}).\n"
+            f"Ex.: /tempo mapa 50s"
+        )
+
+    raw_iv = " ".join(toks[2:]).strip()
+    try:
+        sec = parse_duration(raw_iv, default_unit="s")
+    except ValueError as err:
+        return str(err)
+
+    # Carrossel de rota: 5s–5min (evita travar TV com troca rápida demais)
+    sec = max(5, min(300, int(sec)))
+    ms = sec * 1000
+    lay["mapaRouteMs"] = ms
+    save_layout(lay)
+
+    push_note = ""
+    try:
+        ok, msg = push_layout_to_sheets(lay)
+        push_note = f" · planilha {'ok' if ok else 'falhou: ' + str(msg)}"
+    except Exception as err:  # noqa: BLE001
+        push_note = f" · planilha: {err}"
+
+    return (
+        f"Mapa · tempo de rota = {sec}s ({format_duration_long(sec)}). "
+        f"Salvo no layout TV{push_note}. "
+        f"Na TV: Ctrl+F5 (ou aguarde o layout recarregar)."
+    )
+
+
 def _execute_line_body(
     raw: str,
     payload: dict[str, Any],
@@ -1448,6 +1499,8 @@ def _execute_line_body(
         return ("Feche a janela CRT para sair do painel.", payload)
     if cmd in {"help", "/help", "?", "h"}:
         return (cmd_help(), payload)
+    if cmd in {"/tempo", "tempo"}:
+        return (cmd_tempo_mapa(parts), payload)
     if cmd in {"/viz", "viz", "/visualizar", "visualizar"}:
         msg = cmd_viz(parts, payload)
         return (msg, _load_payload())
@@ -1756,6 +1809,8 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             if cmd in {"help", "/help", "?", "h"}:
                 message = cmd_help()
+            elif cmd in {"/tempo", "tempo"}:
+                message = cmd_tempo_mapa(parts)
             elif cmd in {"/viz", "viz", "/visualizar", "visualizar"}:
                 message = cmd_viz(parts, payload)
                 payload = _load_payload()
