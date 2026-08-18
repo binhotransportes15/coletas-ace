@@ -1721,7 +1721,7 @@
       min-height: 0 !important;
     }
     body.tv-mode #opsLayoutEntrega > [data-block="tabela"] {
-      display: none !important;
+      display: flex !important;
     }
     body.tv-mode #entregaHStatus,
     body.tv-mode #coletaHStatus {
@@ -6476,46 +6476,145 @@
       text-shadow: 0 1px 10px rgba(0,0,0,.7);
     }
 
-    .ent-dash-bottom {
-      flex: 0 0 auto;
+    .ent-dash-mid {
+      flex: 1 1 auto;
+      min-height: 0;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(150px, 0.85fr) minmax(280px, 1.7fr) minmax(150px, 0.85fr);
       gap: clamp(8px, 1vw, 14px);
-      min-height: clamp(160px, 24vh, 260px);
-      max-height: 30vh;
+      align-content: stretch;
     }
-    .ent-dash-bottom .ent-side {
+    .ent-dash-mid .ent-side {
       display: flex;
       flex-direction: column;
       min-height: 0;
       height: 100%;
-      padding: clamp(10px, 1.2vw, 14px);
+      padding: clamp(8px, 1vw, 12px);
       border-radius: 14px;
       overflow: hidden;
       background: linear-gradient(180deg, #111827, #0b1220);
       border: 1px solid rgba(148,163,184,.14);
     }
-    .ent-dash-bottom .ent-side .pop-stack {
+    .ent-dash-mid .ent-side .pop-stack {
       flex: 1 1 auto;
       min-height: 0;
       position: relative;
       overflow: hidden;
     }
-    .ent-dash-bottom .pop.pop-placa,
-    .ent-dash-bottom .pop.pop-prazo {
+    .ent-dash-mid .pop.pop-placa,
+    .ent-dash-mid .pop.pop-prazo {
       position: absolute;
       left: 0;
       right: 0;
     }
-    body.tv-mode #opsLayoutEntrega .ent-dash-bottom {
-      min-height: clamp(140px, 22vh, 240px) !important;
-      max-height: 26vh !important;
+    .ent-dash-mid .ent-hero {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
     }
-    body.tv-mode #opsLayoutEntrega .ent-dash-bottom .pop .name {
-      font-size: clamp(13px, 1.5vmin, 18px);
+    .ent-dash-table {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: clamp(120px, 18vh, 200px);
+      max-height: 26vh;
+      padding: clamp(8px, 1vw, 12px);
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(180deg, #111827, #0b1220);
+      border: 1px solid rgba(148,163,184,.14);
     }
-    body.tv-mode #opsLayoutEntrega .ent-dash-bottom .pop .hora {
-      font-size: clamp(18px, 2.2vmin, 28px);
+    .ent-pend-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .ent-pend-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: clamp(11px, 1.15vw, 13px);
+    }
+    .ent-pend-table th,
+    .ent-pend-table td {
+      text-align: left;
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(148,163,184,.12);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 0;
+    }
+    .ent-pend-table th:nth-child(1),
+    .ent-pend-table td:nth-child(1) { width: 16%; max-width: 140px; }
+    .ent-pend-table th:nth-child(2),
+    .ent-pend-table td:nth-child(2) { width: 12%; max-width: 100px; }
+    .ent-pend-table th:nth-child(3),
+    .ent-pend-table td:nth-child(3) { width: 14%; max-width: 120px; }
+    .ent-pend-table th:nth-child(4),
+    .ent-pend-table td:nth-child(4) { width: 42%; max-width: 320px; white-space: normal; }
+    .ent-pend-table th:nth-child(5),
+    .ent-pend-table td:nth-child(5) { width: 16%; max-width: 120px; }
+    .ent-pend-table th {
+      color: #94a3b8;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 800;
+      position: sticky;
+      top: 0;
+      background: #0f172a;
+      z-index: 1;
+    }
+    .ent-pend-table td {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+    .ent-pend-table td.mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; }
+    .ent-pend-table tr.is-crit td {
+      background: rgba(127, 29, 29, 0.35);
+      color: #fecaca;
+    }
+    .ent-pend-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.35);
+    }
+    .ent-pend-empty {
+      padding: 16px;
+      text-align: center;
+      color: #64748b;
+      font-weight: 600;
+    }
+    body.tv-mode #opsLayoutEntrega .ent-dash-mid {
+      grid-template-columns: minmax(140px, 0.8fr) minmax(260px, 1.8fr) minmax(140px, 0.8fr) !important;
+      min-height: 0 !important;
+      flex: 1 1 auto !important;
+    }
+    body.tv-mode #opsLayoutEntrega .ent-dash-table {
+      min-height: clamp(110px, 16vh, 180px) !important;
+      max-height: 22vh !important;
+    }
+    body.tv-mode #opsLayoutEntrega .ent-pend-table {
+      font-size: clamp(12px, 1.4vmin, 15px);
+    }
+
+    .ent-dash-bottom {
+      display: none !important;
+    }
+    .ent-dash-mid .ent-side .pop-stack,
+    .ent-side .pop-stack {
+      flex: 1 1 auto;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
     }
     .ent-side {
       display: flex;
@@ -6705,7 +6804,7 @@
       height: min(380px, 42vmin);
     }
     body.tv-mode #opsLayoutEntrega > [data-block="tabela"] {
-      display: none !important;
+      display: flex !important;
     }
     .ent-kpi-row {
       display: grid;
@@ -8000,28 +8099,29 @@
             </div>
           </header>
 
-          <section class="ent-hero dash-block" data-block="chart" id="entHeroMap" aria-label="Indicador de entrega">
-            <div class="ent-map-bg" id="entMapLeaflet" aria-hidden="true"></div>
-            <div class="ent-hero-scrim" aria-hidden="true"></div>
-            <div class="ent-ring-wrap">
-              <svg id="entregaRing" viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
-              <div class="ent-ring-center">
-                <strong id="entRingPct">0%</strong>
-                <span id="entRingLab">concluído</span>
-                <small id="entRingFrac">0/0</small>
-              </div>
-            </div>
-            <p class="ent-ring-resumo" id="entRingResumo">Resumo: —</p>
-          </section>
-
-          <div class="ent-dash-bottom">
-            <aside class="ent-side ds-panel dash-block" data-block="placas" aria-label="Placas">
+          <div class="ent-dash-mid">
+            <aside class="ent-side ds-panel dash-block" data-block="ocorrencias-l" aria-label="Ocorrências">
               <div class="ent-side-head">
-                <h3>Placas</h3>
-                <span class="meta" id="entFrotaMeta">serviço</span>
+                <h3>Ocorrências</h3>
+                <span class="meta" id="entFrotaMeta">lateral</span>
               </div>
-              <div class="pop-stack" id="placaStackEnt"></div>
+              <div class="pop-stack" id="pendenciaStackL"></div>
             </aside>
+
+            <section class="ent-hero dash-block" data-block="chart" id="entHeroMap" aria-label="Indicador de entrega">
+              <div class="ent-map-bg" id="entMapLeaflet" aria-hidden="true"></div>
+              <div class="ent-hero-scrim" aria-hidden="true"></div>
+              <div class="ent-ring-wrap">
+                <svg id="entregaRing" viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+                <div class="ent-ring-center">
+                  <strong id="entRingPct">0%</strong>
+                  <span id="entRingLab">concluído</span>
+                  <small id="entRingFrac">0/0</small>
+                </div>
+              </div>
+              <p class="ent-ring-resumo" id="entRingResumo">Resumo: —</p>
+            </section>
+
             <aside class="ent-side ds-panel dash-block" data-block="ocorrencias" aria-label="Ocorrências">
               <div class="ent-side-head">
                 <h3>Ocorrências</h3>
@@ -8030,6 +8130,28 @@
               <div class="pop-stack" id="pendenciaStack"></div>
             </aside>
           </div>
+
+          <section class="ent-dash-table ds-panel dash-block" data-block="tabela" aria-label="CTRCs com pendência">
+            <div class="ent-side-head">
+              <h3>CTRCs com ocorrência</h3>
+              <span class="meta" id="entPendTableMeta">—</span>
+            </div>
+            <div class="ent-pend-scroll">
+              <table class="ent-pend-table" id="entPendTable">
+                <thead>
+                  <tr>
+                    <th>CTRC</th>
+                    <th>Placa</th>
+                    <th>Romaneio</th>
+                    <th>Ocorrência</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="entPendBody"></tbody>
+              </table>
+              <div class="ent-pend-empty" id="entPendEmpty" hidden>Sem CTRCs em pendência</div>
+            </div>
+          </section>
 
           <div class="ent-crit-callout" id="entCritCallout" hidden>
             <span class="ico" aria-hidden="true">⚠</span>
@@ -8041,6 +8163,7 @@
 
           <!-- legado oculto (IDs mantidos p/ JS antigo) -->
           <div hidden aria-hidden="true">
+            <div id="placaStackEnt"></div>
             <div id="entMotivosBars"></div>
             <div id="entFrotaBars"></div>
             <div id="entregaTorres">
@@ -9621,17 +9744,17 @@
       PENDENCIAS_36 = buildPendencias36();
       renderEntregaRing(real, rota, par, total);
       const frotaMeta = document.getElementById('entFrotaMeta');
-      if (frotaMeta) frotaMeta.textContent = PLACAS_ENT.length
-        ? `${PLACAS_ENT.length} placa${PLACAS_ENT.length === 1 ? '' : 's'}`
-        : 'sem placas';
+      if (frotaMeta) frotaMeta.textContent = par
+        ? `${par} pend.`
+        : 'ok';
       const motMeta = document.getElementById('entMotivosMeta');
       if (motMeta) motMeta.textContent = par
         ? `${par} pendência${par === 1 ? '' : 's'}`
         : 'sem pendências';
       if (CURRENT_VIEW === 'entrega') {
         ensureMapaEntregaLeaflet();
-        renderPlacaPops();
         renderPendenciaPops();
+        startEntPendTableLoop();
       }
       try { renderEntregaAlerts(counts); } catch (_) { /* legado */ }
       try { renderEntregaTabela(); } catch (_) { /* legado */ }
@@ -10873,8 +10996,8 @@
           if (CURRENT_VIEW === 'entrega' && lastCountsEnt) renderCilindroEntrega(lastCountsEnt);
           if (CURRENT_VIEW === 'entrega') {
             ensureMapaEntregaLeaflet();
-            renderPlacaPops();
             renderPendenciaPops();
+            startEntPendTableLoop();
           }
           if (CURRENT_VIEW === 'agendamento' && lastAgendaTorreCounts) {
             renderAgendaPizza(
@@ -14309,84 +14432,138 @@
         const occRaw = String(c.ocorrencia || '').trim();
         out.push({
           label: c.ctrc_id || c.romaneio || '',
+          ctrc: c.ctrc_id || '',
+          romaneio: c.romaneio || '',
           hora,
           veiculo: parsePlaca(c.placa || ''),
           ocorrencia: shortMotivoLabel(occRaw, 36),
+          ocorrenciaFull: occRaw || '—',
           ocorrenciaKey: occRaw.toUpperCase().replace(/\s+/g, ' ').trim() || 'SEM OCORRÊNCIA',
+          status: 'Pendência',
         });
       });
       out.sort((a, b) => String(b.hora).localeCompare(String(a.hora)));
-      return out.slice(0, 40);
+      return out.slice(0, 80);
     }
 
-    /** Ocorrências agregadas (motivo + qtd) para pops da Entrega. */
+    /** Ocorrências agregadas (legado — pops usam lista CTRC). */
     function buildOcorrenciasPopEntrega() {
-      const map = new Map();
-      (PENDENCIAS_36 || []).forEach((r) => {
-        const key = r.ocorrenciaKey || r.ocorrencia || 'SEM OCORRÊNCIA';
-        if (!map.has(key)) {
-          map.set(key, {
-            key,
-            label: r.ocorrencia || shortMotivoLabel(key),
-            n: 0,
-            hora: r.hora || '--:--',
-            veiculo: r.veiculo || '',
-          });
-        }
-        const row = map.get(key);
-        row.n += 1;
-        if (r.hora && (!row.hora || r.hora > row.hora)) row.hora = r.hora;
-        if (r.veiculo && !row.veiculo) row.veiculo = r.veiculo;
-      });
-      return Array.from(map.values()).sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
+      return buildPendencias36();
     }
 
     function renderPendenciaPops() {
-      const stack = document.getElementById('pendenciaStack');
-      if (!stack) return;
       const isEnt = CURRENT_VIEW === 'entrega';
-      const list = isEnt ? buildOcorrenciasPopEntrega() : (PENDENCIAS_36 || []);
+      const list = PENDENCIAS_36 || [];
+      const stacks = isEnt
+        ? [
+            { id: 'pendenciaStackL', offset: 0 },
+            { id: 'pendenciaStack', offset: Math.max(1, Math.floor(list.length / 2)) },
+          ]
+        : [{ id: 'pendenciaStack', offset: 0 }];
+
+      stacks.forEach(({ id, offset }) => {
+        const stack = document.getElementById(id);
+        if (!stack) return;
+        if (!list.length) {
+          stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem pendências</div></div>';
+          return;
+        }
+        const visible = [];
+        const nVis = pendenciaVisivel();
+        const n = Math.min(nVis, list.length);
+        for (let i = 0; i < n; i++) {
+          visible.push(list[(pendCursor + offset + i) % list.length]);
+        }
+        Array.from(stack.querySelectorAll('.pop')).forEach((el) => {
+          el.classList.remove('show'); el.classList.add('leaving');
+          setTimeout(() => { try { el.remove(); } catch (_) {} }, 480);
+        });
+        setTimeout(() => {
+          if (!document.getElementById(id)) return;
+          const nodes = visible.map((r) => {
+            const el = document.createElement('div');
+            el.className = 'pop pop-prazo warn';
+            if (isEnt) {
+              el.innerHTML = `
+                <div class="hora">${esc(r.hora || '--:--')}</div>
+                <div>
+                  <div class="name">${esc(r.ocorrencia || r.label || 'Ocorrência')}</div>
+                  <div class="meta">${esc(r.label || '')}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
+                </div>
+                <div class="tag">PENDÊNCIA</div>`;
+            } else {
+              el.innerHTML = `
+                <div class="hora">${esc(r.hora || '--:--')}</div>
+                <div>
+                  <div class="name">${esc(r.label)}</div>
+                  <div class="meta">${r.veiculo ? esc(r.veiculo) : ''}</div>
+                </div>
+                <div class="tag">PENDÊNCIA</div>`;
+            }
+            stack.appendChild(el);
+            requestAnimationFrame(() => el.classList.add('show'));
+            return el;
+          });
+          layoutPops(stack, nodes);
+        }, 120);
+      });
+    }
+
+    let entPendTableCursor = 0;
+    let entPendTableTimer = null;
+
+    function entPendTableVisivel() {
+      const tv = document.body.classList.contains('tv-mode');
+      const host = document.querySelector('.ent-pend-scroll');
+      if (!host) return tv ? 5 : 4;
+      const h = host.clientHeight || 0;
+      const slot = tv ? 34 : 32;
+      return Math.max(3, Math.min(tv ? 8 : 6, Math.floor(Math.max(0, h - 8) / slot)));
+    }
+
+    function renderEntPendTable() {
+      const body = document.getElementById('entPendBody');
+      const empty = document.getElementById('entPendEmpty');
+      const meta = document.getElementById('entPendTableMeta');
+      if (!body) return;
+      const list = PENDENCIAS_36 || [];
+      if (meta) meta.textContent = list.length
+        ? `${list.length} CTRC${list.length === 1 ? '' : 's'}`
+        : 'sem pendências';
       if (!list.length) {
-        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem pendências</div></div>';
+        body.innerHTML = '';
+        if (empty) empty.hidden = false;
         return;
       }
-      const visible = [];
-      const nVis = pendenciaVisivel();
+      if (empty) empty.hidden = true;
+      const nVis = entPendTableVisivel();
       const n = Math.min(nVis, list.length);
-      for (let i = 0; i < n; i++) visible.push(list[(pendCursor + i) % list.length]);
-      Array.from(stack.querySelectorAll('.pop')).forEach((el) => {
-        el.classList.remove('show'); el.classList.add('leaving');
-        setTimeout(() => { try { el.remove(); } catch (_) {} }, 480);
-      });
-      setTimeout(() => {
-        if (!document.getElementById('pendenciaStack')) return;
-        const nodes = visible.map((r) => {
-          const el = document.createElement('div');
-          el.className = 'pop pop-prazo warn';
-          if (isEnt) {
-            const qtd = Number(r.n) || 1;
-            el.innerHTML = `
-              <div class="hora">${esc(String(qtd))}</div>
-              <div>
-                <div class="name">${esc(r.label || 'Ocorrência')}</div>
-                <div class="meta">${qtd} CTRC${qtd === 1 ? '' : 's'}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
-              </div>
-              <div class="tag">OCORR.</div>`;
-          } else {
-            el.innerHTML = `
-              <div class="hora">${esc(r.hora || '--:--')}</div>
-              <div>
-                <div class="name">${esc(r.label)}</div>
-                <div class="meta">${r.veiculo ? esc(r.veiculo) : ''}</div>
-              </div>
-              <div class="tag">PENDÊNCIA</div>`;
-          }
-          stack.appendChild(el);
-          requestAnimationFrame(() => el.classList.add('show'));
-          return el;
-        });
-        layoutPops(stack, nodes);
-      }, 120);
+      const rows = [];
+      for (let i = 0; i < n; i++) {
+        rows.push(list[(entPendTableCursor + i) % list.length]);
+      }
+      body.innerHTML = rows.map((r) => {
+        const crit = /FALTA|AVARIA|SOBRA|BUSCA|RECONFER/i.test(String(r.ocorrenciaFull || r.ocorrencia || ''));
+        return `<tr class="${crit ? 'is-crit' : ''}">
+          <td class="mono" title="${esc(r.ctrc || r.label)}">${esc(r.ctrc || r.label || '—')}</td>
+          <td class="mono">${esc(r.veiculo || '—')}</td>
+          <td class="mono">${esc(r.romaneio || '—')}</td>
+          <td title="${esc(r.ocorrenciaFull || '')}">${esc(r.ocorrencia || r.ocorrenciaFull || '—')}</td>
+          <td><span class="ent-pend-status">${esc(r.status || 'Pendência')}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function startEntPendTableLoop() {
+      if (entPendTableTimer) clearInterval(entPendTableTimer);
+      renderEntPendTable();
+      entPendTableTimer = setInterval(() => {
+        const list = PENDENCIAS_36 || [];
+        if (list.length > 1) {
+          entPendTableCursor = (entPendTableCursor + 1) % list.length;
+          renderEntPendTable();
+        }
+      }, 4500);
     }
 
     function animateDonut(el, targetPct) {
@@ -14509,6 +14686,7 @@
       renderPlacaPops();
       renderPrazoPops();
       renderPendenciaPops();
+      if (CURRENT_VIEW === 'entrega') startEntPendTableLoop();
       placaTimer = setInterval(() => {
         const comBaixa = PLACAS.filter(p => p.feitas > 0);
         const base = comBaixa.length || PLACAS.length;
