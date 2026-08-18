@@ -18,6 +18,17 @@
     title: '',
   };
 
+  /** Cache p/ drill-down (coleta → histórico / entrega → CTRCs) */
+  const CACHE = {
+    coletas103: [],
+    coletas50: [],
+    historico: [],
+    entregas36: [],
+    placaItems: new Map(), // placa → coletas[]
+  };
+
+  const SEM_PLACA_LABEL = 'SEM ROMANEIO';
+
   const SECTOR_LABEL = {
     distribuicao: 'Distribuição',
     armazem: 'Armazém',
@@ -111,7 +122,138 @@
 
   function colDef(key, label, opts) {
     const type = (opts && opts.type) || (isMoneyKey(key) ? 'money' : 'text');
-    return { key, label: label || key, type, enum: (opts && opts.enum) || null };
+    return {
+      key,
+      label: label || key,
+      type,
+      enum: (opts && opts.enum) || null,
+      action: (opts && opts.action) || null,
+    };
+  }
+
+  function coletaKey(r) {
+    return String(r.coleta_id || r.coleta || `${r.unidade || ''}${r.numero || ''}`)
+      .toUpperCase()
+      .replace(/\s+/g, '')
+      .trim();
+  }
+
+  function parsePlaca(raw) {
+    return String(raw || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .trim();
+  }
+
+  function statusAce(c) {
+    const raw = String(c.status_ace || '').toLowerCase().trim();
+    if (['parado', 'em_rota', 'realizada', 'cancelada'].includes(raw)) return raw;
+    const s = String(c.situacao_atual || '').toUpperCase();
+    if (s.includes('CANCEL')) return 'cancelada';
+    if (s.includes('COLET') || s.includes('REALIZ')) return 'realizada';
+    if (s.includes('COMAND') || s.includes('ROTA')) return 'em_rota';
+    if (s.includes('CADASTR') || s.includes('PARADO')) return 'parado';
+    return 'outro';
+  }
+
+  function statusAce36(c) {
+    const o = String(c.ocorrencia || '')
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    if (o) {
+      if (
+        o.includes('ENTREGA REALIZADA')
+        || o.includes('PRE-ENTREGUE')
+        || o.includes('PRE ENTREGUE')
+        || o.includes('CTE BAIXADO')
+        || /\bREALIZAD[OA]\b/.test(o)
+      ) return 'realizada';
+      if (o.includes('SAIDA PARA ENTREGA')) return 'em_rota';
+      return 'parado';
+    }
+    const raw = String(c.status_ace || '').toLowerCase().trim();
+    if (raw === 'realizada') return 'realizada';
+    if (raw === 'em_rota') return 'em_rota';
+    if (raw === 'pendencia' || raw === 'parado') return 'parado';
+    if (raw === 'excluido') return 'cancelada';
+    return 'em_rota';
+  }
+
+  function labelStatus(s) {
+    return ({
+      parado: 'Parado',
+      pendencia: 'Pendência',
+      em_rota: 'Em rota',
+      realizada: 'Realizada',
+      cancelada: 'Cancelada',
+    })[s] || s;
+  }
+
+  function agregarPlacasColeta(rows) {
+    const by = new Map();
+    (rows || []).forEach((c) => {
+      const st = statusAce(c);
+      const placaNorm = parsePlaca(c.placa || c.veiculo || '');
+      const key = placaNorm || SEM_PLACA_LABEL;
+      if (!by.has(key)) {
+        by.set(key, {
+          placa: key,
+          motorista: c.motorista || '',
+          carreta: c.placa_carreta || '',
+          total: 0,
+          realizada: 0,
+          em_rota: 0,
+          parado: 0,
+          cancelada: 0,
+          items: [],
+        });
+      }
+      const row = by.get(key);
+      row.total += 1;
+      if (st === 'realizada') row.realizada += 1;
+      else if (st === 'em_rota') row.em_rota += 1;
+      else if (st === 'parado') row.parado += 1;
+      else if (st === 'cancelada') row.cancelada += 1;
+      if (!row.motorista && c.motorista) row.motorista = c.motorista;
+      if (!row.carreta && c.placa_carreta) row.carreta = c.placa_carreta;
+      row.items.push(c);
+    });
+    return Array.from(by.values()).map((r) => {
+      const pct = r.total ? Math.round((r.realizada / r.total) * 100) : 0;
+      return { ...r, pct };
+    }).sort((a, b) => {
+      const aSem = a.placa === SEM_PLACA_LABEL ? 1 : 0;
+      const bSem = b.placa === SEM_PLACA_LABEL ? 1 : 0;
+      return aSem - bSem
+        || (b.realizada - a.realizada)
+        || (b.total - a.total)
+        || a.placa.localeCompare(b.placa);
+    });
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function fmtCampo(valor, tipo) {
+    const s = String(valor || '').trim();
+    if (!s) return '';
+    if (tipo === 'hora') {
+      const m = s.match(/(\d{1,2}):(\d{2})/);
+      return m ? `${pad(m[1])}:${pad(m[2])}` : s;
+    }
+    if (tipo === 'data') {
+      const m = s.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+      if (!m) return s;
+      return m[3] ? `${pad(m[1])}/${pad(m[2])}/${m[3]}` : `${pad(m[1])}/${pad(m[2])}`;
+    }
+    return s;
+  }
+
+  function fmtDataHora(data, hora) {
+    const d = fmtCampo(data, 'data');
+    const h = fmtCampo(hora, 'hora');
+    if (d && h) return `${d} ${h}`;
+    return d || h || '';
   }
 
   function isMoneyKey(key) {
@@ -189,56 +331,70 @@
 
   async function loadDataset() {
     if (SETOR === 'distribuicao' && REL === 'coleta') {
-      // Volumes vêm do 0157 (coletas.csv · qtde_vol); 103 não traz volume
-      const [rows103, rows157] = await Promise.all([
+      // Resumo por placa (como no painel) + drill-down Coletas → Histórico (rel. 50)
+      const [rows103, rows157, hist] = await Promise.all([
         loadCsv('data/coletas_103.csv'),
         loadCsv('data/coletas.csv').catch(() => []),
+        loadCsv('data/historico.csv').catch(() => []),
       ]);
-      const volById = new Map();
-      for (const r of rows157) {
-        const id = String(r.coleta_id || '').replace(/\s+/g, '').toUpperCase();
-        if (!id) continue;
-        const vol = String(r.qtde_vol || r.volumes || '').trim();
-        if (vol) volById.set(id, vol);
-      }
-      const rows = rows103.map((r) => {
-        const id = String(r.coleta_id || '').replace(/\s+/g, '').toUpperCase();
-        return { ...r, volumes: volById.get(id) || r.volumes || '' };
-      });
+      CACHE.coletas103 = rows103;
+      CACHE.coletas50 = rows157;
+      CACHE.historico = hist;
+      CACHE.placaItems = new Map();
+      const groups = agregarPlacasColeta(rows103);
+      groups.forEach((g) => CACHE.placaItems.set(g.placa, g.items || []));
       return {
         columns: [
-          colDef('coleta_id', 'Coleta'),
           colDef('placa', 'Placa'),
-          colDef('placa_carreta', 'Carreta'),
           colDef('motorista', 'Motorista'),
-          colDef('volumes', 'Volumes'),
-          colDef('status_ace', 'Status', { type: 'enum', enum: ['em_rota', 'realizada', 'parado', 'cancelada'] }),
-          colDef('situacao_atual', 'Situação'),
-          colDef('hora', 'Hora'),
+          colDef('total', 'Total'),
+          colDef('realizada', 'Realizada'),
+          colDef('em_rota', 'Em rota'),
+          colDef('parado', 'Parado'),
+          colDef('pct', '%'),
+          colDef('_act', '', { type: 'action', action: 'coletas' }),
         ],
-        rows,
+        rows: groups.map((g) => ({
+          placa: g.placa === SEM_PLACA_LABEL
+            ? SEM_PLACA_LABEL
+            : (g.carreta ? `${g.placa} · ${g.carreta}` : g.placa),
+          placa_key: g.placa,
+          motorista: g.placa === SEM_PLACA_LABEL ? '—' : (g.motorista || ''),
+          total: String(g.total),
+          realizada: String(g.realizada),
+          em_rota: String(g.em_rota),
+          parado: String(g.parado),
+          pct: `${g.pct}%`,
+          _act: 'Coletas',
+        })),
+        meta: `${groups.length} placa(s) · clique em Coletas → Histórico`,
       };
     }
     if (SETOR === 'distribuicao' && REL === 'entrega') {
-      // Relatório 36 (CTRC) não traz qtde de volumes — coluna fica vazia se não houver fonte
-      const rows = await loadCsv('data/entregas_36.csv');
+      // Resumo por romaneio + drill-down CTRCs / ocorrência
+      const [roms, ents] = await Promise.all([
+        loadCsv('data/romaneios_36.csv'),
+        loadCsv('data/entregas_36.csv'),
+      ]);
+      CACHE.entregas36 = ents.filter((r) => String(r.excluido || '') !== '1');
       return {
         columns: [
-          colDef('ctrc_id', 'CTRC'),
           colDef('romaneio', 'Romaneio'),
           colDef('placa', 'Placa'),
           colDef('motorista', 'Motorista'),
-          colDef('destinatario', 'Destinatário'),
-          colDef('volumes', 'Volumes'),
-          colDef('status_ace', 'Status', { type: 'enum', enum: ['em_rota', 'realizada', 'pendencia', 'excluido'] }),
-          colDef('ocorrencia', 'Ocorrência'),
-          colDef('data_ocorrencia', 'Data'),
-          colDef('hora_ocorrencia', 'Hora'),
+          colDef('total', 'Total'),
+          colDef('realizada', 'Realizada'),
+          colDef('em_rota', 'Em rota'),
+          colDef('pendencia', 'Pendência'),
+          colDef('pct', '%'),
+          colDef('_act', '', { type: 'action', action: 'ctrcs' }),
         ],
-        rows: rows.filter((r) => String(r.excluido || '') !== '1').map((r) => ({
+        rows: roms.map((r) => ({
           ...r,
-          volumes: r.volumes || r.qtde_vol || '',
+          pct: String(r.pct || '0').includes('%') ? r.pct : `${r.pct || 0}%`,
+          _act: 'CTRCs',
         })),
+        meta: `${roms.length} romaneio(s) · clique em CTRCs p/ ver ocorrências`,
       };
     }
     if (SETOR === 'distribuicao' && REL === 'agendamento') {
@@ -384,6 +540,7 @@
     const q = String(STATE.busca || '').trim().toLowerCase();
     STATE.filtered = STATE.rows.filter((row) => {
       for (const col of STATE.columns) {
+        if (col.type === 'action') continue;
         const selected = STATE.colFilters[col.key];
         if (selected == null) continue;
         const set = selected instanceof Set
@@ -394,8 +551,34 @@
         if (!set.has(val)) return false;
       }
       if (!q) return true;
-      const blob = STATE.columns.map((c) => String(row[c.key] ?? '')).join(' ').toLowerCase();
-      return blob.includes(q);
+      const blob = STATE.columns
+        .filter((c) => c.type !== 'action')
+        .map((c) => String(row[c.key] ?? ''))
+        .join(' ')
+        .toLowerCase();
+      if (blob.includes(q)) return true;
+      // Coleta: também busca no id das coletas do carro
+      if (row.placa_key && CACHE.placaItems.has(row.placa_key)) {
+        const hit = (CACHE.placaItems.get(row.placa_key) || []).some((c) => {
+          const id = coletaKey(c).toLowerCase();
+          return id.includes(q.replace(/\s+/g, '')) || String(c.coleta_id || '').toLowerCase().includes(q);
+        });
+        if (hit) return true;
+      }
+      // Entrega: busca CTRC dentro do romaneio
+      if (row.romaneio && CACHE.entregas36.length) {
+        const rom = String(row.romaneio).toUpperCase();
+        const hit = CACHE.entregas36.some((c) =>
+          String(c.romaneio || '').toUpperCase() === rom
+          && (
+            String(c.ctrc_id || '').toLowerCase().includes(q)
+            || String(c.destinatario || '').toLowerCase().includes(q)
+            || String(c.ocorrencia || '').toLowerCase().includes(q)
+          )
+        );
+        if (hit) return true;
+      }
+      return false;
     });
   }
 
@@ -515,14 +698,233 @@
       body.innerHTML = `<tr><td colspan="${STATE.columns.length}" class="muted">Nenhuma linha com os filtros atuais.</td></tr>`;
     } else {
       body.innerHTML = STATE.filtered.map((row) => {
-        const tds = STATE.columns.map((c) => `<td>${esc(formatCellDisplay(c, row[c.key] || ''))}</td>`).join('');
+        const tds = STATE.columns.map((c) => {
+          if (c.type === 'action') {
+            const act = c.action || 'coletas';
+            const key = act === 'ctrcs'
+              ? (row.romaneio || '')
+              : (row.placa_key || row.placa || '');
+            const label = act === 'ctrcs' ? 'CTRCs' : 'Coletas';
+            return `<td><button type="button" class="btn-act" data-act="${esc(act)}" data-key="${esc(key)}">${esc(label)}</button></td>`;
+          }
+          const raw = formatCellDisplay(c, row[c.key] || '');
+          const sitKeys = ['realizada', 'em_rota', 'parado', 'pendencia', 'cancelada'];
+          if (sitKeys.includes(c.key) && raw) {
+            return `<td class="sit-${esc(c.key)}">${esc(raw)}</td>`;
+          }
+          return `<td>${esc(raw)}</td>`;
+        }).join('');
         return `<tr>${tds}</tr>`;
       }).join('');
+      body.querySelectorAll('[data-act]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const act = btn.getAttribute('data-act');
+          const key = btn.getAttribute('data-key');
+          if (act === 'ctrcs') abrirCtrcsRomaneio(key);
+          else abrirColetasPlaca(key);
+        });
+      });
     }
     document.querySelectorAll('.ms[data-col]').forEach((ms) => {
       const key = ms.getAttribute('data-col');
       syncMsVisual(ms, key);
     });
+  }
+
+  function closeModalHist() {
+    const modal = document.getElementById('modalHist');
+    if (modal) modal.classList.remove('open');
+  }
+
+  function openModal(title, sub, html) {
+    document.getElementById('histTitulo').textContent = title;
+    document.getElementById('histSub').textContent = sub || '';
+    document.getElementById('histLista').innerHTML = html;
+    document.getElementById('modalHist').classList.add('open');
+  }
+
+  function mapaColetas50() {
+    const map = new Map();
+    (CACHE.coletas50 || []).forEach((c) => {
+      const key = coletaKey(c);
+      if (key) map.set(key, c);
+    });
+    return map;
+  }
+
+  function histRowsForColeta(coletaId) {
+    const id = String(coletaId || '').toUpperCase().replace(/\s+/g, '').trim();
+    if (!id) return [];
+    return (CACHE.historico || []).filter((r) => {
+      const cid = String(r.coleta_id || r.coleta || '').toUpperCase().replace(/\s+/g, '').trim();
+      return cid === id;
+    });
+  }
+
+  function sintetizarHistorico50(coletaId) {
+    const id = String(coletaId || '').toUpperCase().replace(/\s+/g, '').trim();
+    const c = mapaColetas50().get(id);
+    if (!c) return [];
+    const stages = [
+      ['CADASTRADA', c.cadastrada_data, c.cadastrada_hora, c.cadastrada_usuario],
+      ['COMANDADA', c.comandada_data, c.comandada_hora, c.comandada_usuario],
+      ['COLETADA', c.coletada_data, c.coletada_hora, c.coletada_usuario],
+      ['CANCELADA', c.cancelada_data, c.cancelada_hora, c.cancelada_usuario],
+    ];
+    const rows = [];
+    stages.forEach(([label, data, hora, usuario], i) => {
+      if (!data && !hora && !usuario) return;
+      rows.push({
+        data: data || '',
+        hora: hora || '',
+        dominio: 'BIN',
+        unidade_evento: String(c.unidade || id.slice(0, 3) || ''),
+        usuario: usuario || '',
+        observacao: `${label}${c.situacao_atual === label ? ' (situação atual)' : ''}`,
+        seq_evento: i + 1,
+        coleta_id: id,
+      });
+    });
+    return rows;
+  }
+
+  function histSortKey(data, hora) {
+    const d = fmtCampo(data, 'data');
+    const h = fmtCampo(hora, 'hora') || '00:00';
+    const m = d.match(/(\d{1,2})\/(\d{1,2})/);
+    if (!m) return `0000${h}`;
+    return `${pad(m[2])}${pad(m[1])}${h.replace(':', '')}`;
+  }
+
+  function inferOcorrencia(obs) {
+    const o = String(obs || '').toUpperCase();
+    if (!o) return '';
+    if (/CANCELAD/.test(o)) return '99-COLETA CANCELADA';
+    if (/COLETA REALIZADA|CARREGADA NO VEICULO|CTRC GERADO/.test(o)) {
+      return '01-COLETA REALIZADA (CARREGADA NO VEICULO)';
+    }
+    if (/COMANDADA/.test(o)) return '02-COLETA COMANDADA AO VEICU';
+    if (/COLETA CADASTRADA|REMET:/.test(o) && /VOL|KG|DESTINO|HORARIO LIMITE/.test(o)) {
+      return '98-COLETA CADASTRADA';
+    }
+    return '';
+  }
+
+  function renderHistoricoSsw(rows) {
+    const sorted = (rows || []).slice().sort((a, b) =>
+      histSortKey(b.data, b.hora).localeCompare(histSortKey(a.data, a.hora))
+    );
+    const body = sorted.map((h) => {
+      const inclusao = fmtDataHora(h.data, h.hora);
+      const occ = inferOcorrencia(h.observacao);
+      return `<tr>
+        <td>${esc(inclusao)}</td>
+        <td class="ctr">${esc((h.dominio || 'BIN').toUpperCase())}</td>
+        <td class="ctr">${esc((h.unidade_evento || h.unidade || 'SPO').toUpperCase())}</td>
+        <td>${esc(inclusao)}</td>
+        <td class="user">${esc(h.usuario || '')}</td>
+        <td>${esc(occ)}</td>
+        <td class="instr">${esc(h.observacao || '')}</td>
+        <td>${esc(occ)}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="ssw-wrap"><table class="ssw-hist">
+      <thead><tr>
+        <th>Inclusão</th><th>Domi</th><th>Fili:</th><th>Inclusão Local</th>
+        <th>Usuário</th><th>Ocorrência</th><th>Instruções / situação</th><th>Ocorrência SSW</th>
+      </tr></thead><tbody>${body || '<tr><td colspan="8">Sem eventos</td></tr>'}</tbody></table></div>`;
+  }
+
+  function abrirColetasPlaca(placaKey) {
+    const key = String(placaKey || '').toUpperCase().trim();
+    const rows = CACHE.placaItems.get(key) || [];
+    const by50 = mapaColetas50();
+    const feitas = rows.filter((c) => statusAce(c) === 'realizada').length;
+    const rota = rows.filter((c) => statusAce(c) === 'em_rota').length;
+    const parado = rows.filter((c) => statusAce(c) === 'parado').length;
+    const pct = rows.length ? Math.round((feitas / rows.length) * 100) : 0;
+    const sub = `${rows.length} coleta(s) · ${feitas} realizada · ${rota} em rota · ${parado} parado · ${pct}%`;
+    if (!rows.length) {
+      openModal(`Coletas · ${key}`, sub, '<p class="muted">Sem coletas neste grupo.</p>');
+      return;
+    }
+    const html = `<table><thead><tr>
+      <th>Coleta</th><th>Status</th><th>Situação</th><th>Hora</th><th>Motorista</th><th></th>
+    </tr></thead><tbody>${rows.map((c) => {
+      const st = statusAce(c);
+      const id = coletaKey(c);
+      const label = c.coleta_id || c.coleta || id;
+      const c50 = by50.get(id);
+      const sitHist = c50
+        ? (c50.situacao_atual || '')
+        : (c.situacao_atual || labelStatus(st));
+      return `<tr>
+        <td>${esc(label)}</td>
+        <td class="sit-${esc(st)}">${esc(labelStatus(st))}</td>
+        <td>${esc(c.situacao_atual || '')}</td>
+        <td>${esc(fmtCampo(c.hora, 'hora'))}</td>
+        <td>${esc(c.motorista || '')}</td>
+        <td><button type="button" class="btn-act" data-hist="${esc(id)}" data-label="${esc(label)}" data-sit="${esc(sitHist)}">Histórico</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+    openModal(`Coletas · ${key}`, sub, html);
+    document.querySelectorAll('#histLista [data-hist]').forEach((btn) => {
+      btn.addEventListener('click', () => abrirHistorico(
+        btn.getAttribute('data-hist'),
+        btn.getAttribute('data-label'),
+        btn.getAttribute('data-sit'),
+        btn
+      ));
+    });
+  }
+
+  function abrirCtrcsRomaneio(romaneio) {
+    const rom = String(romaneio || '').toUpperCase().trim();
+    const rows = (CACHE.entregas36 || []).filter((c) =>
+      String(c.romaneio || '').toUpperCase() === rom
+    );
+    if (!rows.length) {
+      openModal(`CTRCs · ${romaneio}`, '0 CTRC(s)', '<p class="muted">Sem CTRCs neste romaneio.</p>');
+      return;
+    }
+    const html = `<table><thead><tr>
+      <th>CTRC</th><th>Status</th><th>Destinatário</th><th>Ocorrência</th><th>Hora</th>
+    </tr></thead><tbody>${rows.map((c) => {
+      const st = statusAce36(c);
+      const lab = st === 'parado' ? 'Pendência' : labelStatus(st);
+      return `<tr>
+        <td>${esc(c.ctrc_id || '')}</td>
+        <td class="sit-${esc(st)}">${esc(lab)}</td>
+        <td>${esc(c.destinatario || '')}</td>
+        <td>${esc(c.ocorrencia || '—')}</td>
+        <td>${esc(c.hora_ocorrencia || '')}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+    openModal(`CTRCs · ${romaneio}`, `${rows.length} CTRC(s)`, html);
+  }
+
+  async function abrirHistorico(coletaId, label, situacao, btn) {
+    const id = String(coletaId || '').toUpperCase().replace(/\s+/g, '').trim();
+    openModal(
+      `Histórico · ${label || id}`,
+      `Situação atual: ${situacao || '—'} · histórico do relatório 50`,
+      '<p class="sub-hist">Carregando…</p>'
+    );
+    if (btn) btn.disabled = true;
+    try {
+      if (!CACHE.historico.length) {
+        try { CACHE.historico = await loadCsv('data/historico.csv'); } catch (_) { /* offline */ }
+      }
+      let rows = histRowsForColeta(id);
+      if (!rows.length) rows = sintetizarHistorico50(id);
+      document.getElementById('histLista').innerHTML = rows.length
+        ? renderHistoricoSsw(rows)
+        : '<p class="sub-hist">Sem histórico nesta coleta (relatório 50). Rode o ciclo 50 de novo.</p>';
+    } catch (err) {
+      document.getElementById('histLista').innerHTML = `<p class="sub-hist">${esc(err.message)}</p>`;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 
   function buildMultiSelect(col) {
@@ -648,11 +1050,12 @@
   function renderFilterBar() {
     const bar = document.getElementById('gestaoFilterBar');
     if (!bar) return;
-    if (!STATE.columns.length) {
+    const cols = STATE.columns.filter((c) => c.type !== 'action');
+    if (!cols.length) {
       bar.innerHTML = '';
       return;
     }
-    bar.innerHTML = STATE.columns.map((c) => buildMultiSelect(c)).join('');
+    bar.innerHTML = cols.map((c) => buildMultiSelect(c)).join('');
     bindMultiSelects(bar);
   }
 
@@ -668,7 +1071,9 @@
       return;
     }
     empty.hidden = true;
-    head.innerHTML = `<tr>${STATE.columns.map((c) => `<th>${esc(c.label)}</th>`).join('')}</tr>`;
+    head.innerHTML = `<tr>${STATE.columns.map((c) =>
+      `<th>${c.type === 'action' ? '' : esc(c.label)}</th>`
+    ).join('')}</tr>`;
     renderFilterBar();
     paintBodyOnly();
   }
@@ -874,8 +1279,9 @@
     applyFilters();
     const head = sectorHeading();
     const banner = await buildReportBanner(head);
-    const header = STATE.columns.map((c) => c.label);
-    const keys = STATE.columns.map((c) => c.key);
+    const exportCols = STATE.columns.filter((c) => c.type !== 'action');
+    const header = exportCols.map((c) => c.label);
+    const keys = exportCols.map((c) => c.key);
     const filterTxt = activeFiltersSummary();
     const meta = `Gerado em ${new Date().toLocaleString('pt-BR')} · ${filterTxt} · ${STATE.filtered.length} linhas`;
     const ExcelJS = getExcelJS();
@@ -1031,9 +1437,10 @@
       bannerH + 18
     );
 
-    const tableHead = [STATE.columns.map((c) => c.label)];
+    const exportCols = STATE.columns.filter((c) => c.type !== 'action');
+    const tableHead = [exportCols.map((c) => c.label)];
     const body = STATE.filtered.map((row) =>
-      STATE.columns.map((c) => formatCellDisplay(c, row[c.key] ?? ''))
+      exportCols.map((c) => formatCellDisplay(c, row[c.key] ?? ''))
     );
     doc.autoTable({
       startY: bannerH + 28,
@@ -1098,7 +1505,15 @@
     document.querySelectorAll('.ms.open').forEach((ms) => positionPanel(ms));
   }, true);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeAllMultis();
+    if (e.key === 'Escape') {
+      closeAllMultis();
+      closeModalHist();
+    }
+  });
+
+  document.getElementById('btnFecharHist')?.addEventListener('click', closeModalHist);
+  document.getElementById('modalHist')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modalHist') closeModalHist();
   });
 
   document.querySelectorAll('.sec-btn').forEach((btn) => {
