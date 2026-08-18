@@ -33,6 +33,7 @@ from PySide6.QtGui import (
     QLinearGradient,
     QRadialGradient,
     QBrush,
+    QTextCharFormat,
     QTextCursor,
     QPolygonF,
 )
@@ -49,6 +50,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -1400,7 +1402,7 @@ QWidget {{
     letter-spacing: 0.1px;
     background: transparent;
 }}
-/* NÃO incluir QAbstractScrollArea aqui — o QTextEdit#crtLog fica fantasma */
+/* NÃO incluir QAbstractScrollArea aqui — o log #crtLog fica fantasma */
 QTabWidget, QTabWidget::pane, QScrollArea {{
     background: transparent;
 }}
@@ -1711,7 +1713,7 @@ QLabel#lockErr {{
     font-size: 11px;
     background: transparent;
 }}
-QLineEdit, QTextEdit, QComboBox {{
+QLineEdit, QTextEdit, QPlainTextEdit, QComboBox {{
     background: {t['input_bg']};
     color: {t['input_text']};
     border: 1px solid {t['line']};
@@ -1720,10 +1722,11 @@ QLineEdit, QTextEdit, QComboBox {{
     padding: 6px 8px;
     font-size: 12px;
 }}
-QTextEdit {{
+QTextEdit, QPlainTextEdit {{
     background: {log_bg if frost else t['input_bg']};
     color: {t['text']};
 }}
+QPlainTextEdit#crtLog, QPlainTextEdit#crtLog::viewport,
 QTextEdit#crtLog, QTextEdit#crtLog::viewport {{
     background-color: {log_bg};
     color: {t['text']};
@@ -1741,7 +1744,7 @@ QComboBox QAbstractItemView {{
     selection-background-color: {t['sel']};
     border: 1px solid {t['line']};
 }}
-QLineEdit:focus, QTextEdit:focus, QComboBox:focus {{
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {{
     border-color: {accent};
 }}
 QCheckBox {{
@@ -2364,6 +2367,8 @@ class AceCrtConsole(QWidget):
         self._fields: dict[str, QWidget] = {}
         self._log_offset = 0
         self._log_seen: set[str] = set()
+        self._log_cleared_at = 0.0
+        self._log_pull_paused = False
         self._tv_layout: dict = {}
         self._tv_slot_btns: dict[int, QPushButton] = {}
         self._tv_selected: int = 1
@@ -2738,11 +2743,13 @@ class AceCrtConsole(QWidget):
         self.btn_rapido.hide()
         self.btn_rapido.clicked.connect(self._toggle_rapido_window)
 
-        self.log = QTextEdit()
+        self.log = QPlainTextEdit()
         self.log.setObjectName("crtLog")
         self.log.setReadOnly(True)
         self.log.setMinimumHeight(160)
-        self.log.setAcceptRichText(True)
+        self.log.setLineWrapMode(QPlainTextEdit.WidgetWidth)
+        self.log.setMaximumBlockCount(400)
+        self.log.setUndoRedoEnabled(False)
         self._setup_opaque_log()
         lay.addWidget(self.log, 1)
 
@@ -4464,21 +4471,32 @@ class AceCrtConsole(QWidget):
             vpal.setColor(QPalette.Base, log_bg)
             vpal.setColor(QPalette.Window, log_bg)
             vp.setPalette(vpal)
-            self.log.document().setDefaultStyleSheet(
-                f"body {{ background-color: {bg_hex}; color: {fg_hex}; }}"
-            )
             self.log.setStyleSheet(
-                "QTextEdit#crtLog, QTextEdit#crtLog::viewport {"
+                "QPlainTextEdit#crtLog, QPlainTextEdit#crtLog::viewport {"
                 f" background-color: {bg_hex}; color: {fg_hex};"
                 f" border: 1px solid {border}; }}"
             )
-            try:
-                root = self.log.document().rootFrame()
-                fmt = root.frameFormat()
-                fmt.setBackground(QBrush(log_bg))
-                root.setFrameFormat(fmt)
-            except Exception:
-                pass
+        except Exception:
+            pass
+
+    def _force_log_repaint(self) -> None:
+        """Repaint agressivo — tela cheia / fosco às vezes não limpa o buffer do log."""
+        if not hasattr(self, "log"):
+            return
+        try:
+            self.log.viewport().update()
+            self.log.update()
+            self.log.repaint()
+            self.log.viewport().repaint()
+        except Exception:
+            pass
+        # Segundo paint no próximo tick (F11 / DWM)
+        try:
+            QTimer.singleShot(0, lambda: self.log.viewport().repaint())
+            if self.isFullScreen() or bool(
+                (CRT_THEMES.get(getattr(self, "_theme_id", "")) or {}).get("frost")
+            ):
+                QTimer.singleShot(40, lambda: self.log.viewport().repaint())
         except Exception:
             pass
 
@@ -4566,10 +4584,13 @@ class AceCrtConsole(QWidget):
                 QTimer.singleShot(60, self._relayout_chrome)
                 QTimer.singleShot(80, self._clamp_main_splitter)
                 QTimer.singleShot(180, self._wire_circuit_bus)
+                QTimer.singleShot(30, self._force_log_repaint)
                 meta = CRT_THEMES.get(self._theme_id) or {}
                 if meta.get("frost"):
                     # Uma reaplicação após maximizar/tela cheia (evita churn)
                     self._schedule_frost_refresh()
+                    QTimer.singleShot(120, self._setup_opaque_log)
+                    QTimer.singleShot(140, self._force_log_repaint)
         except Exception:
             pass
 
@@ -4603,6 +4624,8 @@ class AceCrtConsole(QWidget):
                 self._remember_normal_geom()
             self.showFullScreen()
             self._append_log("sistema", "Tela cheia · `tela cheia` ou Esc / F11 para sair")
+            QTimer.singleShot(60, self._setup_opaque_log)
+            QTimer.singleShot(80, self._force_log_repaint)
         else:
             if getattr(self, "_pre_fs_state", "normal") == "maximized":
                 self.showMaximized()
@@ -4620,7 +4643,8 @@ class AceCrtConsole(QWidget):
             QTimer.singleShot(80, self._clamp_main_splitter)
             QTimer.singleShot(120, self._wire_circuit_bus)
             QTimer.singleShot(200, self._relayout_chrome)
-            QTimer.singleShot(200, self._relayout_chrome)
+            QTimer.singleShot(60, self._setup_opaque_log)
+            QTimer.singleShot(90, self._force_log_repaint)
         meta = CRT_THEMES.get(self._theme_id) or {}
         if meta.get("frost"):
             # Só reaplica DWM — sem destroy (mantém chrome nativo − □ ✕)
@@ -5153,20 +5177,72 @@ class AceCrtConsole(QWidget):
 
     def _clear_cmd_log(self, *, announce: bool = True) -> None:
         """Limpa o painel + arquivo espelhado (limpar/cls/clear)."""
+        # Pausa o pull 250ms — senão o timer recoloca o histórico antigo
+        self._log_pull_paused = True
+        self._log_cleared_at = time.time()
         try:
-            from crt_bridge import clear_log
+            from crt_bridge import LOG_PATH, clear_log
 
             clear_log()
+            try:
+                self._log_offset = LOG_PATH.stat().st_size if LOG_PATH.is_file() else 0
+            except Exception:
+                self._log_offset = 0
         except Exception:
-            pass
-        try:
-            self.log.clear()
-        except Exception:
-            pass
+            self._log_offset = 0
+
         self._log_seen = set()
-        self._log_offset = 0
+
+        # Recria o documento + hide/show: único jeito estável em F11 / fosco
+        try:
+            from PySide6.QtGui import QTextDocument
+
+            self.log.setUpdatesEnabled(False)
+            self.log.hide()
+            doc = QTextDocument(self.log)
+            self.log.setDocument(doc)
+            self.log.setMaximumBlockCount(400)
+            self.log.setUndoRedoEnabled(False)
+            self.log.setPlainText("")
+            self._setup_opaque_log()
+            self.log.show()
+            self.log.setUpdatesEnabled(True)
+            # Força o viewport a descartar buffer de paint (tela cheia)
+            try:
+                vp = self.log.viewport()
+                vp.resize(max(1, vp.width()), max(1, vp.height()))
+            except Exception:
+                pass
+            self._force_log_repaint()
+        except Exception:
+            try:
+                self.log.setUpdatesEnabled(True)
+                self.log.show()
+                self.log.clear()
+                self.log.setPlainText("")
+                self._setup_opaque_log()
+                self._force_log_repaint()
+            except Exception:
+                pass
+
         if announce:
             self._append_log("sistema", "Log limpo.", mirror=False)
+            self._force_log_repaint()
+
+        # Libera o pull após o paint assentar
+        QTimer.singleShot(180, self._resume_log_pull)
+
+    def _resume_log_pull(self) -> None:
+        self._log_pull_paused = False
+        # Alinha offset ao fim atual (evita reidratar lixo se clear falhou parcial)
+        try:
+            from crt_bridge import LOG_PATH
+
+            if LOG_PATH.is_file():
+                self._log_offset = LOG_PATH.stat().st_size
+        except Exception:
+            pass
+        self._force_log_repaint()
 
     def _append_log(self, kind: str, text: str, *, mirror: bool = True) -> None:
         if mirror:
@@ -5187,7 +5263,7 @@ class AceCrtConsole(QWidget):
         )
 
     def _render_log_entry(self, entry: dict, *, from_file: bool = False) -> None:
-        """Mesmo visual do CMD: [HH:MM:SS] ███ OK/ERR/…  mensagem"""
+        """Mesmo visual do CMD: [HH:MM:SS] ███ OK/ERR/…  mensagem (texto puro)."""
         stamp = str(entry.get("stamp") or datetime.now().strftime("%H:%M:%S"))
         kind = str(entry.get("kind") or "info").lower()
         text = str(entry.get("text") or "")
@@ -5227,50 +5303,57 @@ class AceCrtConsole(QWidget):
         }.get(kind, "·  ")
         src = str(entry.get("source") or "")
         prefix = " ⌁" if from_file and src == "cmd" else ""
-        safe = (text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        safe = safe.replace("\n", "<br>")
-        # limpa lixo HTML/JS que às vezes vaza do SSW no log
+        plain = " ".join(str(text or "").split())
         for junk in (
             "onclick=ajaxEnvia",
             "return(false);",
             "javascript:",
         ):
-            if junk.lower() in safe.lower():
-                safe = re.sub(
+            if junk.lower() in plain.lower():
+                plain = re.sub(
                     r"onclick\s*=\s*ajaxEnvia\([^)]*\);\s*return\s*\(\s*false\s*\);?",
                     "",
-                    safe,
+                    plain,
                     flags=re.IGNORECASE,
                 )
-                safe = re.sub(r"\s{2,}", " ", safe).strip()
+                plain = re.sub(r"\s{2,}", " ", plain).strip()
                 break
-        html = (
-            f'<span style="color:{muted}">[{stamp}]</span> '
-            f'<span style="color:{color}"><b>███ {tag}</b></span> '
-            f'<span style="color:{color}">{safe}{prefix}</span>'
-        )
-        # append + repaint do viewport (evita resíduo visual no fosco)
-        self.log.append(html)
-        # Limita linhas para não empilhar fantasma / travar o layout
+
         try:
-            doc = self.log.document()
-            while doc.blockCount() > 350:
-                cur = QTextCursor(doc.firstBlock())
-                cur.select(QTextCursor.BlockUnderCursor)
-                cur.removeSelectedText()
-                cur.deleteChar()  # remove o \n residual
+            cur = self.log.textCursor()
+            cur.movePosition(QTextCursor.End)
+            if self.log.document().blockCount() > 1 or bool(self.log.toPlainText().strip()):
+                cur.insertBlock()
+            fmt_m = QTextCharFormat()
+            fmt_m.setForeground(QColor(muted))
+            cur.insertText(f"[{stamp}] ", fmt_m)
+            fmt_c = QTextCharFormat()
+            fmt_c.setForeground(QColor(color))
+            cur.insertText(f"███ {tag} {plain}{prefix}", fmt_c)
+            self.log.setTextCursor(cur)
+            self.log.ensureCursorVisible()
+            if getattr(self, "_sys_tick", 0) % 8 == 0 or self.isFullScreen():
+                self.log.viewport().update()
         except Exception:
-            pass
-        self.log.moveCursor(QTextCursor.End)
-        try:
-            self.log.viewport().repaint()
-        except Exception:
-            pass
+            try:
+                self.log.appendPlainText(f"[{stamp}] ███ {tag} {plain}{prefix}")
+            except Exception:
+                pass
 
     def _pull_mirrored_log(self) -> None:
+        if getattr(self, "_log_pull_paused", False):
+            return
         try:
             entries, self._log_offset = read_log_since(self._log_offset)
+            cleared_at = float(getattr(self, "_log_cleared_at", 0) or 0)
             for entry in entries:
+                # Ignora linhas anteriores ao último limpar (arquivo pode não ter truncado)
+                if cleared_at:
+                    try:
+                        if float(entry.get("ts") or 0) < cleared_at - 0.05:
+                            continue
+                    except Exception:
+                        pass
                 # evita eco do que o próprio CRT acabou de gravar
                 if entry.get("source") == "crt":
                     key = f"{entry.get('ts')}|{entry.get('kind')}|{entry.get('text')}"

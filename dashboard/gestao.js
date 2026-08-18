@@ -115,13 +115,29 @@
 
   async function loadDataset() {
     if (SETOR === 'distribuicao' && REL === 'coleta') {
-      const rows = await loadCsv('data/coletas_103.csv');
+      // Volumes vêm do 0157 (coletas.csv · qtde_vol); 103 não traz volume
+      const [rows103, rows157] = await Promise.all([
+        loadCsv('data/coletas_103.csv'),
+        loadCsv('data/coletas.csv').catch(() => []),
+      ]);
+      const volById = new Map();
+      for (const r of rows157) {
+        const id = String(r.coleta_id || '').replace(/\s+/g, '').toUpperCase();
+        if (!id) continue;
+        const vol = String(r.qtde_vol || r.volumes || '').trim();
+        if (vol) volById.set(id, vol);
+      }
+      const rows = rows103.map((r) => {
+        const id = String(r.coleta_id || '').replace(/\s+/g, '').toUpperCase();
+        return { ...r, volumes: volById.get(id) || r.volumes || '' };
+      });
       return {
         columns: [
           colDef('coleta_id', 'Coleta'),
           colDef('placa', 'Placa'),
           colDef('placa_carreta', 'Carreta'),
           colDef('motorista', 'Motorista'),
+          colDef('volumes', 'Volumes'),
           colDef('status_ace', 'Status', { type: 'enum', enum: ['em_rota', 'realizada', 'parado', 'cancelada'] }),
           colDef('situacao_atual', 'Situação'),
           colDef('hora', 'Hora'),
@@ -130,6 +146,7 @@
       };
     }
     if (SETOR === 'distribuicao' && REL === 'entrega') {
+      // Relatório 36 (CTRC) não traz qtde de volumes — coluna fica vazia se não houver fonte
       const rows = await loadCsv('data/entregas_36.csv');
       return {
         columns: [
@@ -138,12 +155,16 @@
           colDef('placa', 'Placa'),
           colDef('motorista', 'Motorista'),
           colDef('destinatario', 'Destinatário'),
+          colDef('volumes', 'Volumes'),
           colDef('status_ace', 'Status', { type: 'enum', enum: ['em_rota', 'realizada', 'pendencia', 'excluido'] }),
           colDef('ocorrencia', 'Ocorrência'),
           colDef('data_ocorrencia', 'Data'),
           colDef('hora_ocorrencia', 'Hora'),
         ],
-        rows: rows.filter((r) => String(r.excluido || '') !== '1'),
+        rows: rows.filter((r) => String(r.excluido || '') !== '1').map((r) => ({
+          ...r,
+          volumes: r.volumes || r.qtde_vol || '',
+        })),
       };
     }
     if (SETOR === 'distribuicao' && REL === 'agendamento') {
@@ -363,24 +384,22 @@
     const btn = ms.querySelector('.ms-btn');
     const panel = ms.querySelector('.ms-panel');
     if (!btn || !panel) return;
-    const fit = panel.classList.contains('ms-panel--fit');
+    // Painel absolute sob o botão — só corrige se estourar a viewport
+    panel.classList.remove('ms-panel--up', 'ms-panel--right');
+    panel.style.left = '';
+    panel.style.right = '';
+    panel.style.top = '';
+    panel.style.bottom = '';
+    panel.style.width = '';
+    panel.style.maxHeight = '';
+
     const r = btn.getBoundingClientRect();
-    const pw = Math.min(380, Math.max(260, r.width + 40));
-    let left = r.left;
-    if (left + pw > window.innerWidth - 8) left = Math.max(8, window.innerWidth - pw - 8);
-    const maxH = fit
-      ? Math.min(window.innerHeight - 24, 640)
-      : Math.min(520, Math.floor(window.innerHeight * 0.72));
-    let top = r.bottom + 6;
-    // Mede depois de aplicar largura para caber acima/abaixo
-    panel.style.width = `${Math.round(pw)}px`;
-    panel.style.maxHeight = fit ? 'none' : `${Math.round(maxH)}px`;
-    panel.style.left = `${Math.round(left)}px`;
-    panel.style.top = `${Math.round(top)}px`;
-    const ph = panel.getBoundingClientRect().height || 200;
-    if (top + ph > window.innerHeight - 8) {
-      top = Math.max(8, r.top - ph - 6);
-      panel.style.top = `${Math.round(top)}px`;
+    const approxH = panel.classList.contains('ms-panel--fit') ? 280 : 360;
+    if (r.bottom + approxH > window.innerHeight - 8 && r.top > approxH + 8) {
+      panel.classList.add('ms-panel--up');
+    }
+    if (r.left + 260 > window.innerWidth - 8) {
+      panel.classList.add('ms-panel--right');
     }
   }
 
@@ -608,27 +627,69 @@
   }
 
   async function loadLogoImage() {
+    // Sempre do arquivo — DOM pode estar com CSS/crop e perder o fundo preto
     try {
-      let img = document.getElementById('brandLogo');
-      if (img && img.complete && img.naturalWidth) return img;
       return await loadImageEl(`logo-binho.png?t=${Date.now()}`);
     } catch (_) {
+      try {
+        const img = document.getElementById('brandLogo');
+        if (img && img.complete && img.naturalWidth) return img;
+      } catch (_) { /* ignore */ }
       return null;
     }
+  }
+
+  /** Logo com fundo escuro garantido (texto branco não some no Excel). */
+  function paintLogoOnDark(ctx, img, x, y, w, h) {
+    ctx.save();
+    ctx.fillStyle = '#05080f';
+    const pad = 6;
+    roundRect(ctx, x - pad, y - pad, w + pad * 2, h + pad * 2, 8);
+    ctx.fill();
+    if (img && img.naturalWidth) {
+      ctx.drawImage(img, x, y, w, h);
+    } else {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 28px Segoe UI, Arial, sans-serif';
+      ctx.fillText('BINHO', x + 8, y + Math.round(h * 0.48));
+      ctx.font = '600 14px Segoe UI, Arial, sans-serif';
+      ctx.fillStyle = '#94A3B8';
+      ctx.fillText('Transportes', x + 8, y + Math.round(h * 0.78));
+    }
+    ctx.restore();
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
   }
 
   async function loadLogoBase64() {
     if (LOGO_CACHE && LOGO_CACHE.base64) return LOGO_CACHE;
     try {
       const img = await loadLogoImage();
-      if (!img) throw new Error('no img');
       const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth || 640;
-      canvas.height = img.naturalHeight || 240;
+      const W = 640;
+      const H = 220;
+      canvas.width = W;
+      canvas.height = H;
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#05080f';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, W, H);
+      if (img && img.naturalWidth) {
+        const scale = Math.min((W - 24) / img.naturalWidth, (H - 24) / img.naturalHeight);
+        const lw = Math.round(img.naturalWidth * scale);
+        const lh = Math.round(img.naturalHeight * scale);
+        ctx.drawImage(img, Math.round((W - lw) / 2), Math.round((H - lh) / 2), lw, lh);
+      } else {
+        paintLogoOnDark(ctx, null, 24, 40, 400, 140);
+      }
       const dataUrl = canvas.toDataURL('image/png');
       LOGO_CACHE = { dataUrl, base64: dataUrl.split(',')[1] || '', ext: 'png' };
       return LOGO_CACHE;
@@ -638,10 +699,10 @@
     }
   }
 
-  /** Faixa de cabeçalho pronta (logo + setor) — evita corte/texto branco sumindo no Excel. */
+  /** Faixa de cabeçalho pronta (logo + setor) — fundo escuro, legível no Excel. */
   async function buildReportBanner(head) {
-    const W = 1400;
-    const H = 140;
+    const W = 1600;
+    const H = 160;
     const canvas = document.createElement('canvas');
     canvas.width = W;
     canvas.height = H;
@@ -650,45 +711,42 @@
     ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#0EA5E9';
-    ctx.fillRect(0, H - 4, W, 4);
+    ctx.fillRect(0, H - 5, W, 5);
 
     let logoRight = 28;
     try {
       const img = await loadLogoImage();
+      const maxH = 110;
+      const maxW = 380;
       if (img && img.naturalWidth) {
-        const maxH = 100;
-        const scale = Math.min(maxH / img.naturalHeight, 320 / img.naturalWidth);
+        const scale = Math.min(maxH / img.naturalHeight, maxW / img.naturalWidth);
         const lw = Math.round(img.naturalWidth * scale);
         const lh = Math.round(img.naturalHeight * scale);
-        const lx = 24;
+        const lx = 28;
         const ly = Math.round((H - lh) / 2) - 2;
-        ctx.drawImage(img, lx, ly, lw, lh);
-        logoRight = lx + lw + 36;
+        paintLogoOnDark(ctx, img, lx, ly, lw, lh);
+        logoRight = lx + lw + 40;
+      } else {
+        paintLogoOnDark(ctx, null, 28, 30, 300, 100);
+        logoRight = 360;
       }
-    } catch (_) { /* ignore */ }
-
-    if (logoRight <= 28) {
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 36px Segoe UI, Arial, sans-serif';
-      ctx.fillText('BINHO', 28, 58);
-      ctx.font = '600 18px Segoe UI, Arial, sans-serif';
-      ctx.fillStyle = '#94A3B8';
-      ctx.fillText('Transportes', 28, 84);
-      logoRight = 220;
+    } catch (_) {
+      paintLogoOnDark(ctx, null, 28, 30, 300, 100);
+      logoRight = 360;
     }
 
     ctx.fillStyle = '#F8FAFC';
-    ctx.font = 'bold 44px Segoe UI, Arial, sans-serif';
-    ctx.fillText(String(head.setor || 'GESTÃO').toUpperCase(), logoRight, 58);
+    ctx.font = 'bold 48px Segoe UI, Arial, sans-serif';
+    ctx.fillText(String(head.setor || 'GESTÃO').toUpperCase(), logoRight, 64);
 
     if (head.relatorio) {
       ctx.fillStyle = '#38BDF8';
-      ctx.font = '600 22px Segoe UI, Arial, sans-serif';
-      ctx.fillText(String(head.relatorio), logoRight, 90);
+      ctx.font = '600 24px Segoe UI, Arial, sans-serif';
+      ctx.fillText(String(head.relatorio), logoRight, 100);
     } else {
       ctx.fillStyle = '#94A3B8';
-      ctx.font = '500 18px Segoe UI, Arial, sans-serif';
-      ctx.fillText(String(head.title || 'Gestão'), logoRight, 90);
+      ctx.font = '500 20px Segoe UI, Arial, sans-serif';
+      ctx.fillText(String(head.title || 'Gestão'), logoRight, 100);
     }
 
     const dataUrl = canvas.toDataURL('image/png');
@@ -709,35 +767,53 @@
     return window.ExcelJS || window.exceljs || null;
   }
 
+  function colLetter(n) {
+    let s = '';
+    let x = n;
+    while (x > 0) {
+      const m = (x - 1) % 26;
+      s = String.fromCharCode(65 + m) + s;
+      x = Math.floor((x - 1) / 26);
+    }
+    return s || 'A';
+  }
+
   async function exportExcel() {
     applyFilters();
     const head = sectorHeading();
     const banner = await buildReportBanner(head);
     const header = STATE.columns.map((c) => c.label);
     const keys = STATE.columns.map((c) => c.key);
-    const meta = `Gerado em ${new Date().toLocaleString('pt-BR')} · ${activeFiltersSummary()} · ${STATE.filtered.length} linhas`;
+    const filterTxt = activeFiltersSummary();
+    const meta = `Gerado em ${new Date().toLocaleString('pt-BR')} · ${filterTxt} · ${STATE.filtered.length} linhas`;
     const ExcelJS = getExcelJS();
 
     if (!ExcelJS) {
       alert('Biblioteca Excel ainda carregando. Atualize a página e tente de novo.');
       return;
     }
+    if (!header.length) {
+      alert('Sem colunas para exportar.');
+      return;
+    }
 
     const wb = new ExcelJS.Workbook();
     wb.creator = 'BINHO Gestão';
     wb.created = new Date();
-    const colCount = Math.max(header.length, 8);
+    const colCount = Math.max(header.length, 6);
+    const headerRowIdx = 6;
+    const dataStart = headerRowIdx + 1;
+    const dataCount = Math.max(STATE.filtered.length, 1);
+    const lastDataRow = headerRowIdx + dataCount;
+
     const ws = wb.addWorksheet('Relatorio', {
-      views: [{ state: 'frozen', ySplit: 5 }],
+      views: [{ state: 'frozen', ySplit: headerRowIdx, showGridLines: true }],
       properties: { defaultRowHeight: 16 },
     });
 
-    // Espaço do banner (sem merge estreito que corta a logo)
-    ws.getRow(1).height = 18;
-    ws.getRow(2).height = 18;
-    ws.getRow(3).height = 18;
-    ws.getRow(4).height = 12;
+    // Banner escuro (linhas 1–4)
     for (let r = 1; r <= 4; r++) {
+      ws.getRow(r).height = r <= 3 ? 20 : 10;
       for (let c = 1; c <= colCount; c++) {
         ws.getCell(r, c).fill = {
           type: 'pattern',
@@ -749,23 +825,27 @@
 
     if (banner && banner.base64) {
       const imgId = wb.addImage({ base64: banner.base64, extension: 'png' });
-      // Largura ~ colunas A–H em pontos Excel (~72pt por polegada); banner 1400x140
       ws.addImage(imgId, {
         tl: { col: 0, row: 0 },
-        ext: { width: 720, height: 72 },
+        br: { col: Math.min(colCount, 8), row: 3.85 },
         editAs: 'oneCell',
       });
+    } else {
+      // Fallback texto se a imagem falhar
+      const c = ws.getCell(2, 1);
+      c.value = `BINHO · ${String(head.setor || 'GESTÃO').toUpperCase()}`;
+      c.font = { name: 'Calibri', bold: true, size: 18, color: { argb: 'FFF8FAFC' } };
     }
 
     ws.getCell(5, 1).value = meta;
     ws.getCell(5, 1).font = { name: 'Calibri', size: 9, color: { argb: 'FF64748B' } };
+    ws.mergeCells(5, 1, 5, Math.min(colCount, header.length || colCount));
     ws.getRow(5).height = 18;
 
-    const headerRowIdx = 6;
     const headerRow = ws.getRow(headerRowIdx);
     header.forEach((label, i) => {
       const cell = headerRow.getCell(i + 1);
-      cell.value = label;
+      cell.value = String(label);
       cell.font = { name: 'Calibri', bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0369A1' } };
       cell.alignment = { vertical: 'middle', horizontal: 'left' };
@@ -773,33 +853,39 @@
         bottom: { style: 'thin', color: { argb: 'FF0EA5E9' } },
       };
     });
-    headerRow.height = 20;
+    headerRow.height = 22;
 
-    STATE.filtered.forEach((row, ri) => {
-      const r = ws.getRow(headerRowIdx + 1 + ri);
-      keys.forEach((k, i) => {
-        const cell = r.getCell(i + 1);
-        cell.value = row[k] ?? '';
-        cell.font = { name: 'Calibri', size: 9, color: { argb: 'FF0F172A' } };
-        if (ri % 2 === 1) {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-        }
-        cell.border = {
-          bottom: { style: 'hair', color: { argb: 'FFCBD5E1' } },
-        };
+    if (STATE.filtered.length) {
+      STATE.filtered.forEach((row, ri) => {
+        const r = ws.getRow(dataStart + ri);
+        keys.forEach((k, i) => {
+          const cell = r.getCell(i + 1);
+          cell.value = row[k] ?? '';
+          cell.font = { name: 'Calibri', size: 9, color: { argb: 'FF0F172A' } };
+          if (ri % 2 === 1) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+          }
+          cell.border = {
+            bottom: { style: 'hair', color: { argb: 'FFCBD5E1' } },
+          };
+        });
       });
-    });
+    } else {
+      const cell = ws.getRow(dataStart).getCell(1);
+      cell.value = '(sem linhas com os filtros atuais)';
+      cell.font = { name: 'Calibri', italic: true, size: 9, color: { argb: 'FF64748B' } };
+    }
 
     header.forEach((label, i) => {
       ws.getColumn(i + 1).width = Math.min(36, Math.max(12, String(label).length + 4));
     });
 
-    if (header.length) {
-      ws.autoFilter = {
-        from: { row: headerRowIdx, column: 1 },
-        to: { row: headerRowIdx + Math.max(STATE.filtered.length, 1), column: header.length },
-      };
-    }
+    // AutoFilter nas colunas (setas no cabeçalho)
+    const lastCol = colLetter(header.length);
+    ws.autoFilter = {
+      from: `A${headerRowIdx}`,
+      to: `${lastCol}${lastDataRow}`,
+    };
 
     const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], {

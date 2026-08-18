@@ -453,14 +453,17 @@
     body.wall-chrome #panel-mapa .mapa-top-tms,
     body.wall-chrome.tv-mode #panel-mapa .mapa-top-tms {
       display: flex !important;
-      grid-template-columns: unset !important;
+      grid-template-columns: none !important;
     }
     body.wall-chrome .clock-box,
-    body.wall-chrome .mapa-live-pill,
     body.wall-chrome .status-line,
     body.wall-chrome.tv-mode .clock-box,
-    body.wall-chrome.tv-mode .mapa-live-pill,
     body.wall-chrome.tv-mode .status-line {
+      display: none !important;
+    }
+    /* live-pill do mapa NÃO some — preenche a direita */
+    body.wall-chrome .mapa-live-pill:not(#mapaLivePill),
+    body.wall-chrome.tv-mode .mapa-live-pill:not(#mapaLivePill) {
       display: none !important;
     }
     body.wall-chrome .arm-brand .kicker,
@@ -4247,23 +4250,38 @@
     }
     .mapa-top-tms {
       display: flex !important;
+      flex-direction: row !important;
       align-items: center !important;
-      justify-content: flex-start !important;
+      justify-content: space-between !important;
       gap: 12px !important;
       padding: 4px 2px 2px !important;
       min-height: 0 !important;
-      grid-template-columns: unset !important;
+      grid-template-columns: none !important;
+      grid-template-rows: none !important;
     }
     .mapa-top-tms .arm-brand {
       flex: 1 1 auto;
       min-width: 0;
     }
     .mapa-top-tms .mapa-nav-tms {
-      margin-left: auto;
+      margin-left: 0 !important;
       flex: 0 0 auto;
     }
     .mapa-top-tms .mapa-live-pill {
       flex: 0 0 auto;
+      margin-left: 0 !important;
+    }
+    /* Parede/TV: no mapa o AO VIVO fica visível (evita buraco à direita) */
+    body.wall-chrome #panel-mapa .mapa-live-pill,
+    body.wall-chrome.tv-mode #panel-mapa .mapa-live-pill,
+    body.tv-mode #panel-mapa .mapa-live-pill {
+      display: inline-flex !important;
+    }
+    body.wall-chrome #panel-mapa .mapa-top-tms,
+    body.wall-chrome.tv-mode #panel-mapa .mapa-top-tms,
+    body.tv-mode #panel-mapa .mapa-top-tms {
+      display: flex !important;
+      grid-template-columns: none !important;
     }
     .mapa-top-tms .arm-titles h1 {
       font-size: clamp(18px, 2.1vmin, 24px) !important;

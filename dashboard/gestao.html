@@ -124,19 +124,23 @@
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .count { color: var(--muted); font-size: 12px; margin-left: auto; }
     .filter-bar {
-      display: flex; flex-wrap: wrap; gap: 8px;
+      display: flex; flex-wrap: wrap; gap: 10px;
       padding: 10px 18px;
       border-bottom: 1px solid var(--line);
       background: #070d18;
-      align-items: flex-start;
+      align-items: flex-end;
+      position: relative;
+      z-index: 5;
     }
     .filter-bar:empty { display: none; }
     .ms {
       position: relative;
-      min-width: 150px;
-      max-width: 240px;
-      flex: 1 1 150px;
+      width: 158px;
+      max-width: 158px;
+      flex: 0 0 158px;
+      z-index: 1;
     }
+    .ms.open { z-index: 40; }
     .ms-cap {
       display: block;
       font-size: 10px;
@@ -145,6 +149,9 @@
       color: #64748b;
       font-weight: 700;
       margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .ms-btn {
       width: 100%;
@@ -162,18 +169,28 @@
     .ms-btn.has-filter { border-color: #0369a1; background: #0c1a2e; }
     .ms-panel {
       display: none;
-      position: fixed;
-      min-width: 260px;
-      max-width: 380px;
-      max-height: min(520px, 72vh);
+      position: absolute;
+      left: 0;
+      top: calc(100% + 4px);
+      width: 260px;
+      max-width: min(320px, 92vw);
+      max-height: min(420px, 60vh);
       background: #0b1220; border: 1px solid #334155; border-radius: 10px;
       box-shadow: 0 16px 40px rgba(0,0,0,.55);
-      z-index: 9999;
+      z-index: 50;
       flex-direction: column;
       overflow: hidden;
     }
     .ms-panel.ms-panel--fit {
       max-height: none;
+    }
+    .ms-panel.ms-panel--up {
+      top: auto;
+      bottom: calc(100% + 4px);
+    }
+    .ms-panel.ms-panel--right {
+      left: auto;
+      right: 0;
     }
     .ms.open .ms-panel { display: flex; }
     .ms-actions {
@@ -309,6 +326,6 @@
       <div class="empty" id="gestaoEmpty" hidden>Sem dados para este setor.</div>
     </div>
   </main>
-  <script src="gestao.js"></script>
+  <script src="gestao.js?v=20260818c"></script>
 </body>
 </html>

@@ -116,14 +116,27 @@ def append_log(kind: str, text: str, *, source: str = "cmd") -> dict[str, Any]:
 def clear_log() -> None:
     """Zera o histórico espelhado (crt_log.jsonl) — comando limpar/cls/clear."""
     STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    last_err: Exception | None = None
+    for _ in range(8):
+        try:
+            # Truncate atômico (melhor que write_text sob arquivo aberto)
+            with LOG_PATH.open("w", encoding="utf-8", newline="\n") as fh:
+                fh.write("")
+                fh.flush()
+                try:
+                    os.fsync(fh.fileno())
+                except Exception:
+                    pass
+            return
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            time.sleep(0.04)
     try:
+        if LOG_PATH.is_file():
+            LOG_PATH.unlink()
         LOG_PATH.write_text("", encoding="utf-8")
     except Exception:
-        try:
-            if LOG_PATH.is_file():
-                LOG_PATH.unlink()
-            LOG_PATH.write_text("", encoding="utf-8")
-        except Exception:
+        if last_err:
             pass
 
 
@@ -133,8 +146,9 @@ def read_log_since(offset: int = 0) -> tuple[list[dict[str, Any]], int]:
         return [], 0
     try:
         size = LOG_PATH.stat().st_size
+        # Arquivo encolheu (limpar): não reler do zero — só acompanha o novo fim
         if offset > size:
-            offset = 0
+            offset = size
         with LOG_PATH.open("r", encoding="utf-8", errors="replace") as fh:
             fh.seek(offset)
             chunk = fh.read()
@@ -197,6 +211,36 @@ def _pid_alive(pid: int) -> bool:
         return True
     except OSError:
         return False
+
+
+def kill_existing_crt() -> None:
+    """Encerra o CRT já aberto (PID gravado) para o próximo ace.bat carregar código novo."""
+    pids: set[int] = set()
+    if PID_PATH.is_file():
+        try:
+            pids.add(int(PID_PATH.read_text(encoding="utf-8").strip() or "0"))
+        except Exception:
+            pass
+    for pid in list(pids):
+        if not pid or not _pid_alive(pid):
+            continue
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(pid), "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+            else:
+                os.kill(pid, 15)
+        except Exception:
+            pass
+    try:
+        if PID_PATH.is_file():
+            PID_PATH.unlink()
+    except Exception:
+        pass
 
 
 def spawn_crt(*, force: bool = False) -> bool:

@@ -37,6 +37,8 @@ if errorlevel 1 pause
 goto :eof
 
 :crt
+REM Reinicia o painel: fecha instancia antiga para carregar o codigo atual
+python -c "from crt_bridge import kill_existing_crt; kill_existing_crt()" 2>nul
 pythonw -u ace_crt.py 2>nul
 if errorlevel 1 (
   REM Fallback se pythonw nao existir
