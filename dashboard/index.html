@@ -4159,7 +4159,7 @@
     .pen-hbar-fill {
       height: 100%;
       border-radius: 999px;
-      background: linear-gradient(90deg, var(--crit-dark), var(--crit));
+      background: linear-gradient(90deg, var(--com-dark), var(--com));
       min-width: 4px;
     }
     .pen-hbar-n {
@@ -4188,11 +4188,6 @@
       overflow: hidden;
       background: #020617 !important;
       border: 1px solid rgba(148, 163, 184, 0.12);
-    }
-    .pen-leaflet path.pen-uf-neon {
-      stroke: #38bdf8;
-      stroke-opacity: 0.55;
-      stroke-width: 1;
     }
     .pen-uf-label {
       background: transparent;
@@ -8966,9 +8961,9 @@
                   <th>Filial</th>
                   <th>Ocorrência</th>
                   <th>Complemento</th>
-                  <th>Data</th>
+                  <th>Data ocorr.</th>
                   <th>Valor</th>
-                  <th>Aging</th>
+                  <th title="Dias desde a data da ocorrência sem solução">Dias c/ ocorr.</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -12598,6 +12593,16 @@
       CGB: 'MT', CGR: 'MS', MAO: 'AM', POA: 'RS', FLN: 'SC',
     };
 
+    function diasDesdeOcorrenciaPen(dataOc, fallback) {
+      const d0 = parsePenBrDate(dataOc) || parsePenBrDate(fallback);
+      if (!d0) return 0;
+      d0.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      // Conta a partir do dia da ocorrência (mesmo dia = 0 dias parado)
+      return Math.max(0, Math.floor((today - d0) / 86400000));
+    }
+
     function enrichPenRow(r) {
       const ctrc = String(r.ctrc || '').toUpperCase().replace(/\s+/g, '');
       const cod = String(r.codigo || '').trim();
@@ -12609,13 +12614,8 @@
       const filial = String(r.filial || '').trim().toUpperCase() || filialFromCtrc(ctrc);
       let dataOc = String(r.data_ocorrencia || '').trim() || dataOcorrFromPenText(hist, ultima, compl);
       if (!dataOc) dataOc = String(r.data_emissao || '').trim();
-      let aging = Number(r.aging_dias);
-      if (!Number.isFinite(aging)) {
-        const d0 = parsePenBrDate(dataOc) || parsePenBrDate(r.data_emissao);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        aging = d0 ? Math.max(0, Math.round((today - d0) / 86400000)) : 0;
-      }
+      // Sempre: dias parados sem solução = hoje − data da ocorrência
+      const aging = diasDesdeOcorrenciaPen(dataOc, r.data_emissao);
       const status = String(r.status_ace || '').toLowerCase() || (cod === '63' ? 'solucionada' : 'aberta');
       const ocorr = String(r.descricao_codigo || desc || ultima || '—').trim();
       const uf = String(r.uf || '').trim().toUpperCase()
@@ -12647,22 +12647,6 @@
       ES: [-40.3, -19.6], RJ: [-42.7, -22.3], SP: [-48.5, -22.5], PR: [-51.6, -24.6],
       SC: [-50.3, -27.3], RS: [-53.0, -30.0], MS: [-54.8, -20.5],
     };
-
-    /** Contorno do Brasil (lon,lat) — silhueta reconhecível. */
-    const PEN_BR_OUTLINE = [
-      [-51.65, 4.25], [-50.5, 1.8], [-49.5, 0.2], [-48.2, -0.8], [-46.5, -1.0],
-      [-44.5, -2.2], [-42.5, -2.8], [-40.5, -3.2], [-38.5, -3.8], [-37.0, -4.8],
-      [-35.5, -5.2], [-34.8, -6.5], [-34.8, -7.8], [-35.0, -9.0], [-35.8, -10.5],
-      [-37.0, -12.0], [-38.2, -13.5], [-38.8, -15.5], [-39.2, -17.5], [-39.5, -19.0],
-      [-40.2, -20.5], [-40.8, -21.8], [-41.5, -22.6], [-42.8, -22.9], [-44.0, -23.2],
-      [-45.5, -23.8], [-47.0, -24.5], [-48.2, -25.5], [-48.5, -27.0], [-48.8, -28.5],
-      [-49.5, -29.8], [-50.8, -31.2], [-52.0, -32.5], [-53.2, -33.5], [-54.5, -33.7],
-      [-56.0, -32.0], [-57.2, -30.0], [-57.6, -27.5], [-57.8, -25.0], [-57.5, -22.8],
-      [-58.5, -20.5], [-60.0, -18.0], [-62.0, -16.0], [-64.5, -14.0], [-67.0, -12.0],
-      [-69.0, -11.0], [-71.0, -10.0], [-73.0, -9.5], [-73.8, -8.0], [-72.5, -7.0],
-      [-70.0, -6.5], [-67.5, -5.0], [-65.0, -3.5], [-62.5, -2.0], [-60.0, -0.5],
-      [-57.5, 1.0], [-55.0, 2.2], [-53.0, 3.2], [-51.65, 4.25],
-    ];
 
     function ufFromPenRow(r) {
       const uf = String(r.uf || '').trim().toUpperCase();
@@ -12854,18 +12838,6 @@
         mapaPenUfLayer = null;
       }
 
-      // Contorno neon do Brasil (mesmo espírito das zonas do mapa operacional)
-      if (Array.isArray(PEN_BR_OUTLINE) && PEN_BR_OUTLINE.length) {
-        const latlngs = PEN_BR_OUTLINE.map(([lon, lat]) => [lat, lon]);
-        mapaPenOutlineLayer = L.polyline(latlngs, {
-          color: '#38bdf8',
-          weight: 1.6,
-          opacity: 0.55,
-          interactive: false,
-          className: 'pen-uf-neon',
-        }).addTo(map);
-      }
-
       const heat = L.layerGroup();
       const labels = L.layerGroup();
       Object.keys(PEN_UF_GEO).forEach((uf) => {
@@ -12955,11 +12927,14 @@
         rows.push(list[(penTableCursor + i) % list.length]);
       }
       body.innerHTML = rows.map((r) => {
-        const aging = Number(r.aging_dias) || 0;
-        const crit = aging > 5 || /FALTA|AVARIA|EXTRAVIO|INDENIZ/i.test(String(r.ocorrencia || ''));
+        const dias = Number(r.aging_dias) || 0;
+        const crit = dias > 5 || /FALTA|AVARIA|EXTRAVIO|INDENIZ/i.test(String(r.ocorrencia || ''));
         const valor = r.valor_num ? fmtPenMoney(r.valor_num) : '—';
         const st = r.status_ace === 'solucionada' ? 'Solucionada' : 'Aberta';
         const stCls = r.status_ace === 'solucionada' ? 'is-ok' : '';
+        const tipDias = r.data_ocorrencia
+          ? `Desde ${r.data_ocorrencia}: ${dias} dia${dias === 1 ? '' : 's'} parado sem solução`
+          : `${dias} dia(s) sem solução`;
         return `<tr class="${crit ? 'is-crit' : ''}">
           <td class="mono" title="${esc(r.ctrc)}">${esc(r.ctrc || '—')}</td>
           <td class="mono">${esc(r.nf || '—')}</td>
@@ -12969,7 +12944,7 @@
           <td title="${esc(r.complemento || '')}">${esc(shortPenLabel(r.complemento || '—', 24))}</td>
           <td class="mono">${esc(r.data_ocorrencia || '—')}</td>
           <td class="mono">${esc(valor)}</td>
-          <td class="mono">${aging}d</td>
+          <td class="mono" title="${esc(tipDias)}">${dias}d</td>
           <td><span class="pen-status ${stCls}">${esc(st)}</span></td>
         </tr>`;
       }).join('');
