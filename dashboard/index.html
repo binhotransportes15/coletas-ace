@@ -3970,28 +3970,37 @@
     .pen-chip.muted { color: #64748b; border-style: dashed; }
     .pen-kpi-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: clamp(8px, 1vw, 12px);
     }
     .pen-kpi {
-      background: linear-gradient(165deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.88));
-      border: 1px solid #1e293b;
-      border-radius: 12px;
+      position: relative;
+      background: var(--ds-kpi-bg, #0b1220);
+      border: 1px solid var(--line);
+      border-radius: var(--ds-radius, 14px);
       padding: clamp(10px, 1.2vmin, 14px) clamp(12px, 1.4vmin, 16px);
       display: flex;
       flex-direction: column;
       gap: 4px;
       min-width: 0;
+      overflow: hidden;
+    }
+    .pen-kpi::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--neutral);
     }
     .pen-kpi .lab {
-      font-size: clamp(10px, 1.1vmin, 12px);
+      font-size: clamp(10px, 1.05vmin, 12px);
       font-weight: 800;
       letter-spacing: 0.07em;
       text-transform: uppercase;
-      color: #94a3b8;
+      color: var(--muted);
     }
     .pen-kpi .val {
-      font-size: clamp(22px, 3.2vmin, 40px);
+      font-size: clamp(20px, 2.8vmin, 36px);
       font-weight: 900;
       line-height: 1.05;
       color: #f8fafc;
@@ -4001,22 +4010,24 @@
       font-style: normal;
       font-size: 0.45em;
       font-weight: 800;
-      color: #94a3b8;
+      color: var(--muted);
       margin-left: 4px;
     }
     .pen-kpi .sub {
-      font-size: clamp(10px, 1.1vmin, 12px);
+      font-size: clamp(10px, 1.05vmin, 12px);
       color: #64748b;
       font-weight: 600;
     }
-    .pen-kpi.is-crit { border-color: rgba(248, 113, 113, 0.45); box-shadow: 0 0 20px rgba(239, 68, 68, 0.1); }
-    .pen-kpi.is-crit .val { color: #f87171; }
-    .pen-kpi.is-warn { border-color: rgba(251, 191, 36, 0.4); box-shadow: 0 0 20px rgba(245, 158, 11, 0.08); }
-    .pen-kpi.is-warn .val { color: #fbbf24; }
-    .pen-kpi.is-run { border-color: rgba(56, 189, 248, 0.4); }
-    .pen-kpi.is-run .val { color: #38bdf8; }
-    .pen-kpi.is-ok { border-color: rgba(74, 222, 128, 0.4); }
-    .pen-kpi.is-ok .val { color: #4ade80; }
+    .pen-kpi.is-ok::before { background: var(--ok); }
+    .pen-kpi.is-ok .val { color: var(--ok); }
+    .pen-kpi.is-run::before { background: var(--run); }
+    .pen-kpi.is-run .val { color: var(--run); }
+    .pen-kpi.is-warn::before { background: var(--warn-bright); }
+    .pen-kpi.is-warn .val { color: var(--warn-bright); }
+    .pen-kpi.is-crit::before { background: var(--crit); }
+    .pen-kpi.is-crit .val { color: var(--crit); }
+    .pen-kpi.is-neutral::before { background: var(--neutral); }
+    .pen-kpi.is-neutral .val { color: #f8fafc; }
     .pen-mid {
       display: grid;
       grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.95fr) minmax(0, 1.15fr);
@@ -4075,9 +4086,15 @@
     }
     .pen-motivo-top {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: auto 1fr auto;
       gap: 8px;
-      align-items: baseline;
+      align-items: center;
+    }
+    .pen-motivo-sw {
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+      flex: 0 0 auto;
     }
     .pen-motivo-lab {
       font-size: clamp(11px, 1.25vmin, 13px);
@@ -4110,12 +4127,8 @@
       height: 100%;
       border-radius: 999px;
       min-width: 4px;
-      background: linear-gradient(90deg, #f87171, #fb923c);
+      background: linear-gradient(90deg, var(--crit-dark), var(--crit));
     }
-    .pen-motivo:nth-child(2) .pen-motivo-fill { background: linear-gradient(90deg, #ea580c, #fb923c); }
-    .pen-motivo:nth-child(3) .pen-motivo-fill { background: linear-gradient(90deg, #d97706, #fbbf24); }
-    .pen-motivo:nth-child(4) .pen-motivo-fill { background: linear-gradient(90deg, #0284c7, #38bdf8); }
-    .pen-motivo:nth-child(5) .pen-motivo-fill { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
     .pen-hbar-list {
       flex: 1 1 auto;
       min-height: 0;
@@ -4146,7 +4159,7 @@
     .pen-hbar-fill {
       height: 100%;
       border-radius: 999px;
-      background: linear-gradient(90deg, #f87171, #fb923c);
+      background: linear-gradient(90deg, var(--crit-dark), var(--crit));
       min-width: 4px;
     }
     .pen-hbar-n {
@@ -4163,48 +4176,42 @@
       min-height: 0;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
       gap: 6px;
       position: relative;
     }
-    .pen-br-svg {
-      width: 100%;
-      height: auto;
-      max-height: 100%;
+    .pen-leaflet,
+    .pen-leaflet.leaflet-container {
       flex: 1 1 auto;
-      min-height: 0;
+      min-height: 160px;
+      width: 100%;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #020617 !important;
+      border: 1px solid rgba(148, 163, 184, 0.12);
     }
-    .pen-br-svg .br-land {
-      fill: #0b1220;
+    .pen-leaflet path.pen-uf-neon {
       stroke: #38bdf8;
-      stroke-width: 2;
-      stroke-opacity: 0.75;
-      stroke-linejoin: round;
-      stroke-linecap: round;
+      stroke-opacity: 0.55;
+      stroke-width: 1;
     }
-    .pen-br-svg .br-heat {
-      fill-opacity: 0.78;
-      stroke: rgba(255,255,255,0.22);
-      stroke-width: 0.9;
-      filter: url(#penHeatGlow);
-    }
-    .pen-br-svg .br-heat.is-empty {
-      fill-opacity: 0.35;
-      filter: none;
-      stroke: none;
-    }
-    .pen-br-svg .br-uf-lab {
-      fill: #f8fafc;
+    .pen-uf-label {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      color: #f8fafc;
+      font-weight: 900;
       font-size: 11px;
-      font-weight: 800;
       letter-spacing: 0.04em;
-      text-anchor: middle;
-      dominant-baseline: central;
-      pointer-events: none;
-      paint-order: stroke;
-      stroke: rgba(2, 6, 23, 0.75);
-      stroke-width: 2.5px;
+      text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 8px rgba(0,0,0,.6);
+      text-align: center;
+      line-height: 1.1;
+      margin: 0 !important;
+    }
+    .pen-uf-label span {
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      opacity: 0.95;
     }
     .pen-br-legend {
       display: flex;
@@ -4214,13 +4221,14 @@
       font-weight: 700;
       color: #94a3b8;
       flex: 0 0 auto;
+      justify-content: center;
     }
     .pen-br-legend i {
       display: block;
       width: min(140px, 40%);
       height: 8px;
       border-radius: 999px;
-      background: linear-gradient(90deg, #1e3a8a, #22d3ee, #4ade80, #fbbf24, #ef4444);
+      background: linear-gradient(90deg, var(--com-dark), var(--com), var(--warn-bright), var(--crit));
     }
     .pen-table-scroll {
       flex: 1 1 auto;
@@ -4282,7 +4290,7 @@
     @media (max-width: 1100px) {
       .pen-wrap { height: auto; min-height: 100vh; }
       .pen-dash { grid-template-rows: auto auto auto auto; height: auto; overflow: visible; }
-      .pen-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .pen-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .pen-mid { grid-template-columns: 1fr; }
     }
 
@@ -6404,7 +6412,7 @@
       min-height: 0 !important;
     }
     body.tv-mode .pen-kpi-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+      grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
       gap: clamp(8px, 1.1vmin, 12px) !important;
     }
     body.tv-mode .pen-kpi .val {
@@ -8886,26 +8894,36 @@
           <span class="pen-chip muted" id="penAtualizado">atualizado —</span>
         </div>
 
-        <div class="pen-kpi-grid dash-block" data-block="kpis">
-          <article class="pen-kpi is-crit">
-            <span class="lab">Pendências ativas</span>
-            <strong class="val" id="penAbertas">0</strong>
-            <span class="sub">CTRCs</span>
+        <div class="pen-kpi-grid dash-block ds-kpi-row" data-block="kpis">
+          <article class="pen-kpi ds-kpi is-neutral">
+            <span class="lab">Pendência total</span>
+            <strong class="val" id="penTotal">0</strong>
+            <span class="sub">CTRCs no período</span>
           </article>
-          <article class="pen-kpi is-warn">
-            <span class="lab">Valor em risco</span>
+          <article class="pen-kpi ds-kpi is-warn">
+            <span class="lab">Em tratativa</span>
+            <strong class="val" id="penTratativa">0</strong>
+            <span class="sub">cód. 80</span>
+          </article>
+          <article class="pen-kpi ds-kpi is-ok">
+            <span class="lab">Solucionadas</span>
+            <strong class="val" id="penSoluc">0</strong>
+            <span class="sub">cód. 63</span>
+          </article>
+          <article class="pen-kpi ds-kpi is-run">
+            <span class="lab">Valor mercadoria</span>
             <strong class="val" id="penValorRisco">R$ 0</strong>
-            <span class="sub">mercadoria aberta</span>
+            <span class="sub">relatório 031</span>
           </article>
-          <article class="pen-kpi is-run">
-            <span class="lab">Tempo médio de solução</span>
+          <article class="pen-kpi ds-kpi is-warn">
+            <span class="lab">Tempo médio solução</span>
             <strong class="val"><span id="penSlaMedio">0</span> <em>dias</em></strong>
-            <span class="sub">pendência solucionada</span>
+            <span class="sub">solucionadas</span>
           </article>
-          <article class="pen-kpi is-ok">
+          <article class="pen-kpi ds-kpi is-ok">
             <span class="lab">% Solucionadas</span>
             <strong class="val" id="penSla">0%</strong>
-            <span class="sub"><span id="penSoluc">0</span> baixas · cód. 63</span>
+            <span class="sub">SLA do setor</span>
           </article>
         </div>
 
@@ -8923,7 +8941,7 @@
           <section class="pen-card ds-panel pen-map-card" aria-label="Pendências por estado">
             <header><h3>Por estado</h3><span class="meta" id="penMapMeta">mapa</span></header>
             <div class="pen-br-wrap" id="penBrMap">
-              <svg class="pen-br-svg" id="penBrSvg" viewBox="0 0 400 420" aria-hidden="true"></svg>
+              <div class="pen-leaflet" id="penMapLeaflet" aria-label="Mapa do Brasil"></div>
               <div class="pen-br-legend">
                 <span>0</span>
                 <i></i>
@@ -8963,6 +8981,7 @@
         <!-- legado oculto -->
         <div hidden aria-hidden="true">
           <span id="penPeriodo"></span>
+          <span id="penAbertas"></span>
           <div id="penTorresWrap"><div id="penTorres"></div><div id="penPareto"></div></div>
           <div id="penErr"></div>
         </div>
@@ -9469,6 +9488,11 @@
     let mapaFarolLayer = null;
     let mapaEntregaLeaflet = null;
     let mapaEntregaZoneLayer = null;
+    let mapaPenLeaflet = null;
+    let mapaPenHeatLayer = null;
+    let mapaPenOutlineLayer = null;
+    let mapaPenUfLayer = null;
+    let lastPenUfCounts = null;
     let lastMapaFarolPct = null;
     let mapaRouteCursor = 0;
     let mapaRouteTimer = null;
@@ -11464,6 +11488,14 @@
       if (CURRENT_SECTOR === 'pendencia') {
         refreshPendencia();
         if (!penRefreshTimer) penRefreshTimer = setInterval(refreshPendencia, 15000);
+        setTimeout(() => {
+          try {
+            if (mapaPenLeaflet) mapaPenLeaflet.invalidateSize();
+            if (lastGoodPenAbertas && typeof renderPenEstadoMap === 'function') {
+              renderPenEstadoMap(lastGoodPenAbertas);
+            }
+          } catch (_) {}
+        }, 200);
       } else if (penRefreshTimer) {
         clearInterval(penRefreshTimer);
         penRefreshTimer = null;
@@ -12632,23 +12664,6 @@
       [-57.5, 1.0], [-55.0, 2.2], [-53.0, 3.2], [-51.65, 4.25],
     ];
 
-    function penProjectLonLat(lon, lat, w = 400, h = 420) {
-      const x0 = -74.2;
-      const x1 = -34.0;
-      const y0 = 5.5;
-      const y1 = -34.2;
-      const x = ((lon - x0) / (x1 - x0)) * w;
-      const y = ((y0 - lat) / (y0 - y1)) * h;
-      return [x, y];
-    }
-
-    function penBrOutlinePath(w = 400, h = 420) {
-      return PEN_BR_OUTLINE.map((pt, i) => {
-        const [x, y] = penProjectLonLat(pt[0], pt[1], w, h);
-        return `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`;
-      }).join(' ') + ' Z';
-    }
-
     function ufFromPenRow(r) {
       const uf = String(r.uf || '').trim().toUpperCase();
       if (uf.length === 2) return uf;
@@ -12657,22 +12672,52 @@
       return '';
     }
 
+    function penOcorrColor(codigo) {
+      const cod = String(codigo || '').trim();
+      // Paleta BINHO + estável por código de ocorrência
+      const map = {
+        '63': { solid: '#8cc63f', dark: '#009245' }, // solucionada · verde
+        '80': { solid: '#fff200', dark: '#fbb03b' }, // tratativa · amarelo
+        '60': { solid: '#ed1c24', dark: '#c1272d' }, // falta · vermelho
+        '50': { solid: '#29abe2', dark: '#1b1464' }, // NFD · azul
+        '33': { solid: '#fbb03b', dark: '#c97816' }, // avaria
+        '22': { solid: '#ec4899', dark: '#be185d' }, // extravio
+        '19': { solid: '#a78bfa', dark: '#6d28d9' }, // indenização
+        '29': { solid: '#2dd4bf', dark: '#0f766e' }, // sobra
+        '32': { solid: '#94a3b8', dark: '#475569' }, // inversão
+        '61': { solid: '#fb923c', dark: '#c2410c' }, // LJJR
+      };
+      if (map[cod]) return map[cod];
+      let h = 0;
+      for (let i = 0; i < cod.length; i++) h = ((h << 5) - h + cod.charCodeAt(i)) | 0;
+      const palette = [
+        { solid: '#ed1c24', dark: '#c1272d' },
+        { solid: '#29abe2', dark: '#1b1464' },
+        { solid: '#fff200', dark: '#fbb03b' },
+        { solid: '#8cc63f', dark: '#009245' },
+        { solid: '#a78bfa', dark: '#6d28d9' },
+        { solid: '#2dd4bf', dark: '#0f766e' },
+        { solid: '#fb923c', dark: '#c2410c' },
+        { solid: '#94a3b8', dark: '#475569' },
+      ];
+      return palette[Math.abs(h) % palette.length];
+    }
+
     function penHeatColor(t) {
       const x = Math.max(0, Math.min(1, t));
-      if (x < 0.25) {
-        const k = x / 0.25;
-        return `rgb(${Math.round(30 + k * 4)}, ${Math.round(58 + k * 120)}, ${Math.round(138 + k * 80)})`;
-      }
+      // Escala BINHO: azul → amarelo → vermelho
       if (x < 0.5) {
-        const k = (x - 0.25) / 0.25;
-        return `rgb(${Math.round(34 + k * 40)}, ${Math.round(178 + k * 40)}, ${Math.round(218 - k * 100)})`;
+        const k = x / 0.5;
+        const r = Math.round(0x29 + k * (0xff - 0x29));
+        const g = Math.round(0xab + k * (0xf2 - 0xab));
+        const b = Math.round(0xe2 + k * (0x00 - 0xe2));
+        return `rgb(${r},${g},${b})`;
       }
-      if (x < 0.75) {
-        const k = (x - 0.5) / 0.25;
-        return `rgb(${Math.round(74 + k * 177)}, ${Math.round(222 - k * 30)}, ${Math.round(128 - k * 90)})`;
-      }
-      const k = (x - 0.75) / 0.25;
-      return `rgb(${Math.round(251 - k * 12)}, ${Math.round(191 - k * 120)}, ${Math.round(36 - k * 20)})`;
+      const k = (x - 0.5) / 0.5;
+      const r = Math.round(0xff + k * (0xed - 0xff));
+      const g = Math.round(0xf2 + k * (0x1c - 0xf2));
+      const b = Math.round(0x00 + k * (0x24 - 0x00));
+      return `rgb(${r},${g},${b})`;
     }
 
     function renderPenMotivos(ofensores) {
@@ -12700,12 +12745,14 @@
         const pctTxt = Math.round(pct);
         const w = Math.max(6, Math.round((qtd / max) * 100));
         const nome = String(o.label || o.descricao_codigo || '').trim() || `Cód. ${o.codigo || '—'}`;
+        const col = penOcorrColor(o.codigo);
         return `<div class="pen-motivo" title="${esc(nome)} · ${qtd} CTRC · ${pctTxt}%">
           <div class="pen-motivo-top">
+            <span class="pen-motivo-sw" style="background:${col.solid}"></span>
             <span class="pen-motivo-lab">${esc(shortPenLabel(nome, 36))}</span>
             <span class="pen-motivo-stats">${qtd}<em>${pctTxt}%</em></span>
           </div>
-          <div class="pen-motivo-track"><div class="pen-motivo-fill" style="width:${w}%"></div></div>
+          <div class="pen-motivo-track"><div class="pen-motivo-fill" style="width:${w}%;background:linear-gradient(90deg,${col.dark},${col.solid})"></div></div>
         </div>`;
       }).join('');
     }
@@ -12739,17 +12786,51 @@
       }).join('');
     }
 
+    function ensurePenMapaLeaflet() {
+      const el = document.getElementById('penMapLeaflet');
+      if (!el || typeof L === 'undefined') return null;
+      if (mapaPenLeaflet) {
+        setTimeout(() => { try { mapaPenLeaflet.invalidateSize(); } catch (_) {} }, 60);
+        return mapaPenLeaflet;
+      }
+      mapaPenLeaflet = L.map(el, {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        keyboard: false,
+        tap: false,
+        preferCanvas: true,
+      });
+      // Mesmos tiles do mapa operacional
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 8,
+        minZoom: 3,
+        subdomains: 'abcd',
+      }).addTo(mapaPenLeaflet);
+      // Enquadra o Brasil
+      try {
+        mapaPenLeaflet.fitBounds([[5.3, -74.0], [-33.8, -34.7]], { padding: [8, 8], maxZoom: 5 });
+      } catch (_) {
+        mapaPenLeaflet.setView([-14.2, -51.9], 4);
+      }
+      setTimeout(() => { try { mapaPenLeaflet.invalidateSize(); } catch (_) {} }, 120);
+      return mapaPenLeaflet;
+    }
+
     function renderPenEstadoMap(abertas) {
-      const svg = document.getElementById('penBrSvg');
       const meta = document.getElementById('penMapMeta');
       const maxLab = document.getElementById('penMapMaxLab');
-      if (!svg) return;
+      const map = ensurePenMapaLeaflet();
       const counts = {};
       (abertas || []).forEach((r) => {
         const uf = ufFromPenRow(r);
         if (!uf) return;
         counts[uf] = (counts[uf] || 0) + 1;
       });
+      lastPenUfCounts = counts;
       const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
       const max = entries.length ? entries[0][1] : 0;
       if (meta) {
@@ -12758,40 +12839,83 @@
           : 'sem UF';
       }
       if (maxLab) maxLab.textContent = max ? String(max) : 'máx';
+      if (!map) return;
 
-      const W = 400;
-      const H = 420;
-      const land = penBrOutlinePath(W, H);
-      const heats = Object.keys(PEN_UF_GEO).map((uf) => {
+      if (mapaPenHeatLayer) {
+        try { map.removeLayer(mapaPenHeatLayer); } catch (_) {}
+        mapaPenHeatLayer = null;
+      }
+      if (mapaPenOutlineLayer) {
+        try { map.removeLayer(mapaPenOutlineLayer); } catch (_) {}
+        mapaPenOutlineLayer = null;
+      }
+      if (mapaPenUfLayer) {
+        try { map.removeLayer(mapaPenUfLayer); } catch (_) {}
+        mapaPenUfLayer = null;
+      }
+
+      // Contorno neon do Brasil (mesmo espírito das zonas do mapa operacional)
+      if (Array.isArray(PEN_BR_OUTLINE) && PEN_BR_OUTLINE.length) {
+        const latlngs = PEN_BR_OUTLINE.map(([lon, lat]) => [lat, lon]);
+        mapaPenOutlineLayer = L.polyline(latlngs, {
+          color: '#38bdf8',
+          weight: 1.6,
+          opacity: 0.55,
+          interactive: false,
+          className: 'pen-uf-neon',
+        }).addTo(map);
+      }
+
+      const heat = L.layerGroup();
+      const labels = L.layerGroup();
+      Object.keys(PEN_UF_GEO).forEach((uf) => {
         const geo = PEN_UF_GEO[uf];
-        const [x, y] = penProjectLonLat(geo[0], geo[1], W, H);
+        if (!geo) return;
         const qtd = counts[uf] || 0;
+        const lat = geo[1];
+        const lon = geo[0];
         if (!qtd) {
-          return `<circle class="br-heat is-empty" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="#1e3a8a"/>`;
+          L.circleMarker([lat, lon], {
+            radius: 3,
+            color: '#1e3a8a',
+            fillColor: '#1e3a8a',
+            fillOpacity: 0.35,
+            weight: 0,
+            interactive: false,
+          }).addTo(heat);
+          return;
         }
         const t = max ? qtd / max : 0;
-        const r = 9 + t * 22;
+        const r = 8 + t * 18;
         const fill = penHeatColor(t);
-        return `<circle class="br-heat" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}">
-            <title>${uf}: ${qtd} pendências</title>
-          </circle>
-          <text class="br-uf-lab" x="${x.toFixed(1)}" y="${y.toFixed(1)}">${uf}</text>`;
-      }).join('');
-
-      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-      svg.innerHTML = `
-        <defs>
-          <filter id="penHeatGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2" result="b"/>
-            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-          <linearGradient id="penBrFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#0f2744"/>
-            <stop offset="100%" stop-color="#071018"/>
-          </linearGradient>
-        </defs>
-        <path class="br-land" d="${land}" fill="url(#penBrFill)"/>
-        ${heats}`;
+        L.circleMarker([lat, lon], {
+          radius: r,
+          color: '#fff',
+          weight: 1,
+          opacity: 0.25,
+          fillColor: fill,
+          fillOpacity: 0.78,
+          interactive: false,
+        }).addTo(heat);
+        L.marker([lat, lon], {
+          interactive: false,
+          keyboard: false,
+          icon: L.divIcon({
+            className: 'pen-uf-label',
+            html: `${uf}<span>${qtd}</span>`,
+            iconSize: [36, 28],
+            iconAnchor: [18, 14],
+          }),
+        }).addTo(labels);
+      });
+      mapaPenHeatLayer = heat.addTo(map);
+      mapaPenUfLayer = labels.addTo(map);
+      setTimeout(() => {
+        try {
+          map.invalidateSize();
+          map.fitBounds([[5.3, -74.0], [-33.8, -34.7]], { padding: [10, 10], maxZoom: 5 });
+        } catch (_) {}
+      }, 80);
     }
 
     function renderPenDashboardParts(abertas, resumo) {
@@ -13008,22 +13132,33 @@
           ? (slaRaw.includes('%') ? slaRaw : `${slaRaw}%`)
           : '0%';
         const periodoTxt = formatPeriodo31(resumo.periodo || '');
+
+        const qtdByCod = (cod) => {
+          const hit = (ofens || []).find((o) => String(o.codigo || '').trim() === cod);
+          if (hit) return Number(hit.qtd) || 0;
+          return enriched.filter((r) => String(r.codigo) === cod).length;
+        };
+        const total = Number(resumo.total_ctrcs) || enriched.length || 0;
+        const solucN = Number(resumo.solucionadas) || qtdByCod('63');
+        const tratN = qtdByCod('80');
+        const abertasN = Number(resumo.abertas) || abertas.length;
+
+        setPenText('penTotal', String(total));
+        setPenText('penTratativa', String(tratN));
+        setPenText('penSoluc', String(solucN));
+        setPenText('penAbertas', String(abertasN));
         setPenText('penSla', slaTxt);
-        setPenText('penSoluc', resumo.solucionadas || '0');
-        setPenText('penAbertas', resumo.abertas != null && resumo.abertas !== ''
-          ? resumo.abertas
-          : String(abertas.length));
         setPenText('penPeriodo', periodoTxt);
         setPenText('penFiltroPeriodo', periodoTxt);
         setPenText('penFiltroFilial', 'Todas');
-        setPenText('penFiltroStatus', 'Abertas');
+        setPenText('penFiltroStatus', 'Todas');
         setPenText('penAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
 
-        let valorRisco = parsePenMoney(resumo.valor_risco);
-        if (!valorRisco) {
-          valorRisco = abertas.reduce((s, r) => s + (r.valor_num || 0), 0);
+        let valorMerc = parsePenMoney(resumo.valor_risco);
+        if (!valorMerc) {
+          valorMerc = enriched.reduce((s, r) => s + (r.valor_num || 0), 0);
         }
-        setPenText('penValorRisco', fmtPenMoney(valorRisco));
+        setPenText('penValorRisco', fmtPenMoney(valorMerc));
 
         let slaMedio = Number(String(resumo.sla_medio_dias || '').replace(',', '.'));
         const solucionadas = enriched.filter((r) => r.status_ace === 'solucionada' || String(r.codigo) === '63');
