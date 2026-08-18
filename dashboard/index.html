@@ -6297,23 +6297,13 @@
       min-height: 0;
     }
     .ent-dash-title {
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-    }
-    .ent-dash-title h2 {
       margin: 0;
-      font-size: clamp(16px, 1.8vw, 22px);
+      text-align: center;
+      font-size: clamp(15px, 1.7vw, 22px);
       font-weight: 800;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #e2e8f0;
-    }
-    .ent-dash-sub {
-      color: var(--muted, #94a3b8);
-      font-size: clamp(11px, 1.1vw, 13px);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+      color: #f1f5f9;
     }
     .ent-kpi-grid {
       display: grid;
@@ -6322,36 +6312,43 @@
     }
     .ent-kpi-card {
       position: relative;
-      display: flex;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: 1fr auto;
       align-items: center;
-      gap: 12px;
-      padding: clamp(10px, 1.2vw, 16px) clamp(12px, 1.4vw, 18px);
-      border-radius: 12px;
+      column-gap: 12px;
+      row-gap: 6px;
+      padding: clamp(12px, 1.3vw, 16px) clamp(12px, 1.4vw, 18px) 8px;
+      border-radius: 14px;
       overflow: hidden;
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(8, 12, 22, 0.98));
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: linear-gradient(180deg, #111827, #0b1220);
       min-height: 0;
     }
-    .ent-kpi-card.is-total { box-shadow: inset 0 0 0 1px rgba(148,163,184,.12), 0 0 24px rgba(100,116,139,.12); }
-    .ent-kpi-card.is-rota { box-shadow: inset 0 0 0 1px rgba(56,189,248,.22), 0 0 28px rgba(14,165,233,.14); }
-    .ent-kpi-card.is-real { box-shadow: inset 0 0 0 1px rgba(74,222,128,.22), 0 0 28px rgba(34,197,94,.14); }
-    .ent-kpi-card.is-par { box-shadow: inset 0 0 0 1px rgba(248,113,113,.25), 0 0 28px rgba(239,68,68,.16); }
+    .ent-kpi-card.is-total { border-color: rgba(148,163,184,.28); box-shadow: 0 0 0 1px rgba(100,116,139,.08); }
+    .ent-kpi-card.is-rota { border-color: rgba(56,189,248,.45); box-shadow: 0 0 24px rgba(14,165,233,.12); }
+    .ent-kpi-card.is-real { border-color: rgba(74,222,128,.45); box-shadow: 0 0 24px rgba(34,197,94,.12); }
+    .ent-kpi-card.is-par { border-color: rgba(248,113,113,.5); box-shadow: 0 0 24px rgba(239,68,68,.14); }
     .ent-kpi-ico {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
       display: grid;
       place-items: center;
-      font-size: 16px;
-      font-weight: 800;
-      flex: 0 0 auto;
       background: rgba(148,163,184,.12);
       color: #cbd5e1;
+      grid-row: 1;
     }
-    .ent-kpi-card.is-rota .ent-kpi-ico { background: rgba(14,165,233,.18); color: #38bdf8; }
-    .ent-kpi-card.is-real .ent-kpi-ico { background: rgba(34,197,94,.18); color: #4ade80; }
-    .ent-kpi-card.is-par .ent-kpi-ico { background: rgba(239,68,68,.18); color: #f87171; }
-    .ent-kpi-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .ent-kpi-card.is-rota .ent-kpi-ico { background: rgba(14,165,233,.16); color: #38bdf8; }
+    .ent-kpi-card.is-real .ent-kpi-ico { background: rgba(34,197,94,.16); color: #4ade80; }
+    .ent-kpi-card.is-par .ent-kpi-ico { background: rgba(239,68,68,.16); color: #f87171; }
+    .ent-kpi-body {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+      grid-row: 1;
+    }
     .ent-kpi-lab {
       font-size: clamp(10px, 1vw, 12px);
       text-transform: uppercase;
@@ -6359,8 +6356,8 @@
       color: #94a3b8;
       font-weight: 700;
     }
-    .ent-kpi-val {
-      font-size: clamp(22px, 2.8vw, 36px);
+    .ent-kpi-card .ent-kpi-val {
+      font-size: clamp(26px, 3.2vw, 40px);
       font-weight: 900;
       color: #f8fafc;
       line-height: 1.05;
@@ -6368,131 +6365,40 @@
       align-items: baseline;
       gap: 8px;
     }
-    .ent-kpi-val em {
+    .ent-kpi-card .ent-kpi-val em {
       font-style: normal;
-      font-size: 0.48em;
+      font-size: 0.42em;
       font-weight: 800;
       color: #94a3b8;
     }
     .ent-kpi-card.is-rota .ent-kpi-val em { color: #38bdf8; }
     .ent-kpi-card.is-real .ent-kpi-val em { color: #4ade80; }
     .ent-kpi-card.is-par .ent-kpi-val em { color: #f87171; }
-    .ent-kpi-accent {
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: 3px;
-      opacity: 0.85;
-      background: linear-gradient(90deg, #64748b, transparent);
-    }
-    .ent-kpi-card.is-rota .ent-kpi-accent { background: linear-gradient(90deg, #0ea5e9, transparent); }
-    .ent-kpi-card.is-real .ent-kpi-accent { background: linear-gradient(90deg, #22c55e, transparent); }
-    .ent-kpi-card.is-par .ent-kpi-accent { background: linear-gradient(90deg, #ef4444, transparent); }
-
-    .ent-dash-main {
-      flex: 1 1 auto;
-      min-height: 0;
-      display: grid;
-      grid-template-columns: minmax(180px, 0.95fr) minmax(280px, 1.6fr) minmax(180px, 0.95fr);
-      gap: clamp(8px, 1vw, 14px);
-      align-content: stretch;
-    }
-    .ent-side {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      height: 100%;
-      padding: clamp(10px, 1.2vw, 16px);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    .ent-side-head {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 10px;
-      flex: 0 0 auto;
-    }
-    .ent-side-head h3 {
-      margin: 0;
-      font-size: clamp(12px, 1.3vw, 15px);
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #e2e8f0;
-    }
-    .ent-side-head .meta {
-      color: #64748b;
-      font-size: 11px;
-      font-weight: 600;
-    }
-    .ent-hbar-list {
-      flex: 1 1 auto;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      gap: clamp(10px, 1.2vw, 16px);
-      justify-content: space-evenly;
-      overflow: hidden;
-    }
-    .ent-hbar {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      grid-template-rows: auto auto;
-      gap: 4px 10px;
-      align-items: center;
-    }
-    .ent-hbar-lab {
-      font-size: clamp(11px, 1.15vw, 13px);
-      font-weight: 700;
-      color: #cbd5e1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .ent-hbar-n {
-      font-size: clamp(14px, 1.6vw, 20px);
-      font-weight: 900;
-      color: #f8fafc;
-      font-variant-numeric: tabular-nums;
-    }
-    .ent-hbar-track {
+    .ent-kpi-spark {
       grid-column: 1 / -1;
-      height: clamp(10px, 1.2vw, 14px);
-      border-radius: 999px;
-      background: rgba(30, 41, 59, 0.9);
-      overflow: hidden;
-      border: 1px solid rgba(148,163,184,.12);
+      width: 100%;
+      height: 22px;
+      opacity: 0.55;
+      color: #94a3b8;
     }
-    .ent-hbar-fill {
-      display: block;
-      height: 100%;
-      width: 0%;
-      border-radius: inherit;
-      transition: width 0.45s ease;
-      background: linear-gradient(90deg, #ef4444, #f87171);
-    }
-    .ent-hbar.is-rota .ent-hbar-fill { background: linear-gradient(90deg, #0284c7, #38bdf8); }
-    .ent-hbar.is-real .ent-hbar-fill { background: linear-gradient(90deg, #15803d, #4ade80); }
-    .ent-hbar.is-warn .ent-hbar-fill { background: linear-gradient(90deg, #d97706, #fbbf24); }
-    .ent-hbar.is-mute .ent-hbar-fill { background: linear-gradient(90deg, #475569, #94a3b8); }
-    .ent-hbar.is-par .ent-hbar-fill { background: linear-gradient(90deg, #b91c1c, #f87171); }
-    .ent-hbar.is-alt .ent-hbar-fill { background: linear-gradient(90deg, #1d4ed8, #60a5fa); }
+    .ent-kpi-card.is-rota .ent-kpi-spark { color: #38bdf8; opacity: 0.7; }
+    .ent-kpi-card.is-real .ent-kpi-spark { color: #4ade80; opacity: 0.7; }
+    .ent-kpi-card.is-par .ent-kpi-spark { color: #f87171; opacity: 0.75; }
 
     .ent-hero {
       position: relative;
+      flex: 1 1 auto;
       min-height: 0;
-      height: 100%;
-      border-radius: 14px;
+      border-radius: 16px;
       overflow: hidden;
-      border: 1px solid rgba(148,163,184,.16);
+      border: 1px solid rgba(148,163,184,.14);
       background: #020617;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: clamp(8px, 1vw, 14px);
-      padding: clamp(10px, 1.4vw, 18px);
+      gap: clamp(6px, 0.9vw, 12px);
+      padding: clamp(8px, 1.2vw, 16px);
     }
     .ent-map-bg,
     .ent-map-bg.leaflet-container {
@@ -6509,17 +6415,16 @@
       inset: 0;
       z-index: 1;
       pointer-events: none;
-      background:
-        radial-gradient(ellipse at center, rgba(2,6,23,.15) 0%, rgba(2,6,23,.72) 70%, rgba(2,6,23,.88) 100%),
-        linear-gradient(180deg, rgba(2,6,23,.35), rgba(2,6,23,.55));
+      background: radial-gradient(ellipse at center, rgba(2,6,23,.05) 0%, rgba(2,6,23,.55) 55%, rgba(2,6,23,.82) 100%);
     }
     .ent-ring-wrap {
       position: relative;
       z-index: 2;
-      width: min(280px, 42vmin);
-      height: min(280px, 42vmin);
+      width: min(340px, 46vmin);
+      height: min(340px, 46vmin);
       display: grid;
       place-items: center;
+      filter: drop-shadow(0 8px 28px rgba(0,0,0,.45));
     }
     .ent-ring-wrap svg {
       position: absolute;
@@ -6530,7 +6435,7 @@
     .ent-ring-wrap svg .seg-real { fill: #22c55e; }
     .ent-ring-wrap svg .seg-rota { fill: #0ea5e9; }
     .ent-ring-wrap svg .seg-par { fill: #ef4444; }
-    .ent-ring-wrap svg .ring-hole { fill: rgba(2, 6, 23, 0.82); }
+    .ent-ring-wrap svg .ring-hole { fill: rgba(2, 6, 23, 0.88); }
     .ent-ring-center {
       position: relative;
       z-index: 1;
@@ -6542,20 +6447,20 @@
       pointer-events: none;
     }
     .ent-ring-center strong {
-      font-size: clamp(28px, 4.2vmin, 48px);
+      font-size: clamp(36px, 5.2vmin, 56px);
       font-weight: 900;
       color: #f8fafc;
       line-height: 1;
     }
     .ent-ring-center span {
-      font-size: clamp(10px, 1.2vmin, 13px);
+      font-size: clamp(11px, 1.3vmin, 14px);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       color: #94a3b8;
       font-weight: 700;
     }
     .ent-ring-center small {
-      font-size: clamp(12px, 1.5vmin, 16px);
+      font-size: clamp(13px, 1.7vmin, 18px);
       color: #cbd5e1;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
@@ -6565,39 +6470,154 @@
       z-index: 2;
       margin: 0;
       text-align: center;
-      font-size: clamp(12px, 1.35vw, 15px);
+      font-size: clamp(13px, 1.5vw, 17px);
       font-weight: 700;
-      color: #e2e8f0;
-      text-shadow: 0 1px 8px rgba(0,0,0,.65);
+      color: #f1f5f9;
+      text-shadow: 0 1px 10px rgba(0,0,0,.7);
     }
+
+    .ent-dash-bottom {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(8px, 1vw, 14px);
+      min-height: clamp(140px, 22vh, 220px);
+      max-height: 28vh;
+    }
+    .ent-side {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      height: 100%;
+      padding: clamp(10px, 1.2vw, 16px);
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(180deg, #111827, #0b1220);
+      border: 1px solid rgba(148,163,184,.14);
+    }
+    .ent-side-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex: 0 0 auto;
+    }
+    .ent-side-head h3 {
+      margin: 0;
+      font-size: clamp(12px, 1.25vw, 14px);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #e2e8f0;
+    }
+    .ent-side-head .meta {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .ent-hbar-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(8px, 1vw, 12px);
+      justify-content: space-evenly;
+      overflow: hidden;
+    }
+    .ent-hbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 3px 10px;
+      align-items: center;
+    }
+    .ent-hbar-lab {
+      font-size: clamp(11px, 1.15vw, 13px);
+      font-weight: 700;
+      color: #cbd5e1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ent-hbar-n {
+      font-size: clamp(14px, 1.6vw, 18px);
+      font-weight: 900;
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+    }
+    .ent-hbar-track {
+      grid-column: 1 / -1;
+      height: clamp(9px, 1.1vw, 12px);
+      border-radius: 999px;
+      background: rgba(30, 41, 59, 0.9);
+      overflow: hidden;
+      border: 1px solid rgba(148,163,184,.1);
+    }
+    .ent-hbar-fill {
+      display: block;
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      transition: width 0.45s ease;
+      background: linear-gradient(90deg, #ef4444, #f87171);
+    }
+    .ent-hbar.is-rota .ent-hbar-fill { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    .ent-hbar.is-real .ent-hbar-fill { background: linear-gradient(90deg, #15803d, #4ade80); }
+    .ent-hbar.is-warn .ent-hbar-fill { background: linear-gradient(90deg, #d97706, #fbbf24); }
+    .ent-hbar.is-mute .ent-hbar-fill { background: linear-gradient(90deg, #475569, #94a3b8); }
+    .ent-hbar.is-par .ent-hbar-fill { background: linear-gradient(90deg, #b91c1c, #f87171); }
+    .ent-hbar.is-alt .ent-hbar-fill { background: linear-gradient(90deg, #1d4ed8, #60a5fa); }
+
     .ent-crit-callout {
-      position: relative;
-      z-index: 2;
+      position: absolute;
+      left: 50%;
+      bottom: clamp(8px, 1.5vh, 18px);
+      transform: translateX(-50%);
+      z-index: 5;
       display: flex;
       align-items: flex-start;
       gap: 10px;
-      max-width: min(520px, 92%);
+      width: min(560px, 70%);
       padding: 10px 14px;
-      border-radius: 10px;
-      background: rgba(127, 29, 29, 0.55);
-      border: 1px solid rgba(248, 113, 113, 0.45);
+      border-radius: 12px;
+      background: rgba(127, 29, 29, 0.72);
+      border: 1px solid rgba(248, 113, 113, 0.5);
       color: #fecaca;
-      font-size: clamp(11px, 1.2vw, 13px);
+      font-size: clamp(11px, 1.15vw, 13px);
       font-weight: 600;
       line-height: 1.35;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 8px 28px rgba(0,0,0,.35);
+      pointer-events: none;
     }
     .ent-crit-callout .ico {
       flex: 0 0 auto;
       color: #f87171;
       font-weight: 900;
+      font-size: 16px;
+      line-height: 1.2;
     }
+    .ent-crit-body {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .ent-crit-body strong {
+      font-size: 0.92em;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #fecaca;
+    }
+    .ent-crit-callout[hidden] { display: none !important; }
+
+    #opsLayoutEntrega.ent-dash { position: relative; }
     .ent-map-bg path.mapa-zona-neon {
       stroke-opacity: 0.55;
       fill-opacity: 0.18;
     }
-    body.tv-mode #viewEntrega .ent-hero {
-      min-height: 0;
-    }
+    body.tv-mode #viewEntrega .ent-hero { min-height: 0; }
     body.tv-mode #viewEntrega .ent-map-bg,
     body.tv-mode #viewEntrega .ent-map-bg.leaflet-container {
       width: 100% !important;
@@ -6637,32 +6657,28 @@
       overflow: hidden !important;
       pointer-events: none !important;
     }
-    /* Legado ent-ops (não usado) */
     #opsLayoutEntrega.ent-ops,
-    .ent-ops {
-      display: none;
-    }
+    .ent-ops { display: none; }
     body.tv-mode #opsLayoutEntrega.ent-dash {
       height: 100% !important;
       min-height: 0 !important;
       gap: clamp(6px, 0.9vmin, 12px) !important;
     }
-    body.tv-mode #opsLayoutEntrega .ent-dash-main {
-      grid-template-columns: minmax(160px, 0.9fr) minmax(260px, 1.7fr) minmax(160px, 0.9fr) !important;
-      min-height: 0 !important;
-      flex: 1 1 auto !important;
+    body.tv-mode #opsLayoutEntrega .ent-dash-bottom {
+      min-height: clamp(120px, 20vh, 200px) !important;
+      max-height: 24vh !important;
     }
-    body.tv-mode #opsLayoutEntrega .ent-kpi-val {
-      font-size: clamp(26px, 3.4vmin, 44px);
+    body.tv-mode #opsLayoutEntrega .ent-kpi-card .ent-kpi-val {
+      font-size: clamp(28px, 3.6vmin, 46px);
     }
     body.tv-mode #opsLayoutEntrega .ent-ring-wrap {
-      width: min(320px, 38vmin);
-      height: min(320px, 38vmin);
+      width: min(380px, 42vmin);
+      height: min(380px, 42vmin);
     }
     body.tv-mode #opsLayoutEntrega > [data-block="tabela"] {
       display: none !important;
     }
-    .ent-kpi-row {
+\n    .ent-kpi-row {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: clamp(8px, 1.2vmin, 16px);
@@ -7905,52 +7921,71 @@
       </section>
     </div>
 
-    <!-- ENTREGA (mockup: KPIs + mapa/anel + motivos + frota) -->
+    <!-- ENTREGA (mockup: KPIs → mapa/anel → motivos|frota) -->
     <div class="view" id="viewEntrega">
       <section class="arena arena-single">
         <div class="arena-body ent-dash" id="opsLayoutEntrega">
           <header class="ent-dash-head dash-block" data-block="resumo" aria-label="Resumo entrega">
-            <div class="ent-dash-title">
-              <h2>Painel de entregas</h2>
-              <span class="ent-dash-sub">Operação atual</span>
-            </div>
+            <h2 class="ent-dash-title">Painel de entregas — operação atual</h2>
             <div class="ent-kpi-grid" id="entKpiGrid">
               <article class="ent-kpi-card is-total ds-panel">
-                <div class="ent-kpi-ico" aria-hidden="true">▣</div>
-                <div class="ent-kpi-body">
-                  <span class="ent-kpi-lab">Total entregas</span>
-                  <strong class="ent-kpi-val" id="entTotal">0</strong>
+                <div class="ent-kpi-ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M3 10h18M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </div>
-                <div class="ent-kpi-accent" aria-hidden="true"></div>
+                <div class="ent-kpi-body">
+                  <strong class="ent-kpi-val" id="entTotal">0</strong>
+                  <span class="ent-kpi-lab">Total entregas</span>
+                </div>
+                <svg class="ent-kpi-spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true"><path d="M0 20 L20 16 L40 18 L60 10 L80 14 L100 8 L120 12" fill="none" stroke="currentColor" stroke-width="2"/></svg>
               </article>
               <article class="ent-kpi-card is-rota ds-panel">
-                <div class="ent-kpi-ico" aria-hidden="true">↗</div>
-                <div class="ent-kpi-body">
-                  <span class="ent-kpi-lab">Em rota</span>
-                  <strong class="ent-kpi-val"><span id="sumEntRota">0</span> <em id="entKpiRotaPct">0%</em></strong>
+                <div class="ent-kpi-ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17h2a2 2 0 0 0 4 0h6a2 2 0 0 0 4 0h2V9l-4-4H3v12z"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
                 </div>
-                <div class="ent-kpi-accent" aria-hidden="true"></div>
+                <div class="ent-kpi-body">
+                  <strong class="ent-kpi-val"><span id="sumEntRota">0</span> <em id="entKpiRotaPct">0%</em></strong>
+                  <span class="ent-kpi-lab">Em rota</span>
+                </div>
+                <svg class="ent-kpi-spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 L20 14 L40 16 L60 12 L80 9 L100 11 L120 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
               </article>
               <article class="ent-kpi-card is-real ds-panel">
-                <div class="ent-kpi-ico" aria-hidden="true">✓</div>
-                <div class="ent-kpi-body">
-                  <span class="ent-kpi-lab">Realizadas</span>
-                  <strong class="ent-kpi-val"><span id="sumEntReal">0</span> <em id="sumEntPct">0%</em></strong>
+                <div class="ent-kpi-ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg>
                 </div>
-                <div class="ent-kpi-accent" aria-hidden="true"></div>
+                <div class="ent-kpi-body">
+                  <strong class="ent-kpi-val"><span id="sumEntReal">0</span> <em id="sumEntPct">0%</em></strong>
+                  <span class="ent-kpi-lab">Realizadas</span>
+                </div>
+                <svg class="ent-kpi-spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true"><path d="M0 22 L20 18 L40 19 L60 14 L80 10 L100 8 L120 5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
               </article>
               <article class="ent-kpi-card is-par ds-panel">
-                <div class="ent-kpi-ico" aria-hidden="true">!</div>
-                <div class="ent-kpi-body">
-                  <span class="ent-kpi-lab">Pendências</span>
-                  <strong class="ent-kpi-val"><span id="sumEntPar">0</span> <em id="entKpiParPct">0%</em></strong>
+                <div class="ent-kpi-ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5M12 17.5v.5"/></svg>
                 </div>
-                <div class="ent-kpi-accent" aria-hidden="true"></div>
+                <div class="ent-kpi-body">
+                  <strong class="ent-kpi-val"><span id="sumEntPar">0</span> <em id="entKpiParPct">0%</em></strong>
+                  <span class="ent-kpi-lab">Pendências atrasadas</span>
+                </div>
+                <svg class="ent-kpi-spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true"><path d="M0 8 L20 12 L40 10 L60 16 L80 14 L100 20 L120 18" fill="none" stroke="currentColor" stroke-width="2"/></svg>
               </article>
             </div>
           </header>
 
-          <div class="ent-dash-main">
+          <section class="ent-hero dash-block" data-block="chart" id="entHeroMap" aria-label="Indicador de entrega">
+            <div class="ent-map-bg" id="entMapLeaflet" aria-hidden="true"></div>
+            <div class="ent-hero-scrim" aria-hidden="true"></div>
+            <div class="ent-ring-wrap">
+              <svg id="entregaRing" viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+              <div class="ent-ring-center">
+                <strong id="entRingPct">0%</strong>
+                <span id="entRingLab">concluído</span>
+                <small id="entRingFrac">0/0</small>
+              </div>
+            </div>
+            <p class="ent-ring-resumo" id="entRingResumo">Resumo: —</p>
+          </section>
+
+          <div class="ent-dash-bottom">
             <aside class="ent-side ds-panel dash-block" data-block="motivos" aria-label="Motivos de pendência">
               <div class="ent-side-head">
                 <h3>Motivos de pendência</h3>
@@ -7958,25 +7993,6 @@
               </div>
               <div class="ent-hbar-list" id="entMotivosBars"></div>
             </aside>
-
-            <section class="ent-hero dash-block" data-block="chart" id="entHeroMap" aria-label="Indicador de entrega">
-              <div class="ent-map-bg" id="entMapLeaflet" aria-hidden="true"></div>
-              <div class="ent-hero-scrim" aria-hidden="true"></div>
-              <div class="ent-ring-wrap">
-                <svg id="entregaRing" viewBox="0 0 240 240" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
-                <div class="ent-ring-center">
-                  <strong id="entRingPct">0%</strong>
-                  <span id="entRingLab">concluído</span>
-                  <small id="entRingFrac">0/0</small>
-                </div>
-              </div>
-              <p class="ent-ring-resumo" id="entRingResumo">Resumo: —</p>
-              <div class="ent-crit-callout" id="entCritCallout" hidden>
-                <span class="ico" aria-hidden="true">⚠</span>
-                <span id="entCritText">—</span>
-              </div>
-            </section>
-
             <aside class="ent-side ds-panel dash-block" data-block="frota" aria-label="Visão geral da frota">
               <div class="ent-side-head">
                 <h3>Visão geral da frota</h3>
@@ -7984,6 +8000,14 @@
               </div>
               <div class="ent-hbar-list" id="entFrotaBars"></div>
             </aside>
+          </div>
+
+          <div class="ent-crit-callout" id="entCritCallout" hidden>
+            <span class="ico" aria-hidden="true">⚠</span>
+            <div class="ent-crit-body">
+              <strong>Tarefas críticas</strong>
+              <span id="entCritText">—</span>
+            </div>
           </div>
 
           <!-- legado oculto (IDs mantidos p/ JS antigo) -->
@@ -9712,7 +9736,7 @@
       if (callout && critText) {
         if (par > 0) {
           callout.hidden = false;
-          critText.textContent = `${par} pendência${par === 1 ? '' : 's'} — revisar ocorrências e priorizar baixas em atraso.`;
+          critText.textContent = `${par} pendência${par === 1 ? '' : 's'} — revisão de rotas necessária; priorizar atrasos críticos.`;
         } else {
           callout.hidden = true;
         }
@@ -9720,8 +9744,8 @@
       if (!svg) return;
       const cx = 120;
       const cy = 120;
-      const R = 104;
-      const rHole = 68;
+      const R = 108;
+      const rHole = 72;
       const parts = [
         { cls: 'seg-real', value: real },
         { cls: 'seg-rota', value: rota },
@@ -9742,7 +9766,8 @@
       });
       svg.setAttribute('viewBox', '0 0 240 240');
       svg.innerHTML = slices.join('')
-        + `<circle class="ring-hole" cx="${cx}" cy="${cy}" r="${rHole}"/>`;
+        + `<circle class="ring-hole" cx="${cx}" cy="${cy}" r="${rHole}"/>`
+        + `<circle cx="${cx}" cy="${cy}" r="${rHole}" fill="none" stroke="rgba(148,163,184,0.18)" stroke-width="2"/>`;
     }
 
     function situacaoNorm50(c) {
