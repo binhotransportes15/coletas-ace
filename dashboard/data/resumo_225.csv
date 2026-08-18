@@ -1,2 +1,2 @@
-﻿periodo,total,em_rota,parado,concluido,alerta,peso_total,frete_total,realizado,peso_realizado,frete_realizado,armazem,peso_armazem,frete_armazem,amanha,peso_amanha,frete_amanha
-Agendamento AGOSTO,96,6,32,58,0,"172.489,22","135.858,07",58,"138.703,76","107.313,72",32,"24.548,38","22.326,52",24,"2.244,53","3.529,25"
+﻿periodo,total,em_rota,parado,concluido,alerta,peso_total,volumes_total,frete_total,realizado,peso_realizado,frete_realizado,armazem,peso_armazem,frete_armazem,amanha,peso_amanha,volumes_amanha,frete_amanha
+Agendamento AGOSTO,96,6,32,58,0,"172.489,22","223.922,92","135.858,07",58,"138.703,76","107.313,72",32,"24.548,38","22.326,52",24,"2.244,53","2.599,56","3.529,25"

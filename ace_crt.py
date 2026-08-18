@@ -2,9 +2,9 @@
 BINHO · ACE CRT — painel de gestão operacional (UI profissional).
 
 Layout:
-  sidebar → navegação (operação + sistema)
+  sidebar → navegação (operação + sistema + Configurações)
   main    → KPIs · status · log/prompt · ações + info
-  Menu (F2) → Configuração | Automação | Local | TV | Gestão
+  Configurações (sidebar) → Configuração | Automação | Local | TV | Gestão
   Comandos → janela à parte (relatórios SSW)
 
   python ace_crt.py
@@ -331,6 +331,13 @@ def frost_params(
 
 DEFAULT_CRT_THEME = "gestao"
 
+
+def _ui_clip(text: str, max_chars: int = 72) -> str:
+    """Texto curto para labels — evita crescer layout e sobrepor o log."""
+    s = " ".join(str(text or "").split())
+    if len(s) <= max_chars:
+        return s
+    return s[: max(1, max_chars - 1)] + "…"
 
 
 # Zonas do cerebro -> id das barrinhas do CRT
@@ -962,7 +969,7 @@ class QuickCmdButton(QPushButton):
         super().__init__(parent)
         self.setObjectName("quickCmd")
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(54)
+        self.setFixedHeight(62)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setToolTip(f"{title} ({code})\n{blurb}\nComando: {cmd}")
 
@@ -981,9 +988,11 @@ class QuickCmdButton(QPushButton):
         top.addWidget(lab_title, 1)
         root.addLayout(top)
 
-        lab_blurb = QLabel(blurb)
+        lab_blurb = QLabel(_ui_clip(blurb, 78))
         lab_blurb.setObjectName("quickCmdBlurb")
-        lab_blurb.setWordWrap(True)
+        lab_blurb.setWordWrap(False)
+        lab_blurb.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        lab_blurb.setFixedHeight(14)
         root.addWidget(lab_blurb)
 
         for w in (lab_code, lab_title, lab_blurb):
@@ -1005,6 +1014,8 @@ class SectorMeterRow(QWidget):
     def __init__(self, sector_id: str, title: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.sector_id = sector_id
+        self.setFixedHeight(40)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 2, 0, 2)
         root.setSpacing(2)
@@ -1031,6 +1042,9 @@ class SectorMeterRow(QWidget):
         self._detail = QLabel("—")
         self._detail.setObjectName("hint")
         self._detail.setWordWrap(False)
+        self._detail.setFixedHeight(14)
+        self._detail.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self._detail.setTextInteractionFlags(Qt.NoTextInteraction)
         root.addWidget(self._detail)
         self._accent = self._STATE_COLOR["off"]
         self._track = "rgba(0, 0, 0, 140)"
@@ -1077,7 +1091,7 @@ class SectorMeterRow(QWidget):
         if not enabled:
             self._bar.setValue(0)
             self._val.setText("off")
-            self._detail.setText(detail or "fora do automático")
+            self._detail.setText(_ui_clip(detail or "fora do automático", 64))
             self._apply_chunk(self._STATE_COLOR["off"])
             self.setEnabled(False)
             return
@@ -1096,7 +1110,7 @@ class SectorMeterRow(QWidget):
         else:
             self._val.setText(f"{v:.0f}%")
         suffix = f" · {interval}" if interval else ""
-        self._detail.setText((detail + suffix)[:110])
+        self._detail.setText(_ui_clip(detail + suffix, 64))
         accent = _SECTOR_ACCENTS.get(self.sector_id) or self._STATE_COLOR.get(state, self._STATE_COLOR["wait"])
         if state == "err":
             accent = self._STATE_COLOR["err"]
@@ -1118,7 +1132,7 @@ class KpiCard(QFrame):
         super().__init__(parent)
         self.sector_id = sector_id
         self.setObjectName("kpiCard")
-        self.setMinimumHeight(88)
+        self.setFixedHeight(92)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         lay = QHBoxLayout(self)
         lay.setContentsMargins(14, 12, 14, 12)
@@ -1135,7 +1149,10 @@ class KpiCard(QFrame):
         self._val.setObjectName("kpiValue")
         self._sub = QLabel("Aguardando automático")
         self._sub.setObjectName("kpiSub")
-        self._sub.setWordWrap(True)
+        self._sub.setWordWrap(False)
+        self._sub.setFixedHeight(16)
+        self._sub.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self._sub.setTextInteractionFlags(Qt.NoTextInteraction)
         col.addWidget(self._lab)
         col.addWidget(self._val)
         col.addWidget(self._sub)
@@ -1151,7 +1168,7 @@ class KpiCard(QFrame):
         pct = float(row.get("pct") or 0.0)
         if not enabled:
             self._val.setText("off")
-            self._sub.setText(detail or "fora do automático")
+            self._sub.setText(_ui_clip(detail or "fora do automático", 42))
             return
         if state == "run":
             self._val.setText(f"{pct:.0f}%")
@@ -1161,7 +1178,7 @@ class KpiCard(QFrame):
             self._val.setText("OK")
         else:
             self._val.setText("—")
-        self._sub.setText(detail or "Aguardando automático")
+        self._sub.setText(_ui_clip(detail or "Aguardando automático", 42))
 
 
 class NavButton(QPushButton):
@@ -2220,7 +2237,7 @@ class LockOverlay(QWidget):
     def _try_unlock(self) -> None:
         typed = self._pwd.text()
         if not self._expected:
-            self._err.setText("Defina a senha em Menu → Configuração.")
+            self._err.setText("Defina a senha em Configurações.")
             self._bump_hide_timer()
             return
         if typed == self._expected:
@@ -2289,7 +2306,7 @@ class AceCrtMenuWindow(QWidget):
     def __init__(self, owner: "AceCrtConsole", content: QWidget) -> None:
         super().__init__(None)
         self.setObjectName("crtRoot")
-        self.setWindowTitle("BINHO · Menu")
+        self.setWindowTitle("BINHO · Configurações")
         self.setWindowFlags(
             Qt.Window
             | Qt.WindowTitleHint
@@ -2304,7 +2321,7 @@ class AceCrtMenuWindow(QWidget):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(10, 10, 10, 10)
         lay.setSpacing(6)
-        tip = QLabel("Menu · mesmo tema do painel · F2 ou botão Menu para reabrir")
+        tip = QLabel("Configurações · mesmo tema do painel · reabra pela sidebar")
         tip.setObjectName("hint")
         lay.addWidget(tip)
         lay.addWidget(content, 1)
@@ -2388,14 +2405,14 @@ class AceCrtConsole(QWidget):
         foot_row.setContentsMargins(16, 0, 16, 10)
         self.foot = QLabel("© 2026 Binho Gestão — Sistema de Gestão Operacional")
         self.foot.setObjectName("foot")
-        self.foot_right = QLabel("F2 Menu · F11 Tela cheia · ESC Parar · sidebar → Comandos")
+        self.foot_right = QLabel("F11 Tela cheia · ESC Parar · sidebar → Configurações")
         self.foot_right.setObjectName("foot")
         self.foot_right.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         foot_row.addWidget(self.foot, 1)
         foot_row.addWidget(self.foot_right, 1)
         root.addLayout(foot_row)
 
-        # Abas ficam na janela Menu (escondida até F2 / botão)
+        # Abas ficam na janela Configurações (sidebar)
         tabs = self._build_right()
         self._menu_win = AceCrtMenuWindow(self, tabs)
 
@@ -2553,7 +2570,9 @@ class AceCrtConsole(QWidget):
         self.status.setObjectName("onlineDot")
         self.detail = QLabel("Última atualização: —")
         self.detail.setObjectName("hint")
-        self.detail.setWordWrap(True)
+        self.detail.setWordWrap(False)
+        self.detail.setFixedHeight(16)
+        self.detail.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
         self.bar = QProgressBar()
         self.bar.setRange(0, 1000)
         self.bar.setValue(0)
@@ -2618,7 +2637,7 @@ class AceCrtConsole(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(10)
 
-        # Cabeçalho — título + ações de janela (tema fica no Menu → Configuração)
+        # Cabeçalho — título + bloqueio (temas em Configurações na sidebar)
         head = QHBoxLayout()
         titles = QVBoxLayout()
         titles.setSpacing(2)
@@ -2634,7 +2653,7 @@ class AceCrtConsole(QWidget):
         self.mode.setObjectName("mode")
         self.mode.hide()
 
-        # Combo de tema (oculto na barra; usado pelo Menu / persistência)
+        # Combo de tema (oculto; espelhado pelo seletor em Configurações)
         self.cmb_theme = QComboBox()
         for tid, meta in CRT_THEMES.items():
             self.cmb_theme.addItem(str(meta["label"]), tid)
@@ -2646,11 +2665,6 @@ class AceCrtConsole(QWidget):
         self.btn_lock.setToolTip("Trava o painel com cadeado (automação continua)")
         self.btn_lock.clicked.connect(self._lock_panel)
         head.addWidget(self.btn_lock)
-        self.btn_menu = QPushButton("Menu")
-        self.btn_menu.setObjectName("menuBtn")
-        self.btn_menu.setToolTip("Configuração, automação, local e TV (F2)")
-        self.btn_menu.clicked.connect(self._toggle_menu_window)
-        head.addWidget(self.btn_menu)
         lay.addLayout(head)
 
         # KPIs
@@ -2686,7 +2700,9 @@ class AceCrtConsole(QWidget):
         lay.addWidget(self._section("Status dos Setores"))
         self.sector_status = QLabel("Automático parado · inicie pelos comandos rápidos")
         self.sector_status.setObjectName("hint")
-        self.sector_status.setWordWrap(True)
+        self.sector_status.setWordWrap(False)
+        self.sector_status.setFixedHeight(18)
+        self.sector_status.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
         lay.addWidget(self.sector_status)
         self._sector_meters = {}
         for sid, title in (
@@ -2788,7 +2804,8 @@ class AceCrtConsole(QWidget):
             v = QLabel("—")
             v.setObjectName("infoVal")
             v.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            v.setWordWrap(True)
+            v.setWordWrap(False)
+            v.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
             self._info_rows[key] = v
             row.addWidget(k)
             row.addWidget(v, 1)
@@ -2882,7 +2899,7 @@ class AceCrtConsole(QWidget):
             QMessageBox.information(
                 self,
                 "Bloquear",
-                "Defina a senha do cadeado em Menu → Configuração → Bloqueio do painel.",
+                "Defina a senha do cadeado em Configurações → Bloqueio do painel.",
             )
             self._show_menu_window("config")
             return
@@ -3019,7 +3036,10 @@ class AceCrtConsole(QWidget):
             else:
                 if hasattr(self, "sector_status"):
                     self.sector_status.setText(
-                        "Vista BARRAS · log continua em cima · use Comandos rápidos para puxar relatório"
+                        _ui_clip(
+                            "Vista BARRAS · log continua em cima · use Comandos rápidos",
+                            72,
+                        )
                     )
                 self._append_log(
                     "sistema",
@@ -3260,8 +3280,8 @@ class AceCrtConsole(QWidget):
 
         form.addRow(self._section("Aparência do CRT"))
         apar_tip = QLabel(
-            "Tema visual do painel (Escuro profissional por padrão). "
-            "A logo das dashboards é independente, acima."
+            "Temas disponíveis: Escuro · Verde BINHO · Azul painel · Verde ops · Claro · Escuro fosco. "
+            "Troque abaixo — a logo das dashboards é independente, acima."
         )
         apar_tip.setObjectName("hint")
         apar_tip.setWordWrap(True)
@@ -3269,6 +3289,7 @@ class AceCrtConsole(QWidget):
         self.cmb_theme_cfg = QComboBox()
         for tid, meta in CRT_THEMES.items():
             self.cmb_theme_cfg.addItem(str(meta["label"]), tid)
+        self.cmb_theme_cfg.setMinimumHeight(32)
         self.cmb_theme_cfg.currentIndexChanged.connect(self._on_theme_combo_cfg)
         form.addRow("Tema do painel", self.cmb_theme_cfg)
 
@@ -4297,10 +4318,9 @@ class AceCrtConsole(QWidget):
         self._apply_theme(tid, persist=True)
 
     def _apply_theme(self, theme_id: str, *, persist: bool = True) -> None:
-        raw = theme_id if theme_id in CRT_THEMES else (
-            DEFAULT_CRT_THEME if theme_id == "circuitos" else DEFAULT_CRT_THEME
-        )
-        tid = raw if raw in CRT_THEMES else DEFAULT_CRT_THEME
+        tid = theme_id if theme_id in CRT_THEMES else DEFAULT_CRT_THEME
+        if theme_id == "circuitos":
+            tid = DEFAULT_CRT_THEME
         self._theme_id = tid
         fa, fb = self._frost_alpha_val(), self._frost_blur_val()
         ss = build_crt_stylesheet(tid, frost_alpha=fa, frost_blur=fb)
@@ -4415,17 +4435,22 @@ class AceCrtConsole(QWidget):
         self._setup_opaque_log()
 
     def _setup_opaque_log(self) -> None:
-        """Fundo sólido no console — evita texto empilhado no tema fosco/transparente."""
+        """Fundo sólido no console — evita texto empilhado/sobreposto no log."""
         if not hasattr(self, "log"):
             return
-        log_bg = QColor("#0a0e14")
-        text_col = QColor("#eef3f8")
+        theme = CRT_THEMES.get(getattr(self, "_theme_id", ""), None) or CRT_THEMES[DEFAULT_CRT_THEME]
+        log_bg = QColor(str(theme.get("log_bg") or "#0a0e14"))
+        text_col = QColor(str(theme.get("text") or "#eef3f8"))
+        border = str(theme.get("line") or "rgba(180,190,205,55)")
+        bg_hex = log_bg.name()
+        fg_hex = text_col.name()
         try:
             self.log.setAttribute(Qt.WA_OpaquePaintEvent, True)
             self.log.setAutoFillBackground(True)
             self.log.setAttribute(Qt.WA_StyledBackground, True)
             self.log.setAttribute(Qt.WA_TranslucentBackground, False)
             self.log.setAttribute(Qt.WA_NoSystemBackground, False)
+            self.log.setUndoRedoEnabled(False)
             pal = self.log.palette()
             pal.setColor(QPalette.Base, log_bg)
             pal.setColor(QPalette.Window, log_bg)
@@ -4440,14 +4465,13 @@ class AceCrtConsole(QWidget):
             vpal.setColor(QPalette.Window, log_bg)
             vp.setPalette(vpal)
             self.log.document().setDefaultStyleSheet(
-                "body { background-color: #0a0e14; color: #eef3f8; }"
+                f"body {{ background-color: {bg_hex}; color: {fg_hex}; }}"
             )
             self.log.setStyleSheet(
                 "QTextEdit#crtLog, QTextEdit#crtLog::viewport {"
-                " background-color: #0a0e14; color: #eef3f8;"
-                " border: 1px solid rgba(180,190,205,55); }"
+                f" background-color: {bg_hex}; color: {fg_hex};"
+                f" border: 1px solid {border}; }}"
             )
-            # Brush do documento (QTextDocument) — reforço contra fantasma
             try:
                 root = self.log.document().rootFrame()
                 fmt = root.frameFormat()
@@ -4704,7 +4728,7 @@ class AceCrtConsole(QWidget):
                 f"<span style='opacity:0.8'>{g['blurb']}</span>"
             )
         tip = (
-            "<span style='opacity:0.7'>Ajuste setores/tempos em Menu → Automação. "
+            "<span style='opacity:0.7'>Ajuste setores/tempos em Configurações → Automação. "
             "Logo das TVs em Configuração.</span>"
         )
         lines.append(tip)
@@ -5227,9 +5251,19 @@ class AceCrtConsole(QWidget):
         )
         # append + repaint do viewport (evita resíduo visual no fosco)
         self.log.append(html)
+        # Limita linhas para não empilhar fantasma / travar o layout
+        try:
+            doc = self.log.document()
+            while doc.blockCount() > 350:
+                cur = QTextCursor(doc.firstBlock())
+                cur.select(QTextCursor.BlockUnderCursor)
+                cur.removeSelectedText()
+                cur.deleteChar()  # remove o \n residual
+        except Exception:
+            pass
         self.log.moveCursor(QTextCursor.End)
         try:
-            self.log.viewport().update()
+            self.log.viewport().repaint()
         except Exception:
             pass
 
@@ -5275,8 +5309,11 @@ class AceCrtConsole(QWidget):
         except Exception:
             stamp = ""
         self.detail.setText(
-            f"Última atualização: {stamp or '—'}"
-            + (f" · {detail[:60]}" if detail else "")
+            _ui_clip(
+                f"Última atualização: {stamp or '—'}"
+                + (f" · {detail}" if detail else ""),
+                56,
+            )
         )
         self.bar.setValue(int(round(pct * 10)))
         self.bar.setFormat(f"{pct:5.1f}%")
@@ -5346,18 +5383,24 @@ class AceCrtConsole(QWidget):
             if hasattr(self, "sector_status"):
                 if running:
                     self.sector_status.setText(
-                        str((st or {}).get("detail") or "Executando…")[:120]
+                        _ui_clip(str((st or {}).get("detail") or "Executando…"), 72)
                     )
                 elif auto_on:
                     self.sector_status.setText(
-                        str(
-                            (st or {}).get("detail")
-                            or "Automático ligado · aguardando próximos ciclos"
-                        )[:120]
+                        _ui_clip(
+                            str(
+                                (st or {}).get("detail")
+                                or "Automático ligado · aguardando próximos ciclos"
+                            ),
+                            72,
+                        )
                     )
                 else:
                     self.sector_status.setText(
-                        str((st or {}).get("detail") or "Comando em andamento…")[:120]
+                        _ui_clip(
+                            str((st or {}).get("detail") or "Comando em andamento…"),
+                            72,
+                        )
                     )
             return
 
@@ -5384,17 +5427,22 @@ class AceCrtConsole(QWidget):
         if hasattr(self, "sector_status"):
             if running:
                 self.sector_status.setText(
-                    str((st or {}).get("detail") or "Executando setores…")[:120]
+                    _ui_clip(str((st or {}).get("detail") or "Executando setores…"), 72)
                 )
             elif live_loop:
                 self.sector_status.setText(
-                    str(
-                        (st or {}).get("detail")
-                        or "Automático ligado · aguardando próximos ciclos"
-                    )[:120]
+                    _ui_clip(
+                        str(
+                            (st or {}).get("detail")
+                            or "Automático ligado · aguardando próximos ciclos"
+                        ),
+                        72,
+                    )
                 )
             else:
-                self.sector_status.setText("Automático parado · inicie pelos comandos rápidos")
+                self.sector_status.setText(
+                    "Automático parado · inicie pelos comandos rápidos"
+                )
 
     def _idle_sector_rows_from_config(self) -> list[dict]:
         p = self.payload or {}
@@ -5451,7 +5499,12 @@ class AceCrtConsole(QWidget):
         if hasattr(self, "sector_status"):
             ons = [r["label"] for r in rows if r.get("enabled")]
             self.sector_status.setText(
-                "Setores: " + (" · ".join(ons) if ons else "nenhum") + " · inicie o automático"
+                _ui_clip(
+                    "Setores: "
+                    + (" · ".join(ons) if ons else "nenhum")
+                    + " · inicie o automático",
+                    72,
+                )
             )
         if persist:
             try:

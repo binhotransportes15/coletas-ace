@@ -9525,12 +9525,27 @@
       });
     }
 
+    function isEmbeddedFrame() {
+      try {
+        return window.self !== window.top;
+      } catch (_) {
+        // Parent cross-origin (ex.: Google Sites) = estamos embutidos
+        return true;
+      }
+    }
+
     function openGestaoWindow(setor, rel) {
       const q = new URLSearchParams();
       if (setor) q.set('setor', setor);
       if (rel) q.set('rel', rel);
       const url = `gestao.html${q.toString() ? `?${q}` : ''}`;
-      const w = window.open(url, 'ace_gestao', 'noopener,noreferrer');
+      // Google Sites / iframe: navega no mesmo frame — evita nova aba no GitHub
+      if (isEmbeddedFrame()) {
+        window.location.href = url;
+        return;
+      }
+      // Sem noopener: permite “Voltar” fechar e focar o dashboard
+      const w = window.open(url, 'ace_gestao');
       if (!w) {
         window.location.href = url;
       }
