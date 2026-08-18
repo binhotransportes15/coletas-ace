@@ -4019,7 +4019,7 @@
     .pen-kpi.is-ok .val { color: #4ade80; }
     .pen-mid {
       display: grid;
-      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.15fr) minmax(0, 0.9fr);
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.95fr) minmax(0, 1.15fr);
       gap: clamp(8px, 1vw, 12px);
       min-height: 0;
     }
@@ -4058,75 +4058,64 @@
       font-size: 11px;
       font-weight: 600;
     }
-    .pen-donut-wrap {
-      position: relative;
-      width: min(100%, 200px);
-      aspect-ratio: 1;
-      margin: 4px auto 8px;
-      flex: 0 0 auto;
-    }
-    .pen-donut-wrap svg { width: 100%; height: 100%; display: block; }
-    .pen-donut-wrap .seg-0 { fill: #f87171; }
-    .pen-donut-wrap .seg-1 { fill: #fb923c; }
-    .pen-donut-wrap .seg-2 { fill: #fbbf24; }
-    .pen-donut-wrap .seg-3 { fill: #38bdf8; }
-    .pen-donut-wrap .seg-4 { fill: #a78bfa; }
-    .pen-donut-wrap .seg-5 { fill: #34d399; }
-    .pen-donut-center {
-      position: absolute;
-      inset: 28%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-    }
-    .pen-donut-center strong {
-      font-size: clamp(20px, 2.6vmin, 28px);
-      font-weight: 900;
-      color: #f8fafc;
-      line-height: 1;
-    }
-    .pen-donut-center span {
-      font-size: 11px;
-      font-weight: 700;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .pen-legend {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+    .pen-motivos-bars {
       flex: 1 1 auto;
       min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(8px, 1.2vmin, 12px);
+      justify-content: space-evenly;
       overflow: hidden;
-      justify-content: center;
     }
-    .pen-legend-row {
+    .pen-motivo {
       display: grid;
-      grid-template-columns: 10px 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 4px;
+      min-width: 0;
+    }
+    .pen-motivo-top {
+      display: grid;
+      grid-template-columns: 1fr auto;
       gap: 8px;
-      align-items: center;
-      font-size: clamp(11px, 1.2vmin, 13px);
+      align-items: baseline;
     }
-    .pen-legend-sw {
-      width: 10px;
-      height: 10px;
-      border-radius: 3px;
-    }
-    .pen-legend-lab {
-      color: #cbd5e1;
-      font-weight: 700;
+    .pen-motivo-lab {
+      font-size: clamp(11px, 1.25vmin, 13px);
+      font-weight: 800;
+      color: #e2e8f0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .pen-legend-n {
-      color: #f8fafc;
+    .pen-motivo-stats {
+      font-size: clamp(12px, 1.35vmin, 14px);
       font-weight: 900;
+      color: #f8fafc;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
+    .pen-motivo-stats em {
+      font-style: normal;
+      color: #94a3b8;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+    .pen-motivo-track {
+      height: clamp(10px, 1.3vmin, 14px);
+      border-radius: 999px;
+      background: rgba(30, 41, 59, 0.9);
+      overflow: hidden;
+    }
+    .pen-motivo-fill {
+      height: 100%;
+      border-radius: 999px;
+      min-width: 4px;
+      background: linear-gradient(90deg, #f87171, #fb923c);
+    }
+    .pen-motivo:nth-child(2) .pen-motivo-fill { background: linear-gradient(90deg, #ea580c, #fb923c); }
+    .pen-motivo:nth-child(3) .pen-motivo-fill { background: linear-gradient(90deg, #d97706, #fbbf24); }
+    .pen-motivo:nth-child(4) .pen-motivo-fill { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    .pen-motivo:nth-child(5) .pen-motivo-fill { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
     .pen-hbar-list {
       flex: 1 1 auto;
       min-height: 0;
@@ -4168,50 +4157,61 @@
       min-width: 2ch;
       text-align: right;
     }
-    .pen-aging {
+    .pen-map-card { min-height: 0; }
+    .pen-br-wrap {
       flex: 1 1 auto;
       min-height: 0;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-      align-items: end;
-      padding-top: 8px;
-    }
-    .pen-aging-col {
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       gap: 6px;
+      position: relative;
+    }
+    .pen-br-svg {
+      width: 100%;
+      height: auto;
+      max-height: 100%;
+      flex: 1 1 auto;
       min-height: 0;
-      height: 100%;
-      justify-content: flex-end;
     }
-    .pen-aging-col strong {
-      font-size: clamp(22px, 2.8vmin, 32px);
-      font-weight: 900;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
+    .pen-br-svg .br-land {
+      fill: #0b1220;
+      stroke: #38bdf8;
+      stroke-width: 1.4;
+      stroke-opacity: 0.55;
     }
-    .pen-aging-col span {
-      font-size: 11px;
+    .pen-br-svg .br-heat {
+      fill-opacity: 0.72;
+      stroke: rgba(255,255,255,0.18);
+      stroke-width: 0.8;
+      filter: url(#penHeatGlow);
+    }
+    .pen-br-svg .br-uf-lab {
+      fill: #e2e8f0;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+    .pen-br-legend {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
       font-weight: 700;
       color: #94a3b8;
-      text-align: center;
+      flex: 0 0 auto;
     }
-    .pen-aging-col i {
+    .pen-br-legend i {
       display: block;
-      width: 100%;
-      max-width: 64px;
-      border-radius: 8px 8px 4px 4px;
-      min-height: 12px;
-      transition: height 0.45s ease;
+      width: min(140px, 40%);
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #1e3a8a, #22d3ee, #4ade80, #fbbf24, #ef4444);
     }
-    .pen-aging-col.is-ok strong { color: #4ade80; }
-    .pen-aging-col.is-ok i { background: linear-gradient(180deg, #4ade80, #16a34a); }
-    .pen-aging-col.is-warn strong { color: #fbbf24; }
-    .pen-aging-col.is-warn i { background: linear-gradient(180deg, #fbbf24, #d97706); }
-    .pen-aging-col.is-crit strong { color: #f87171; }
-    .pen-aging-col.is-crit i { background: linear-gradient(180deg, #f87171, #dc2626); }
     .pen-table-scroll {
       flex: 1 1 auto;
       min-height: 0;
@@ -8853,9 +8853,9 @@
             <span class="sub">mercadoria aberta</span>
           </article>
           <article class="pen-kpi is-run">
-            <span class="lab">Aging médio</span>
+            <span class="lab">Tempo médio de solução</span>
             <strong class="val"><span id="penSlaMedio">0</span> <em>dias</em></strong>
-            <span class="sub">em aberto</span>
+            <span class="sub">pendência solucionada</span>
           </article>
           <article class="pen-kpi is-ok">
             <span class="lab">% Solucionadas</span>
@@ -8867,14 +8867,7 @@
         <div class="pen-mid">
           <section class="pen-card ds-panel" aria-label="Top motivos">
             <header><h3>Top motivos</h3><span class="meta" id="penOfMeta">ofensores</span></header>
-            <div class="pen-donut-wrap">
-              <svg id="penMotivosRing" viewBox="0 0 200 200" aria-hidden="true"></svg>
-              <div class="pen-donut-center">
-                <strong id="penMotivosTotal">0</strong>
-                <span>ativos</span>
-              </div>
-            </div>
-            <div class="pen-legend" id="penMotivosLegend"></div>
+            <div class="pen-motivos-bars" id="penMotivosBars"></div>
           </section>
 
           <section class="pen-card ds-panel" aria-label="Gargalo por filial">
@@ -8882,23 +8875,14 @@
             <div class="pen-hbar-list" id="penFilialBars"></div>
           </section>
 
-          <section class="pen-card ds-panel" aria-label="Aging">
-            <header><h3>Aging</h3><span class="meta">dias em aberto</span></header>
-            <div class="pen-aging" id="penAgingBars">
-              <div class="pen-aging-col is-ok">
-                <strong id="penAging02">0</strong>
-                <span>0–2 dias</span>
-                <i id="penAging02Bar"></i>
-              </div>
-              <div class="pen-aging-col is-warn">
-                <strong id="penAging35">0</strong>
-                <span>3–5 dias</span>
-                <i id="penAging35Bar"></i>
-              </div>
-              <div class="pen-aging-col is-crit">
-                <strong id="penAging6">0</strong>
-                <span>&gt; 5 dias</span>
-                <i id="penAging6Bar"></i>
+          <section class="pen-card ds-panel pen-map-card" aria-label="Pendências por estado">
+            <header><h3>Por estado</h3><span class="meta" id="penMapMeta">mapa</span></header>
+            <div class="pen-br-wrap" id="penBrMap">
+              <svg class="pen-br-svg" id="penBrSvg" viewBox="0 0 300 340" aria-hidden="true"></svg>
+              <div class="pen-br-legend">
+                <span>0</span>
+                <i></i>
+                <span id="penMapMaxLab">máx</span>
               </div>
             </div>
           </section>
@@ -12524,6 +12508,19 @@
       return m2 ? m2[1] : '';
     }
 
+    /** Filial BINHO → UF (mapa de calor). */
+    const PEN_FILIAL_UF = {
+      SPO: 'SP', SPN: 'SP', LEO: 'SP', RIS: 'SP', GRU: 'SP', CPS: 'SP', SJK: 'SP',
+      DCX: 'RJ', DCN: 'RJ', NIT: 'RJ', SDU: 'RJ',
+      DCS: 'SP',
+      GYN: 'GO', GYS: 'GO', APS: 'GO',
+      VIX: 'ES', VIS: 'ES',
+      BSB: 'DF', BSS: 'DF',
+      ATM: 'PA', BEL: 'PA',
+      CWB: 'PR', BHZ: 'MG', SSA: 'BA', REC: 'PE', FOR: 'CE',
+      CGB: 'MT', CGR: 'MS', MAO: 'AM', POA: 'RS', FLN: 'SC',
+    };
+
     function enrichPenRow(r) {
       const ctrc = String(r.ctrc || '').toUpperCase().replace(/\s+/g, '');
       const cod = String(r.codigo || '').trim();
@@ -12544,12 +12541,15 @@
       }
       const status = String(r.status_ace || '').toLowerCase() || (cod === '63' ? 'solucionada' : 'aberta');
       const ocorr = String(r.descricao_codigo || desc || ultima || '—').trim();
+      const uf = String(r.uf || '').trim().toUpperCase()
+        || (PEN_FILIAL_UF[filial] || '');
       return {
         ...r,
         ctrc,
         codigo: cod,
         nf,
         filial,
+        uf,
         data_ocorrencia: dataOc,
         aging_dias: aging,
         status_ace: status,
@@ -12560,56 +12560,76 @@
       };
     }
 
-    const PEN_MOTIVO_COLORS = ['#f87171', '#fb923c', '#fbbf24', '#38bdf8', '#a78bfa', '#34d399'];
+    /** Posições aproximadas no viewBox 300×340 (silhueta Brasil). */
+    const PEN_UF_POS = {
+      RR: [88, 52], AP: [168, 58], AM: [95, 98], PA: [168, 105],
+      AC: [42, 135], RO: [88, 145], MT: [128, 160], TO: [168, 150],
+      MA: [205, 118], PI: [220, 140], CE: [242, 122], RN: [258, 128],
+      PB: [258, 142], PE: [248, 152], AL: [252, 162], SE: [248, 170],
+      BA: [220, 180], DF: [168, 178], GO: [155, 185], MG: [198, 200],
+      ES: [228, 212], RJ: [218, 232], SP: [188, 238], PR: [168, 258],
+      SC: [178, 278], RS: [158, 300], MS: [132, 220],
+    };
+
+    function ufFromPenRow(r) {
+      const uf = String(r.uf || '').trim().toUpperCase();
+      if (uf.length === 2) return uf;
+      const fil = String(r.filial || filialFromCtrc(r.ctrc) || '').toUpperCase();
+      if (PEN_FILIAL_UF[fil]) return PEN_FILIAL_UF[fil];
+      return '';
+    }
+
+    function penHeatColor(t) {
+      const x = Math.max(0, Math.min(1, t));
+      if (x < 0.25) {
+        const k = x / 0.25;
+        return `rgb(${Math.round(30 + k * 4)}, ${Math.round(58 + k * 120)}, ${Math.round(138 + k * 80)})`;
+      }
+      if (x < 0.5) {
+        const k = (x - 0.25) / 0.25;
+        return `rgb(${Math.round(34 + k * 40)}, ${Math.round(178 + k * 40)}, ${Math.round(218 - k * 100)})`;
+      }
+      if (x < 0.75) {
+        const k = (x - 0.5) / 0.25;
+        return `rgb(${Math.round(74 + k * 177)}, ${Math.round(222 - k * 30)}, ${Math.round(128 - k * 90)})`;
+      }
+      const k = (x - 0.75) / 0.25;
+      return `rgb(${Math.round(251 - k * 12)}, ${Math.round(191 - k * 120)}, ${Math.round(36 - k * 20)})`;
+    }
 
     function renderPenMotivos(ofensores) {
-      const svg = document.getElementById('penMotivosRing');
-      const legend = document.getElementById('penMotivosLegend');
-      const totalEl = document.getElementById('penMotivosTotal');
+      const host = document.getElementById('penMotivosBars');
       const meta = document.getElementById('penOfMeta');
       const all = (ofensores || []).filter((o) => {
         const cod = String(o.codigo || '').trim();
         const pol = String(o.polaridade || '').toLowerCase();
         return cod !== '63' && pol !== 'pos';
       });
-      const items = all.slice(0, 5);
-      const total = items.reduce((s, o) => s + (Number(o.qtd) || 0), 0);
-      if (totalEl) totalEl.textContent = String(total || 0);
+      const items = all.slice(0, 6);
+      const total = all.reduce((s, o) => s + (Number(o.qtd) || 0), 0) || 1;
       if (meta) meta.textContent = items.length ? `${items.length} ofensores` : 'sem ofensores';
-      if (!svg) return;
-      const cx = 100;
-      const cy = 100;
-      const R = 92;
-      const rHole = 58;
-      if (!total || !items.length) {
-        svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#1e293b"/><circle cx="${cx}" cy="${cy}" r="${rHole}" fill="#020617"/>`;
-        if (legend) legend.innerHTML = '<div class="pen-legend-row"><span class="pen-legend-lab">Sem motivos abertos</span></div>';
+      if (!host) return;
+      if (!items.length) {
+        host.innerHTML = '<div class="meta">Sem motivos abertos</div>';
         return;
       }
-      let angle = 0;
-      const slices = items.map((o, i) => {
+      const max = Math.max(...items.map((o) => Number(o.qtd) || 0), 1);
+      host.innerHTML = items.map((o) => {
         const qtd = Number(o.qtd) || 0;
-        const sweep = (qtd / total) * 360;
-        const start = angle;
-        const end = angle + Math.max(sweep, 1.2);
-        angle = end;
-        return `<path class="seg-${i}" d="${pieSlicePath(cx, cy, R, start, end - 0.5, 0)}" />`;
-      });
-      svg.setAttribute('viewBox', '0 0 200 200');
-      svg.innerHTML = slices.join('')
-        + `<circle cx="${cx}" cy="${cy}" r="${rHole}" fill="#020617"/>`
-        + `<circle cx="${cx}" cy="${cy}" r="${rHole}" fill="none" stroke="rgba(148,163,184,0.18)" stroke-width="2"/>`;
-      if (legend) {
-        legend.innerHTML = items.map((o, i) => {
-          const nome = String(o.label || o.descricao_codigo || '').trim() || `Cód. ${o.codigo || '—'}`;
-          const qtd = Number(o.qtd) || 0;
-          return `<div class="pen-legend-row" title="${esc(nome)}">
-            <span class="pen-legend-sw" style="background:${PEN_MOTIVO_COLORS[i % PEN_MOTIVO_COLORS.length]}"></span>
-            <span class="pen-legend-lab">${esc(shortPenLabel(nome, 28))}</span>
-            <span class="pen-legend-n">${qtd}</span>
-          </div>`;
-        }).join('');
-      }
+        const rawPct = String(o.pct ?? '').trim().replace(',', '.');
+        let pct = Number(rawPct);
+        if (!Number.isFinite(pct) || pct < 0) pct = (qtd / total) * 100;
+        const pctTxt = Math.round(pct);
+        const w = Math.max(6, Math.round((qtd / max) * 100));
+        const nome = String(o.label || o.descricao_codigo || '').trim() || `Cód. ${o.codigo || '—'}`;
+        return `<div class="pen-motivo" title="${esc(nome)} · ${qtd} CTRC · ${pctTxt}%">
+          <div class="pen-motivo-top">
+            <span class="pen-motivo-lab">${esc(shortPenLabel(nome, 36))}</span>
+            <span class="pen-motivo-stats">${qtd}<em>${pctTxt}%</em></span>
+          </div>
+          <div class="pen-motivo-track"><div class="pen-motivo-fill" style="width:${w}%"></div></div>
+        </div>`;
+      }).join('');
     }
 
     function renderPenFilialBars(abertas) {
@@ -12641,30 +12661,58 @@
       }).join('');
     }
 
-    function renderPenAging(abertas, resumo) {
-      let a02 = Number(resumo?.aging_0_2);
-      let a35 = Number(resumo?.aging_3_5);
-      let a6 = Number(resumo?.aging_6_mais);
-      if (![a02, a35, a6].every((n) => Number.isFinite(n) && n >= 0) || (a02 + a35 + a6) === 0) {
-        a02 = a35 = a6 = 0;
-        (abertas || []).forEach((r) => {
-          const d = Number(r.aging_dias) || 0;
-          if (d <= 2) a02 += 1;
-          else if (d <= 5) a35 += 1;
-          else a6 += 1;
-        });
+    function renderPenEstadoMap(abertas) {
+      const svg = document.getElementById('penBrSvg');
+      const meta = document.getElementById('penMapMeta');
+      const maxLab = document.getElementById('penMapMaxLab');
+      if (!svg) return;
+      const counts = {};
+      (abertas || []).forEach((r) => {
+        const uf = ufFromPenRow(r);
+        if (!uf) return;
+        counts[uf] = (counts[uf] || 0) + 1;
+      });
+      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      const max = entries.length ? entries[0][1] : 0;
+      if (meta) {
+        meta.textContent = entries.length
+          ? `${entries.length} UF · topo ${entries[0][0]}`
+          : 'sem UF';
       }
-      const max = Math.max(a02, a35, a6, 1);
-      const maxH = 120;
-      setPenText('penAging02', String(a02));
-      setPenText('penAging35', String(a35));
-      setPenText('penAging6', String(a6));
-      const b02 = document.getElementById('penAging02Bar');
-      const b35 = document.getElementById('penAging35Bar');
-      const b6 = document.getElementById('penAging6Bar');
-      if (b02) b02.style.height = `${Math.max(12, Math.round((a02 / max) * maxH))}px`;
-      if (b35) b35.style.height = `${Math.max(12, Math.round((a35 / max) * maxH))}px`;
-      if (b6) b6.style.height = `${Math.max(12, Math.round((a6 / max) * maxH))}px`;
+      if (maxLab) maxLab.textContent = max ? String(max) : 'máx';
+
+      // Silhueta simplificada do Brasil (contorno único)
+      const land = 'M118 28 L148 22 L178 38 L198 55 L215 78 L228 95 L248 108 L262 128 L268 148 L258 168 L248 188 L238 208 L228 228 L218 248 L205 268 L188 288 L168 308 L148 318 L128 312 L112 292 L98 268 L88 248 L78 228 L62 208 L48 188 L38 168 L32 148 L42 128 L58 108 L72 88 L88 68 L102 48 Z';
+      const heats = Object.keys(PEN_UF_POS).map((uf) => {
+        const [x, y] = PEN_UF_POS[uf];
+        const qtd = counts[uf] || 0;
+        if (!qtd) {
+          return `<circle class="br-heat" cx="${x}" cy="${y}" r="4.5" fill="#1e3a8a" fill-opacity="0.28"/>`;
+        }
+        const t = max ? qtd / max : 0;
+        const r = 8 + t * 20;
+        const fill = penHeatColor(t);
+        return `<circle class="br-heat" cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${fill}">
+            <title>${uf}: ${qtd} pendências</title>
+          </circle>
+          <text class="br-uf-lab" x="${x}" y="${y}">${uf}</text>`;
+      }).join('');
+
+      svg.innerHTML = `
+        <defs>
+          <filter id="penHeatGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="1.4" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <path class="br-land" d="${land}"/>
+        ${heats}`;
+    }
+
+    function renderPenDashboardParts(abertas, resumo) {
+      renderPenFilialBars(abertas);
+      renderPenEstadoMap(abertas);
+      startPenTableLoop();
     }
 
     function penTableVisivel() {
@@ -12728,12 +12776,6 @@
           renderPenTable();
         }
       }, 4500);
-    }
-
-    function renderPenDashboardParts(abertas, resumo) {
-      renderPenFilialBars(abertas);
-      renderPenAging(abertas, resumo);
-      startPenTableLoop();
     }
 
     function penColorClass(o, negIdx) {
@@ -12899,7 +12941,11 @@
         setPenText('penValorRisco', fmtPenMoney(valorRisco));
 
         let slaMedio = Number(String(resumo.sla_medio_dias || '').replace(',', '.'));
-        if (!Number.isFinite(slaMedio) || slaMedio <= 0) {
+        const solucionadas = enriched.filter((r) => r.status_ace === 'solucionada' || String(r.codigo) === '63');
+        if (solucionadas.length) {
+          const avgSol = solucionadas.reduce((s, r) => s + (Number(r.aging_dias) || 0), 0) / solucionadas.length;
+          if (Number.isFinite(avgSol) && avgSol > 0) slaMedio = avgSol;
+        } else if (!Number.isFinite(slaMedio) || slaMedio <= 0) {
           slaMedio = abertas.length
             ? abertas.reduce((s, r) => s + (Number(r.aging_dias) || 0), 0) / abertas.length
             : 0;
