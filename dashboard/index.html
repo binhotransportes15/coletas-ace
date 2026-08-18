@@ -12,11 +12,12 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg: #070b14;
-      --panel: #0b1220;
-      --line: #1e293b;
+      --bg: #03050a;
+      --panel: #060910;
+      --panel-2: #080d16;
+      --line: #152033;
       --text: #e2e8f0;
-      --muted: #94a3b8;
+      --muted: #8b9bb0;
       /* Cores dos quadrados BINHO */
       --col: #8cc63f;
       --col-dark: #009245;
@@ -36,11 +37,22 @@
       --crit: var(--can);
       --crit-dark: var(--can-dark);
       --neutral: #94a3b8;
-      --ds-header-bg: linear-gradient(180deg, #0f172a, #0b1220);
-      --ds-kpi-bg: var(--panel);
+      --ds-header-bg: linear-gradient(180deg, #0a101c, #060910);
+      --ds-kpi-bg: linear-gradient(165deg, #0a101c 0%, #05080f 100%);
+      --ds-panel-bg: linear-gradient(165deg, #090e18 0%, #05080f 72%);
       --ds-radius: 14px;
-      --ds-gap: clamp(8px, 1vw, 14px);
-      --dash-font: 1;
+      --ds-gap: clamp(10px, 1.2vw, 16px);
+      /* Escala mural ~43" — modo normal quase igual à TV */
+      --dash-font: 1.32;
+      --wall-label: clamp(14px, 1.7vmin, 20px);
+      --wall-value: clamp(32px, 4.2vmin, 56px);
+      --wall-title: clamp(18px, 2.3vmin, 28px);
+      --wall-section: clamp(14px, 1.7vmin, 20px);
+      --wall-meta: clamp(13px, 1.55vmin, 18px);
+      --wall-table: clamp(14px, 1.7vmin, 20px);
+      --wall-chip: clamp(13px, 1.55vmin, 18px);
+      --wall-kpi-pad-y: clamp(12px, 1.5vmin, 18px);
+      --wall-kpi-pad-x: clamp(12px, 1.6vmin, 20px);
       font-family: "Segoe UI", system-ui, sans-serif;
     }
 
@@ -65,8 +77,9 @@
       background: var(--ds-kpi-bg);
       border: 1px solid var(--line);
       border-radius: var(--ds-radius);
-      padding: 10px 12px 11px;
+      padding: var(--wall-kpi-pad-y) var(--wall-kpi-pad-x);
       min-width: 0;
+      min-height: clamp(78px, 9.5vmin, 118px);
       position: relative;
       overflow: hidden;
       display: flex;
@@ -90,7 +103,7 @@
     .ds-kpi > span:first-child,
     .ds-kpi-title {
       display: block;
-      font-size: clamp(10px, 1.1vw, 13px);
+      font-size: var(--wall-label);
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -103,7 +116,7 @@
     .ds-kpi > b,
     .ds-kpi-value {
       display: block;
-      font-size: calc(clamp(22px, 2.8vw, 36px) * var(--dash-font, 1));
+      font-size: calc(var(--wall-value) * var(--dash-font, 1) / 1.32);
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       line-height: 1.05;
@@ -113,7 +126,7 @@
     .ds-kpi small,
     .ds-kpi-ctx {
       display: block;
-      font-size: clamp(10px, 1vw, 12px);
+      font-size: var(--wall-meta);
       color: var(--muted);
       white-space: nowrap;
       overflow: hidden;
@@ -124,10 +137,10 @@
     }
     .ds-kpi.is-secondary .val,
     .ds-kpi.is-secondary > b {
-      font-size: calc(clamp(16px, 2vw, 26px) * var(--dash-font, 1));
+      font-size: calc(clamp(24px, 3vmin, 40px) * var(--dash-font, 1) / 1.32);
     }
     .ds-panel {
-      background: var(--panel);
+      background: var(--ds-panel-bg, var(--panel));
       border: 1px solid var(--line);
       border-radius: var(--ds-radius);
       min-width: 0;
@@ -179,8 +192,8 @@
     .ds-hstatus-track {
       height: clamp(22px, 3.6vh, 40px);
       border-radius: 8px;
-      background: #0f172a;
-      border: 1px solid #1e293b;
+      background: var(--panel-2, #080d16);
+      border: 1px solid var(--line);
       overflow: hidden;
       min-width: 0;
       width: 100%;
@@ -240,8 +253,8 @@
     }
     .ds-pareto-track {
       height: clamp(28px, 4.2vh, 44px);
-      background: #0f172a;
-      border: 1px solid #1e293b;
+      background: var(--panel-2, #080d16);
+      border: 1px solid var(--line);
       border-radius: 6px;
       overflow: hidden;
       align-self: center;
@@ -283,37 +296,40 @@
       gap: clamp(14px, 1.8vmin, 28px) !important;
     }
     body.tv-mode .ds-pareto-lab {
-      font-size: clamp(20px, 2.6vmin, 34px) !important;
+      font-size: clamp(24px, 3.1vmin, 40px) !important;
       font-weight: 800 !important;
       -webkit-line-clamp: 2;
     }
     body.tv-mode .ds-pareto-track {
-      height: clamp(36px, 5.5vmin, 64px) !important;
+      height: clamp(42px, 6.2vmin, 72px) !important;
       border-radius: 0 !important;
       border-color: #243044 !important;
     }
     body.tv-mode .ds-pareto-n,
     body.tv-mode .ds-pareto-acc {
-      font-size: clamp(28px, 4vmin, 52px) !important;
+      font-size: clamp(32px, 4.4vmin, 58px) !important;
     }
     body.tv-mode .pen-layout .arm-kpi.ds-kpi .val,
     body.tv-mode .pen-kpis .arm-kpi .val,
     body.tv-mode .pen-kpi .val {
-      font-size: clamp(36px, 5vmin, 64px) !important;
+      font-size: clamp(36px, 4.8vmin, 64px) !important;
+    }
+    body.tv-mode .pen-kpi.is-run .val {
+      font-size: clamp(30px, 4vmin, 52px) !important;
     }
     body.tv-mode .pen-layout .arm-kpi.ds-kpi .lbl,
     body.tv-mode .pen-kpis .arm-kpi .lbl,
     body.tv-mode .pen-kpi .lab {
-      font-size: clamp(14px, 1.8vmin, 22px) !important;
+      font-size: clamp(15px, 1.9vmin, 24px) !important;
     }
     body.tv-mode .pen-layout .arm-hero-card > header h2,
     body.tv-mode .pen-card > header h3 {
-      font-size: clamp(20px, 2.6vmin, 32px) !important;
+      font-size: clamp(22px, 2.8vmin, 36px) !important;
       letter-spacing: 0.1em;
     }
     body.tv-mode .pen-layout .pen-hero-meta .meta,
     body.tv-mode .pen-card > header .meta {
-      font-size: clamp(14px, 1.8vmin, 22px) !important;
+      font-size: clamp(15px, 1.9vmin, 24px) !important;
     }
     #coletaTorres[hidden],
     #coletaHStatus[hidden],
@@ -350,7 +366,7 @@
     body.tv-mode .agenda-kpi.ds-kpi {
       border-radius: 0 !important;
       border: none !important;
-      background: #0a121e !important;
+      background: var(--ds-kpi-bg, #05080f) !important;
       box-shadow: none !important;
     }
     body.tv-mode #panel-mapa .ds-kpi,
@@ -366,7 +382,7 @@
     body.tv-mode .ds-kpi > b,
     body.tv-mode .arm-kpi.ds-kpi .val,
     body.tv-mode .agenda-kpi.ds-kpi b {
-      font-size: calc(clamp(28px, 3.6vmin, 48px) * var(--dash-font, 1)) !important;
+      font-size: clamp(36px, 4.8vmin, 64px) !important;
     }
     body.tv-mode .ds-hstatus {
       gap: clamp(18px, 3vh, 40px);
@@ -378,18 +394,18 @@
       min-height: clamp(48px, 7vh, 88px);
     }
     body.tv-mode .ds-hstatus-lab {
-      font-size: calc(clamp(20px, 2.8vmin, 36px) * var(--dash-font, 1));
+      font-size: clamp(24px, 3.2vmin, 42px);
       letter-spacing: 0.06em;
     }
     body.tv-mode .ds-hstatus-meta {
-      font-size: calc(clamp(24px, 3.2vmin, 44px) * var(--dash-font, 1));
+      font-size: clamp(30px, 4vmin, 56px);
     }
     body.tv-mode .ds-hstatus-track {
-      height: calc(clamp(28px, 4.5vmin, 52px) * var(--dash-font, 1));
+      height: clamp(34px, 5.2vmin, 62px);
       border-radius: 10px;
     }
     body.tv-mode .ops-col-torres .col-sub {
-      font-size: calc(clamp(14px, 1.8vmin, 22px) * var(--dash-font, 1));
+      font-size: clamp(16px, 2.1vmin, 26px);
       letter-spacing: 0.14em;
       margin-bottom: clamp(8px, 1.2vmin, 16px);
     }
@@ -398,8 +414,8 @@
     html, body { height: 100%; margin: 0; }
     body {
       background:
-        radial-gradient(1100px 520px at 8% -10%, #132038 0%, transparent 55%),
-        radial-gradient(800px 420px at 100% 0%, #1a1020 0%, transparent 50%),
+        radial-gradient(1100px 520px at 8% -10%, #0a1424 0%, transparent 55%),
+        radial-gradient(800px 420px at 100% 0%, #100818 0%, transparent 50%),
         var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -826,8 +842,8 @@
         inset 8px 0 14px rgba(255,255,255,.18),
         inset -10px 0 18px rgba(0,0,0,.45),
         0 10px 24px rgba(0,0,0,.4);
-      background: #0b1220;
-      border: 1px solid #243044;
+      background: var(--panel);
+      border: 1px solid #1a2738;
       min-height: 0;
     }
     .cyl::before {
@@ -977,9 +993,9 @@
       padding: 10px 10px 10px;
       margin-bottom: 8px;
       background:
-        radial-gradient(120% 90% at 10% 0%, rgba(140,198,63,.18), transparent 55%),
-        linear-gradient(160deg, #0f172a 0%, #020617 100%);
-      border: 1px solid #243044;
+        radial-gradient(120% 90% at 10% 0%, rgba(140,198,63,.14), transparent 55%),
+        linear-gradient(160deg, #0a101c 0%, #03050a 100%);
+      border: 1px solid var(--line);
       overflow: hidden;
       flex-shrink: 0;
     }
@@ -997,7 +1013,7 @@
       height: 5px;
       border-radius: 999px;
       overflow: hidden;
-      background: #0b1220;
+      background: var(--panel);
     }
     .total-mix span {
       display: block; height: 100%; min-width: 2px;
@@ -1243,6 +1259,16 @@
       background: #05080f;
     }
     body.tv-mode {
+      /* TV 43" · leitura à distância (~2–4 m) */
+      --dash-font: 1.38;
+      --tv-kpi-pad-y: clamp(14px, 1.8vmin, 22px);
+      --tv-kpi-pad-x: clamp(14px, 1.9vmin, 24px);
+      --tv-label: clamp(15px, 1.9vmin, 24px);
+      --tv-value: clamp(36px, 4.8vmin, 64px);
+      --tv-title: clamp(22px, 2.8vmin, 36px);
+      --tv-meta: clamp(15px, 1.9vmin, 24px);
+      --tv-table: clamp(15px, 1.85vmin, 22px);
+      --tv-chip: clamp(14px, 1.7vmin, 20px);
       overflow: hidden !important;
       height: 100dvh !important;
       width: 100%;
@@ -1250,6 +1276,142 @@
       background: #05080f;
       margin: 0 !important;
       padding: 0 !important;
+    }
+
+    /* ===== Escala mural 43" — tipografia / KPIs / tabelas ===== */
+    body.tv-mode .ds-kpi,
+    body.tv-mode .arm-kpi,
+    body.tv-mode .arm-kpi.ds-kpi,
+    body.tv-mode .agenda-kpi,
+    body.tv-mode .agenda-kpi.ds-kpi,
+    body.tv-mode .pen-kpi,
+    body.tv-mode .emi-kpi {
+      padding: var(--tv-kpi-pad-y) var(--tv-kpi-pad-x) !important;
+      min-height: clamp(88px, 11vmin, 130px);
+    }
+    body.tv-mode .ds-kpi .lbl,
+    body.tv-mode .ds-kpi > span:first-child,
+    body.tv-mode .ds-kpi-title,
+    body.tv-mode .arm-kpi .lbl,
+    body.tv-mode .agenda-kpi span,
+    body.tv-mode .pen-kpi .lab,
+    body.tv-mode .emi-kpi .lbl {
+      font-size: var(--tv-label) !important;
+      letter-spacing: 0.08em !important;
+    }
+    body.tv-mode .ds-kpi .val,
+    body.tv-mode .ds-kpi > b,
+    body.tv-mode .arm-kpi .val,
+    body.tv-mode .agenda-kpi b,
+    body.tv-mode .pen-kpi .val,
+    body.tv-mode .emi-kpi .val {
+      font-size: var(--tv-value) !important;
+      line-height: 1.02 !important;
+    }
+    body.tv-mode .pen-kpi.is-run .val,
+    body.tv-mode .ds-kpi.is-secondary .val {
+      font-size: clamp(30px, 4vmin, 52px) !important;
+    }
+    body.tv-mode .ds-kpi .ctx,
+    body.tv-mode .ds-kpi small,
+    body.tv-mode .pen-kpi .sub,
+    body.tv-mode .emi-kpi .sub {
+      font-size: var(--tv-meta) !important;
+    }
+    body.tv-mode .ds-header .brand span,
+    body.tv-mode .arm-brand span,
+    body.tv-mode .brand span,
+    body.tv-mode .arm-brand .kicker,
+    body.tv-mode .brand .kicker {
+      font-size: clamp(13px, 1.5vmin, 18px) !important;
+    }
+    body.tv-mode .clock-box,
+    body.tv-mode .clock-box #clock,
+    body.tv-mode .clock-box .time,
+    body.tv-mode #clock {
+      font-size: clamp(22px, 2.8vmin, 36px) !important;
+      font-weight: 800 !important;
+    }
+    body.tv-mode .pen-chip,
+    body.tv-mode .pen-filters .pen-chip {
+      font-size: var(--tv-chip) !important;
+      padding: 8px 14px !important;
+    }
+    body.tv-mode .pen-card > header h3,
+    body.tv-mode .pen-table-card > header h3,
+    body.tv-mode .emi-card > header h2,
+    body.tv-mode .arm-hero-card > header h2,
+    body.tv-mode .arm-panel > header h2,
+    body.tv-mode .ds-panel > header h2,
+    body.tv-mode .ds-panel > header h3 {
+      font-size: var(--tv-title) !important;
+    }
+    body.tv-mode .pen-card > header .meta,
+    body.tv-mode .emi-card > header .meta,
+    body.tv-mode .arm-hero-card > header .meta,
+    body.tv-mode .arm-panel > header .meta {
+      font-size: var(--tv-meta) !important;
+    }
+    body.tv-mode table th {
+      font-size: clamp(14px, 1.7vmin, 20px) !important;
+      padding: 10px 12px !important;
+    }
+    body.tv-mode table td {
+      font-size: var(--tv-table) !important;
+      padding: 10px 12px !important;
+      line-height: 1.25 !important;
+    }
+    body.tv-mode .pen-hbar-lab,
+    body.tv-mode .pen-hbar .pen-hbar-lab,
+    body.tv-mode .rec-hbar .lbl {
+      font-size: clamp(16px, 2vmin, 24px) !important;
+    }
+    body.tv-mode .pen-hbar .pen-hbar-val,
+    body.tv-mode .rec-hbar .val,
+    body.tv-mode .ds-pareto-n,
+    body.tv-mode .ds-pareto-acc {
+      font-size: clamp(24px, 3.2vmin, 44px) !important;
+    }
+    body.tv-mode .pen-hbar,
+    body.tv-mode .rec-hbar {
+      min-height: clamp(36px, 4.5vmin, 52px);
+    }
+    body.tv-mode .pen-status {
+      font-size: clamp(13px, 1.5vmin, 18px) !important;
+      padding: 4px 10px !important;
+    }
+    body.tv-mode .torres .base .lbl,
+    body.tv-mode .torres.ctr-torres .base .lbl,
+    body.tv-mode .torres.arm-torres .base .lbl {
+      font-size: clamp(14px, 1.8vmin, 22px) !important;
+    }
+    body.tv-mode .torres .pin,
+    body.tv-mode .torres.ctr-torres .pin {
+      font-size: clamp(16px, 2.1vmin, 26px) !important;
+    }
+    body.tv-mode .emi-bar .val,
+    body.tv-mode .emi-bar .h {
+      font-size: clamp(13px, 1.6vmin, 18px) !important;
+    }
+    body.tv-mode .emi-exp-row .emi-exp-name,
+    body.tv-mode .emi-exp-row .qtd {
+      font-size: clamp(16px, 2vmin, 24px) !important;
+    }
+    body.tv-mode .ctr-mix .mix-card .n {
+      font-size: clamp(22px, 2.8vmin, 36px) !important;
+    }
+    body.tv-mode .ctr-mix .mix-card .l {
+      font-size: clamp(13px, 1.5vmin, 18px) !important;
+    }
+    body.tv-mode .nav-btn {
+      font-size: clamp(14px, 1.6vmin, 18px) !important;
+      padding: 8px 14px !important;
+    }
+    body.tv-mode .pop-prazo .hora {
+      font-size: clamp(22px, 2.8vmin, 34px) !important;
+    }
+    body.tv-mode .pop-prazo .name {
+      font-size: clamp(16px, 2vmin, 24px) !important;
     }
     /* Embed (Sites / iframe): preenche o frame inteiro (100dvh falha em iframe baixo) */
     html.tv-in-frame,
@@ -1631,10 +1793,13 @@
       border-bottom: 1px solid #1e3a5f !important;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      font-size: 11px !important;
+      font-size: clamp(14px, 1.7vmin, 20px) !important;
+      padding: 10px 12px !important;
     }
     body.tv-mode table td {
       border-bottom: 1px solid #132033 !important;
+      font-size: clamp(15px, 1.85vmin, 22px) !important;
+      padding: 10px 12px !important;
     }
 
     /* Parede 2×3: cada TV mostra um pedaço do mesmo dashboard */
@@ -1842,10 +2007,10 @@
       gap: clamp(6px, 0.9vmin, 10px) !important;
     }
     body.tv-mode .agenda-tower-side .tower-side-title {
-      font-size: clamp(11px, 1.35vmin, 15px) !important;
+      font-size: clamp(15px, 1.85vmin, 22px) !important;
     }
     body.tv-mode .agenda-tower-side .tower-bar .lab {
-      font-size: clamp(12px, 1.5vmin, 16px) !important;
+      font-size: clamp(15px, 1.9vmin, 22px) !important;
     }
     body.tv-mode .agenda-amanha-wrap {
       overflow: hidden !important;
@@ -2060,13 +2225,13 @@
       padding: clamp(6px, 0.8vmin, 10px) !important;
     }
     body.tv-mode #armLayoutPatio .arm-rail-title {
-      font-size: clamp(10px, 1.2vmin, 14px) !important;
+      font-size: clamp(14px, 1.7vmin, 20px) !important;
     }
     body.tv-mode #armLayoutPatio .arm-rail-card .orig {
-      font-size: clamp(11px, 1.35vmin, 15px) !important;
+      font-size: clamp(15px, 1.85vmin, 22px) !important;
     }
     body.tv-mode #armLayoutPatio .arm-rail-card .plates {
-      font-size: clamp(12px, 1.5vmin, 17px) !important;
+      font-size: clamp(16px, 2vmin, 24px) !important;
     }
     body.tv-mode #armLayoutPatio .arm-rail-card .tempo {
       font-size: clamp(11px, 1.3vmin, 15px) !important;
@@ -2137,16 +2302,17 @@
     }
     body.tv-mode .arm-panel > header h2,
     body.tv-mode .arm-hero-card > header h2 {
-      font-size: clamp(13px, 1.5vmin, 18px) !important;
+      font-size: clamp(20px, 2.5vmin, 32px) !important;
     }
     body.tv-mode .arm-hero-card > header .meta {
-      font-size: clamp(11px, 1.2vmin, 14px) !important;
+      font-size: clamp(14px, 1.7vmin, 20px) !important;
     }
     body.tv-mode .arm-kpis {
-      gap: clamp(8px, 1.1vmin, 12px) !important;
+      gap: clamp(10px, 1.3vmin, 16px) !important;
     }
     body.tv-mode .arm-kpi {
-      padding: clamp(8px, 1vmin, 14px) clamp(10px, 1.2vmin, 16px) !important;
+      padding: clamp(14px, 1.8vmin, 22px) clamp(14px, 1.9vmin, 24px) !important;
+      min-height: clamp(88px, 11vmin, 130px);
     }
     body.tv-mode .cyl-ban-row {
       max-height: clamp(64px, 9vmin, 110px);
@@ -2338,12 +2504,13 @@
       flex-shrink: 0;
     }
     .agenda-kpi {
-      background: var(--panel);
+      background: var(--ds-kpi-bg, var(--panel));
       border: 1px solid var(--line);
       border-radius: 14px;
-      padding: 10px 12px 11px;
+      padding: var(--wall-kpi-pad-y) var(--wall-kpi-pad-x);
       min-width: 0;
-      box-shadow: 0 6px 20px rgba(0,0,0,.2);
+      min-height: clamp(78px, 9.5vmin, 118px);
+      box-shadow: 0 6px 20px rgba(0,0,0,.35);
       position: relative;
       overflow: hidden;
     }
@@ -2363,7 +2530,7 @@
     .agenda-kpi.k-alerta::before { background: #ef4444; }
     .agenda-kpi span {
       display: block;
-      font-size: clamp(11px, 1.2vw, 14px);
+      font-size: var(--wall-label);
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -2375,7 +2542,7 @@
     }
     .agenda-kpi b {
       display: block;
-      font-size: clamp(32px, 4vw, 56px);
+      font-size: var(--wall-value);
       font-weight: 800;
       line-height: 0.95;
       color: #fff;
@@ -2604,7 +2771,7 @@
       grid-column: 1 / -1;
       height: 14px;
       border-radius: 999px;
-      background: #0f172a;
+      background: var(--panel-2, #080d16);
       overflow: hidden;
     }
     .tower-bar .fill { height: 100%; border-radius: 999px; }
@@ -2624,8 +2791,8 @@
       align-items: center;
       padding: 10px 12px;
       border-radius: 12px;
-      border: 1px solid #334155;
-      background: #0b1220;
+      border: 1px solid var(--line);
+      background: var(--panel);
     }
     .tower-alert.danger {
       border-color: rgba(239,68,68,.45);
@@ -3757,8 +3924,8 @@
       height: auto;
     }
     .ctr-mix .mix-card {
-      background: linear-gradient(180deg, #15233c, #0d1728);
-      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: var(--ds-kpi-bg, linear-gradient(165deg, #0a101c 0%, #05080f 100%));
+      border: 1px solid var(--line);
       border-radius: 10px;
       padding: 6px 12px;
       text-align: center;
@@ -3958,9 +4125,9 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 12px;
+      padding: 8px 14px;
       border-radius: 999px;
-      font-size: clamp(11px, 1.15vmin, 13px);
+      font-size: var(--wall-chip);
       font-weight: 700;
       color: #cbd5e1;
       background: rgba(15, 23, 42, 0.72);
@@ -3978,11 +4145,12 @@
       background: var(--ds-kpi-bg, #0b1220);
       border: 1px solid var(--line);
       border-radius: var(--ds-radius, 14px);
-      padding: clamp(10px, 1.2vmin, 14px) clamp(12px, 1.4vmin, 16px);
+      padding: var(--wall-kpi-pad-y) var(--wall-kpi-pad-x);
       display: flex;
       flex-direction: column;
       gap: 4px;
       min-width: 0;
+      min-height: clamp(78px, 9.5vmin, 118px);
       overflow: hidden;
     }
     .pen-kpi::before {
@@ -3993,18 +4161,25 @@
       background: var(--neutral);
     }
     .pen-kpi .lab {
-      font-size: clamp(10px, 1.05vmin, 12px);
+      font-size: var(--wall-label);
       font-weight: 800;
       letter-spacing: 0.07em;
       text-transform: uppercase;
       color: var(--muted);
     }
     .pen-kpi .val {
-      font-size: clamp(20px, 2.8vmin, 36px);
+      font-size: var(--wall-value);
       font-weight: 900;
       line-height: 1.05;
       color: #f8fafc;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pen-kpi.is-run .val {
+      font-size: clamp(28px, 3.6vmin, 48px);
+      letter-spacing: -0.02em;
     }
     .pen-kpi .val em {
       font-style: normal;
@@ -4014,7 +4189,7 @@
       margin-left: 4px;
     }
     .pen-kpi .sub {
-      font-size: clamp(10px, 1.05vmin, 12px);
+      font-size: var(--wall-meta);
       color: #64748b;
       font-weight: 600;
     }
@@ -4036,8 +4211,8 @@
     }
     .pen-card,
     .pen-table-card {
-      background: rgba(2, 6, 23, 0.55);
-      border: 1px solid #1e293b;
+      background: var(--ds-panel-bg, var(--panel));
+      border: 1px solid var(--line);
       border-radius: 12px;
       display: flex;
       flex-direction: column;
@@ -4057,7 +4232,7 @@
     .pen-card > header h3,
     .pen-table-card > header h3 {
       margin: 0;
-      font-size: clamp(12px, 1.25vmin, 14px);
+      font-size: var(--wall-section);
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -4066,7 +4241,7 @@
     .pen-card > header .meta,
     .pen-table-card > header .meta {
       color: #64748b;
-      font-size: 11px;
+      font-size: var(--wall-meta);
       font-weight: 600;
     }
     .pen-motivos-bars {
@@ -4097,7 +4272,7 @@
       flex: 0 0 auto;
     }
     .pen-motivo-lab {
-      font-size: clamp(11px, 1.25vmin, 13px);
+      font-size: var(--wall-meta);
       font-weight: 800;
       color: #e2e8f0;
       white-space: nowrap;
@@ -4105,7 +4280,7 @@
       text-overflow: ellipsis;
     }
     .pen-motivo-stats {
-      font-size: clamp(12px, 1.35vmin, 14px);
+      font-size: var(--wall-table);
       font-weight: 900;
       color: #f8fafc;
       font-variant-numeric: tabular-nums;
@@ -4145,7 +4320,7 @@
       align-items: center;
     }
     .pen-hbar-lab {
-      font-size: clamp(12px, 1.3vmin, 14px);
+      font-size: var(--wall-meta);
       font-weight: 900;
       color: #e2e8f0;
       letter-spacing: 0.04em;
@@ -4163,7 +4338,7 @@
       min-width: 4px;
     }
     .pen-hbar-n {
-      font-size: clamp(13px, 1.5vmin, 16px);
+      font-size: var(--wall-table);
       font-weight: 900;
       color: #f8fafc;
       font-variant-numeric: tabular-nums;
@@ -4234,12 +4409,12 @@
     .pen-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: clamp(11px, 1.25vmin, 13px);
+      font-size: var(--wall-table);
     }
     .pen-table th {
       text-align: left;
-      padding: 6px 8px;
-      font-size: 10px;
+      padding: 8px 10px;
+      font-size: var(--wall-meta);
       font-weight: 800;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -4248,7 +4423,7 @@
       white-space: nowrap;
     }
     .pen-table td {
-      padding: 7px 8px;
+      padding: 9px 10px;
       color: #e2e8f0;
       border-bottom: 1px solid rgba(30, 41, 59, 0.7);
       white-space: nowrap;
@@ -4261,9 +4436,9 @@
     .pen-table tr.is-crit td { color: #fecaca; }
     .pen-status {
       display: inline-block;
-      padding: 2px 8px;
+      padding: 3px 10px;
       border-radius: 999px;
-      font-size: 10px;
+      font-size: var(--wall-chip);
       font-weight: 800;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -4314,31 +4489,32 @@
       gap: clamp(6px, 0.8vw, 10px);
     }
     .emi-kpi {
-      background: var(--panel, #0f172a);
-      border: 1px solid #1e293b;
+      background: var(--ds-kpi-bg, var(--panel));
+      border: 1px solid var(--line);
       border-radius: 10px;
-      padding: clamp(8px, 1vmin, 12px) clamp(8px, 1vmin, 12px);
+      padding: var(--wall-kpi-pad-y) var(--wall-kpi-pad-x);
       min-width: 0;
+      min-height: clamp(78px, 9.5vmin, 118px);
       display: flex;
       flex-direction: column;
       gap: 4px;
     }
     .emi-kpi .lbl {
-      font-size: clamp(10px, 1.1vmin, 12px);
+      font-size: var(--wall-label);
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: #94a3b8;
     }
     .emi-kpi .val {
-      font-size: clamp(22px, 3.2vmin, 40px);
+      font-size: var(--wall-value);
       font-weight: 900;
       line-height: 1;
       color: #f8fafc;
       font-variant-numeric: tabular-nums;
     }
     .emi-kpi .sub {
-      font-size: clamp(10px, 1.1vmin, 12px);
+      font-size: var(--wall-meta);
       color: #64748b;
       font-weight: 600;
     }
@@ -4360,8 +4536,8 @@
       min-height: 0;
     }
     .emi-card {
-      background: rgba(2, 6, 23, 0.55);
-      border: 1px solid #1e293b;
+      background: var(--ds-panel-bg, var(--panel));
+      border: 1px solid var(--line);
       border-radius: 12px;
       display: flex;
       flex-direction: column;
@@ -4722,13 +4898,14 @@
       flex: 1 1 auto !important;
     }
     body.tv-mode .emi-kpi {
-      padding: clamp(6px, 0.8vmin, 10px) clamp(8px, 1vmin, 12px) !important;
+      padding: clamp(12px, 1.5vmin, 18px) clamp(12px, 1.6vmin, 20px) !important;
+      min-height: clamp(88px, 11vmin, 130px);
     }
     body.tv-mode .emi-kpi .val {
-      font-size: clamp(20px, 2.6vmin, 34px);
+      font-size: clamp(32px, 4.2vmin, 56px) !important;
     }
     body.tv-mode .emi-kpi .lbl {
-      font-size: clamp(10px, 1.15vmin, 13px);
+      font-size: clamp(14px, 1.7vmin, 20px) !important;
     }
     body.tv-mode .emi-chart {
       min-height: 0 !important;
@@ -5873,7 +6050,7 @@
       border: none !important;
       box-shadow: none !important;
     }
-    body.tv-mode .mapa-kpis-top .arm-kpi .val { font-size: clamp(18px, 2.4vmin, 32px); }
+    body.tv-mode .mapa-kpis-top .arm-kpi .val { font-size: clamp(28px, 3.6vmin, 48px) !important; }
     body.tv-mode .mapa-farol-overlay .big { font-size: clamp(56px, 8vmin, 120px); }
     body.tv-mode #btnMapaGestao,
     body.tv-mode .mapa-gestao-panel {
@@ -6180,8 +6357,8 @@
       flex-direction: column;
       min-height: 0;
       padding: clamp(10px, 1.2vmin, 16px);
-      background: rgba(15, 23, 42, 0.35);
-      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: var(--ds-panel-bg, var(--panel));
+      border: 1px solid var(--line);
       border-radius: 12px;
       overflow: hidden;
     }
@@ -7416,79 +7593,79 @@
       outline: 1px dashed rgba(255, 184, 0, 0.35);
       outline-offset: -2px;
     }
-    /* Tamanho das letras (CRT fontZoom) + escala TV 43" parede */
-    html { --dash-font: 1; }
+    /* Tamanho das letras (CRT fontZoom) + escala mural ~43" */
+    html { --dash-font: 1.32; }
     body.tv-mode {
-      /* Full HD 43" vista de longe — números dominam */
-      --tv-scale: 1.2;
+      /* Full HD 43" vista de longe — números e textos maiores */
+      --tv-scale: 1.38;
     }
     @media (min-width: 1680px) and (max-width: 2100px) and (min-height: 900px) and (max-height: 1200px) {
-      body.tv-mode { --tv-scale: 1.28; }
+      body.tv-mode { --tv-scale: 1.45; }
     }
     body.tv-mode .resumo-total strong {
-      font-size: calc(clamp(72px, 9.2vmin, 132px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
+      font-size: calc(clamp(80px, 10vmin, 148px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
     }
     body.tv-mode .resumo-stats b,
     body.tv-mode .resumo-single .resumo-stats b {
-      font-size: calc(clamp(32px, 4.2vmin, 56px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
+      font-size: calc(clamp(38px, 4.8vmin, 64px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
     }
     body.tv-mode .resumo-stats span,
     body.tv-mode .resumo-total span,
     body.tv-mode .resumo-kicker {
-      font-size: calc(clamp(12px, 1.5vmin, 18px) * var(--dash-font, 1));
+      font-size: calc(clamp(15px, 1.85vmin, 22px) * var(--dash-font, 1));
     }
     body.tv-mode .torre .barra strong,
     body.tv-mode .torres .barra strong {
-      font-size: calc(clamp(36px, 5.2vmin, 78px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
+      font-size: calc(clamp(42px, 5.8vmin, 86px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
     }
     body.tv-mode .torre .pin span {
-      font-size: calc(clamp(16px, 2.1vmin, 26px) * var(--dash-font, 1));
+      font-size: calc(clamp(18px, 2.3vmin, 28px) * var(--dash-font, 1));
     }
     body.tv-mode .torre .base .lbl {
-      font-size: calc(clamp(14px, 1.8vmin, 22px) * var(--dash-font, 1));
+      font-size: calc(clamp(16px, 2vmin, 24px) * var(--dash-font, 1));
     }
     body.tv-mode .ban-pct,
     body.tv-mode .cyl-ban .ban-pct {
-      font-size: calc(clamp(40px, 5.4vmin, 80px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
+      font-size: calc(clamp(46px, 6vmin, 88px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
     }
     body.tv-mode .agenda-kpi b {
-      font-size: calc(clamp(28px, 3.6vmin, 52px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
+      font-size: clamp(36px, 4.8vmin, 64px) !important;
     }
     body.tv-mode .agenda-kpi span {
-      font-size: calc(clamp(11px, 1.4vmin, 16px) * var(--dash-font, 1));
+      font-size: clamp(15px, 1.9vmin, 24px) !important;
     }
     body.tv-mode .arm-kpi .val {
-      font-size: calc(clamp(28px, 3.5vmin, 52px) * var(--dash-font, 1) * var(--tv-scale, 1) / 1.2);
+      font-size: clamp(36px, 4.8vmin, 64px) !important;
     }
     body.tv-mode .arm-kpi .lbl {
-      font-size: calc(clamp(11px, 1.35vmin, 15px) * var(--dash-font, 1));
+      font-size: clamp(15px, 1.9vmin, 24px) !important;
     }
     body.tv-mode .brand .title,
     body.tv-mode .arm-brand .title,
     body.tv-mode .arm-brand h1 {
-      font-size: calc(clamp(28px, 3.8vmin, 52px) * var(--dash-font, 1));
+      font-size: clamp(32px, 4.2vmin, 56px) !important;
     }
     body.tv-mode .clock-box .time {
-      font-size: calc(clamp(32px, 4.4vmin, 56px) * var(--dash-font, 1));
+      font-size: clamp(28px, 3.6vmin, 48px) !important;
     }
     body.tv-mode .pop .name {
-      font-size: calc(clamp(16px, 2vmin, 24px) * var(--dash-font, 1));
+      font-size: calc(clamp(18px, 2.3vmin, 28px) * var(--dash-font, 1));
     }
     body.tv-mode .pop .badge {
-      font-size: calc(clamp(15px, 1.9vmin, 24px) * var(--dash-font, 1));
+      font-size: calc(clamp(17px, 2.1vmin, 26px) * var(--dash-font, 1));
     }
     body.tv-mode .pop .meta {
-      font-size: calc(clamp(12px, 1.45vmin, 17px) * var(--dash-font, 1));
+      font-size: calc(clamp(14px, 1.7vmin, 20px) * var(--dash-font, 1));
     }
     body.tv-mode .col-sub {
-      font-size: calc(12px * var(--dash-font, 1));
+      font-size: calc(15px * var(--dash-font, 1));
     }
     body.tv-mode .torre {
-      width: clamp(120px, 14.5vmin, 220px);
+      width: clamp(132px, 16vmin, 240px);
     }
     body.tv-mode .torre .barra {
-      min-height: clamp(56px, 7.5vmin, 110px);
-      max-height: 38vh;
+      min-height: clamp(64px, 8.5vmin, 124px);
+      max-height: 40vh;
     }
     body.tv-mode .cyl-ban-row {
       max-height: clamp(72px, 10.5vmin, 128px);
@@ -7534,20 +7711,21 @@
       gap: 8px;
     }
     .arm-kpi {
-      background: var(--panel);
+      background: var(--ds-kpi-bg, var(--panel));
       border: 1px solid var(--line);
       border-radius: 12px;
-      padding: 10px 12px;
+      padding: var(--wall-kpi-pad-y) var(--wall-kpi-pad-x);
       min-width: 0;
+      min-height: clamp(78px, 9.5vmin, 118px);
     }
     .arm-kpi .lbl {
-      color: var(--muted); font-size: 10px;
+      color: var(--muted); font-size: var(--wall-label);
       text-transform: uppercase; letter-spacing: 0.08em;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .arm-kpi .val {
       margin-top: 4px;
-      font-size: clamp(20px, 2.4vw, 28px);
+      font-size: var(--wall-value);
       font-weight: 800;
       font-variant-numeric: tabular-nums;
       line-height: 1.05;
@@ -7565,7 +7743,7 @@
       min-height: 0;
     }
     .arm-hero-card {
-      background: var(--panel);
+      background: var(--ds-panel-bg, var(--panel));
       border: 1px solid var(--line);
       border-radius: 14px;
       display: grid;
@@ -7578,10 +7756,11 @@
       padding: 10px 14px; border-bottom: 1px solid var(--line);
     }
     .arm-hero-card > header h2 {
-      margin: 0; font-size: 12px; letter-spacing: 0.1em;
+      margin: 0; font-size: var(--wall-section);
+      letter-spacing: 0.1em;
       text-transform: uppercase; color: #7dd3fc;
     }
-    .arm-hero-card > header .meta { color: var(--muted); font-size: 12px; }
+    .arm-hero-card > header .meta { color: var(--muted); font-size: var(--wall-meta); }
     .arm-pizza-wrap {
       display: none;
     }
@@ -7976,7 +8155,7 @@
       .arm-best-val { grid-area: val; align-self: end; }
     }
     .arm-panel {
-      background: var(--panel);
+      background: var(--ds-panel-bg, var(--panel));
       border: 1px solid var(--line);
       border-radius: 14px;
       display: grid;
@@ -10938,7 +11117,8 @@
       if (!['towers', 'pizza', 'bars', 'bubbles'].includes(chart)) chart = 'towers';
       const scale = String(ui.scale || 'large').toLowerCase();
       let fontZoom = Number(ui.fontZoom);
-      if (!Number.isFinite(fontZoom)) fontZoom = 1;
+      /* 1 era o default antigo; mural usa 1.32 (~TV). Valores <1 ou >1.01 permanecem. */
+      if (!Number.isFinite(fontZoom) || fontZoom === 1) fontZoom = 1.32;
       fontZoom = Math.max(0.7, Math.min(1.6, fontZoom));
       const blocks = Array.isArray(ui.blocks) ? ui.blocks : [];
       return {
@@ -11058,7 +11238,7 @@
         if (penWrap) penWrap.classList.toggle('is-pareto', usePareto);
       }
 
-      document.documentElement.style.setProperty('--dash-font', String(ui.fontZoom || 1));
+      document.documentElement.style.setProperty('--dash-font', String(ui.fontZoom || 1.32));
 
       // Re-pinta pizza/agenda depois do pane ficar visível (evita SVG “vazio” no WebEngine)
       if (CURRENT_SECTOR === 'distribuicao') {
@@ -12546,12 +12726,15 @@
     }
 
     function parsePenMoney(raw) {
-      const s = String(raw || '').replace(/R\$/gi, '').trim();
+      if (raw == null || raw === '') return 0;
+      if (typeof raw === 'number') return Number.isFinite(raw) ? raw : 0;
+      let s = String(raw).replace(/R\$/gi, '').trim();
       if (!s) return 0;
-      let n = s;
-      if (n.includes(',') && n.includes('.')) n = n.replace(/\./g, '').replace(',', '.');
-      else if (n.includes(',')) n = n.replace(',', '.');
-      const v = Number(n);
+      // remove milhares BR / espaços
+      s = s.replace(/\s/g, '');
+      if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+      else if (s.includes(',')) s = s.replace(',', '.');
+      const v = Number(s);
       return Number.isFinite(v) ? v : 0;
     }
 
@@ -12559,6 +12742,21 @@
       const n = typeof v === 'number' ? v : parsePenMoney(v);
       if (!n) return 'R$ 0';
       return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function fmtPenMoneyKpi(v) {
+      const n = typeof v === 'number' ? v : parsePenMoney(v);
+      if (!n) return 'R$ 0';
+      const abs = Math.abs(n);
+      if (abs >= 1e6) {
+        const mi = n / 1e6;
+        const txt = mi.toLocaleString('pt-BR', {
+          minimumFractionDigits: mi >= 100 ? 0 : 1,
+          maximumFractionDigits: mi >= 100 ? 0 : 1,
+        });
+        return `R$ ${txt} mi`;
+      }
+      return fmtPenMoney(n);
     }
 
     function filialFromCtrc(ctrc) {
@@ -13045,8 +13243,30 @@
       try {
         let remoteVer = null;
         try {
-          remoteVer = await fetchDataVersion();
-          if (remoteVer != null && lastPenDataVersion != null && remoteVer === lastPenDataVersion) {
+          if (PREFER_LOCAL_CSV) {
+            // Igual emissão: stamp próprio (meta.json da distribuição não muda só com 031)
+            try {
+              const res = await fetch('data/pendencia/stamp.json?t=' + Date.now(), { cache: 'no-store' });
+              if (res.ok) {
+                const j = await res.json();
+                remoteVer = String(j.ts || j.atualizado || '');
+              }
+            } catch (_) { /* segue */ }
+            if (!remoteVer && lastGoodPenResumo && lastGoodPenResumo.atualizado) {
+              remoteVer = String(lastGoodPenResumo.atualizado);
+            }
+          } else {
+            remoteVer = await fetchDataVersion();
+          }
+          // Se o KPI ainda está zerado, força releitura mesmo com mesma versão
+          const kpiEl = document.getElementById('penValorRisco');
+          const kpiZera = !kpiEl || /R\$\s*0\b/.test(String(kpiEl.textContent || ''));
+          if (
+            !kpiZera
+            && remoteVer != null
+            && lastPenDataVersion != null
+            && remoteVer === lastPenDataVersion
+          ) {
             return;
           }
         } catch (_) { /* segue */ }
@@ -13094,6 +13314,19 @@
         if (!ofens.length && lastGoodPenOfens.length) ofens = lastGoodPenOfens.slice();
         if (!rows.length && lastGoodPenRows.length) rows = lastGoodPenRows.slice();
 
+        // Fallback JSON local (modo ACE sem Sheets)
+        if ((!resumo.valor_risco && !resumo.valor_mercadoria) || !Object.keys(resumo).length) {
+          try {
+            const jr = await fetch('data/local/pendencia.json?t=' + Date.now(), { cache: 'no-store' });
+            if (jr.ok) {
+              const j = await jr.json();
+              if (j && j.resumo_31 && typeof j.resumo_31 === 'object') {
+                resumo = { ...j.resumo_31, ...resumo };
+              }
+            }
+          } catch (_) { /* ignore */ }
+        }
+
         const enriched = (rows || []).map(enrichPenRow);
         const abertas = enriched.filter((r) => r.status_ace !== 'solucionada' && String(r.codigo) !== '63');
         lastGoodPenAbertas = abertas;
@@ -13129,11 +13362,19 @@
         setPenText('penFiltroStatus', 'Todas');
         setPenText('penAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
 
-        let valorMerc = parsePenMoney(resumo.valor_risco);
+        let valorMerc = parsePenMoney(
+          resumo.valor_risco ?? resumo.valor_mercadoria ?? resumo.valmerc ?? ''
+        );
         if (!valorMerc) {
           valorMerc = enriched.reduce((s, r) => s + (r.valor_num || 0), 0);
         }
-        setPenText('penValorRisco', fmtPenMoney(valorMerc));
+        setPenText('penValorRisco', fmtPenMoneyKpi(valorMerc));
+        const valorEl = document.getElementById('penValorRisco');
+        if (valorEl) {
+          valorEl.title = valorMerc
+            ? `R$ ${valorMerc.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : 'Sem VALMERC no 031';
+        }
 
         let slaMedio = Number(String(resumo.sla_medio_dias || '').replace(',', '.'));
         const solucionadas = enriched.filter((r) => r.status_ace === 'solucionada' || String(r.codigo) === '63');
@@ -13154,6 +13395,7 @@
         renderPenDashboardParts(abertas, resumo);
         renderPenTorres(ofens);
         if (remoteVer != null) lastPenDataVersion = remoteVer;
+        else if (resumo && resumo.atualizado) lastPenDataVersion = String(resumo.atualizado);
         else {
           try { lastPenDataVersion = await fetchDataVersion(); } catch (_) {}
         }

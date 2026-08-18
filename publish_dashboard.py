@@ -169,6 +169,7 @@ def _copy_pendencia_to_dashboard() -> dict[str, str]:
         ),
         "resumo_31.csv": (
             "periodo,atualizado,total_ctrcs,total_codigos,solucionadas,abertas,sla_pct,"
+            "sla_medio_dias,valor_risco,aging_0_2,aging_3_5,aging_6_mais,"
             "topo_codigo,topo_label,topo_qtd\n"
         ),
         "ofensores_31.csv": "codigo,label,qtd,pct,polaridade\n",
@@ -191,6 +192,36 @@ def _copy_pendencia_to_dashboard() -> dict[str, str]:
 def publish_pendencia_local(*, on_status: StatusCallback | None = None) -> dict[str, Any]:
     status = on_status or _noop
     paths = _copy_pendencia_to_dashboard()
+    data_dir = DASHBOARD_DIR / "data" / "pendencia"
+    stamp = {
+        "ts": datetime.now().timestamp(),
+        "atualizado": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+    }
+    stamp_path = data_dir / "stamp.json"
+    try:
+        _safe_write_text(stamp_path, json.dumps(stamp, ensure_ascii=False), encoding="utf-8")
+        paths["pendencia/stamp.json"] = str(stamp_path)
+    except Exception:
+        pass
+    # Bump meta.json para a TV/LAN detectar mudança (igual emissão)
+    try:
+        meta_path = DASHBOARD_DIR / "data" / "meta.json"
+        meta: dict[str, Any] = {}
+        if meta_path.is_file():
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                meta = {}
+        if not isinstance(meta, dict):
+            meta = {}
+        files = meta.get("files") if isinstance(meta.get("files"), dict) else {}
+        files.update(paths)
+        meta["files"] = files
+        meta["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        _safe_write_text(meta_path, json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+        paths["meta.json"] = str(meta_path)
+    except Exception:
+        pass
     status(f"Dashboard Pendência local: {len(paths)} arquivo(s).")
     return {"ok": True, "local": paths}
 

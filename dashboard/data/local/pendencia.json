@@ -1,17 +1,17 @@
 {
   "setor": "pendencia",
-  "updated_at": "2026-08-18T16:33:36",
+  "updated_at": "2026-08-18T16:48:01",
   "resumo_31": {
     "periodo": "01/08/26 – 18/08/26",
-    "atualizado": "18/08/2026 16:33:36",
+    "atualizado": "18/08/2026 16:48:01",
     "total_ctrcs": "359",
     "total_codigos": "4",
-    "solucionadas": "177",
-    "abertas": "182",
-    "sla_pct": "49,3",
-    "sla_medio_dias": "11,6",
-    "valor_risco": "2.039,00",
-    "aging_0_2": "26",
+    "solucionadas": "178",
+    "abertas": "181",
+    "sla_pct": "49,6",
+    "sla_medio_dias": "11,7",
+    "valor_risco": "56.564.393,14",
+    "aging_0_2": "25",
     "aging_3_5": "29",
     "aging_6_mais": "127",
     "topo_codigo": "60",
@@ -22,8 +22,8 @@
     {
       "codigo": "63",
       "label": "PENDENCIA SOLUCIONADA",
-      "qtd": "177",
-      "pct": "49,3",
+      "qtd": "178",
+      "pct": "49,6",
       "polaridade": "pos"
     },
     {
@@ -43,8 +43,8 @@
     {
       "codigo": "80",
       "label": "PENDENCIA EM TRATATIVA",
-      "qtd": "23",
-      "pct": "6,4",
+      "qtd": "22",
+      "pct": "6,1",
       "polaridade": "neg"
     }
   ]
