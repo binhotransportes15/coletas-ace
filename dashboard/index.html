@@ -431,10 +431,15 @@
       font-weight: 800;
       letter-spacing: 0.12em;
     }
-    /* Telão / parede: header mínimo (só nome do setor) */
+    /* Telão / parede: header mínimo (só nome do setor) — vence TV */
     body.wall-chrome .topbar,
     body.wall-chrome .arm-top,
-    body.wall-chrome .ds-header {
+    body.wall-chrome .ds-header,
+    body.wall-chrome.tv-mode .topbar,
+    body.wall-chrome.tv-mode .arm-top,
+    body.wall-chrome.tv-mode .topbar.ds-header,
+    body.wall-chrome.tv-mode .arm-top.ds-header,
+    body.wall-chrome.tv-mode .emi-top.arm-top {
       background: transparent !important;
       border: none !important;
       border-radius: 0 !important;
@@ -445,12 +450,17 @@
     }
     body.wall-chrome .clock-box,
     body.wall-chrome .mapa-live-pill,
-    body.wall-chrome .status-line {
+    body.wall-chrome .status-line,
+    body.wall-chrome.tv-mode .clock-box,
+    body.wall-chrome.tv-mode .mapa-live-pill,
+    body.wall-chrome.tv-mode .status-line {
       display: none !important;
     }
     body.wall-chrome .arm-brand .kicker,
     body.wall-chrome .brand .kicker,
-    body.wall-chrome .mapa-updated {
+    body.wall-chrome .mapa-updated,
+    body.wall-chrome.tv-mode .arm-brand .kicker,
+    body.wall-chrome.tv-mode .brand .kicker {
       display: none !important;
     }
     body.wall-chrome .brand .title,
@@ -500,7 +510,15 @@
     body.brand-no-logo .brand img,
     body.brand-no-logo .arm-brand img,
     body.brand-no-logo img.js-sector-menu,
-    body.brand-no-logo .sector-soon-panel img { display: none !important; }
+    body.brand-no-logo .sector-soon-panel img,
+    body.wall-chrome.brand-no-logo .brand img,
+    body.wall-chrome.brand-no-logo .arm-brand img,
+    body.wall-chrome.tv-mode.brand-no-logo .brand img,
+    body.wall-chrome.tv-mode.brand-no-logo .arm-brand img,
+    body.wall-chrome.tv-mode.tv-no-logo .brand img,
+    body.wall-chrome.tv-mode.tv-no-logo .arm-brand img {
+      display: none !important;
+    }
     body.brand-no-logo .arm-brand,
     body.brand-no-logo .brand { gap: 0; }
     .nav {
@@ -1948,6 +1966,30 @@
     body.tv-mode #armLayoutPatio .arm-hero-card {
       display: grid !important;
       grid-template-rows: auto minmax(0, 1fr) !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-descarga-stage {
+      height: 100% !important;
+      min-height: 0 !important;
+      grid-template-columns: minmax(160px, 1fr) minmax(280px, 2.2fr) minmax(160px, 1fr) !important;
+      gap: clamp(6px, 0.9vmin, 12px) !important;
+      padding: clamp(4px, 0.7vmin, 10px) clamp(6px, 1vmin, 12px) !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-rail {
+      min-height: 0 !important;
+      height: 100% !important;
+      padding: clamp(6px, 0.8vmin, 10px) !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-rail-title {
+      font-size: clamp(10px, 1.2vmin, 14px) !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-rail-card .orig {
+      font-size: clamp(11px, 1.35vmin, 15px) !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-rail-card .plates {
+      font-size: clamp(12px, 1.5vmin, 17px) !important;
+    }
+    body.tv-mode #armLayoutPatio .arm-rail-card .tempo {
+      font-size: clamp(11px, 1.3vmin, 15px) !important;
     }
     body.tv-mode #armLayoutPatio .arm-towers-wrap {
       height: 100% !important;
@@ -6363,6 +6405,111 @@
       min-height: 0;
       height: 100%;
     }
+    .arm-hero-card.arm-hero-with-rails {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    .arm-descarga-stage {
+      display: grid;
+      grid-template-columns: minmax(140px, 1fr) minmax(260px, 2.4fr) minmax(140px, 1fr);
+      gap: 8px;
+      min-height: 0;
+      height: 100%;
+      padding: 6px 8px 10px;
+      align-items: stretch;
+    }
+    .arm-rail {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(12, 20, 34, 0.95), rgba(6, 10, 18, 0.9));
+      padding: 8px 8px 6px;
+      overflow: hidden;
+    }
+    .arm-rail-title {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #fbbf24;
+      font-weight: 800;
+      padding: 0 2px 4px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }
+    .arm-rail-list {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .arm-rail-card {
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 8px;
+      padding: 7px 8px;
+      background: rgba(15, 23, 42, 0.65);
+    }
+    .arm-rail-card.is-late {
+      border-color: rgba(248, 113, 113, 0.45);
+      background: rgba(127, 29, 29, 0.28);
+    }
+    .arm-rail-card .orig {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: #7dd3fc;
+    }
+    .arm-rail-card .orig .uf {
+      color: #fbbf24;
+      margin-right: 4px;
+    }
+    .arm-rail-card .plates {
+      font-size: 12px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+      color: #e2e8f0;
+    }
+    .arm-rail-card .plates .sep { color: #64748b; margin: 0 4px; }
+    .arm-rail-card .tempo {
+      margin-top: 3px;
+      font-size: 11px;
+      color: #94a3b8;
+      font-variant-numeric: tabular-nums;
+    }
+    .arm-rail-card.is-late .tempo { color: #fca5a5; font-weight: 700; }
+    .arm-rail-empty {
+      color: #64748b;
+      font-size: 11px;
+      padding: 8px 4px;
+      text-align: center;
+    }
+    #alertaArmDescarga {
+      position: fixed;
+      inset: 0;
+      z-index: 12000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 6, 18, 0.82);
+      padding: 24px;
+    }
+    #alertaArmDescarga:not([hidden]) { display: flex; }
+    body.alerta-arm-lock #alertaArmDescarga { display: flex; }
+    .alerta-arm-box { border-color: rgba(245, 158, 11, 0.55); }
+    .alerta-arm-box .tag { color: #fbbf24; }
+    .alerta-arm-box h1 { color: #fde68a; }
+    @media (max-width: 900px) {
+      .arm-descarga-stage {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(180px, 1fr) auto;
+      }
+      .arm-rail { max-height: 140px; }
+    }
     .agenda-pizza .slice.s-fin { fill: var(--col); }
     .agenda-pizza .slice.s-des { fill: var(--cad-dark); }
     .agenda-pizza .slice.s-pat { fill: #38bdf8; }
@@ -6811,6 +6958,20 @@
     </div>
   </div>
 
+  <div id="alertaArmDescarga" role="alertdialog" aria-modal="true" aria-labelledby="alertaArmTitle" hidden>
+    <div class="alerta-lock-box alerta-arm-box">
+      <div class="siren-big" aria-hidden="true">!</div>
+      <div class="tag">Armazém · descarga</div>
+      <h1 id="alertaArmTitle">Descarregando há mais de 4h</h1>
+      <div class="count" id="alertaArmCount">0</div>
+      <div class="hint" id="alertaArmHint">Aviso ~30s · some por 2 minutos · bipa enquanto visível.</div>
+      <div class="alerta-lock-list" id="alertaArmList"></div>
+      <div class="alerta-lock-actions">
+        <button type="button" id="btnAlertaArmOk">Entendi</button>
+      </div>
+    </div>
+  </div>
+
   <div id="panel-operacao" class="sector-root">
   <div class="tv-hint" id="tvHint">Modo TV · F ou ESC para sair · ideal para televisão</div>
   <div class="board">
@@ -6828,7 +6989,7 @@
       </div>
       <nav class="nav">
         <button type="button" class="nav-btn active" data-view="live">Ao vivo</button>
-        <button type="button" class="nav-btn" data-view="gestao">Gestão</button>
+        <button type="button" class="nav-btn" data-view="gestao" id="btnGestaoOps" title="Abrir Gestão em janela separada">Gestão</button>
         <button type="button" class="nav-btn tv-btn" id="btnTv" title="Modo TV / tela inteira (F)">TV</button>
       </nav>
       <div class="clock-box">
@@ -7110,7 +7271,7 @@
             <thead>
               <tr>
                 <th>Hora</th><th>CTRC</th><th>Destinatário</th>
-                <th>Destino</th><th>Peso</th><th>Frete</th><th>Status</th>
+                <th>Destino</th><th>Peso</th><th>Volumes</th><th>Frete</th><th>Status</th>
               </tr>
             </thead>
             <tbody id="agendaBody"></tbody>
@@ -7165,6 +7326,7 @@
           </div>
         </div>
         <nav class="nav">
+          <button type="button" class="nav-btn" data-open-gestao="armazem" title="Abrir Gestão">Gestão</button>
           <button type="button" class="nav-btn tv-btn" id="btnTvArmazem" title="Modo TV / tela inteira (F)">TV</button>
         </nav>
         <div class="clock-box">
@@ -7186,39 +7348,49 @@
           <div class="arm-kpi ds-kpi is-warn"><div class="lbl">Tempo médio</div><div class="val" id="kTempoMed">—</div></div>
         </div>
         <div class="arm-hero arm-hero-solo dash-block" data-block="chart">
-          <section class="arm-hero-card">
+          <section class="arm-hero-card arm-hero-with-rails">
             <header>
               <h2>Descarga</h2>
               <div class="meta">atrasado (+3h) · descarregando · pátio · aguardando · finalizado</div>
             </header>
-            <div class="arm-towers-wrap">
-              <div class="torres arm-torres" id="armTorres" aria-label="Torres de status do pátio">
-                <div class="torre t-atr">
-                  <div class="pin" title="Quantidade"><span id="armRankAtr">0</span></div>
-                  <div class="barra" id="armBarAtr"><strong id="armPctAtr">0<span class="pct-sign">%</span></strong></div>
-                  <div class="base"><div class="lbl">Atrasado</div></div>
-                </div>
-                <div class="torre t-des">
-                  <div class="pin" title="Quantidade"><span id="armRankDes">0</span></div>
-                  <div class="barra" id="armBarDes"><strong id="armPctDes">0<span class="pct-sign">%</span></strong></div>
-                  <div class="base"><div class="lbl">Descarregando</div></div>
-                </div>
-                <div class="torre t-che">
-                  <div class="pin" title="Quantidade"><span id="armRankChe">0</span></div>
-                  <div class="barra" id="armBarChe"><strong id="armPctChe">0<span class="pct-sign">%</span></strong></div>
-                  <div class="base"><div class="lbl">No pátio</div></div>
-                </div>
-                <div class="torre t-agu">
-                  <div class="pin" title="Quantidade"><span id="armRankAgu">0</span></div>
-                  <div class="barra" id="armBarAgu"><strong id="armPctAgu">0<span class="pct-sign">%</span></strong></div>
-                  <div class="base"><div class="lbl">Aguardando</div></div>
-                </div>
-                <div class="torre t-fin">
-                  <div class="pin" title="Quantidade"><span id="armRankFin">0</span></div>
-                  <div class="barra" id="armBarFin"><strong id="armPctFin">0<span class="pct-sign">%</span></strong></div>
-                  <div class="base"><div class="lbl">Finalizado</div></div>
+            <div class="arm-descarga-stage">
+              <aside class="arm-rail arm-rail-left" aria-label="Veículos sem chegada">
+                <div class="arm-rail-title">Veículos sem chegada</div>
+                <div class="arm-rail-list" id="armSemChegadaL"></div>
+              </aside>
+              <div class="arm-towers-wrap">
+                <div class="torres arm-torres" id="armTorres" aria-label="Torres de status do pátio">
+                  <div class="torre t-atr">
+                    <div class="pin" title="Quantidade"><span id="armRankAtr">0</span></div>
+                    <div class="barra" id="armBarAtr"><strong id="armPctAtr">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Atrasado</div></div>
+                  </div>
+                  <div class="torre t-des">
+                    <div class="pin" title="Quantidade"><span id="armRankDes">0</span></div>
+                    <div class="barra" id="armBarDes"><strong id="armPctDes">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Descarregando</div></div>
+                  </div>
+                  <div class="torre t-che">
+                    <div class="pin" title="Quantidade"><span id="armRankChe">0</span></div>
+                    <div class="barra" id="armBarChe"><strong id="armPctChe">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">No pátio</div></div>
+                  </div>
+                  <div class="torre t-agu">
+                    <div class="pin" title="Quantidade"><span id="armRankAgu">0</span></div>
+                    <div class="barra" id="armBarAgu"><strong id="armPctAgu">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Aguardando</div></div>
+                  </div>
+                  <div class="torre t-fin">
+                    <div class="pin" title="Quantidade"><span id="armRankFin">0</span></div>
+                    <div class="barra" id="armBarFin"><strong id="armPctFin">0<span class="pct-sign">%</span></strong></div>
+                    <div class="base"><div class="lbl">Finalizado</div></div>
+                  </div>
                 </div>
               </div>
+              <aside class="arm-rail arm-rail-right" aria-label="Veículos sem chegada (cont.)">
+                <div class="arm-rail-title">Veículos sem chegada</div>
+                <div class="arm-rail-list" id="armSemChegadaR"></div>
+              </aside>
             </div>
           </section>
         </div>
@@ -7291,6 +7463,7 @@
           </div>
         </div>
         <nav class="nav">
+          <button type="button" class="nav-btn" data-open-gestao="contratacao" title="Abrir Gestão">Gestão</button>
           <button type="button" class="nav-btn tv-btn" id="btnTvContratacao" title="Modo TV / tela inteira (F)">TV</button>
         </nav>
         <div class="clock-box">
@@ -7361,6 +7534,7 @@
           </div>
         </div>
         <nav class="nav">
+          <button type="button" class="nav-btn" data-open-gestao="pendencia" title="Abrir Gestão">Gestão</button>
           <button type="button" class="nav-btn tv-btn" id="btnTvPendencia" title="Modo TV / tela inteira (F)">TV</button>
         </nav>
         <div class="clock-box">
@@ -7504,7 +7678,7 @@
         </div>
         <nav class="nav mapa-nav-tms">
           <button type="button" class="nav-btn active" id="btnMapaLive" data-mapa-view="live">Ao vivo</button>
-          <button type="button" class="nav-btn" id="btnMapaGestao" data-mapa-view="gestao">Gestão</button>
+          <button type="button" class="nav-btn" id="btnMapaGestao" data-mapa-view="gestao" title="Abrir Gestão do mapa">Gestão</button>
           <button type="button" class="nav-btn tv-btn" id="btnTvMapa" title="Modo TV / tela inteira (F)">TV</button>
         </nav>
         <div class="mapa-live-pill" id="mapaLivePill" title="Tempo real">
@@ -7650,6 +7824,7 @@
         <div class="emi-top-actions">
           <div class="emi-status-pill is-ok" id="emiStatusPill" title="Status operacional">OPERAÇÃO NORMAL</div>
           <nav class="nav">
+            <button type="button" class="nav-btn" data-open-gestao="emissao" title="Abrir Gestão">Gestão</button>
             <button type="button" class="nav-btn tv-btn" id="btnTvEmissao" title="Modo TV / tela inteira (F)">TV</button>
           </nav>
         </div>
@@ -8940,9 +9115,13 @@
 
     function applyBrandChrome(brand) {
       const b = brand || (TV_LAYOUT && TV_LAYOUT.brand) || window.__ACE_BRAND__ || null;
+      // Preferência: brand.json / layout hidden → sem logo (telão)
       const hidden = !b || b.mode === 'hidden' || b.visible === false;
       document.body.classList.add('wall-chrome');
       document.body.classList.toggle('brand-no-logo', !!hidden);
+      if (hidden) {
+        document.body.classList.add('tv-no-logo');
+      }
       const hint = String((b && b.themeHint) || '').toLowerCase();
       document.body.classList.toggle('theme-circuitos', hint === 'circuitos' || hint === 'circuit');
       if (hidden) return;
@@ -8953,6 +9132,17 @@
         img.setAttribute('src', src);
         img.setAttribute('alt', 'BINHO Transportes');
       });
+    }
+
+    function openGestaoWindow(setor, rel) {
+      const q = new URLSearchParams();
+      if (setor) q.set('setor', setor);
+      if (rel) q.set('rel', rel);
+      const url = `gestao.html${q.toString() ? `?${q}` : ''}`;
+      const w = window.open(url, 'ace_gestao', 'noopener,noreferrer');
+      if (!w) {
+        window.location.href = url;
+      }
     }
 
     async function loadBrandAndApply() {
@@ -9587,10 +9777,34 @@
       if (syncHash) writeRouteHash({ tv: wantTv, sector: CURRENT_SECTOR });
       applyDashboardChrome();
       updateAlertaSemSaidaLock();
+      if (CURRENT_SECTOR === 'armazem') updateAlertaArmDescarga(lastArmVeicsCache);
+      else silenceAlertaArmDescarga();
     }
 
     const ARM_STATUS_RANK = { atrasado: 0, descarregando: 1, chegou: 2, aguardando: 3, finalizado: 4 };
-    const ARM_DESC_ATR_MS = 3 * 60 * 60 * 1000; // >3h sem fim de descarga → vermelho
+    const ARM_DESC_ATR_MS = 3 * 60 * 60 * 1000; // >3h sem fim de descarga → vermelho (KPI)
+    const ARM_DESC_ALERT_MS = 4 * 60 * 60 * 1000; // alerta overlay >4h descarregando
+    const ARM_ALERT_SHOW_MS = 30 * 1000;
+    const ARM_ALERT_SNOOZE_MS = 2 * 60 * 1000;
+    let ARM_ALERT_ON = false;
+    let ARM_ALERT_SNOOZE_UNTIL = 0;
+    let armAlertHideTimer = null;
+    let armAlertSnoozeTimer = null;
+    let armAlertBeepTimer = null;
+    let lastArmVeicsCache = [];
+    const ARM_ALERT_BEEP_MS = 10 * 1000;
+
+    const SIGLAS_UF = {
+      DCX: 'RJ', PPY: 'MG', GNN: 'GO', ATM: 'PA', GIR: 'GO', ATR: 'PA', GYN: 'GO',
+      BSB: 'DF', GYL: 'GO', APL: 'GO', SPO: 'SP', APS: 'GO', VIX: 'ES', SNN: 'SP',
+      STM: 'PA', STR: 'PA', BNU: 'SC', SPL: 'SP', VIT: 'ES', CWB: 'PR', BHZ: 'MG',
+      SSA: 'BA', REC: 'PE', FOR: 'CE', MAO: 'AM', BEL: 'PA', CGR: 'MS', CGB: 'MT',
+    };
+    const CIDADE_UF = {
+      'RIO DE JANEIRO': 'RJ', GOIANIA: 'GO', GUARULHOS: 'SP', ANAPOLIS: 'GO',
+      SERRA: 'ES', BRASILIA: 'DF', 'POUSO ALEGRE': 'MG', ALTAMIRA: 'PA',
+      SANTAREM: 'PA', ITAJAI: 'SC',
+    };
 
     function parseArmDt(raw) {
       const s = String(raw || '').trim().replace(/\s+[a-zA-Z_.À-ú]{2,}$/i, '').trim();
@@ -9769,6 +9983,247 @@
       return s;
     }
 
+    function armUfOrigem(v) {
+      const sigla = String(v.origem_sigla || '').trim().toUpperCase();
+      if (sigla && SIGLAS_UF[sigla]) return SIGLAS_UF[sigla];
+      const cidade = labelOrigemArm(v.origem || v.origem_sigla || '').toUpperCase();
+      if (CIDADE_UF[cidade]) return CIDADE_UF[cidade];
+      if (sigla.length === 2) return sigla;
+      return '—';
+    }
+
+    function armIsSemChegada(v) {
+      if (armStripOperador(v.final_descarga)) return false;
+      if (armStripOperador(v.chegada)) return false;
+      if (armStripOperador(v.inicio_descarga)) return false;
+      const st = String(armStatusEfetivo(v) || '').toLowerCase();
+      return st === 'aguardando' || st === 'atrasado' || !st;
+    }
+
+    /** Tempo relativo à previsão de chegada (sem chegada registrada). */
+    function armTempoSemChegada(v) {
+      const prev = parseArmDt(armStripOperador(v.prev_chegada));
+      if (!prev) return { text: 'sem previsão', late: false, sort: 0 };
+      const delta = Date.now() - prev.getTime();
+      const absMin = Math.round(Math.abs(delta) / 60000);
+      const txt = armFmtDuracao(absMin) || '0min';
+      if (delta >= 0) {
+        return { text: `atrasado ${txt}`, late: absMin >= 60, sort: delta };
+      }
+      return { text: `chega em ${txt}`, late: false, sort: delta };
+    }
+
+    function listArmSemChegada(veics) {
+      const rows = (veics || []).filter(armIsSemChegada).map((v) => {
+        const t = armTempoSemChegada(v);
+        return {
+          ...v,
+          _uf: armUfOrigem(v),
+          _cidade: labelOrigemArm(v.origem || v.origem_sigla || ''),
+          _sigla: String(v.origem_sigla || '').trim().toUpperCase() || '—',
+          _tempo: t.text,
+          _late: t.late,
+          _sort: t.sort,
+        };
+      });
+      rows.sort((a, b) => b._sort - a._sort);
+      return rows;
+    }
+
+    function renderArmSemChegadaRails(veics) {
+      const left = document.getElementById('armSemChegadaL');
+      const right = document.getElementById('armSemChegadaR');
+      if (!left || !right) return;
+      const list = listArmSemChegada(veics);
+      const cardHtml = (v) => {
+        const sigla = v._sigla && v._sigla !== '—' ? v._sigla : '';
+        const cidade = v._cidade || '—';
+        const origLine = sigla && cidade.toUpperCase() !== sigla
+          ? `<span class="uf">${esc(v._uf)}</span>${esc(sigla)} · ${esc(cidade)}`
+          : `<span class="uf">${esc(v._uf)}</span>${esc(cidade)}`;
+        return `<div class="arm-rail-card${v._late ? ' is-late' : ''}">
+          <div class="orig">${origLine}</div>
+          <div class="plates">${esc(v.cavalo || '—')}<span class="sep">·</span>${esc(v.carreta || '—')}</div>
+          <div class="tempo">${esc(v._tempo)}</div>
+        </div>`;
+      };
+      if (!list.length) {
+        left.innerHTML = '<div class="arm-rail-empty">Nenhum manifesto sem chegada</div>';
+        right.innerHTML = '<div class="arm-rail-empty">—</div>';
+        return;
+      }
+      const mid = Math.ceil(list.length / 2);
+      const a = list.slice(0, mid);
+      const b = list.slice(mid);
+      left.innerHTML = a.map(cardHtml).join('');
+      right.innerHTML = b.length
+        ? b.map(cardHtml).join('')
+        : '<div class="arm-rail-empty">—</div>';
+    }
+
+    function armDescargaMaisDe4h(v) {
+      const fim = armStripOperador(v.final_descarga);
+      if (fim) return false;
+      const ini = armStripOperador(v.inicio_descarga);
+      if (!ini) return false;
+      const dt = parseArmDt(ini);
+      if (!dt) {
+        const mins = Number(v.tempo_descarga_min);
+        return Number.isFinite(mins) && mins > 240;
+      }
+      const delta = Date.now() - dt.getTime();
+      if (delta < -60000) return false;
+      return delta >= ARM_DESC_ALERT_MS;
+    }
+
+    function listArmDescargaLonga(veics) {
+      return (veics || []).filter(armDescargaMaisDe4h).map((v) => {
+        const ini = parseArmDt(armStripOperador(v.inicio_descarga));
+        const mins = ini ? Math.max(0, Math.floor((Date.now() - ini.getTime()) / 60000)) : Number(v.tempo_descarga_min) || 0;
+        return { ...v, _mins: mins, _tempo: armFmtDuracao(mins) || '—' };
+      }).sort((a, b) => b._mins - a._mins);
+    }
+
+    function alertaArmAllowedHere() {
+      if (String(CURRENT_SECTOR || '') !== 'armazem') return false;
+      if (document.body.getAttribute('data-sector') !== 'armazem') return false;
+      const panel = document.getElementById('panel-armazem');
+      if (panel && panel.hidden) return false;
+      return true;
+    }
+
+    function playArmAlertaBeepOnce() {
+      if (!ARM_ALERT_ON || !alertaArmAllowedHere()) {
+        stopArmAlertaBeep();
+        return;
+      }
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!alertaAudioCtx) alertaAudioCtx = new AC();
+        const ctx = alertaAudioCtx;
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        const now = ctx.currentTime;
+        [740, 520].forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'square';
+          o.frequency.value = freq;
+          const t0 = now + i * 0.16;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(0.1, t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start(t0);
+          o.stop(t0 + 0.16);
+        });
+      } catch (_) { /* autoplay / Audio API */ }
+    }
+
+    function startArmAlertaBeep() {
+      if (!alertaArmAllowedHere() || !ARM_ALERT_ON) {
+        stopArmAlertaBeep();
+        return;
+      }
+      if (armAlertBeepTimer) return;
+      playArmAlertaBeepOnce();
+      armAlertBeepTimer = setInterval(playArmAlertaBeepOnce, ARM_ALERT_BEEP_MS);
+    }
+
+    function stopArmAlertaBeep() {
+      if (armAlertBeepTimer) {
+        clearInterval(armAlertBeepTimer);
+        armAlertBeepTimer = null;
+      }
+    }
+
+    function silenceAlertaArmDescarga() {
+      ARM_ALERT_ON = false;
+      stopArmAlertaBeep();
+      document.body.classList.remove('alerta-arm-lock');
+      const box = document.getElementById('alertaArmDescarga');
+      if (box) {
+        box.hidden = true;
+        box.style.display = 'none';
+      }
+      if (armAlertHideTimer) {
+        clearTimeout(armAlertHideTimer);
+        armAlertHideTimer = null;
+      }
+    }
+
+    function clearArmAlertSnoozeTimer() {
+      if (armAlertSnoozeTimer) {
+        clearTimeout(armAlertSnoozeTimer);
+        armAlertSnoozeTimer = null;
+      }
+    }
+
+    function scheduleArmAlertSnoozeWake() {
+      clearArmAlertSnoozeTimer();
+      const left = Math.max(500, ARM_ALERT_SNOOZE_UNTIL - Date.now());
+      armAlertSnoozeTimer = setTimeout(() => {
+        armAlertSnoozeTimer = null;
+        ARM_ALERT_SNOOZE_UNTIL = 0;
+        updateAlertaArmDescarga(lastArmVeicsCache);
+      }, left);
+    }
+
+    function dismissAlertaArmDescarga() {
+      ARM_ALERT_SNOOZE_UNTIL = Date.now() + ARM_ALERT_SNOOZE_MS;
+      silenceAlertaArmDescarga();
+      scheduleArmAlertSnoozeWake();
+    }
+
+    function updateAlertaArmDescarga(veics) {
+      const list = listArmDescargaLonga(veics || lastArmVeicsCache || []);
+      const box = document.getElementById('alertaArmDescarga');
+      const countEl = document.getElementById('alertaArmCount');
+      const listEl = document.getElementById('alertaArmList');
+      const hintEl = document.getElementById('alertaArmHint');
+
+      if (!list.length) {
+        ARM_ALERT_SNOOZE_UNTIL = 0;
+        clearArmAlertSnoozeTimer();
+        silenceAlertaArmDescarga();
+        if (countEl) countEl.textContent = '0';
+        return;
+      }
+      if (ARM_ALERT_SNOOZE_UNTIL && Date.now() >= ARM_ALERT_SNOOZE_UNTIL) {
+        ARM_ALERT_SNOOZE_UNTIL = 0;
+        clearArmAlertSnoozeTimer();
+      }
+      const snoozed = ARM_ALERT_SNOOZE_UNTIL > Date.now();
+      const allowed = alertaArmAllowedHere();
+      if (countEl) countEl.textContent = String(list.length);
+      if (listEl) {
+        listEl.innerHTML = list.slice(0, 8).map((v) =>
+          `<div><strong>${esc(v.cavalo || '—')}</strong> · ${esc(v.carreta || '—')} · ${esc(labelOrigemArm(v.origem || v.origem_sigla))} · <b>${esc(v._tempo)}</b></div>`
+        ).join('') + (list.length > 8 ? `<div class="muted">+${list.length - 8} mais</div>` : '');
+      }
+      if (!allowed || snoozed) {
+        silenceAlertaArmDescarga();
+        return;
+      }
+      if (ARM_ALERT_ON) return; // já exibindo o ciclo atual
+      ARM_ALERT_ON = true;
+      document.body.classList.add('alerta-arm-lock');
+      if (box) {
+        box.hidden = false;
+        box.style.display = 'flex';
+      }
+      if (hintEl) {
+        hintEl.textContent = 'Visível ~30s · em seguida some por 2 minutos · bipa enquanto visível.';
+      }
+      startArmAlertaBeep();
+      if (armAlertHideTimer) clearTimeout(armAlertHideTimer);
+      armAlertHideTimer = setTimeout(() => {
+        armAlertHideTimer = null;
+        dismissAlertaArmDescarga();
+      }, ARM_ALERT_SHOW_MS);
+    }
+
     async function chamarPlanilhaArmazem(action) {
       // Mesma URL/planilha da distribuição — actions dedicadas 078
       return chamarPlanilha(action);
@@ -9816,9 +10271,11 @@
         const key = `${r.cavalo}|${r.carreta}`;
         let slot = map.get(key);
         if (!slot) {
+          const sigRaw = String(r.origem_sigla || '').trim().toUpperCase();
+          const siglaOk = sigRaw && sigRaw.length <= 4 ? sigRaw : '';
           slot = {
-            origem: labelOrigemArm(r.origem_sigla || r.origem),
-            origem_sigla: r.origem_sigla || r.origem,
+            origem: labelOrigemArm(siglaOk || r.origem || r.origem_sigla),
+            origem_sigla: siglaOk || String(r.origem_sigla || '').trim().toUpperCase(),
             cavalo: r.cavalo,
             carreta: r.carreta,
             peso_veiculo: r.peso_veiculo || r.peso,
@@ -9853,7 +10310,9 @@
           slot.tempo_descarga = r.tempo_descarga || slot.tempo_descarga;
           slot.inicio_descarga = r.inicio_descarga || slot.inicio_descarga;
           slot.final_descarga = r.final_descarga || slot.final_descarga;
-          slot.origem = labelOrigemArm(r.origem_sigla || r.origem) || slot.origem;
+          const sigRaw = String(r.origem_sigla || '').trim().toUpperCase();
+          if (sigRaw && sigRaw.length <= 4) slot.origem_sigla = sigRaw;
+          slot.origem = labelOrigemArm(slot.origem_sigla || r.origem || r.origem_sigla) || slot.origem;
         } else if (b === a && (r.tempo_descarga || '').length > (slot.tempo_descarga || '').length) {
           slot.tempo_descarga = r.tempo_descarga;
           slot.inicio_descarga = r.inicio_descarga || slot.inicio_descarga;
@@ -9978,6 +10437,10 @@
           </tr>`;
         }).join('') || `<tr><td colspan="10" class="muted">Nenhum veículo no pátio / descarregando agora</td></tr>`;
       }
+
+      lastArmVeicsCache = veics;
+      renderArmSemChegadaRails(veics);
+      updateAlertaArmDescarga(veics);
     }
 
     let lastArmTorreCounts = null;
@@ -12172,13 +12635,13 @@
       }
 
       setSector(sector, { syncHash: false, forceTv: tv, view: viewHint });
-      if (isOpsSector(sector) || sector === 'armazem') {
-        if (gestao) {
-          setView('gestao');
-          if (rel) setRel(rel);
-        } else if (tv) {
-          setView('live');
-        }
+      if (gestao) {
+        openGestaoWindow(
+          isOpsSector(sector) ? 'distribuicao' : sector,
+          isOpsSector(sector) ? (rel === '36' ? 'entrega' : (rel === '225' ? 'agendamento' : 'coleta')) : null
+        );
+      } else if ((isOpsSector(sector) || sector === 'armazem') && tv) {
+        setView('live');
       }
       if (tv) applyTvSlotAfterRoute();
     }
@@ -12773,7 +13236,7 @@
       if (REL === '225') {
         thead.innerHTML = `<tr>
           <th>CTRC</th><th>Remetente</th><th>Destinatário</th>
-          <th>Peso</th><th>Frete</th><th>Agendado</th><th>Para</th><th>Status</th></tr>`;
+          <th>Peso</th><th>Volumes</th><th>Frete</th><th>Agendado</th><th>Para</th><th>Status</th></tr>`;
         let rows = (AGENDAMENTOS_225 || []).filter(matchBusca);
         if (FILTRO === 'em_rota') rows = rows.filter(r => statusAce225(r) === 'em_rota');
         if (FILTRO === 'parado') rows = rows.filter(r => statusAce225(r) === 'parado');
@@ -12783,7 +13246,7 @@
           return st !== 'concluido' && st !== 'em_rota' && String(r.alerta_sem_saida || '') === '1';
         });
         if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="8" class="muted">Nenhum agendamento 225.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="9" class="muted">Nenhum agendamento 225.</td></tr>';
           return;
         }
         tbody.innerHTML = rows.map(r => {
@@ -12794,6 +13257,7 @@
             <td>${esc(r.remetente || '')}</td>
             <td>${esc(r.destinatario || '')}<div class="muted" style="font-size:11px">${esc(r.destino || '')}</div></td>
             <td>${esc(r.peso || '')}</td>
+            <td>${esc(r.volumes || '—')}</td>
             <td>${esc(r.frete || '')}</td>
             <td>${esc(r.agendado_em || '')}</td>
             <td>${esc(r.agendado_para || r.agendado_para_data || '')}</td>
@@ -13519,7 +13983,7 @@
       const body = document.getElementById('agendaBody');
       if (!body) return;
       if (!AGENDAMENTOS_225.length) {
-        body.innerHTML = '<tr><td colspan="7" class="muted">Sem agendamentos no mês.</td></tr>';
+        body.innerHTML = '<tr><td colspan="8" class="muted">Sem agendamentos no mês.</td></tr>';
         return;
       }
       body.innerHTML = AGENDAMENTOS_225.map(r => {
@@ -13532,6 +13996,7 @@
           <td>${esc(r.destinatario || r.remetente || '')}</td>
           <td>${esc(r.destino || '')}</td>
           <td>${esc(r.peso || '')}</td>
+          <td>${esc(r.volumes || '—')}</td>
           <td>${esc(r.frete || '')}</td>
           <td class="sit-${esc(st)}">${esc(isAlert ? 'SEM SAÍDA' : labelStatus225(st))}</td>
         </tr>`;
@@ -14166,7 +14631,20 @@
     }
 
     document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
-      btn.addEventListener('click', () => setView(btn.getAttribute('data-view')));
+      btn.addEventListener('click', () => {
+        const view = btn.getAttribute('data-view');
+        if (view === 'gestao') {
+          const mapRel = REL === '36' ? 'entrega' : (REL === '225' ? 'agendamento' : 'coleta');
+          openGestaoWindow('distribuicao', mapRel);
+          return;
+        }
+        setView(view);
+      });
+    });
+    document.querySelectorAll('[data-open-gestao]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        openGestaoWindow(btn.getAttribute('data-open-gestao') || 'distribuicao');
+      });
     });
     document.getElementById('btnTv')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvArmazem')?.addEventListener('click', () => toggleTvMode());
@@ -14175,7 +14653,9 @@
     document.getElementById('btnTvEmissao')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnTvMapa')?.addEventListener('click', () => toggleTvMode());
     document.getElementById('btnMapaLive')?.addEventListener('click', () => setMapaUiView('live'));
-    document.getElementById('btnMapaGestao')?.addEventListener('click', () => setMapaUiView('gestao'));
+    document.getElementById('btnMapaGestao')?.addEventListener('click', () => {
+      openGestaoWindow('mapa');
+    });
     document.getElementById('mapaGestaoSelect')?.addEventListener('change', (e) => {
       const placa = e.target.value;
       if (placa) selectMapaGestaoVeiculo(placa, { syncSelect: false });
@@ -14263,6 +14743,7 @@
       const maxDy = 80;
       const canSwap = () =>
         !ALERTA_LOCK_ON
+        && !ARM_ALERT_ON
         && (CURRENT_SECTOR === 'armazem' || CURRENT_SECTOR === 'distribuicao');
 
       const onStart = (x, y) => {
@@ -14315,8 +14796,9 @@
     document.getElementById('btnAlertaContinuar')?.addEventListener('click', () => dismissAlertaLock());
     document.getElementById('btnAlertaIrGestao')?.addEventListener('click', () => {
       dismissAlertaLock();
-      setView('gestao');
+      openGestaoWindow('distribuicao', 'agendamento');
     });
+    document.getElementById('btnAlertaArmOk')?.addEventListener('click', () => dismissAlertaArmDescarga());
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'F11') return; // deixa o browser cuidar
@@ -14326,6 +14808,11 @@
         if (ALERTA_LOCK_ON) {
           e.preventDefault();
           dismissAlertaLock();
+          return;
+        }
+        if (ARM_ALERT_ON) {
+          e.preventDefault();
+          dismissAlertaArmDescarga();
           return;
         }
         const overlay = document.getElementById('sectorOverlay');
@@ -14376,8 +14863,13 @@
       if (document.visibilityState === 'visible' && TV_MODE) requestWakeLock();
       else if (document.visibilityState === 'visible') ensureTvKeepAliveVideo();
       // Aba em segundo plano / outra TV: não fica bipando
-      if (document.visibilityState !== 'visible') stopAlertaBeep();
-      else updateAlertaSemSaidaLock();
+      if (document.visibilityState !== 'visible') {
+        stopAlertaBeep();
+        stopArmAlertaBeep();
+      } else {
+        updateAlertaSemSaidaLock();
+        updateAlertaArmDescarga(lastArmVeicsCache);
+      }
     });
     window.addEventListener('hashchange', () => applyRouteFromHash());
 

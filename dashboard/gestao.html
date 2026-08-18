@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BINHO · Gestão</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" defer></script>
+  <style>
+    :root {
+      --bg: #05080f;
+      --panel: #0b1220;
+      --line: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    body { display: grid; grid-template-columns: 220px 1fr; min-height: 100%; }
+    .side {
+      border-right: 1px solid var(--line);
+      background: #070d18;
+      padding: 16px 12px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .brand {
+      font-weight: 800; letter-spacing: 0.12em; font-size: 13px;
+      color: #cbd5e1; margin-bottom: 8px;
+    }
+    .brand span { color: var(--muted); font-weight: 600; display: block; font-size: 11px; letter-spacing: 0.16em; margin-top: 4px; }
+    .sec-btn, .rel-btn {
+      appearance: none; border: 1px solid transparent; background: transparent;
+      color: var(--muted); text-align: left; padding: 9px 10px; border-radius: 8px;
+      cursor: pointer; font-weight: 700; font-size: 13px;
+    }
+    .sec-btn:hover, .rel-btn:hover { color: var(--text); background: #0f172a; }
+    .sec-btn.active, .rel-btn.active {
+      color: #0f172a; background: var(--accent); border-color: var(--accent);
+    }
+    .nav-group {
+      color: #64748b; font-size: 10px; letter-spacing: 0.14em;
+      text-transform: uppercase; margin: 10px 4px 2px;
+    }
+    .rel-box { display: none; flex-direction: column; gap: 4px; margin-top: 4px; }
+    .rel-box.show { display: flex; }
+    .main { display: grid; grid-template-rows: auto auto 1fr; min-width: 0; min-height: 100vh; }
+    .top {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 14px 18px 8px; border-bottom: 1px solid var(--line);
+    }
+    .top h1 { margin: 0; font-size: 20px; letter-spacing: 0.06em; }
+    .top .meta { color: var(--muted); font-size: 12px; }
+    .tools {
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+      padding: 10px 18px; border-bottom: 1px solid var(--line);
+    }
+    .tools input[type="search"] {
+      flex: 1; min-width: 180px; max-width: 360px;
+      background: #020617; border: 1px solid var(--line); color: var(--text);
+      border-radius: 8px; padding: 8px 10px;
+    }
+    .btn {
+      background: #0f172a; border: 1px solid #334155; color: var(--text);
+      border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 12px;
+      cursor: pointer;
+    }
+    .btn.primary { background: #0369a1; border-color: #0ea5e9; }
+    .btn.ok { background: #14532d; border-color: #22c55e; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .count { color: var(--muted); font-size: 12px; margin-left: auto; }
+    .table-wrap { overflow: auto; padding: 0 12px 16px; }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+      min-width: 720px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 8px; text-align: left; vertical-align: top;
+    }
+    thead th {
+      position: sticky; top: 0; background: #0b1220; z-index: 2;
+      font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+      color: #94a3b8;
+    }
+    thead tr.filters th {
+      top: 34px; background: #080e1a; padding: 4px 6px; z-index: 1;
+      text-transform: none; letter-spacing: 0; font-weight: 500;
+    }
+    thead tr.filters input,
+    thead tr.filters select {
+      width: 100%; background: #020617; border: 1px solid #1e293b;
+      color: var(--text); border-radius: 6px; padding: 5px 6px; font-size: 11px;
+    }
+    tbody tr:hover { background: rgba(56, 189, 248, 0.06); }
+    .muted { color: var(--muted); }
+    .empty { padding: 40px; text-align: center; color: var(--muted); }
+    @media print {
+      body { display: block; background: #fff; color: #000; }
+      .side, .tools { display: none !important; }
+      .table-wrap { padding: 0; }
+      thead th { background: #eee; color: #000; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="side">
+    <div class="brand">BINHO · GESTÃO<span>OPERAÇÃO · FILTROS · EXPORT</span></div>
+    <div class="nav-group">Setor</div>
+    <button type="button" class="sec-btn active" data-setor="distribuicao">Distribuição</button>
+    <button type="button" class="sec-btn" data-setor="armazem">Armazém</button>
+    <button type="button" class="sec-btn" data-setor="pendencia">Pendência</button>
+    <button type="button" class="sec-btn" data-setor="contratacao">Contratação</button>
+    <button type="button" class="sec-btn" data-setor="emissao">Emissão</button>
+    <button type="button" class="sec-btn" data-setor="mapa">Mapa</button>
+    <div class="rel-box show" id="relBox">
+      <div class="nav-group">Distribuição</div>
+      <button type="button" class="rel-btn active" data-rel="coleta">Coleta</button>
+      <button type="button" class="rel-btn" data-rel="entrega">Entrega</button>
+      <button type="button" class="rel-btn" data-rel="agendamento">Agendamento</button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <h1 id="pageTitle">Gestão · Distribuição</h1>
+      <div class="meta" id="pageMeta">Carregando…</div>
+    </header>
+    <div class="tools">
+      <input type="search" id="buscaGlobal" placeholder="Busca em todas as colunas…" />
+      <button type="button" class="btn" id="btnLimpar">Limpar filtros</button>
+      <button type="button" class="btn ok" id="btnExcel">Excel</button>
+      <button type="button" class="btn primary" id="btnPdf">PDF</button>
+      <button type="button" class="btn" id="btnReload">Atualizar</button>
+      <span class="count" id="rowCount">0 linhas</span>
+    </div>
+    <div class="table-wrap">
+      <table id="gestaoTable">
+        <thead id="gestaoHead"></thead>
+        <tbody id="gestaoBody"></tbody>
+      </table>
+      <div class="empty" id="gestaoEmpty" hidden>Sem dados para este setor.</div>
+    </div>
+  </main>
+  <script src="gestao.js" defer></script>
+</body>
+</html>

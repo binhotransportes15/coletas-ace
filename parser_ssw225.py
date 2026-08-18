@@ -17,10 +17,11 @@ RESUMO_225_CSV = CACHE_DIR / "resumo_225.csv"
 ALERTAS_225_CSV = CACHE_DIR / "alertas_225.csv"
 
 # Colunas pedidas (0-based no CSV ; ):
-# A CTRC, D remetente, L destinatario, F peso, H frete, O agendado em, P agendado para, S status
+# A CTRC, D remetente, F peso, G volumes, H frete, L destinatario, O agendado em, P agendado para, S status
 IDX_CTRC = 0
 IDX_REMETENTE = 3
 IDX_PESO = 5
+IDX_VOLUMES = 6
 IDX_FRETE = 7
 IDX_DESTINATARIO = 11
 IDX_DESTINO = 13
@@ -29,11 +30,12 @@ IDX_AGENDADO_PARA = 15
 IDX_STATUS = 18
 
 # Layout fixo do relatorio R (.sswweb) — fatias [ini:fim)
-# CTRC | EMISSAO | REMETENTE | NF | PESO REAL | ... | DESTINATARIO | ... | DESTINO | AGEND EM | AGEND PARA | OCORRENCIA
+# CTRC | EMISSAO | REMETENTE | NF | PESO REAL | VOL | FRETE | ... | DESTINATARIO | ... | DESTINO | AGEND EM | AGEND PARA | OCORRENCIA
 SSWWEB_SLICE = {
     "ctrc": (0, 11),
     "remetente": (21, 34),
     "peso": (45, 54),
+    "volumes": (54, 65),
     "frete": (65, 74),
     "destinatario": (92, 105),
     "destino": (135, 149),
@@ -50,6 +52,7 @@ AGENDAMENTO_225_FIELDS = [
     "destinatario",
     "destino",
     "peso",
+    "volumes",
     "frete",
     "agendado_em",
     "agendado_para",
@@ -67,6 +70,7 @@ RESUMO_225_FIELDS = [
     "concluido",
     "alerta",
     "peso_total",
+    "volumes_total",
     "frete_total",
     "realizado",
     "peso_realizado",
@@ -76,6 +80,7 @@ RESUMO_225_FIELDS = [
     "frete_armazem",
     "amanha",
     "peso_amanha",
+    "volumes_amanha",
     "frete_amanha",
 ]
 
@@ -213,6 +218,7 @@ class Agendamento225:
     destinatario: str = ""
     destino: str = ""
     peso: str = ""
+    volumes: str = ""
     frete: str = ""
     agendado_em: str = ""
     agendado_para: str = ""
@@ -229,6 +235,7 @@ def _build_item(
     destinatario: str,
     destino: str,
     peso: str,
+    volumes: str,
     frete: str,
     agendado_em: str,
     agendado_para: str,
@@ -246,6 +253,7 @@ def _build_item(
         destinatario=destinatario,
         destino=destino,
         peso=peso,
+        volumes=volumes,
         frete=frete,
         agendado_em=agendado_em,
         agendado_para=agendado_para,
@@ -269,6 +277,7 @@ def parse_ssw225_sswweb(text: str, *, hoje: date | None = None) -> list[Agendame
             destinatario=_slice(line, "destinatario"),
             destino=_slice(line, "destino"),
             peso=_slice(line, "peso"),
+            volumes=_slice(line, "volumes"),
             frete=_slice(line, "frete"),
             agendado_em=_slice(line, "agendado_em"),
             agendado_para=_slice(line, "agendado_para"),
@@ -304,6 +313,7 @@ def parse_ssw225_csv(text: str, *, hoje: date | None = None) -> list[Agendamento
             destinatario=_clean(row[IDX_DESTINATARIO]) if len(row) > IDX_DESTINATARIO else "",
             destino=_clean(row[IDX_DESTINO]) if len(row) > IDX_DESTINO else "",
             peso=_clean(row[IDX_PESO]) if len(row) > IDX_PESO else "",
+            volumes=_clean(row[IDX_VOLUMES]) if len(row) > IDX_VOLUMES else "",
             frete=_clean(row[IDX_FRETE]) if len(row) > IDX_FRETE else "",
             agendado_em=_clean(row[IDX_AGENDADO_EM]) if len(row) > IDX_AGENDADO_EM else "",
             agendado_para=_clean(row[IDX_AGENDADO_PARA]) if len(row) > IDX_AGENDADO_PARA else "",
@@ -344,6 +354,7 @@ def analyze_report_225(
 
     totais = {"em_rota": 0, "parado": 0, "concluido": 0, "alerta": 0}
     peso_total = frete_total = 0.0
+    volumes_total = volumes_amanha = 0.0
     peso_realizado = frete_realizado = 0.0
     peso_armazem = frete_armazem = 0.0
     peso_amanha = frete_amanha = 0.0
@@ -356,8 +367,10 @@ def analyze_report_225(
         totais[a.status_ace] = totais.get(a.status_ace, 0) + 1
         p = _parse_num_br(a.peso)
         f = _parse_num_br(a.frete)
+        v = _parse_num_br(a.volumes)
         peso_total += p
         frete_total += f
+        volumes_total += v
         if a.status_ace == "concluido":
             peso_realizado += p
             frete_realizado += f
@@ -368,6 +381,7 @@ def analyze_report_225(
             amanha += 1
             peso_amanha += p
             frete_amanha += f
+            volumes_amanha += v
         if a.alerta_sem_saida:
             totais["alerta"] += 1
             alertas.append({
@@ -383,6 +397,7 @@ def analyze_report_225(
             "destinatario": a.destinatario,
             "destino": a.destino,
             "peso": a.peso,
+            "volumes": a.volumes,
             "frete": a.frete,
             "agendado_em": a.agendado_em,
             "agendado_para": a.agendado_para,
@@ -409,6 +424,7 @@ def analyze_report_225(
         "concluido": str(realizado),
         "alerta": str(totais.get("alerta", 0)),
         "peso_total": _fmt_peso_br(peso_total),
+        "volumes_total": str(int(volumes_total)) if volumes_total == int(volumes_total) else _fmt_peso_br(volumes_total),
         "frete_total": _fmt_frete_br(frete_total),
         "realizado": str(realizado),
         "peso_realizado": _fmt_peso_br(peso_realizado),
@@ -418,6 +434,7 @@ def analyze_report_225(
         "frete_armazem": _fmt_frete_br(frete_armazem),
         "amanha": str(amanha),
         "peso_amanha": _fmt_peso_br(peso_amanha),
+        "volumes_amanha": str(int(volumes_amanha)) if volumes_amanha == int(volumes_amanha) else _fmt_peso_br(volumes_amanha),
         "frete_amanha": _fmt_frete_br(frete_amanha),
     }]
 
