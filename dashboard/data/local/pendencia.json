@@ -1,6 +1,6 @@
 {
   "setor": "pendencia",
-  "updated_at": "2026-08-18T15:35:00",
+  "updated_at": "2026-08-18T15:45:28",
   "resumo_31": {
     "periodo": "01/08/26 – 18/08/26",
     "atualizado": "18/08/2026 15:04:53",
@@ -9,6 +9,11 @@
     "solucionadas": "166",
     "abertas": "192",
     "sla_pct": "46,4",
+    "sla_medio_dias": "10,9",
+    "valor_risco": "0,00",
+    "aging_0_2": "35",
+    "aging_3_5": "30",
+    "aging_6_mais": "127",
     "topo_codigo": "60",
     "topo_label": "FALTA COM BUSCA / RECONFERENCIA",
     "topo_qtd": "106"

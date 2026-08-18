@@ -6650,7 +6650,7 @@
       inset: 0;
       z-index: 1;
       pointer-events: none;
-      background: radial-gradient(ellipse at center, rgba(2,6,23,.05) 0%, rgba(2,6,23,.55) 55%, rgba(2,6,23,.82) 100%);
+      background: radial-gradient(ellipse at center, rgba(2,6,23,.02) 0%, rgba(2,6,23,.28) 48%, rgba(2,6,23,.55) 100%);
     }
     .ent-ring-wrap {
       position: relative;
@@ -6715,37 +6715,53 @@
       flex: 1 1 auto;
       min-height: 0;
       display: grid;
-      grid-template-columns: minmax(150px, 0.85fr) minmax(280px, 1.7fr) minmax(150px, 0.85fr);
-      gap: clamp(8px, 1vw, 14px);
+      grid-template-columns: 1fr;
+      gap: 0;
       align-content: stretch;
-    }
-    .ent-dash-mid .ent-side {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      height: 100%;
-      padding: clamp(8px, 1vw, 12px);
-      border-radius: 14px;
-      overflow: hidden;
-      background: linear-gradient(180deg, #111827, #0b1220);
-      border: 1px solid rgba(148,163,184,.14);
-    }
-    .ent-dash-mid .ent-side .pop-stack {
-      flex: 1 1 auto;
-      min-height: 0;
       position: relative;
-      overflow: hidden;
-    }
-    .ent-dash-mid .pop.pop-placa,
-    .ent-dash-mid .pop.pop-prazo {
-      position: absolute;
-      left: 0;
-      right: 0;
     }
     .ent-dash-mid .ent-hero {
       flex: 1 1 auto;
       min-height: 0;
       height: 100%;
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .ent-overlay {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      z-index: 4;
+      width: min(220px, 22%);
+      display: flex;
+      flex-direction: column;
+      padding: clamp(8px, 1vw, 14px) clamp(6px, 0.8vw, 10px);
+      pointer-events: none;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+    .ent-overlay-l { left: 0; }
+    .ent-overlay-r { right: 0; }
+    .ent-overlay .pop-stack {
+      flex: 1 1 auto;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .ent-overlay .pop.pop-placa,
+    .ent-overlay .pop.pop-prazo {
+      position: absolute;
+      left: 0;
+      right: 0;
+      background: rgba(15, 23, 42, 0.42);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+    .ent-dash-mid .ent-side {
+      display: none !important;
     }
     .ent-dash-table {
       flex: 0 0 auto;
@@ -6829,9 +6845,15 @@
       font-weight: 600;
     }
     body.tv-mode #opsLayoutEntrega .ent-dash-mid {
-      grid-template-columns: minmax(140px, 0.8fr) minmax(260px, 1.8fr) minmax(140px, 0.8fr) !important;
+      grid-template-columns: 1fr !important;
       min-height: 0 !important;
       flex: 1 1 auto !important;
+    }
+    body.tv-mode #opsLayoutEntrega .ent-overlay {
+      width: min(240px, 20%) !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
     }
     body.tv-mode #opsLayoutEntrega .ent-dash-table {
       min-height: clamp(110px, 16vh, 180px) !important;
@@ -6936,47 +6958,7 @@
     .ent-hbar.is-par .ent-hbar-fill { background: linear-gradient(90deg, #b91c1c, #f87171); }
     .ent-hbar.is-alt .ent-hbar-fill { background: linear-gradient(90deg, #1d4ed8, #60a5fa); }
 
-    .ent-crit-callout {
-      position: absolute;
-      left: 50%;
-      bottom: clamp(8px, 1.5vh, 18px);
-      transform: translateX(-50%);
-      z-index: 5;
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      width: min(560px, 70%);
-      padding: 10px 14px;
-      border-radius: 12px;
-      background: rgba(127, 29, 29, 0.72);
-      border: 1px solid rgba(248, 113, 113, 0.5);
-      color: #fecaca;
-      font-size: clamp(11px, 1.15vw, 13px);
-      font-weight: 600;
-      line-height: 1.35;
-      backdrop-filter: blur(6px);
-      box-shadow: 0 8px 28px rgba(0,0,0,.35);
-      pointer-events: none;
-    }
-    .ent-crit-callout .ico {
-      flex: 0 0 auto;
-      color: #f87171;
-      font-weight: 900;
-      font-size: 16px;
-      line-height: 1.2;
-    }
-    .ent-crit-body {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
-    }
-    .ent-crit-body strong {
-      font-size: 0.92em;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #fecaca;
-    }
+    .ent-crit-callout,
     .ent-crit-callout[hidden] { display: none !important; }
 
     #opsLayoutEntrega.ent-dash { position: relative; }
@@ -8335,14 +8317,6 @@
           </header>
 
           <div class="ent-dash-mid">
-            <aside class="ent-side ds-panel dash-block" data-block="ocorrencias-l" aria-label="Ocorrências">
-              <div class="ent-side-head">
-                <h3>Ocorrências</h3>
-                <span class="meta" id="entFrotaMeta">lateral</span>
-              </div>
-              <div class="pop-stack" id="pendenciaStackL"></div>
-            </aside>
-
             <section class="ent-hero dash-block" data-block="chart" id="entHeroMap" aria-label="Indicador de entrega">
               <div class="ent-map-bg" id="entMapLeaflet" aria-hidden="true"></div>
               <div class="ent-hero-scrim" aria-hidden="true"></div>
@@ -8355,15 +8329,14 @@
                 </div>
               </div>
               <p class="ent-ring-resumo" id="entRingResumo">Resumo: —</p>
-            </section>
 
-            <aside class="ent-side ds-panel dash-block" data-block="ocorrencias" aria-label="Ocorrências">
-              <div class="ent-side-head">
-                <h3>Ocorrências</h3>
-                <span class="meta" id="entMotivosMeta">pendências</span>
-              </div>
-              <div class="pop-stack" id="pendenciaStack"></div>
-            </aside>
+              <aside class="ent-overlay ent-overlay-l dash-block" data-block="ocorrencias-l" aria-label="Placas">
+                <div class="pop-stack" id="placaStackEnt"></div>
+              </aside>
+              <aside class="ent-overlay ent-overlay-r dash-block" data-block="ocorrencias" aria-label="Ocorrências">
+                <div class="pop-stack" id="pendenciaStack"></div>
+              </aside>
+            </section>
           </div>
 
           <section class="ent-dash-table ds-panel dash-block" data-block="tabela" aria-label="CTRCs com pendência">
@@ -8388,19 +8361,14 @@
             </div>
           </section>
 
-          <div class="ent-crit-callout" id="entCritCallout" hidden>
-            <span class="ico" aria-hidden="true">⚠</span>
-            <div class="ent-crit-body">
-              <strong>Tarefas críticas</strong>
-              <span id="entCritText">—</span>
-            </div>
-          </div>
-
           <!-- legado oculto (IDs mantidos p/ JS antigo) -->
           <div hidden aria-hidden="true">
-            <div id="placaStackEnt"></div>
+            <div id="pendenciaStackL"></div>
             <div id="entMotivosBars"></div>
             <div id="entFrotaBars"></div>
+            <span id="entFrotaMeta"></span>
+            <span id="entMotivosMeta"></span>
+            <div id="entCritCallout" hidden><span id="entCritText"></span></div>
             <div id="entregaTorres">
               <span id="entRankReal"></span><div id="entBarReal"></div><strong id="entNRealPct"></strong>
               <span id="entRankRota"></span><div id="entBarRota"></div><strong id="entNRotaPct"></strong>
@@ -10104,8 +10072,6 @@
       const pctEl = document.getElementById('entRingPct');
       const fracEl = document.getElementById('entRingFrac');
       const resumo = document.getElementById('entRingResumo');
-      const callout = document.getElementById('entCritCallout');
-      const critText = document.getElementById('entCritText');
       const kpiRotaPct = document.getElementById('entKpiRotaPct');
       const kpiParPct = document.getElementById('entKpiParPct');
       const pctReal = total > 0 ? Math.round((real / total) * 100) : 0;
@@ -10119,14 +10085,6 @@
         resumo.textContent = total
           ? `Resumo: ${real} Realizadas · ${rota} Em rota · ${par} Pendências`
           : 'Resumo: sem dados';
-      }
-      if (callout && critText) {
-        if (par > 0) {
-          callout.hidden = false;
-          critText.textContent = `${par} pendência${par === 1 ? '' : 's'} — revisão de rotas necessária; priorizar atrasos críticos.`;
-        } else {
-          callout.hidden = true;
-        }
       }
       if (!svg) return;
       const cx = 120;
@@ -15059,12 +15017,7 @@
     function renderPendenciaPops() {
       const isEnt = CURRENT_VIEW === 'entrega';
       const list = PENDENCIAS_36 || [];
-      const stacks = isEnt
-        ? [
-            { id: 'pendenciaStackL', offset: 0 },
-            { id: 'pendenciaStack', offset: Math.max(1, Math.floor(list.length / 2)) },
-          ]
-        : [{ id: 'pendenciaStack', offset: 0 }];
+      const stacks = [{ id: 'pendenciaStack', offset: 0 }];
 
       stacks.forEach(({ id, offset }) => {
         const stack = document.getElementById(id);
