@@ -21,7 +21,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, QTimer, Signal, QPointF
+from PySide6.QtCore import Qt, QEvent, QThread, QTimer, Signal, QPointF
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -33,8 +33,6 @@ from PySide6.QtGui import (
     QLinearGradient,
     QRadialGradient,
     QBrush,
-    QTextCharFormat,
-    QTextCursor,
     QPolygonF,
 )
 from PySide6.QtWidgets import (
@@ -49,8 +47,9 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
-    QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -957,6 +956,120 @@ class SysMeterRow(QWidget):
         self._apply_chunk(color)
 
 
+class AceCmdLog(QListWidget):
+    """Log CMD opaco — QListWidget não fantasma como QTextEdit/QPlainTextEdit no fosco/F11."""
+
+    MAX_LINES = 400
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("crtLog")
+        self.setMinimumHeight(160)
+        self.setWordWrap(True)
+        self.setUniformItemSizes(False)
+        self.setSelectionMode(QListWidget.NoSelection)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.setSpacing(0)
+        self._bg = QColor("#0a0e14")
+        # Fundo sempre sólido (pai pode ser translúcido no tema fosco)
+        self.setAttribute(Qt.WA_OpaquePaintEvent, True)
+        self.setAutoFillBackground(True)
+        self.setAttribute(Qt.WA_TranslucentBackground, False)
+        self.viewport().setAttribute(Qt.WA_OpaquePaintEvent, True)
+        self.viewport().setAutoFillBackground(True)
+        self.viewport().setAttribute(Qt.WA_TranslucentBackground, False)
+        # Garante fill do fundo em todo Paint (evita texto fantasma no DWM/acrylic)
+        self.viewport().installEventFilter(self)
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        if obj is self.viewport() and event.type() == QEvent.Type.Paint:
+            try:
+                p = QPainter(obj)
+                if p.isActive():
+                    p.setCompositionMode(QPainter.CompositionMode_Source)
+                    p.fillRect(obj.rect(), self._bg)
+                    p.end()
+            except Exception:
+                pass
+        return super().eventFilter(obj, event)
+
+    def apply_chrome(self, bg: str = "#0a0e14", fg: str = "#eef3f8", border: str = "#1e293b") -> None:
+        bg_c = QColor(bg)
+        fg_c = QColor(fg)
+        self._bg = bg_c
+        pal = self.palette()
+        pal.setColor(QPalette.Base, bg_c)
+        pal.setColor(QPalette.Window, bg_c)
+        pal.setColor(QPalette.Text, fg_c)
+        self.setPalette(pal)
+        vpal = self.viewport().palette()
+        vpal.setColor(QPalette.Base, bg_c)
+        vpal.setColor(QPalette.Window, bg_c)
+        self.viewport().setPalette(vpal)
+        self.setStyleSheet(
+            "QListWidget#crtLog, QListWidget#crtLog::viewport {"
+            f" background-color: {bg}; color: {fg};"
+            f" border: 1px solid {border}; border-radius: 8px;"
+            " outline: none; padding: 4px;"
+            f" font-family: '{CRT_LOG_FONT_FAMILY}', Consolas, monospace; font-size: 11px;"
+            "}"
+            "QListWidget#crtLog::item {"
+            f" background: {bg}; color: {fg}; padding: 1px 4px;"
+            " border: none;"
+            "}"
+            "QListWidget#crtLog::item:selected { background: transparent; }"
+        )
+
+    def append_line(self, text: str, color: str) -> None:
+        item = QListWidgetItem(text)
+        item.setForeground(QColor(color))
+        item.setFlags(Qt.ItemIsEnabled)
+        self.addItem(item)
+        while self.count() > self.MAX_LINES:
+            taken = self.takeItem(0)
+            del taken
+        self.scrollToBottom()
+        self.viewport().update()
+
+    def _nudge_expose(self) -> None:
+        """Força expose/backing-store (DWM só atualiza o log após resize/F11 sem isso)."""
+        vp = self.viewport()
+        if vp is None:
+            return
+        try:
+            s = vp.size()
+            if s.width() > 2 and s.height() > 2:
+                vp.resize(s.width(), max(1, s.height() - 1))
+                vp.resize(s)
+        except Exception:
+            pass
+        try:
+            # Scroll 0px ainda invalida a região visível no Windows
+            vp.scroll(0, 0)
+        except Exception:
+            pass
+        vp.update()
+        self.update()
+        try:
+            vp.repaint()
+            self.repaint()
+        except Exception:
+            pass
+
+    def clear_lines(self) -> None:
+        self.setUpdatesEnabled(False)
+        try:
+            self.clear()
+        finally:
+            self.setUpdatesEnabled(True)
+        self._nudge_expose()
+        # Segundo passe no próximo tick (acrylic às vezes atrasa o 1º paint)
+        QTimer.singleShot(0, self._nudge_expose)
+        QTimer.singleShot(40, self._nudge_expose)
+
+
 class QuickCmdButton(QPushButton):
     """Botão de atalho com título + código SSW + o que faz."""
 
@@ -1419,13 +1532,16 @@ QWidget {{
 """
     return f"""
 {root_rule}
-QFrame#panel, QFrame#side, QFrame#card, QFrame#kpiCard, QFrame#sidebar {{
+QFrame#panel, QFrame#side, QFrame#card, QFrame#kpiCard, QFrame#sidebar, QFrame#logCard {{
     background: {t['panel']};
     border: 1px solid {t['line']};
     border-radius: {radius};
 }}
 QFrame#kpiCard, QFrame#card {{
     background: {card_bg};
+}}
+QFrame#logCard {{
+    background: {log_bg};
 }}
 QFrame#sidebar {{
     background: {t['panel']};
@@ -1713,7 +1829,7 @@ QLabel#lockErr {{
     font-size: 11px;
     background: transparent;
 }}
-QLineEdit, QTextEdit, QPlainTextEdit, QComboBox {{
+QLineEdit, QTextEdit, QListWidget, QComboBox {{
     background: {t['input_bg']};
     color: {t['input_text']};
     border: 1px solid {t['line']};
@@ -1722,18 +1838,24 @@ QLineEdit, QTextEdit, QPlainTextEdit, QComboBox {{
     padding: 6px 8px;
     font-size: 12px;
 }}
-QTextEdit, QPlainTextEdit {{
+QTextEdit {{
     background: {log_bg if frost else t['input_bg']};
     color: {t['text']};
 }}
-QPlainTextEdit#crtLog, QPlainTextEdit#crtLog::viewport,
-QTextEdit#crtLog, QTextEdit#crtLog::viewport {{
+QListWidget#crtLog, QListWidget#crtLog::viewport {{
     background-color: {log_bg};
     color: {t['text']};
     border: 1px solid {t['line']};
     border-radius: 8px;
     font-family: {log_font};
     font-size: 11px;
+    outline: none;
+}}
+QListWidget#crtLog::item {{
+    background: {log_bg};
+    color: {t['text']};
+    padding: 1px 4px;
+    border: none;
 }}
 QAbstractScrollArea::viewport {{
     background: {log_bg if frost else t['input_bg']};
@@ -1744,7 +1866,7 @@ QComboBox QAbstractItemView {{
     selection-background-color: {t['sel']};
     border: 1px solid {t['line']};
 }}
-QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {{
+QLineEdit:focus, QTextEdit:focus, QListWidget:focus, QComboBox:focus {{
     border-color: {accent};
 }}
 QCheckBox {{
@@ -2733,6 +2855,11 @@ class AceCrtConsole(QWidget):
 
     def _build_log_panel(self) -> QWidget:
         box = self._card()
+        box.setObjectName("logCard")
+        box.setAttribute(Qt.WA_OpaquePaintEvent, True)
+        box.setAutoFillBackground(True)
+        box.setAttribute(Qt.WA_TranslucentBackground, False)
+        box.setAttribute(Qt.WA_StyledBackground, True)
         lay = QVBoxLayout(box)
         lay.setContentsMargins(14, 12, 14, 12)
         lay.setSpacing(8)
@@ -2743,13 +2870,7 @@ class AceCrtConsole(QWidget):
         self.btn_rapido.hide()
         self.btn_rapido.clicked.connect(self._toggle_rapido_window)
 
-        self.log = QPlainTextEdit()
-        self.log.setObjectName("crtLog")
-        self.log.setReadOnly(True)
-        self.log.setMinimumHeight(160)
-        self.log.setLineWrapMode(QPlainTextEdit.WidgetWidth)
-        self.log.setMaximumBlockCount(400)
-        self.log.setUndoRedoEnabled(False)
+        self.log = AceCmdLog()
         self._setup_opaque_log()
         lay.addWidget(self.log, 1)
 
@@ -3029,7 +3150,10 @@ class AceCrtConsole(QWidget):
         try:
             if mode == "log" and hasattr(self, "log"):
                 self.log.setFocus(Qt.OtherFocusReason)
-                self.log.ensureCursorVisible()
+                try:
+                    self.log.scrollToBottom()
+                except Exception:
+                    pass
             elif mode == "bars" and hasattr(self, "sector_status"):
                 self.sector_status.setFocus(Qt.OtherFocusReason)
         except Exception:
@@ -4432,7 +4556,15 @@ class AceCrtConsole(QWidget):
         # Painéis: só stylesheet rgba — deixa o acrylic aparecer
         for fr in self.findChildren(QFrame):
             try:
-                if fr.objectName() in {"panel", "side", "card", "kpiCard", "sidebar", "sidebarFoot"}:
+                oname = fr.objectName()
+                if oname == "logCard":
+                    # Card do log fica opaco — senão o limpar só “aparece” no resize/F11
+                    fr.setAttribute(Qt.WA_StyledBackground, True)
+                    fr.setAttribute(Qt.WA_OpaquePaintEvent, True)
+                    fr.setAutoFillBackground(True)
+                    fr.setAttribute(Qt.WA_TranslucentBackground, False)
+                    continue
+                if oname in {"panel", "side", "card", "kpiCard", "sidebar", "sidebarFoot"}:
                     fr.setAttribute(Qt.WA_StyledBackground, True)
                     fr.setAttribute(Qt.WA_OpaquePaintEvent, False)
                     fr.setAutoFillBackground(False)
@@ -4446,57 +4578,56 @@ class AceCrtConsole(QWidget):
         if not hasattr(self, "log"):
             return
         theme = CRT_THEMES.get(getattr(self, "_theme_id", ""), None) or CRT_THEMES[DEFAULT_CRT_THEME]
-        log_bg = QColor(str(theme.get("log_bg") or "#0a0e14"))
-        text_col = QColor(str(theme.get("text") or "#eef3f8"))
-        border = str(theme.get("line") or "rgba(180,190,205,55)")
-        bg_hex = log_bg.name()
-        fg_hex = text_col.name()
+        log_bg = str(theme.get("log_bg") or "#0a0e14")
+        text_col = str(theme.get("text") or "#eef3f8")
+        border = str(theme.get("line") or "#1e293b")
         try:
-            self.log.setAttribute(Qt.WA_OpaquePaintEvent, True)
-            self.log.setAutoFillBackground(True)
-            self.log.setAttribute(Qt.WA_StyledBackground, True)
-            self.log.setAttribute(Qt.WA_TranslucentBackground, False)
-            self.log.setAttribute(Qt.WA_NoSystemBackground, False)
-            self.log.setUndoRedoEnabled(False)
-            pal = self.log.palette()
-            pal.setColor(QPalette.Base, log_bg)
-            pal.setColor(QPalette.Window, log_bg)
-            pal.setColor(QPalette.Text, text_col)
-            self.log.setPalette(pal)
-            vp = self.log.viewport()
-            vp.setAutoFillBackground(True)
-            vp.setAttribute(Qt.WA_OpaquePaintEvent, True)
-            vp.setAttribute(Qt.WA_TranslucentBackground, False)
-            vpal = vp.palette()
-            vpal.setColor(QPalette.Base, log_bg)
-            vpal.setColor(QPalette.Window, log_bg)
-            vp.setPalette(vpal)
-            self.log.setStyleSheet(
-                "QPlainTextEdit#crtLog, QPlainTextEdit#crtLog::viewport {"
-                f" background-color: {bg_hex}; color: {fg_hex};"
-                f" border: 1px solid {border}; }}"
-            )
+            if isinstance(self.log, AceCmdLog):
+                self.log.apply_chrome(log_bg, text_col, border)
+            else:
+                self.log.setAttribute(Qt.WA_OpaquePaintEvent, True)
+                self.log.setAutoFillBackground(True)
+                self.log.setStyleSheet(
+                    f"background-color: {log_bg}; color: {text_col}; border: 1px solid {border};"
+                )
         except Exception:
             pass
 
     def _force_log_repaint(self) -> None:
-        """Repaint agressivo — tela cheia / fosco às vezes não limpa o buffer do log."""
         if not hasattr(self, "log"):
             return
         try:
-            self.log.viewport().update()
-            self.log.update()
-            self.log.repaint()
-            self.log.viewport().repaint()
+            if isinstance(self.log, AceCmdLog):
+                self.log._nudge_expose()
+            else:
+                self.log.viewport().update()
+                self.log.repaint()
         except Exception:
             pass
-        # Segundo paint no próximo tick (F11 / DWM)
         try:
-            QTimer.singleShot(0, lambda: self.log.viewport().repaint())
-            if self.isFullScreen() or bool(
-                (CRT_THEMES.get(getattr(self, "_theme_id", "")) or {}).get("frost")
-            ):
-                QTimer.singleShot(40, lambda: self.log.viewport().repaint())
+            # Invalida a janela inteira no Win (acrylic/DWM atrasam o paint do filho)
+            if sys.platform == "win32":
+                import ctypes
+
+                hwnd = int(self.winId()) if self.winId() else 0
+                if hwnd:
+                    ctypes.windll.user32.InvalidateRect(hwnd, None, True)
+            self.update()
+        except Exception:
+            pass
+        try:
+            QApplication.processEvents()
+        except Exception:
+            pass
+        try:
+            log = self.log
+
+            def _nudge_later() -> None:
+                if isinstance(log, AceCmdLog):
+                    log._nudge_expose()
+
+            QTimer.singleShot(0, _nudge_later)
+            QTimer.singleShot(50, _nudge_later)
         except Exception:
             pass
 
@@ -4564,6 +4695,8 @@ class AceCrtConsole(QWidget):
             self._apply_frost_on_widget(
                 win, enabled, tint, accent_state, opacity=opacity
             )
+        # Log precisa voltar opaco depois do DWM (senão fantasma)
+        QTimer.singleShot(0, self._setup_opaque_log)
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
@@ -5177,7 +5310,6 @@ class AceCrtConsole(QWidget):
 
     def _clear_cmd_log(self, *, announce: bool = True) -> None:
         """Limpa o painel + arquivo espelhado (limpar/cls/clear)."""
-        # Pausa o pull 250ms — senão o timer recoloca o histórico antigo
         self._log_pull_paused = True
         self._log_cleared_at = time.time()
         try:
@@ -5192,49 +5324,24 @@ class AceCrtConsole(QWidget):
             self._log_offset = 0
 
         self._log_seen = set()
-
-        # Recria o documento + hide/show: único jeito estável em F11 / fosco
         try:
-            from PySide6.QtGui import QTextDocument
-
-            self.log.setUpdatesEnabled(False)
-            self.log.hide()
-            doc = QTextDocument(self.log)
-            self.log.setDocument(doc)
-            self.log.setMaximumBlockCount(400)
-            self.log.setUndoRedoEnabled(False)
-            self.log.setPlainText("")
+            if isinstance(self.log, AceCmdLog):
+                self.log.clear_lines()
+            else:
+                self.log.clear()
             self._setup_opaque_log()
-            self.log.show()
-            self.log.setUpdatesEnabled(True)
-            # Força o viewport a descartar buffer de paint (tela cheia)
-            try:
-                vp = self.log.viewport()
-                vp.resize(max(1, vp.width()), max(1, vp.height()))
-            except Exception:
-                pass
             self._force_log_repaint()
         except Exception:
-            try:
-                self.log.setUpdatesEnabled(True)
-                self.log.show()
-                self.log.clear()
-                self.log.setPlainText("")
-                self._setup_opaque_log()
-                self._force_log_repaint()
-            except Exception:
-                pass
+            pass
 
         if announce:
             self._append_log("sistema", "Log limpo.", mirror=False)
             self._force_log_repaint()
 
-        # Libera o pull após o paint assentar
         QTimer.singleShot(180, self._resume_log_pull)
 
     def _resume_log_pull(self) -> None:
         self._log_pull_paused = False
-        # Alinha offset ao fim atual (evita reidratar lixo se clear falhou parcial)
         try:
             from crt_bridge import LOG_PATH
 
@@ -5263,7 +5370,7 @@ class AceCrtConsole(QWidget):
         )
 
     def _render_log_entry(self, entry: dict, *, from_file: bool = False) -> None:
-        """Mesmo visual do CMD: [HH:MM:SS] ███ OK/ERR/…  mensagem (texto puro)."""
+        """Linha do CMD: [HH:MM:SS] ███ OK/ERR/…  mensagem"""
         stamp = str(entry.get("stamp") or datetime.now().strftime("%H:%M:%S"))
         kind = str(entry.get("kind") or "info").lower()
         text = str(entry.get("text") or "")
@@ -5277,7 +5384,6 @@ class AceCrtConsole(QWidget):
         t = CRT_THEMES.get(self._theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
         accent = str(t["text"])
         dim = str(t["dim"])
-        muted = str(t.get("muted") or dim)
         warn = WARN if self._theme_id not in {"claro"} else "#b45309"
         color = {
             "ok": accent,
@@ -5319,26 +5425,14 @@ class AceCrtConsole(QWidget):
                 plain = re.sub(r"\s{2,}", " ", plain).strip()
                 break
 
+        line = f"[{stamp}] ███ {tag} {plain}{prefix}"
         try:
-            cur = self.log.textCursor()
-            cur.movePosition(QTextCursor.End)
-            if self.log.document().blockCount() > 1 or bool(self.log.toPlainText().strip()):
-                cur.insertBlock()
-            fmt_m = QTextCharFormat()
-            fmt_m.setForeground(QColor(muted))
-            cur.insertText(f"[{stamp}] ", fmt_m)
-            fmt_c = QTextCharFormat()
-            fmt_c.setForeground(QColor(color))
-            cur.insertText(f"███ {tag} {plain}{prefix}", fmt_c)
-            self.log.setTextCursor(cur)
-            self.log.ensureCursorVisible()
-            if getattr(self, "_sys_tick", 0) % 8 == 0 or self.isFullScreen():
-                self.log.viewport().update()
+            if isinstance(self.log, AceCmdLog):
+                self.log.append_line(line, color)
+            else:
+                self.log.addItem(QListWidgetItem(line))
         except Exception:
-            try:
-                self.log.appendPlainText(f"[{stamp}] ███ {tag} {plain}{prefix}")
-            except Exception:
-                pass
+            pass
 
     def _pull_mirrored_log(self) -> None:
         if getattr(self, "_log_pull_paused", False):

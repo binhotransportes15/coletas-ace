@@ -110,7 +110,81 @@
   }
 
   function colDef(key, label, opts) {
-    return { key, label: label || key, type: (opts && opts.type) || 'text', enum: (opts && opts.enum) || null };
+    const type = (opts && opts.type) || (isMoneyKey(key) ? 'money' : 'text');
+    return { key, label: label || key, type, enum: (opts && opts.enum) || null };
+  }
+
+  function isMoneyKey(key) {
+    const k = String(key || '').toLowerCase();
+    if (/^(peso|volumes?|qtd|pct|percent|placa|hora|data|status|codigo|seq|kind|tipo)/.test(k)) {
+      return false;
+    }
+    return /(^|_)(frete|valor|custo|preco|preço|receita|tarifa|val_merc|vlr)(_|$)/.test(k)
+      || /valor|frete|custo|preco|preço/.test(k);
+  }
+
+  function parseBrNumber(raw) {
+    let s = String(raw ?? '').trim();
+    if (!s) return null;
+    s = s.replace(/^R\$\s*/i, '').replace(/\s/g, '');
+    if (!s) return null;
+    // 1.234,56 ou 1234,56 ou 1234.56
+    if (s.includes(',') && s.includes('.')) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (s.includes(',')) {
+      s = s.replace(',', '.');
+    }
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function formatMoney(raw) {
+    const s = String(raw ?? '').trim();
+    if (!s) return '';
+    if (/^R\$\s*/i.test(s) && /,\d{2}\s*$/.test(s.replace(/\./g, ''))) return s;
+    const n = parseBrNumber(s);
+    if (n == null) return s;
+    return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function formatCellDisplay(col, raw) {
+    const v = String(raw ?? '').trim();
+    if (!v) return '';
+    if (col && col.type === 'money') return formatMoney(v);
+    return v;
+  }
+
+  /** Extrai só o dia (DD/MM/AA) — ignora hora no filtro. */
+  function dayKey(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return '';
+    const br = s.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+    if (br) return br[1];
+    const iso = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (iso) return iso[1];
+    return s.split(/\s+/)[0];
+  }
+
+  function filterCellValue(col, raw) {
+    const v = String(raw ?? '').trim();
+    if (!v) return '';
+    if (col && col.type === 'day') return dayKey(v);
+    if (col && col.type === 'money') {
+      const n = parseBrNumber(v);
+      return n == null ? v : n.toFixed(2);
+    }
+    return v;
+  }
+
+  function sortDayKeys(a, b) {
+    const parse = (s) => {
+      const m = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+      if (!m) return 0;
+      let y = Number(m[3]);
+      if (y < 100) y += 2000;
+      return y * 10000 + Number(m[2]) * 100 + Number(m[1]);
+    };
+    return parse(a) - parse(b);
   }
 
   async function loadDataset() {
@@ -177,9 +251,9 @@
           colDef('destino', 'Destino'),
           colDef('peso', 'Peso'),
           colDef('volumes', 'Volumes'),
-          colDef('frete', 'Frete'),
-          colDef('agendado_em', 'Agendado em'),
-          colDef('agendado_para', 'Agendado para'),
+          colDef('frete', 'Frete', { type: 'money' }),
+          colDef('agendado_em', 'Agendado em', { type: 'day' }),
+          colDef('agendado_para', 'Agendado para', { type: 'day' }),
           colDef('status_ace', 'Status', { type: 'enum', enum: ['em_rota', 'parado', 'concluido'] }),
         ],
         rows,
@@ -296,7 +370,7 @@
           colDef('cliente', 'Cliente'),
           colDef('status', 'Status'),
           colDef('peso', 'Peso'),
-          colDef('frete', 'Frete'),
+          colDef('frete', 'Frete', { type: 'money' }),
           colDef('servico', 'Serviço'),
         ],
         rows,
@@ -316,7 +390,7 @@
           ? selected
           : new Set([].concat(selected).map(String));
         if (set.size === 0) return false;
-        const val = String(row[col.key] ?? '').trim();
+        const val = filterCellValue(col, row[col.key]);
         if (!set.has(val)) return false;
       }
       if (!q) return true;
@@ -346,12 +420,12 @@
   }
 
   function uniqueColValues(key) {
+    const col = STATE.columns.find((c) => c.key === key);
     const set = new Set();
     for (const row of STATE.rows) {
-      const v = String(row[key] ?? '').trim();
+      const v = filterCellValue(col, row[key]);
       if (v) set.add(v);
     }
-    const col = STATE.columns.find((c) => c.key === key);
     if (col && col.type === 'enum' && Array.isArray(col.enum) && col.enum.length) {
       const ordered = [];
       col.enum.forEach((v) => { if (set.has(v)) ordered.push(v); });
@@ -360,16 +434,34 @@
       });
       return ordered.slice(0, 200);
     }
+    if (col && col.type === 'day') {
+      return [...set].sort(sortDayKeys).slice(0, 200);
+    }
+    if (col && col.type === 'money') {
+      return [...set].sort((a, b) => Number(a) - Number(b)).slice(0, 200);
+    }
     return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR')).slice(0, 200);
   }
 
+  function msOptionLabel(col, value) {
+    if (col && col.type === 'money') {
+      const n = Number(value);
+      if (Number.isFinite(n)) {
+        return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      }
+      return formatMoney(value);
+    }
+    return value;
+  }
+
   function msButtonLabel(key, options) {
+    const col = STATE.columns.find((c) => c.key === key);
     const raw = STATE.colFilters[key];
     if (raw == null) return 'Todos';
     if (raw instanceof Set && raw.size === 0) return 'Nenhum';
     const selected = raw instanceof Set ? raw : new Set([String(raw)]);
     if (options.length && selected.size >= options.length) return 'Todos';
-    if (selected.size === 1) return [...selected][0];
+    if (selected.size === 1) return msOptionLabel(col, [...selected][0]);
     return `${selected.size} selecionados`;
   }
 
@@ -423,7 +515,7 @@
       body.innerHTML = `<tr><td colspan="${STATE.columns.length}" class="muted">Nenhuma linha com os filtros atuais.</td></tr>`;
     } else {
       body.innerHTML = STATE.filtered.map((row) => {
-        const tds = STATE.columns.map((c) => `<td>${esc(row[c.key] || '')}</td>`).join('');
+        const tds = STATE.columns.map((c) => `<td>${esc(formatCellDisplay(c, row[c.key] || ''))}</td>`).join('');
         return `<tr>${tds}</tr>`;
       }).join('');
     }
@@ -447,7 +539,7 @@
         const isOn = isEmptyDeny ? false : (!selected || selected.has(v));
         return `<label class="ms-opt" data-val="${esc(v)}">
           <input type="checkbox" value="${esc(v)}"${isOn ? ' checked' : ''} />
-          <span>${esc(v)}</span>
+          <span>${esc(msOptionLabel(col, v))}</span>
         </label>`;
       }).join('')
       : '<div class="ms-empty">Sem valores</div>';
@@ -859,8 +951,9 @@
       STATE.filtered.forEach((row, ri) => {
         const r = ws.getRow(dataStart + ri);
         keys.forEach((k, i) => {
+          const col = STATE.columns[i];
           const cell = r.getCell(i + 1);
-          cell.value = row[k] ?? '';
+          cell.value = formatCellDisplay(col, row[k] ?? '');
           cell.font = { name: 'Calibri', size: 9, color: { argb: 'FF0F172A' } };
           if (ri % 2 === 1) {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
@@ -939,7 +1032,9 @@
     );
 
     const tableHead = [STATE.columns.map((c) => c.label)];
-    const body = STATE.filtered.map((row) => STATE.columns.map((c) => String(row[c.key] ?? '')));
+    const body = STATE.filtered.map((row) =>
+      STATE.columns.map((c) => formatCellDisplay(c, row[c.key] ?? ''))
+    );
     doc.autoTable({
       startY: bannerH + 28,
       head: tableHead,
