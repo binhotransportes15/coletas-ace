@@ -297,18 +297,22 @@
       font-size: clamp(28px, 4vmin, 52px) !important;
     }
     body.tv-mode .pen-layout .arm-kpi.ds-kpi .val,
-    body.tv-mode .pen-kpis .arm-kpi .val {
+    body.tv-mode .pen-kpis .arm-kpi .val,
+    body.tv-mode .pen-kpi .val {
       font-size: clamp(36px, 5vmin, 64px) !important;
     }
     body.tv-mode .pen-layout .arm-kpi.ds-kpi .lbl,
-    body.tv-mode .pen-kpis .arm-kpi .lbl {
+    body.tv-mode .pen-kpis .arm-kpi .lbl,
+    body.tv-mode .pen-kpi .lab {
       font-size: clamp(14px, 1.8vmin, 22px) !important;
     }
-    body.tv-mode .pen-layout .arm-hero-card > header h2 {
+    body.tv-mode .pen-layout .arm-hero-card > header h2,
+    body.tv-mode .pen-card > header h3 {
       font-size: clamp(20px, 2.6vmin, 32px) !important;
       letter-spacing: 0.1em;
     }
-    body.tv-mode .pen-layout .pen-hero-meta .meta {
+    body.tv-mode .pen-layout .pen-hero-meta .meta,
+    body.tv-mode .pen-card > header .meta {
       font-size: clamp(14px, 1.8vmin, 22px) !important;
     }
     #coletaTorres[hidden],
@@ -1500,7 +1504,10 @@
     body.tv-mode .agenda-layout .dash-block,
     body.tv-mode .arm-layout .dash-block,
     body.tv-mode .ops-layout .dash-block,
-    body.tv-mode .pen-layout .dash-block {
+    body.tv-mode .pen-layout .dash-block,
+    body.tv-mode .pen-dash .dash-block,
+    body.tv-mode .pen-dash .pen-card,
+    body.tv-mode .pen-dash .pen-kpi {
       border: none !important;
       background: #0a121e !important;
       box-shadow: none !important;
@@ -3923,39 +3930,350 @@
       }
     }
 
-    /* Pendência 031 — KPIs + torres em tela cheia (sem tabela CTRCs) */
+    /* Pendência 031 — wallboard: KPIs · motivos · filial · aging · tabela */
     .pen-wrap {
       height: 100vh;
-      padding: 12px 14px;
+      padding: 10px 12px;
       display: grid;
       grid-template-rows: auto 1fr;
-      gap: 10px;
+      gap: 8px;
       max-width: 1680px;
       margin: 0 auto;
     }
-    .pen-layout {
+    .pen-dash {
       display: grid;
-      grid-template-columns: 1fr;
-      grid-template-rows: auto minmax(0, 1fr);
-      gap: clamp(8px, 1vw, 14px);
+      grid-template-rows: auto auto minmax(0, 1.1fr) minmax(0, 0.95fr);
+      gap: clamp(8px, 1vw, 12px);
       height: 100%;
       min-height: 0;
       overflow: hidden;
     }
-    .pen-layout [data-block="kpis"] { grid-column: 1; grid-row: 1; }
-    .pen-layout [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
-    .pen-layout [data-block="tabela"] { display: none !important; }
-    .pen-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .pen-hero-meta {
+    .pen-filters {
       display: flex;
-      align-items: center;
-      gap: 14px;
       flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .pen-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: clamp(11px, 1.15vmin, 13px);
+      font-weight: 700;
+      color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+    .pen-chip b { color: #f8fafc; font-weight: 900; }
+    .pen-chip.muted { color: #64748b; border-style: dashed; }
+    .pen-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: clamp(8px, 1vw, 12px);
+    }
+    .pen-kpi {
+      background: linear-gradient(165deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.88));
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: clamp(10px, 1.2vmin, 14px) clamp(12px, 1.4vmin, 16px);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .pen-kpi .lab {
+      font-size: clamp(10px, 1.1vmin, 12px);
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .pen-kpi .val {
+      font-size: clamp(22px, 3.2vmin, 40px);
+      font-weight: 900;
+      line-height: 1.05;
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+    }
+    .pen-kpi .val em {
+      font-style: normal;
+      font-size: 0.45em;
+      font-weight: 800;
+      color: #94a3b8;
+      margin-left: 4px;
+    }
+    .pen-kpi .sub {
+      font-size: clamp(10px, 1.1vmin, 12px);
+      color: #64748b;
+      font-weight: 600;
+    }
+    .pen-kpi.is-crit { border-color: rgba(248, 113, 113, 0.45); box-shadow: 0 0 20px rgba(239, 68, 68, 0.1); }
+    .pen-kpi.is-crit .val { color: #f87171; }
+    .pen-kpi.is-warn { border-color: rgba(251, 191, 36, 0.4); box-shadow: 0 0 20px rgba(245, 158, 11, 0.08); }
+    .pen-kpi.is-warn .val { color: #fbbf24; }
+    .pen-kpi.is-run { border-color: rgba(56, 189, 248, 0.4); }
+    .pen-kpi.is-run .val { color: #38bdf8; }
+    .pen-kpi.is-ok { border-color: rgba(74, 222, 128, 0.4); }
+    .pen-kpi.is-ok .val { color: #4ade80; }
+    .pen-mid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.15fr) minmax(0, 0.9fr);
+      gap: clamp(8px, 1vw, 12px);
+      min-height: 0;
+    }
+    .pen-card,
+    .pen-table-card {
+      background: rgba(2, 6, 23, 0.55);
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      padding: clamp(10px, 1.2vmin, 14px);
+    }
+    .pen-card > header,
+    .pen-table-card > header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex: 0 0 auto;
+    }
+    .pen-card > header h3,
+    .pen-table-card > header h3 {
+      margin: 0;
+      font-size: clamp(12px, 1.25vmin, 14px);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #e2e8f0;
+    }
+    .pen-card > header .meta,
+    .pen-table-card > header .meta {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .pen-donut-wrap {
+      position: relative;
+      width: min(100%, 200px);
+      aspect-ratio: 1;
+      margin: 4px auto 8px;
+      flex: 0 0 auto;
+    }
+    .pen-donut-wrap svg { width: 100%; height: 100%; display: block; }
+    .pen-donut-wrap .seg-0 { fill: #f87171; }
+    .pen-donut-wrap .seg-1 { fill: #fb923c; }
+    .pen-donut-wrap .seg-2 { fill: #fbbf24; }
+    .pen-donut-wrap .seg-3 { fill: #38bdf8; }
+    .pen-donut-wrap .seg-4 { fill: #a78bfa; }
+    .pen-donut-wrap .seg-5 { fill: #34d399; }
+    .pen-donut-center {
+      position: absolute;
+      inset: 28%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .pen-donut-center strong {
+      font-size: clamp(20px, 2.6vmin, 28px);
+      font-weight: 900;
+      color: #f8fafc;
+      line-height: 1;
+    }
+    .pen-donut-center span {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .pen-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      justify-content: center;
+    }
+    .pen-legend-row {
+      display: grid;
+      grid-template-columns: 10px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      font-size: clamp(11px, 1.2vmin, 13px);
+    }
+    .pen-legend-sw {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+    .pen-legend-lab {
+      color: #cbd5e1;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pen-legend-n {
+      color: #f8fafc;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+    .pen-hbar-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(8px, 1.1vmin, 12px);
+      justify-content: space-evenly;
+      overflow: hidden;
+    }
+    .pen-hbar {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .pen-hbar-lab {
+      font-size: clamp(12px, 1.3vmin, 14px);
+      font-weight: 900;
+      color: #e2e8f0;
+      letter-spacing: 0.04em;
+    }
+    .pen-hbar-track {
+      height: clamp(10px, 1.2vmin, 14px);
+      border-radius: 999px;
+      background: rgba(30, 41, 59, 0.9);
+      overflow: hidden;
+    }
+    .pen-hbar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #f87171, #fb923c);
+      min-width: 4px;
+    }
+    .pen-hbar-n {
+      font-size: clamp(13px, 1.5vmin, 16px);
+      font-weight: 900;
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+      min-width: 2ch;
+      text-align: right;
+    }
+    .pen-aging {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+      padding-top: 8px;
+    }
+    .pen-aging-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-height: 0;
+      height: 100%;
       justify-content: flex-end;
     }
-    .pen-towers-wrap {
-      min-height: clamp(280px, 52vh, 640px);
-      padding: clamp(12px, 1.8vw, 28px) clamp(10px, 1.4vw, 22px);
+    .pen-aging-col strong {
+      font-size: clamp(22px, 2.8vmin, 32px);
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .pen-aging-col span {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-align: center;
+    }
+    .pen-aging-col i {
+      display: block;
+      width: 100%;
+      max-width: 64px;
+      border-radius: 8px 8px 4px 4px;
+      min-height: 12px;
+      transition: height 0.45s ease;
+    }
+    .pen-aging-col.is-ok strong { color: #4ade80; }
+    .pen-aging-col.is-ok i { background: linear-gradient(180deg, #4ade80, #16a34a); }
+    .pen-aging-col.is-warn strong { color: #fbbf24; }
+    .pen-aging-col.is-warn i { background: linear-gradient(180deg, #fbbf24, #d97706); }
+    .pen-aging-col.is-crit strong { color: #f87171; }
+    .pen-aging-col.is-crit i { background: linear-gradient(180deg, #f87171, #dc2626); }
+    .pen-table-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .pen-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: clamp(11px, 1.25vmin, 13px);
+    }
+    .pen-table th {
+      text-align: left;
+      padding: 6px 8px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b;
+      border-bottom: 1px solid #1e293b;
+      white-space: nowrap;
+    }
+    .pen-table td {
+      padding: 7px 8px;
+      color: #e2e8f0;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.7);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 18ch;
+    }
+    .pen-table td.mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, Consolas, monospace; }
+    .pen-table tr.is-crit { background: rgba(127, 29, 29, 0.35); }
+    .pen-table tr.is-crit td { color: #fecaca; }
+    .pen-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.35);
+    }
+    .pen-status.is-ok {
+      background: rgba(34, 197, 94, 0.18);
+      color: #4ade80;
+      border-color: rgba(74, 222, 128, 0.35);
+    }
+    .pen-table-empty {
+      padding: 16px;
+      text-align: center;
+      color: #64748b;
+      font-weight: 600;
+    }
+    @media (max-width: 1100px) {
+      .pen-wrap { height: auto; min-height: 100vh; }
+      .pen-dash { grid-template-rows: auto auto auto auto; height: auto; overflow: visible; }
+      .pen-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .pen-mid { grid-template-columns: 1fr; }
     }
 
     /* Emissão 455 — wallboard operacional (performance → status → volume) */
@@ -6068,100 +6386,28 @@
       min-height: 0 !important;
       padding: clamp(8px, 1.2vmin, 16px) clamp(10px, 1.4vmin, 18px) !important;
     }
-    body.tv-mode .pen-layout {
+    body.tv-mode .pen-dash {
       display: grid !important;
-      grid-template-columns: 1fr !important;
-      grid-template-rows: max-content minmax(0, 1fr) !important;
+      grid-template-rows: auto auto minmax(0, 1.15fr) minmax(0, 0.9fr) !important;
       height: 100% !important;
       gap: clamp(8px, 1.1vmin, 14px) !important;
       min-height: 0 !important;
     }
-    body.tv-mode .pen-layout [data-block="kpis"] {
-      container-type: normal !important;
-      min-height: min-content !important;
-      height: auto !important;
-      overflow: visible !important;
-      align-self: start !important;
-      display: grid !important;
+    body.tv-mode .pen-kpi-grid {
       grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
       gap: clamp(8px, 1.1vmin, 12px) !important;
     }
-    body.tv-mode .pen-layout [data-block="chart"],
-    body.tv-mode .pen-layout .arm-hero,
-    body.tv-mode .pen-layout .arm-hero-card {
-      height: 100% !important;
-      min-height: 0 !important;
-    }
-    body.tv-mode .pen-layout .arm-hero-card {
-      display: grid !important;
-      grid-template-rows: auto minmax(0, 1fr) !important;
-    }
-    body.tv-mode .pen-towers-wrap {
-      height: 100% !important;
-      min-height: 0 !important;
-      padding: clamp(12px, 1.8vmin, 28px) clamp(14px, 2vmin, 32px) !important;
-    }
-    body.tv-mode .pen-towers-wrap.is-pareto {
-      min-height: 0 !important;
-      height: 100% !important;
-    }
-    body.tv-mode .pen-torres {
-      height: 100% !important;
-      max-height: none !important;
-      gap: clamp(16px, 2.4vmin, 40px) !important;
-      justify-content: center !important;
-      align-items: flex-end !important;
-      overflow: hidden !important;
-    }
-    body.tv-mode .pen-torres .torre {
-      flex: 0 0 auto !important;
-      width: clamp(140px, 15vmin, 220px) !important;
-      max-width: none !important;
-    }
-    body.tv-mode .pen-torres .pin {
-      width: clamp(52px, 6vmin, 76px) !important;
-      height: clamp(52px, 6vmin, 76px) !important;
-      margin-bottom: clamp(10px, 1.4vmin, 18px) !important;
-    }
-    body.tv-mode .pen-torres .pin span {
-      font-size: clamp(22px, 2.8vmin, 36px) !important;
-      font-weight: 800 !important;
-    }
-    body.tv-mode .pen-torres .pin span.pin-lg {
-      font-size: clamp(18px, 2.2vmin, 28px) !important;
-    }
-    body.tv-mode .pen-torres .barra {
-      min-height: clamp(64px, 8vmin, 120px) !important;
-    }
-    body.tv-mode .pen-torres .barra strong {
-      font-size: clamp(28px, 4vmin, 58px) !important;
-    }
-    body.tv-mode .pen-torres .base {
-      min-height: clamp(58px, 7.5vmin, 86px) !important;
-      padding: clamp(6px, 0.9vmin, 10px) 4px !important;
-      align-items: flex-start !important;
-    }
-    body.tv-mode .pen-torres .base .lbl {
-      font-size: clamp(12px, 1.5vmin, 18px) !important;
-      line-height: 1.15 !important;
-      letter-spacing: 0.02em;
-      white-space: normal !important;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 3;
-      overflow: hidden;
-      word-break: break-word;
-    }
-    body.tv-mode .pen-layout [data-block="tabela"] {
-      display: none !important;
-    }
-    body.tv-mode #panel-pendencia .arm-kpi .val {
+    body.tv-mode .pen-kpi .val {
       font-size: clamp(22px, 2.8vmin, 40px) !important;
     }
-    body.tv-mode #penPeriodo,
-    body.tv-mode #penSla {
-      font-size: clamp(18px, 2.2vmin, 36px) !important;
-      line-height: 1.15 !important;
+    body.tv-mode .pen-mid {
+      min-height: 0 !important;
+    }
+    body.tv-mode .pen-table-card {
+      min-height: clamp(120px, 18vh, 220px) !important;
+    }
+    body.tv-mode .pen-table {
+      font-size: clamp(12px, 1.4vmin, 15px);
     }
     body.tv-mode.tv-no-margins #panel-pendencia,
     body.tv-mode:not(.tv-no-margins) #panel-pendencia {
@@ -6169,17 +6415,6 @@
       max-width: none !important;
       height: 100% !important;
       min-height: 100% !important;
-    }
-    @media (max-width: 1100px) {
-      .pen-layout {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(320px, 1fr);
-      }
-      .pen-layout [data-block="kpis"] { grid-column: 1; grid-row: 1; }
-      .pen-layout [data-block="chart"] { grid-column: 1; grid-row: 2; }
-      .pen-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .pen-wrap { height: auto; min-height: 100vh; }
-      .pen-towers-wrap { min-height: 360px; }
     }
 
     /* Coleta / Entrega — blocos arrastáveis (CRT) */
@@ -8629,28 +8864,110 @@
           <div class="date" id="penDate">—</div>
         </div>
       </div>
-      <div class="pen-layout" id="penLayout">
-        <div class="arm-kpis pen-kpis dash-block ds-kpi-row" data-block="kpis">
-          <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">SLA</div><div class="val" id="penSla">0%</div></div>
-          <div class="arm-kpi ds-kpi is-ok"><div class="lbl">Solucionadas</div><div class="val" id="penSoluc">0</div></div>
-          <div class="arm-kpi atrasado ds-kpi is-crit"><div class="lbl">Em aberto</div><div class="val" id="penAbertas">0</div></div>
-          <div class="arm-kpi chegou ds-kpi is-neutral"><div class="lbl">Período</div><div class="val" id="penPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
+
+      <div class="pen-dash" id="penLayout">
+        <div class="pen-filters" id="penFilters" aria-label="Filtros">
+          <span class="pen-chip">Período · <b id="penFiltroPeriodo">—</b></span>
+          <span class="pen-chip">Filial · <b id="penFiltroFilial">Todas</b></span>
+          <span class="pen-chip">Status · <b id="penFiltroStatus">Abertas</b></span>
+          <span class="pen-chip muted" id="penAtualizado">atualizado —</span>
         </div>
-        <div class="arm-hero arm-hero-solo dash-block ds-panel" data-block="chart">
-          <section class="arm-hero-card">
-            <header>
-              <h2>Ofensores (Pareto)</h2>
-              <div class="pen-hero-meta">
-                <div class="meta" id="penOfMeta">63 positiva · demais negativas</div>
-                <div class="meta" id="penAtualizado">atualizado —</div>
+
+        <div class="pen-kpi-grid dash-block" data-block="kpis">
+          <article class="pen-kpi is-crit">
+            <span class="lab">Pendências ativas</span>
+            <strong class="val" id="penAbertas">0</strong>
+            <span class="sub">CTRCs</span>
+          </article>
+          <article class="pen-kpi is-warn">
+            <span class="lab">Valor em risco</span>
+            <strong class="val" id="penValorRisco">R$ 0</strong>
+            <span class="sub">mercadoria aberta</span>
+          </article>
+          <article class="pen-kpi is-run">
+            <span class="lab">Aging médio</span>
+            <strong class="val"><span id="penSlaMedio">0</span> <em>dias</em></strong>
+            <span class="sub">em aberto</span>
+          </article>
+          <article class="pen-kpi is-ok">
+            <span class="lab">% Solucionadas</span>
+            <strong class="val" id="penSla">0%</strong>
+            <span class="sub"><span id="penSoluc">0</span> baixas · cód. 63</span>
+          </article>
+        </div>
+
+        <div class="pen-mid">
+          <section class="pen-card ds-panel" aria-label="Top motivos">
+            <header><h3>Top motivos</h3><span class="meta" id="penOfMeta">ofensores</span></header>
+            <div class="pen-donut-wrap">
+              <svg id="penMotivosRing" viewBox="0 0 200 200" aria-hidden="true"></svg>
+              <div class="pen-donut-center">
+                <strong id="penMotivosTotal">0</strong>
+                <span>ativos</span>
               </div>
-            </header>
-            <div class="arm-towers-wrap pen-towers-wrap" id="penTorresWrap">
-              <div class="torres arm-torres pen-torres" id="penTorres" aria-label="Torres de ofensores"></div>
-              <div class="ds-pareto" id="penPareto" hidden aria-label="Pareto de ofensores"></div>
             </div>
-            <div class="arm-err" id="penErr" hidden></div>
+            <div class="pen-legend" id="penMotivosLegend"></div>
           </section>
+
+          <section class="pen-card ds-panel" aria-label="Gargalo por filial">
+            <header><h3>Gargalo por filial</h3><span class="meta" id="penFilialMeta">unidades</span></header>
+            <div class="pen-hbar-list" id="penFilialBars"></div>
+          </section>
+
+          <section class="pen-card ds-panel" aria-label="Aging">
+            <header><h3>Aging</h3><span class="meta">dias em aberto</span></header>
+            <div class="pen-aging" id="penAgingBars">
+              <div class="pen-aging-col is-ok">
+                <strong id="penAging02">0</strong>
+                <span>0–2 dias</span>
+                <i id="penAging02Bar"></i>
+              </div>
+              <div class="pen-aging-col is-warn">
+                <strong id="penAging35">0</strong>
+                <span>3–5 dias</span>
+                <i id="penAging35Bar"></i>
+              </div>
+              <div class="pen-aging-col is-crit">
+                <strong id="penAging6">0</strong>
+                <span>&gt; 5 dias</span>
+                <i id="penAging6Bar"></i>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="pen-table-card ds-panel dash-block" data-block="tabela" aria-label="Tabela operacional">
+          <header>
+            <h3>Tabela operacional de tratativa</h3>
+            <span class="meta" id="penTabelaMeta">—</span>
+          </header>
+          <div class="pen-table-scroll">
+            <table class="pen-table" id="penTable">
+              <thead>
+                <tr>
+                  <th>CTRC</th>
+                  <th>NF</th>
+                  <th>Remetente</th>
+                  <th>Filial</th>
+                  <th>Ocorrência</th>
+                  <th>Complemento</th>
+                  <th>Data</th>
+                  <th>Valor</th>
+                  <th>Aging</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="penTableBody"></tbody>
+            </table>
+            <div class="pen-table-empty" id="penTableEmpty" hidden>Sem pendências abertas</div>
+          </div>
+        </section>
+
+        <!-- legado oculto -->
+        <div hidden aria-hidden="true">
+          <span id="penPeriodo"></span>
+          <div id="penTorresWrap"><div id="penTorres"></div><div id="penPareto"></div></div>
+          <div id="penErr"></div>
         </div>
       </div>
     </div>
@@ -9131,6 +9448,9 @@
     let lastGoodPenResumo = null;
     let lastGoodPenOfens = [];
     let lastGoodPenRows = [];
+    let lastGoodPenAbertas = [];
+    let penTableCursor = 0;
+    let penTableTimer = null;
     let penRefreshTimer = null;
     let lastGoodEmiResumo = null;
     let lastGoodEmiExp = [];
@@ -10090,7 +10410,12 @@
           lastAgendaTorreCounts.ok
         );
       }
-      if (lastGoodPenOfens.length && typeof renderPenTorres === 'function') {
+      if (lastGoodPenOfens.length && typeof renderPenMotivos === 'function') {
+        renderPenMotivos(lastGoodPenOfens);
+      }
+      if (lastGoodPenAbertas.length && typeof renderPenDashboardParts === 'function') {
+        renderPenDashboardParts(lastGoodPenAbertas, lastGoodPenResumo || {});
+      } else if (lastGoodPenOfens.length && typeof renderPenTorres === 'function') {
         renderPenTorres(lastGoodPenOfens);
       }
       if (lastGoodCtrDestinos.length && typeof renderCtrTorres === 'function') {
@@ -12197,6 +12522,262 @@
       return ((sp > 8 ? cut.slice(0, sp) : cut).trim() + '…');
     }
 
+    function parsePenBrDate(raw) {
+      const m = String(raw || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      if (!m) return null;
+      let yy = Number(m[3]);
+      if (yy < 100) yy += 2000;
+      const d = new Date(yy, Number(m[2]) - 1, Number(m[1]));
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function parsePenMoney(raw) {
+      const s = String(raw || '').replace(/R\$/gi, '').trim();
+      if (!s) return 0;
+      let n = s;
+      if (n.includes(',') && n.includes('.')) n = n.replace(/\./g, '').replace(',', '.');
+      else if (n.includes(',')) n = n.replace(',', '.');
+      const v = Number(n);
+      return Number.isFinite(v) ? v : 0;
+    }
+
+    function fmtPenMoney(v) {
+      const n = typeof v === 'number' ? v : parsePenMoney(v);
+      if (!n) return 'R$ 0';
+      return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function filialFromCtrc(ctrc) {
+      const m = String(ctrc || '').toUpperCase().replace(/\s+/g, '').match(/^([A-Z]{2,4})/);
+      return m ? m[1] : '—';
+    }
+
+    function nfFromPenText(...parts) {
+      const blob = parts.join(' ');
+      const m = blob.match(/\bNFD?\s*[:#-]?\s*(\d{4,})/i);
+      return m ? m[1] : '';
+    }
+
+    function dataOcorrFromPenText(...parts) {
+      const blob = parts.join(' ');
+      const m = blob.match(/\bEM\s+(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+      if (m) return m[1];
+      const m2 = blob.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+      return m2 ? m2[1] : '';
+    }
+
+    function enrichPenRow(r) {
+      const ctrc = String(r.ctrc || '').toUpperCase().replace(/\s+/g, '');
+      const cod = String(r.codigo || '').trim();
+      const ultima = r.ultima_ocorrencia || '';
+      const hist = r.historico || '';
+      const desc = r.descricao_ocorrencia || r.descricao_codigo || '';
+      const compl = r.complemento_ocorrencia || '';
+      const nf = String(r.nf || '').trim() || nfFromPenText(compl, hist, desc);
+      const filial = String(r.filial || '').trim().toUpperCase() || filialFromCtrc(ctrc);
+      let dataOc = String(r.data_ocorrencia || '').trim() || dataOcorrFromPenText(hist, ultima, compl);
+      if (!dataOc) dataOc = String(r.data_emissao || '').trim();
+      let aging = Number(r.aging_dias);
+      if (!Number.isFinite(aging)) {
+        const d0 = parsePenBrDate(dataOc) || parsePenBrDate(r.data_emissao);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        aging = d0 ? Math.max(0, Math.round((today - d0) / 86400000)) : 0;
+      }
+      const status = String(r.status_ace || '').toLowerCase() || (cod === '63' ? 'solucionada' : 'aberta');
+      const ocorr = String(r.descricao_codigo || desc || ultima || '—').trim();
+      return {
+        ...r,
+        ctrc,
+        codigo: cod,
+        nf,
+        filial,
+        data_ocorrencia: dataOc,
+        aging_dias: aging,
+        status_ace: status,
+        ocorrencia: ocorr,
+        complemento: String(compl || hist || '').trim(),
+        valor_num: parsePenMoney(r.valor_mercadoria),
+        remetente: String(r.remetente || '').trim(),
+      };
+    }
+
+    const PEN_MOTIVO_COLORS = ['#f87171', '#fb923c', '#fbbf24', '#38bdf8', '#a78bfa', '#34d399'];
+
+    function renderPenMotivos(ofensores) {
+      const svg = document.getElementById('penMotivosRing');
+      const legend = document.getElementById('penMotivosLegend');
+      const totalEl = document.getElementById('penMotivosTotal');
+      const meta = document.getElementById('penOfMeta');
+      const all = (ofensores || []).filter((o) => {
+        const cod = String(o.codigo || '').trim();
+        const pol = String(o.polaridade || '').toLowerCase();
+        return cod !== '63' && pol !== 'pos';
+      });
+      const items = all.slice(0, 5);
+      const total = items.reduce((s, o) => s + (Number(o.qtd) || 0), 0);
+      if (totalEl) totalEl.textContent = String(total || 0);
+      if (meta) meta.textContent = items.length ? `${items.length} ofensores` : 'sem ofensores';
+      if (!svg) return;
+      const cx = 100;
+      const cy = 100;
+      const R = 92;
+      const rHole = 58;
+      if (!total || !items.length) {
+        svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#1e293b"/><circle cx="${cx}" cy="${cy}" r="${rHole}" fill="#020617"/>`;
+        if (legend) legend.innerHTML = '<div class="pen-legend-row"><span class="pen-legend-lab">Sem motivos abertos</span></div>';
+        return;
+      }
+      let angle = 0;
+      const slices = items.map((o, i) => {
+        const qtd = Number(o.qtd) || 0;
+        const sweep = (qtd / total) * 360;
+        const start = angle;
+        const end = angle + Math.max(sweep, 1.2);
+        angle = end;
+        return `<path class="seg-${i}" d="${pieSlicePath(cx, cy, R, start, end - 0.5, 0)}" />`;
+      });
+      svg.setAttribute('viewBox', '0 0 200 200');
+      svg.innerHTML = slices.join('')
+        + `<circle cx="${cx}" cy="${cy}" r="${rHole}" fill="#020617"/>`
+        + `<circle cx="${cx}" cy="${cy}" r="${rHole}" fill="none" stroke="rgba(148,163,184,0.18)" stroke-width="2"/>`;
+      if (legend) {
+        legend.innerHTML = items.map((o, i) => {
+          const nome = String(o.label || o.descricao_codigo || '').trim() || `Cód. ${o.codigo || '—'}`;
+          const qtd = Number(o.qtd) || 0;
+          return `<div class="pen-legend-row" title="${esc(nome)}">
+            <span class="pen-legend-sw" style="background:${PEN_MOTIVO_COLORS[i % PEN_MOTIVO_COLORS.length]}"></span>
+            <span class="pen-legend-lab">${esc(shortPenLabel(nome, 28))}</span>
+            <span class="pen-legend-n">${qtd}</span>
+          </div>`;
+        }).join('');
+      }
+    }
+
+    function renderPenFilialBars(abertas) {
+      const host = document.getElementById('penFilialBars');
+      const meta = document.getElementById('penFilialMeta');
+      if (!host) return;
+      const counts = {};
+      (abertas || []).forEach((r) => {
+        const f = r.filial || filialFromCtrc(r.ctrc) || '—';
+        counts[f] = (counts[f] || 0) + 1;
+      });
+      const items = Object.entries(counts)
+        .map(([filial, qtd]) => ({ filial, qtd }))
+        .sort((a, b) => b.qtd - a.qtd)
+        .slice(0, 6);
+      if (meta) meta.textContent = items.length ? `${items.length} unidades` : '—';
+      if (!items.length) {
+        host.innerHTML = '<div class="meta">Sem gargalo por filial</div>';
+        return;
+      }
+      const max = Math.max(...items.map((i) => i.qtd), 1);
+      host.innerHTML = items.map((i) => {
+        const pct = Math.max(6, Math.round((i.qtd / max) * 100));
+        return `<div class="pen-hbar" title="${esc(i.filial)} · ${i.qtd}">
+          <span class="pen-hbar-lab">${esc(i.filial)}</span>
+          <div class="pen-hbar-track"><div class="pen-hbar-fill" style="width:${pct}%"></div></div>
+          <span class="pen-hbar-n">${i.qtd}</span>
+        </div>`;
+      }).join('');
+    }
+
+    function renderPenAging(abertas, resumo) {
+      let a02 = Number(resumo?.aging_0_2);
+      let a35 = Number(resumo?.aging_3_5);
+      let a6 = Number(resumo?.aging_6_mais);
+      if (![a02, a35, a6].every((n) => Number.isFinite(n) && n >= 0) || (a02 + a35 + a6) === 0) {
+        a02 = a35 = a6 = 0;
+        (abertas || []).forEach((r) => {
+          const d = Number(r.aging_dias) || 0;
+          if (d <= 2) a02 += 1;
+          else if (d <= 5) a35 += 1;
+          else a6 += 1;
+        });
+      }
+      const max = Math.max(a02, a35, a6, 1);
+      const maxH = 120;
+      setPenText('penAging02', String(a02));
+      setPenText('penAging35', String(a35));
+      setPenText('penAging6', String(a6));
+      const b02 = document.getElementById('penAging02Bar');
+      const b35 = document.getElementById('penAging35Bar');
+      const b6 = document.getElementById('penAging6Bar');
+      if (b02) b02.style.height = `${Math.max(12, Math.round((a02 / max) * maxH))}px`;
+      if (b35) b35.style.height = `${Math.max(12, Math.round((a35 / max) * maxH))}px`;
+      if (b6) b6.style.height = `${Math.max(12, Math.round((a6 / max) * maxH))}px`;
+    }
+
+    function penTableVisivel() {
+      const tv = document.body.classList.contains('tv-mode');
+      const host = document.querySelector('.pen-table-scroll');
+      if (!host) return tv ? 6 : 5;
+      const h = host.clientHeight || 0;
+      const slot = tv ? 34 : 32;
+      return Math.max(4, Math.min(tv ? 9 : 7, Math.floor(Math.max(0, h - 8) / slot)));
+    }
+
+    function renderPenTable() {
+      const body = document.getElementById('penTableBody');
+      const empty = document.getElementById('penTableEmpty');
+      const meta = document.getElementById('penTabelaMeta');
+      if (!body) return;
+      const list = lastGoodPenAbertas || [];
+      if (meta) meta.textContent = list.length
+        ? `${list.length} CTRC${list.length === 1 ? '' : 's'} abertos`
+        : 'sem abertos';
+      if (!list.length) {
+        body.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+      }
+      if (empty) empty.hidden = true;
+      const nVis = penTableVisivel();
+      const n = Math.min(nVis, list.length);
+      const rows = [];
+      for (let i = 0; i < n; i++) {
+        rows.push(list[(penTableCursor + i) % list.length]);
+      }
+      body.innerHTML = rows.map((r) => {
+        const aging = Number(r.aging_dias) || 0;
+        const crit = aging > 5 || /FALTA|AVARIA|EXTRAVIO|INDENIZ/i.test(String(r.ocorrencia || ''));
+        const valor = r.valor_num ? fmtPenMoney(r.valor_num) : '—';
+        const st = r.status_ace === 'solucionada' ? 'Solucionada' : 'Aberta';
+        const stCls = r.status_ace === 'solucionada' ? 'is-ok' : '';
+        return `<tr class="${crit ? 'is-crit' : ''}">
+          <td class="mono" title="${esc(r.ctrc)}">${esc(r.ctrc || '—')}</td>
+          <td class="mono">${esc(r.nf || '—')}</td>
+          <td title="${esc(r.remetente || '')}">${esc(shortPenLabel(r.remetente || '—', 18))}</td>
+          <td class="mono">${esc(r.filial || '—')}</td>
+          <td title="${esc(r.ocorrencia || '')}">${esc(shortPenLabel(r.ocorrencia || '—', 28))}</td>
+          <td title="${esc(r.complemento || '')}">${esc(shortPenLabel(r.complemento || '—', 24))}</td>
+          <td class="mono">${esc(r.data_ocorrencia || '—')}</td>
+          <td class="mono">${esc(valor)}</td>
+          <td class="mono">${aging}d</td>
+          <td><span class="pen-status ${stCls}">${esc(st)}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function startPenTableLoop() {
+      if (penTableTimer) clearInterval(penTableTimer);
+      renderPenTable();
+      penTableTimer = setInterval(() => {
+        const list = lastGoodPenAbertas || [];
+        if (list.length > 1) {
+          penTableCursor = (penTableCursor + 1) % list.length;
+          renderPenTable();
+        }
+      }, 4500);
+    }
+
+    function renderPenDashboardParts(abertas, resumo) {
+      renderPenFilialBars(abertas);
+      renderPenAging(abertas, resumo);
+      startPenTableLoop();
+    }
+
     function penColorClass(o, negIdx) {
       const pol = String(o.polaridade || '').toLowerCase();
       const cod = String(o.codigo || '').trim();
@@ -12329,25 +12910,49 @@
         if (!ofens.length && lastGoodPenOfens.length) ofens = lastGoodPenOfens.slice();
         if (!rows.length && lastGoodPenRows.length) rows = lastGoodPenRows.slice();
 
+        const enriched = (rows || []).map(enrichPenRow);
+        const abertas = enriched.filter((r) => r.status_ace !== 'solucionada' && String(r.codigo) !== '63');
+        lastGoodPenAbertas = abertas;
+        if (Object.keys(resumo).length) lastGoodPenResumo = { ...resumo };
+        if (ofens.length) lastGoodPenOfens = ofens.slice();
+        if (rows.length) lastGoodPenRows = rows.slice();
+
         if (err) err.hidden = true;
         const slaRaw = String(resumo.sla_pct || '').trim();
         const slaTxt = slaRaw
           ? (slaRaw.includes('%') ? slaRaw : `${slaRaw}%`)
           : '0%';
+        const periodoTxt = formatPeriodo31(resumo.periodo || '');
         setPenText('penSla', slaTxt);
         setPenText('penSoluc', resumo.solucionadas || '0');
-        setPenText('penAbertas', resumo.abertas || '0');
-        setPenText('penPeriodo', formatPeriodo31(resumo.periodo || ''));
+        setPenText('penAbertas', resumo.abertas != null && resumo.abertas !== ''
+          ? resumo.abertas
+          : String(abertas.length));
+        setPenText('penPeriodo', periodoTxt);
+        setPenText('penFiltroPeriodo', periodoTxt);
+        setPenText('penFiltroFilial', 'Todas');
+        setPenText('penFiltroStatus', 'Abertas');
         setPenText('penAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
-        const meta = document.getElementById('penOfMeta');
-        if (meta) {
-          const sla = slaTxt;
-          const topoLab = resumo.topo_label || '';
-          meta.textContent = topoLab
-            ? `SLA ${sla} · ofensor · ${topoLab}`
-            : `SLA ${sla} · 63 positiva · demais negativas`;
-        }
 
+        let valorRisco = parsePenMoney(resumo.valor_risco);
+        if (!valorRisco) {
+          valorRisco = abertas.reduce((s, r) => s + (r.valor_num || 0), 0);
+        }
+        setPenText('penValorRisco', fmtPenMoney(valorRisco));
+
+        let slaMedio = Number(String(resumo.sla_medio_dias || '').replace(',', '.'));
+        if (!Number.isFinite(slaMedio) || slaMedio <= 0) {
+          slaMedio = abertas.length
+            ? abertas.reduce((s, r) => s + (Number(r.aging_dias) || 0), 0) / abertas.length
+            : 0;
+        }
+        setPenText('penSlaMedio', slaMedio.toLocaleString('pt-BR', {
+          minimumFractionDigits: slaMedio % 1 ? 1 : 0,
+          maximumFractionDigits: 1,
+        }));
+
+        renderPenMotivos(ofens);
+        renderPenDashboardParts(abertas, resumo);
         renderPenTorres(ofens);
         if (remoteVer != null) lastPenDataVersion = remoteVer;
         else {

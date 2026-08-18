@@ -5,7 +5,7 @@ import csv
 import json
 import re
 from collections import Counter
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,13 +24,45 @@ RESUMO_31_CSV = CACHE_DIR / "resumo_31.csv"
 OFENSORES_31_CSV = CACHE_DIR / "ofensores_31.csv"
 LAST_31_JSON = CACHE_DIR / "last_run_31.json"
 
-# Colunas Excel (1-based) — informado pelo usuário
+# Colunas Excel (1-based) — fallback posicional
 COL_A_CTRC = 1
 COL_B_EMISSAO = 2
 COL_R_ULTIMA = 18
 COL_S_COMPL_ULTIMA = 19
 COL_AM_DESC_OCORR = 39
 COL_AN_COMPL_OCORR = 40
+
+# Cabeçalhos possíveis do Excel 031 (normalizados)
+_HEADER_ALIASES: dict[str, tuple[str, ...]] = {
+    "ctrc": ("ctrc", "conhec", "conhecimento", "numero ctrc", "nº ctrc", "n ctrc"),
+    "data_emissao": ("emissao", "emissão", "data emissao", "data emissão", "dt emissao"),
+    "ultima_ocorrencia": ("ultima ocorr", "última ocorr", "ult ocorr", "ocorrencia atual", "última ocorrência"),
+    "historico": ("historico", "histórico", "compl ultima", "compl. ultima", "complemento ultima"),
+    "descricao_ocorrencia": ("desc ocorr", "descricao ocorr", "descrição ocorr", "descricao da ocorrencia"),
+    "complemento_ocorrencia": ("complemento ocorr", "compl ocorr", "complemento da ocorrencia", "complemento"),
+    "nf": ("nro nf", "nr nf", "nota fiscal", "nfe", "nf ", "numero nf", "nº nf"),
+    "remetente": ("remetente", "cliente remetente", "embarcador", "expedidor"),
+    "destinatario": ("destinatario", "destinatário", "cliente destinatario", "recebedor"),
+    "filial": ("filial", "unid", "unidade", "unidade resp", "filial resp", "origem", "unid. resp"),
+    "valor_mercadoria": (
+        "val merc",
+        "valor merc",
+        "vl merc",
+        "mercadoria",
+        "valor da mercadoria",
+        "vlr mercadoria",
+        "val. mercad",
+    ),
+    "data_ocorrencia": (
+        "data ocorr",
+        "dt ocorr",
+        "data da ocorrencia",
+        "data ocorrência",
+        "dt. ocorrencia",
+    ),
+    "cidade": ("cidade", "municipio", "município"),
+    "uf": ("uf", "estado"),
+}
 
 PENDENCIA_FIELDS = [
     "ctrc",
@@ -42,6 +74,16 @@ PENDENCIA_FIELDS = [
     "descricao_ocorrencia",
     "complemento_ocorrencia",
     "descricao_codigo",
+    "nf",
+    "remetente",
+    "destinatario",
+    "filial",
+    "valor_mercadoria",
+    "data_ocorrencia",
+    "cidade",
+    "uf",
+    "aging_dias",
+    "status_ace",
 ]
 
 RESUMO_FIELDS = [
@@ -52,6 +94,11 @@ RESUMO_FIELDS = [
     "solucionadas",
     "abertas",
     "sla_pct",
+    "sla_medio_dias",
+    "valor_risco",
+    "aging_0_2",
+    "aging_3_5",
+    "aging_6_mais",
     "topo_codigo",
     "topo_label",
     "topo_qtd",
@@ -65,6 +112,8 @@ def _clean(value: Any) -> str:
         return ""
     if isinstance(value, datetime):
         return value.strftime("%d/%m/%Y")
+    if isinstance(value, date):
+        return value.strftime("%d/%m/%Y")
     if hasattr(value, "strftime") and not isinstance(value, str):
         try:
             return value.strftime("%d/%m/%Y")
@@ -76,10 +125,104 @@ def _clean(value: Any) -> str:
     return re.sub(r"\s+", " ", text)
 
 
+def _norm_header(text: str) -> str:
+    t = str(text or "").strip().lower()
+    t = (
+        t.replace("á", "a")
+        .replace("à", "a")
+        .replace("ã", "a")
+        .replace("â", "a")
+        .replace("é", "e")
+        .replace("ê", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ô", "o")
+        .replace("õ", "o")
+        .replace("ú", "u")
+        .replace("ç", "c")
+    )
+    return re.sub(r"\s+", " ", t)
+
+
 def _cell(row: tuple[Any, ...] | list[Any], idx: int) -> str:
     if idx < 1 or idx > len(row):
         return ""
     return _clean(row[idx - 1])
+
+
+def _parse_br_date(raw: str) -> date | None:
+    s = str(raw or "").strip()
+    if not s:
+        return None
+    m = re.search(r"(\d{1,2})/(\d{1,2})/(\d{2,4})", s)
+    if not m:
+        return None
+    dd, mm, yy = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if yy < 100:
+        yy += 2000
+    try:
+        return date(yy, mm, dd)
+    except ValueError:
+        return None
+
+
+def _parse_money(raw: str) -> float:
+    s = str(raw or "").strip()
+    if not s:
+        return 0.0
+    s = re.sub(r"[R$\s]", "", s, flags=re.I)
+    if "," in s and "." in s:
+        s = s.replace(".", "").replace(",", ".")
+    elif "," in s:
+        s = s.replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
+def _fmt_money(v: float) -> str:
+    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _filial_from_ctrc(ctrc: str) -> str:
+    m = re.match(r"^([A-Z]{2,4})", str(ctrc or "").upper().replace(" ", ""))
+    return m.group(1) if m else ""
+
+
+def _nf_from_text(*parts: str) -> str:
+    blob = " ".join(parts)
+    m = re.search(r"\bNFD?\s*[:#-]?\s*(\d{4,})", blob, flags=re.I)
+    return m.group(1) if m else ""
+
+
+def _data_ocorr_from_text(*parts: str) -> str:
+    blob = " ".join(parts)
+    m = re.search(r"\bEM\s+(\d{1,2}/\d{1,2}/\d{2,4})", blob, flags=re.I)
+    if m:
+        return m.group(1)
+    m2 = re.search(r"(\d{1,2}/\d{1,2}/\d{2,4})", blob)
+    return m2.group(1) if m2 else ""
+
+
+def _map_headers(row: tuple[Any, ...] | list[Any]) -> dict[str, int]:
+    """Retorna field -> índice 1-based se a linha parecer cabeçalho."""
+    cells = [_norm_header(_clean(c)) for c in row]
+    joined = " | ".join(cells)
+    if "ctrc" not in joined and "conhec" not in joined:
+        return {}
+    out: dict[str, int] = {}
+    for i, cell in enumerate(cells, start=1):
+        if not cell:
+            continue
+        for field, aliases in _HEADER_ALIASES.items():
+            if field in out:
+                continue
+            for al in aliases:
+                if al in cell or cell in al:
+                    out[field] = i
+                    break
+    return out
 
 
 def _write_csv(path: Path, fields: list[str], rows: list[dict[str, Any]]) -> None:
@@ -92,8 +235,49 @@ def _write_csv(path: Path, fields: list[str], rows: list[dict[str, Any]]) -> Non
             w.writerow({k: r.get(k, "") for k in fields})
 
 
+def _enrich_row(r: dict[str, str], *, codigo_consulta: str = "") -> dict[str, str]:
+    ctrc = str(r.get("ctrc") or "").upper().replace(" ", "")
+    ultima = r.get("ultima_ocorrencia") or ""
+    historico = r.get("historico") or ""
+    desc = r.get("descricao_ocorrencia") or ""
+    compl = r.get("complemento_ocorrencia") or ""
+    codigo = (
+        match_codigo_from_text(ultima)
+        or match_codigo_from_text(desc)
+        or str(r.get("codigo") or codigo_consulta or "").strip()
+    )
+    nf = r.get("nf") or _nf_from_text(compl, historico, desc)
+    filial = r.get("filial") or _filial_from_ctrc(ctrc)
+    data_ocorr = r.get("data_ocorrencia") or _data_ocorr_from_text(historico, ultima, compl)
+    if not data_ocorr:
+        data_ocorr = r.get("data_emissao") or ""
+    ref = date.today()
+    d0 = _parse_br_date(data_ocorr) or _parse_br_date(r.get("data_emissao") or "")
+    aging = (ref - d0).days if d0 else 0
+    if aging < 0:
+        aging = 0
+    status = "solucionada" if codigo == CODIGO_SLA_POSITIVO else "aberta"
+    return {
+        **r,
+        "ctrc": ctrc,
+        "codigo": codigo,
+        "codigo_consulta": str(codigo_consulta or r.get("codigo_consulta") or "").strip(),
+        "descricao_codigo": label_ocorrencia(codigo),
+        "nf": nf,
+        "filial": filial.upper() if filial else "",
+        "data_ocorrencia": data_ocorr,
+        "aging_dias": str(aging),
+        "status_ace": status,
+        "valor_mercadoria": r.get("valor_mercadoria") or "",
+        "remetente": r.get("remetente") or "",
+        "destinatario": r.get("destinatario") or "",
+        "cidade": r.get("cidade") or "",
+        "uf": r.get("uf") or "",
+    }
+
+
 def parse_excel_31(path: Path | str, *, codigo_consulta: str = "") -> list[dict[str, str]]:
-    """Lê A,B,R,S,AM,AN. Última ocorrência = R; histórico = S (complemento)."""
+    """Lê Excel 031: cabeçalho dinâmico + fallback A,B,R,S,AM,AN."""
     from openpyxl import load_workbook
 
     p = Path(path)
@@ -103,35 +287,46 @@ def parse_excel_31(path: Path | str, *, codigo_consulta: str = "") -> list[dict[
     try:
         ws = wb.active
         rows_out: list[dict[str, str]] = []
+        header_map: dict[str, int] = {}
         for i, row in enumerate(ws.iter_rows(values_only=True), start=1):
             if not row:
                 continue
-            ctrc = _cell(row, COL_A_CTRC)
+            if not header_map and i <= 5:
+                guessed = _map_headers(row)
+                if guessed.get("ctrc"):
+                    header_map = guessed
+                    continue
+
+            def g(field: str, fallback_idx: int = 0) -> str:
+                if header_map.get(field):
+                    return _cell(row, header_map[field])
+                return _cell(row, fallback_idx) if fallback_idx else ""
+
+            ctrc = g("ctrc", COL_A_CTRC)
             if not ctrc:
                 continue
             up = ctrc.upper()
             if i <= 3 and ("CTRC" in up or "CONHEC" in up or "NUMERO" in up or "NÚMERO" in up):
                 continue
-            ultima = _cell(row, COL_R_ULTIMA)
-            historico = _cell(row, COL_S_COMPL_ULTIMA)
-            desc = _cell(row, COL_AM_DESC_OCORR)
-            compl = _cell(row, COL_AN_COMPL_OCORR)
-            codigo = match_codigo_from_text(ultima) or match_codigo_from_text(desc) or str(
-                codigo_consulta or ""
-            ).strip()
-            rows_out.append(
-                {
-                    "ctrc": ctrc.upper().replace(" ", ""),
-                    "data_emissao": _cell(row, COL_B_EMISSAO),
-                    "ultima_ocorrencia": ultima,
-                    "historico": historico,
-                    "codigo": codigo,
-                    "codigo_consulta": str(codigo_consulta or "").strip(),
-                    "descricao_ocorrencia": desc,
-                    "complemento_ocorrencia": compl,
-                    "descricao_codigo": label_ocorrencia(codigo),
-                }
-            )
+            base = {
+                "ctrc": ctrc,
+                "data_emissao": g("data_emissao", COL_B_EMISSAO),
+                "ultima_ocorrencia": g("ultima_ocorrencia", COL_R_ULTIMA),
+                "historico": g("historico", COL_S_COMPL_ULTIMA),
+                "descricao_ocorrencia": g("descricao_ocorrencia", COL_AM_DESC_OCORR),
+                "complemento_ocorrencia": g("complemento_ocorrencia", COL_AN_COMPL_OCORR),
+                "nf": g("nf"),
+                "remetente": g("remetente"),
+                "destinatario": g("destinatario"),
+                "filial": g("filial"),
+                "valor_mercadoria": g("valor_mercadoria"),
+                "data_ocorrencia": g("data_ocorrencia"),
+                "cidade": g("cidade"),
+                "uf": g("uf"),
+                "codigo": "",
+                "codigo_consulta": str(codigo_consulta or "").strip(),
+            }
+            rows_out.append(_enrich_row(base, codigo_consulta=codigo_consulta))
         return rows_out
     finally:
         wb.close()
@@ -141,45 +336,54 @@ def _parse_any(path: Path, codigo: str) -> list[dict[str, str]]:
     suf = path.suffix.lower()
     if suf in {".xlsx", ".xlsm", ".xls"}:
         return parse_excel_31(path, codigo_consulta=codigo)
-    # CSV fallback: tenta pelas posições se houver muitas colunas
     with path.open("r", encoding="utf-8-sig", errors="replace", newline="") as fh:
         sample = fh.read(4096)
         fh.seek(0)
         delim = ";" if sample.count(";") > sample.count(",") else ","
         reader = csv.reader(fh, delimiter=delim)
         out: list[dict[str, str]] = []
+        header_map: dict[str, int] = {}
         for i, cols in enumerate(reader, start=1):
             if not cols:
                 continue
-            ctrc = _clean(cols[0] if cols else "")
+            if not header_map and i <= 3:
+                guessed = _map_headers(cols)
+                if guessed.get("ctrc"):
+                    header_map = guessed
+                    continue
+
+            def g(field: str, fallback_idx: int = 0) -> str:
+                if header_map.get(field):
+                    idx = header_map[field]
+                    return _clean(cols[idx - 1]) if len(cols) >= idx else ""
+                return _clean(cols[fallback_idx - 1]) if fallback_idx and len(cols) >= fallback_idx else ""
+
+            ctrc = g("ctrc", COL_A_CTRC)
             if not ctrc or (i <= 2 and "CTRC" in ctrc.upper()):
                 continue
-
-            def g(idx: int) -> str:
-                return _clean(cols[idx - 1]) if len(cols) >= idx else ""
-
-            ultima = g(COL_R_ULTIMA)
-            historico = g(COL_S_COMPL_ULTIMA)
-            desc = g(COL_AM_DESC_OCORR)
-            codigo_m = match_codigo_from_text(ultima) or match_codigo_from_text(desc) or codigo
-            out.append(
-                {
-                    "ctrc": ctrc.upper().replace(" ", ""),
-                    "data_emissao": g(COL_B_EMISSAO),
-                    "ultima_ocorrencia": ultima,
-                    "historico": historico,
-                    "codigo": codigo_m,
-                    "codigo_consulta": codigo,
-                    "descricao_ocorrencia": desc,
-                    "complemento_ocorrencia": g(COL_AN_COMPL_OCORR),
-                    "descricao_codigo": label_ocorrencia(codigo_m),
-                }
-            )
+            base = {
+                "ctrc": ctrc,
+                "data_emissao": g("data_emissao", COL_B_EMISSAO),
+                "ultima_ocorrencia": g("ultima_ocorrencia", COL_R_ULTIMA),
+                "historico": g("historico", COL_S_COMPL_ULTIMA),
+                "descricao_ocorrencia": g("descricao_ocorrencia", COL_AM_DESC_OCORR),
+                "complemento_ocorrencia": g("complemento_ocorrencia", COL_AN_COMPL_OCORR),
+                "nf": g("nf"),
+                "remetente": g("remetente"),
+                "destinatario": g("destinatario"),
+                "filial": g("filial"),
+                "valor_mercadoria": g("valor_mercadoria"),
+                "data_ocorrencia": g("data_ocorrencia"),
+                "cidade": g("cidade"),
+                "uf": g("uf"),
+                "codigo": "",
+                "codigo_consulta": codigo,
+            }
+            out.append(_enrich_row(base, codigo_consulta=codigo))
         return out
 
 
 def _dedupe(rows: list[dict[str, str]]) -> list[dict[str, str]]:
-    """Um CTRC: mantém a linha cuja última ocorrência for a mais específica / última vista."""
     by: dict[str, dict[str, str]] = {}
     for r in rows:
         key = r.get("ctrc") or ""
@@ -189,7 +393,6 @@ def _dedupe(rows: list[dict[str, str]]) -> list[dict[str, str]]:
         if not prev:
             by[key] = r
             continue
-        # Prefer linha com código conhecido na última ocorrência
         score_new = 2 if r.get("codigo") in OCORR_PENDENCIA else 1
         score_old = 2 if prev.get("codigo") in OCORR_PENDENCIA else 1
         if score_new >= score_old:
@@ -198,7 +401,6 @@ def _dedupe(rows: list[dict[str, str]]) -> list[dict[str, str]]:
 
 
 def _format_periodo_display(periodo: str) -> str:
-    """010826-070826 → 01/08/26 – 07/08/26"""
     raw = str(periodo or "").strip()
     digits = "".join(ch for ch in raw if ch.isdigit())
     if len(digits) == 12:
@@ -235,21 +437,29 @@ def analyze_reports_31(
         except Exception as err:  # noqa: BLE001
             status(f"[31/{code}] parse falhou: {err}")
 
-    uniq = _dedupe(all_rows)
-    # Garante classificação pela última ocorrência
+    uniq = [_enrich_row(r) for r in _dedupe(all_rows)]
     for r in uniq:
         if not r.get("codigo"):
             r["codigo"] = match_codigo_from_text(r.get("ultima_ocorrencia") or "") or r.get(
                 "codigo_consulta", ""
             )
         r["descricao_codigo"] = label_ocorrencia(r.get("codigo") or "")
+        r["status_ace"] = "solucionada" if r.get("codigo") == CODIGO_SLA_POSITIVO else "aberta"
 
     counts = Counter(str(r.get("codigo") or "").strip() for r in uniq if r.get("codigo"))
     total = len(uniq)
     solucionadas = int(counts.get(CODIGO_SLA_POSITIVO, 0))
-    abertas = max(0, total - solucionadas)
+    abertas_rows = [r for r in uniq if r.get("status_ace") != "solucionada"]
+    abertas = len(abertas_rows)
     sla_pct_num = (100.0 * solucionadas / total) if total else 0.0
     sla_pct = f"{sla_pct_num:.1f}".replace(".", ",")
+
+    valor_risco = sum(_parse_money(r.get("valor_mercadoria") or "") for r in abertas_rows)
+    aging_vals = [int(r.get("aging_dias") or 0) for r in abertas_rows]
+    sla_medio = (sum(aging_vals) / len(aging_vals)) if aging_vals else 0.0
+    aging_0_2 = sum(1 for d in aging_vals if d <= 2)
+    aging_3_5 = sum(1 for d in aging_vals if 3 <= d <= 5)
+    aging_6 = sum(1 for d in aging_vals if d > 5)
 
     ofensores: list[dict[str, Any]] = []
     for code, qtd in counts.most_common():
@@ -264,7 +474,6 @@ def analyze_reports_31(
                 "polaridade": pol,
             }
         )
-    # SLA: positivo (63) primeiro, depois ofensores por volume
     ofensores.sort(
         key=lambda o: (
             0 if o.get("polaridade") == "pos" else 1,
@@ -272,7 +481,6 @@ def analyze_reports_31(
         )
     )
 
-    # Topo ofensor = maior negativo (não a solucionada)
     ofens_neg = [o for o in ofensores if o.get("polaridade") != "pos"]
     topo = ofens_neg[0] if ofens_neg else {"codigo": "", "label": "—", "qtd": 0}
     now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -285,6 +493,11 @@ def analyze_reports_31(
             "solucionadas": solucionadas,
             "abertas": abertas,
             "sla_pct": sla_pct,
+            "sla_medio_dias": f"{sla_medio:.1f}".replace(".", ","),
+            "valor_risco": _fmt_money(valor_risco),
+            "aging_0_2": aging_0_2,
+            "aging_3_5": aging_3_5,
+            "aging_6_mais": aging_6,
             "topo_codigo": topo.get("codigo") or "",
             "topo_label": topo.get("label") or "—",
             "topo_qtd": int(topo.get("qtd") or 0),
@@ -300,6 +513,8 @@ def analyze_reports_31(
         "solucionadas": solucionadas,
         "abertas": abertas,
         "sla_pct": sla_pct,
+        "sla_medio_dias": resumo[0]["sla_medio_dias"],
+        "valor_risco": resumo[0]["valor_risco"],
         "ofensores": ofensores[:12],
         "resumo": resumo[0],
         "periodo": periodo_fmt,

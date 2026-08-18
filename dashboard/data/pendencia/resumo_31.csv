@@ -1,2 +1,2 @@
-﻿periodo,atualizado,total_ctrcs,total_codigos,solucionadas,abertas,sla_pct,topo_codigo,topo_label,topo_qtd
-01/08/26 – 18/08/26,18/08/2026 15:04:53,358,4,166,192,"46,4",60,FALTA COM BUSCA / RECONFERENCIA,106
+﻿periodo,atualizado,total_ctrcs,total_codigos,solucionadas,abertas,sla_pct,sla_medio_dias,valor_risco,aging_0_2,aging_3_5,aging_6_mais,topo_codigo,topo_label,topo_qtd
+01/08/26 – 18/08/26,18/08/2026 15:04:53,358,4,166,192,"46,4","10,9","0,00",35,30,127,60,FALTA COM BUSCA / RECONFERENCIA,106
