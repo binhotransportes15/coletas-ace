@@ -1,31 +1,31 @@
 {
   "setor": "pendencia",
-  "updated_at": "2026-08-18T11:04:21",
+  "updated_at": "2026-08-18T12:59:32",
   "resumo_31": {
     "periodo": "01/08/26 – 18/08/26",
-    "atualizado": "18/08/2026 11:04:21",
-    "total_ctrcs": "344",
+    "atualizado": "18/08/2026 12:59:32",
+    "total_ctrcs": "345",
     "total_codigos": "4",
-    "solucionadas": "157",
-    "abertas": "187",
-    "sla_pct": "45,6",
+    "solucionadas": "166",
+    "abertas": "179",
+    "sla_pct": "48,1",
     "topo_codigo": "60",
     "topo_label": "FALTA COM BUSCA / RECONFERENCIA",
-    "topo_qtd": "107"
+    "topo_qtd": "96"
   },
   "ofensores": [
     {
       "codigo": "63",
       "label": "PENDENCIA SOLUCIONADA",
-      "qtd": "157",
-      "pct": "45,6",
+      "qtd": "166",
+      "pct": "48,1",
       "polaridade": "pos"
     },
     {
       "codigo": "60",
       "label": "FALTA COM BUSCA / RECONFERENCIA",
-      "qtd": "107",
-      "pct": "31,1",
+      "qtd": "96",
+      "pct": "27,8",
       "polaridade": "neg"
     },
     {
@@ -38,8 +38,8 @@
     {
       "codigo": "80",
       "label": "PENDENCIA EM TRATATIVA",
-      "qtd": "20",
-      "pct": "5,8",
+      "qtd": "23",
+      "pct": "6,7",
       "polaridade": "neg"
     }
   ]

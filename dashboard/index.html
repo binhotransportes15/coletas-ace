@@ -6695,6 +6695,12 @@
       font-variant-numeric: tabular-nums;
     }
     .arm-rail-card.is-late .tempo { color: #fca5a5; font-weight: 700; }
+    .arm-rail-card.is-patio {
+      border-color: rgba(56, 189, 248, 0.4);
+      background: rgba(12, 74, 110, 0.28);
+    }
+    .arm-rail-card.is-patio .tempo { color: #7dd3fc; font-weight: 700; }
+    .arm-rail-right .arm-rail-title { color: #7dd3fc; }
     .arm-rail-empty {
       color: #64748b;
       font-size: 11px;
@@ -7661,9 +7667,9 @@
                   </div>
                 </div>
               </div>
-              <aside class="arm-rail arm-rail-right" aria-label="Veículos sem chegada (cont.)">
-                <div class="arm-rail-title">Veículos sem chegada</div>
-                <div class="arm-rail-list" id="armSemChegadaR"></div>
+              <aside class="arm-rail arm-rail-right" aria-label="Veículos com chegada (no pátio)">
+                <div class="arm-rail-title">Com chegada · no pátio</div>
+                <div class="arm-rail-list" id="armComChegadaR"></div>
               </aside>
             </div>
           </section>
@@ -10369,13 +10375,15 @@
       const iniDt = parseArmDt(ini);
       // Início no futuro (HOJE sticky) → não marcar descarregando
       if (iniDt && (iniDt.getTime() - Date.now()) > 60000) {
-        if (armStripOperador(v.chegada)) return 'chegou';
+        if (armStripOperador(v.chegada) || stCsv === 'chegou') return 'chegou';
         return stCsv === 'atrasado' ? 'atrasado' : (stCsv || 'aguardando');
       }
       if (armDescargaAtrasada(v)) return 'atrasado';
       if (ini) {
         return stCsv === 'atrasado' ? 'atrasado' : 'descarregando';
       }
+      // Chegada preenchida = no pátio (não depende só do status do CSV)
+      if (armStripOperador(v.chegada) || stCsv === 'chegou') return 'chegou';
       return stCsv || 'aguardando';
     }
 
@@ -10426,6 +10434,14 @@
       return st === 'aguardando' || st === 'atrasado' || !st;
     }
 
+    /** No pátio: chegou e ainda não iniciou descarga. */
+    function armIsComChegada(v) {
+      if (armStripOperador(v.final_descarga)) return false;
+      if (armStripOperador(v.inicio_descarga)) return false;
+      const st = String(armStatusEfetivo(v) || '').toLowerCase();
+      return st === 'chegou' || !!armStripOperador(v.chegada);
+    }
+
     /** Tempo relativo à previsão de chegada (sem chegada registrada). */
     function armTempoSemChegada(v) {
       const prev = parseArmDt(armStripOperador(v.prev_chegada));
@@ -10437,6 +10453,16 @@
         return { text: `atrasado ${txt}`, late: absMin >= 60, sort: delta };
       }
       return { text: `chega em ${txt}`, late: false, sort: delta };
+    }
+
+    /** Tempo desde a chegada (veículo no pátio). */
+    function armTempoComChegada(v) {
+      const cheg = parseArmDt(armStripOperador(v.chegada));
+      if (!cheg) return { text: 'no pátio', late: false, sort: 0 };
+      const delta = Date.now() - cheg.getTime();
+      const mins = Math.max(0, Math.round(delta / 60000));
+      const txt = armFmtDuracao(mins) || '0min';
+      return { text: `há ${txt}`, late: mins >= 180, sort: delta };
     }
 
     function listArmSemChegada(veics) {
@@ -10456,35 +10482,50 @@
       return rows;
     }
 
+    function listArmComChegada(veics) {
+      const rows = (veics || []).filter(armIsComChegada).map((v) => {
+        const t = armTempoComChegada(v);
+        return {
+          ...v,
+          _uf: armUfOrigem(v),
+          _cidade: labelOrigemArm(v.origem || v.origem_sigla || ''),
+          _sigla: String(v.origem_sigla || '').trim().toUpperCase() || '—',
+          _tempo: t.text,
+          _late: t.late,
+          _patio: true,
+          _sort: t.sort,
+        };
+      });
+      rows.sort((a, b) => b._sort - a._sort);
+      return rows;
+    }
+
     function renderArmSemChegadaRails(veics) {
       const left = document.getElementById('armSemChegadaL');
-      const right = document.getElementById('armSemChegadaR');
+      const right = document.getElementById('armComChegadaR')
+        || document.getElementById('armSemChegadaR');
       if (!left || !right) return;
-      const list = listArmSemChegada(veics);
       const cardHtml = (v) => {
         const sigla = v._sigla && v._sigla !== '—' ? v._sigla : '';
         const cidade = v._cidade || '—';
         const origLine = sigla && cidade.toUpperCase() !== sigla
           ? `<span class="uf">${esc(v._uf)}</span>${esc(sigla)} · ${esc(cidade)}`
           : `<span class="uf">${esc(v._uf)}</span>${esc(cidade)}`;
-        return `<div class="arm-rail-card${v._late ? ' is-late' : ''}">
+        const cls = v._patio ? ' is-patio' : (v._late ? ' is-late' : '');
+        return `<div class="arm-rail-card${cls}">
           <div class="orig">${origLine}</div>
           <div class="plates">${esc(v.cavalo || '—')}<span class="sep">·</span>${esc(v.carreta || '—')}</div>
           <div class="tempo">${esc(v._tempo)}</div>
         </div>`;
       };
-      if (!list.length) {
-        left.innerHTML = '<div class="arm-rail-empty">Nenhum manifesto sem chegada</div>';
-        right.innerHTML = '<div class="arm-rail-empty">—</div>';
-        return;
-      }
-      const mid = Math.ceil(list.length / 2);
-      const a = list.slice(0, mid);
-      const b = list.slice(mid);
-      left.innerHTML = a.map(cardHtml).join('');
-      right.innerHTML = b.length
-        ? b.map(cardHtml).join('')
-        : '<div class="arm-rail-empty">—</div>';
+      const sem = listArmSemChegada(veics);
+      const com = listArmComChegada(veics);
+      left.innerHTML = sem.length
+        ? sem.map(cardHtml).join('')
+        : '<div class="arm-rail-empty">Nenhum sem chegada</div>';
+      right.innerHTML = com.length
+        ? com.map(cardHtml).join('')
+        : '<div class="arm-rail-empty">Nenhum no pátio</div>';
     }
 
     function armDescargaMaisDe4h(v) {
@@ -10721,6 +10762,10 @@
           const b = Number(r.tempo_descarga_min) || 0;
           if (b >= a) slot.tempo_descarga_min = r.tempo_descarga_min;
         }
+        // Qualquer manifesto com chegada/início/fim deve subir para o veículo
+        if ((r.chegada || '').trim() && !(slot.chegada || '').trim()) {
+          slot.chegada = r.chegada;
+        }
         if ((r.inicio_descarga || '').trim() && !(slot.inicio_descarga || '').trim()) {
           slot.inicio_descarga = r.inicio_descarga;
         }
@@ -10743,6 +10788,7 @@
           slot.tempo_descarga = r.tempo_descarga;
           slot.inicio_descarga = r.inicio_descarga || slot.inicio_descarga;
           slot.final_descarga = r.final_descarga || slot.final_descarga;
+          slot.chegada = r.chegada || slot.chegada;
         }
       }
       const out = [...map.values()];

@@ -358,16 +358,24 @@ def analyze_78(
         )
         slot["peso"] += i.peso_num
         slot["manifestos"] += 1
+        # Qualquer manifesto com chegada sobe para o veículo
+        if i.chegada and not slot.get("chegada"):
+            slot["chegada"] = i.chegada
         # prioridade operacional na TV (atrasado > descarregando > …)
         if rank.get(i.status, 9) < rank.get(slot["status"], 9):
             slot["status"] = i.status
             slot["origem"] = i.origem
             slot["origem_sigla"] = i.origem_sigla
-            slot["chegada"] = i.chegada
+            slot["chegada"] = i.chegada or slot.get("chegada") or ""
             slot["prev_chegada"] = i.prev_chegada
             slot["tempo_descarga"] = i.tempo_descarga
         elif i.tempo_descarga and not slot.get("tempo_descarga"):
             slot["tempo_descarga"] = i.tempo_descarga
+
+    # Recalcula status do veículo com chegada consolidada
+    for slot in veiculos.values():
+        if slot.get("chegada") and slot.get("status") in {"aguardando", ""}:
+            slot["status"] = "chegou"
 
     counts = {"finalizado": 0, "descarregando": 0, "atrasado": 0, "aguardando": 0, "chegou": 0}
     for slot in veiculos.values():
