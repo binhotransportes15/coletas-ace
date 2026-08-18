@@ -666,6 +666,7 @@ class AceSswClient:
           Excel = S
           Unidade = sempre SPO (entregas)
           Periodo = seg: SEXTA..hoje | demais: D-1..hoje (DDMMYY)
+          Parser: só emissão ≥19:00 do dia-base (col. D = hora)
           Gerar = #btn_env_periodo → ajaxEnvia('REL2')
         """
         unidade = "SPO"

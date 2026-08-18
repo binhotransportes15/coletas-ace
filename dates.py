@@ -125,7 +125,8 @@ def periodo_36_ontem_hoje(hoje: date | datetime | None = None) -> tuple[str, str
       (sexta, sabado, domingo e segunda).
     - Demais dias: D-1 (ontem) → HOJE.
 
-    O parser continua descartando ocorrencia = ontem de calendario.
+    O parser filtra emissão: a partir de 19:00 do dia-base
+    (sexta na segunda; ontem nos demais dias) até agora.
     """
     today = _as_date(hoje)
     if today.weekday() == 0:  # segunda
@@ -133,6 +134,27 @@ def periodo_36_ontem_hoje(hoje: date | datetime | None = None) -> tuple[str, str
     else:
         ini = today - timedelta(days=1)
     return to_ddmm(ini), to_ddmm(today)
+
+
+def data_corte_emissao_36(hoje: date | datetime | None = None) -> date:
+    """Dia-base do corte 19:00 (sexta na segunda; ontem nos demais)."""
+    today = _as_date(hoje)
+    if today.weekday() == 0:  # segunda
+        return today - timedelta(days=3)
+    return today - timedelta(days=1)
+
+
+def datetime_corte_emissao_36(hoje: date | datetime | None = None) -> datetime:
+    """
+    Início do ciclo operacional do 36 / mapa / distribuição.
+
+    Inclui tudo emitido a partir de 19:00 do dia-base até o fim de hoje.
+    Segunda → sexta 19:00; demais dias → ontem 19:00.
+    """
+    from datetime import time as _time
+
+    base = data_corte_emissao_36(hoje)
+    return datetime.combine(base, _time(19, 0))
 
 
 def periodo_semana_seg_dom(hoje: date | datetime | None = None) -> tuple[str, str]:

@@ -2,9 +2,10 @@
 BINHO · ACE CRT — painel de gestão operacional (UI profissional).
 
 Layout:
-  sidebar → navegação + status do sistema
-  main    → KPIs · status dos setores · log · comandos rápidos · info
-  Menu (janela) → Configuração | Automação | Local | TV | Marca | Gestão
+  sidebar → navegação (operação + sistema)
+  main    → KPIs · status · log/prompt · ações + info
+  Menu (F2) → Configuração | Automação | Local | TV | Gestão
+  Comandos → janela à parte (relatórios SSW)
 
   python ace_crt.py
   ace.bat crt
@@ -358,7 +359,7 @@ _SECTOR_GUIDE: tuple[dict[str, str], ...] = (
         "flag": "dist_in_loop",
         "interval": "dist_intervalo",
         "reports": "50 · 103 · 36 · 225",
-        "blurb": "Coletas do dia, torres/limites, entregas/romaneios e agendamentos.",
+        "blurb": "Coletas do dia, torres/limites, entregas (36: ciclo ≥19h) e agendamentos.",
     },
     {
         "id": "78",
@@ -2354,6 +2355,9 @@ class AceCrtConsole(QWidget):
         self._sector_meters: dict[str, SectorMeterRow] = {}
         self._menu_win: AceCrtMenuWindow | None = None
         self._rapido_win: AceCrtRapidoWindow | None = None
+        # Intervalo opcional p/ Iniciar Automação (valor real = aba Automação)
+        self.auto_iv = QLineEdit()
+        self.auto_iv.hide()
 
         # registra PID para spawn_crt não abrir duplicata
         try:
@@ -2384,7 +2388,7 @@ class AceCrtConsole(QWidget):
         foot_row.setContentsMargins(16, 0, 16, 10)
         self.foot = QLabel("© 2026 Binho Gestão — Sistema de Gestão Operacional")
         self.foot.setObjectName("foot")
-        self.foot_right = QLabel("Atalhos: F2 Menu · F11 Tela Cheia · ESC Parar")
+        self.foot_right = QLabel("F2 Menu · F11 Tela cheia · ESC Parar · sidebar → Comandos")
         self.foot_right.setObjectName("foot")
         self.foot_right.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         foot_row.addWidget(self.foot, 1)
@@ -2421,7 +2425,11 @@ class AceCrtConsole(QWidget):
         self._timer.start(250)
 
         self._reload_payload()
-        self._append_log("sistema", "Pronto. Digite um comando ou use os atalhos da direita.", mirror=True)
+        self._append_log(
+            "sistema",
+            "Pronto. Use a sidebar (setores), Comandos, o prompt ou Ações à direita.",
+            mirror=True,
+        )
         self._seed_sector_bars_from_config(persist=True)
         try:
             entries, self._log_offset = read_log_since(0)
@@ -2527,17 +2535,12 @@ class AceCrtConsole(QWidget):
             ("mapa", "Mapa"),
         ):
             add_nav(key, label)
-        g2 = QLabel("MONITORAMENTO")
+        g2 = QLabel("SISTEMA")
         g2.setObjectName("navGroup")
         lay.addWidget(g2)
-        add_nav("logs", "Logs do Sistema")
-        add_nav("rel", "Relatórios")
-        add_nav("ag", "Agendamentos")
-        g3 = QLabel("CONFIGURAÇÕES")
-        g3.setObjectName("navGroup")
-        lay.addWidget(g3)
+        add_nav("logs", "Logs")
+        add_nav("rapido", "Comandos")
         add_nav("cfg", "Configurações")
-        add_nav("rapido", "Comandos Rápidos")
         add_nav("help", "Ajuda")
         lay.addStretch(1)
 
@@ -2590,18 +2593,15 @@ class AceCrtConsole(QWidget):
             titles = {g["id"]: g["title"] for g in _SECTOR_GUIDE}
             if hasattr(self, "page_title"):
                 self.page_title.setText(titles.get(key, key))
-                self.page_sub.setText("Setor operacional — use Comandos Rápidos ou o prompt")
+                self.page_sub.setText("Setor operacional — progresso à esquerda · log ao centro")
             self.run_command(cmd_map[key])
             return
         if key == "logs":
             if hasattr(self, "log"):
                 self.log.setFocus(Qt.OtherFocusReason)
-            return
-        if key == "rel":
-            self._show_menu_window("automacao")
-            return
-        if key == "ag":
-            self.run_command("225")
+            if hasattr(self, "page_title"):
+                self.page_title.setText("Logs")
+                self.page_sub.setText("Histórico de execução e mensagens do sistema")
             return
         if key == "cfg":
             self._show_menu_window("config")
@@ -2612,14 +2612,13 @@ class AceCrtConsole(QWidget):
         if key == "help":
             self.run_command("/help")
             return
-
     def _build_main(self) -> QWidget:
         wrap = QWidget()
         lay = QVBoxLayout(wrap)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(10)
 
-        # Cabeçalho
+        # Cabeçalho — título + ações de janela (tema fica no Menu → Configuração)
         head = QHBoxLayout()
         titles = QVBoxLayout()
         titles.setSpacing(2)
@@ -2635,17 +2634,13 @@ class AceCrtConsole(QWidget):
         self.mode.setObjectName("mode")
         self.mode.hide()
 
-        lab_theme = QLabel("Tema")
-        lab_theme.setObjectName("mode")
+        # Combo de tema (oculto na barra; usado pelo Menu / persistência)
         self.cmb_theme = QComboBox()
         for tid, meta in CRT_THEMES.items():
             self.cmb_theme.addItem(str(meta["label"]), tid)
-        self.cmb_theme.setMinimumWidth(120)
-        self.cmb_theme.setToolTip("Tema visual do painel")
+        self.cmb_theme.hide()
         self.cmb_theme.currentIndexChanged.connect(self._on_theme_combo)
-        head.addWidget(lab_theme)
-        head.addWidget(self.cmb_theme)
-        head.addSpacing(8)
+
         self.btn_lock = QPushButton("Bloquear")
         self.btn_lock.setObjectName("menuBtn")
         self.btn_lock.setToolTip("Trava o painel com cadeado (automação continua)")
@@ -2653,7 +2648,7 @@ class AceCrtConsole(QWidget):
         head.addWidget(self.btn_lock)
         self.btn_menu = QPushButton("Menu")
         self.btn_menu.setObjectName("menuBtn")
-        self.btn_menu.setToolTip("Abrir menu de configuração (F2)")
+        self.btn_menu.setToolTip("Configuração, automação, local e TV (F2)")
         self.btn_menu.clicked.connect(self._toggle_menu_window)
         head.addWidget(self.btn_menu)
         lay.addLayout(head)
@@ -2720,15 +2715,12 @@ class AceCrtConsole(QWidget):
         lay = QVBoxLayout(box)
         lay.setContentsMargins(14, 12, 14, 12)
         lay.setSpacing(8)
-        head = QHBoxLayout()
         self.cmd_section = self._section("Log do Sistema")
-        head.addWidget(self.cmd_section)
-        head.addStretch(1)
-        self.btn_rapido = QPushButton("Comandos rápidos")
-        self.btn_rapido.setObjectName("menuBtn")
+        lay.addWidget(self.cmd_section)
+        # Compat: botão antigo (sidebar → Comandos)
+        self.btn_rapido = QPushButton("Comandos")
+        self.btn_rapido.hide()
         self.btn_rapido.clicked.connect(self._toggle_rapido_window)
-        head.addWidget(self.btn_rapido)
-        lay.addLayout(head)
 
         self.log = QTextEdit()
         self.log.setObjectName("crtLog")
@@ -2740,7 +2732,7 @@ class AceCrtConsole(QWidget):
 
         prompt_row = QHBoxLayout()
         self.prompt = QLineEdit()
-        self.prompt.setPlaceholderText("Digite um comando rápido…")
+        self.prompt.setPlaceholderText("Comando (ex.: 50, 36, mapa, sync)…")
         self.prompt.returnPressed.connect(self._submit_prompt)
         self.btn_run = QPushButton("Enviar")
         self.btn_run.setObjectName("primary")
@@ -2762,13 +2754,12 @@ class AceCrtConsole(QWidget):
         cl = QVBoxLayout(cmds)
         cl.setContentsMargins(14, 12, 14, 12)
         cl.setSpacing(8)
-        cl.addWidget(self._section("Comandos Rápidos"))
+        cl.addWidget(self._section("Ações"))
         actions = (
             ("Iniciar Automação", "#3b82f6", lambda: self._start_automatica_ui()),
             ("Parar Automação", "#ef4444", lambda: self._stop_all()),
             ("Forçar Atualização", "#38bdf8", lambda: self.run_command("sync")),
-            ("Ver Relatórios", "#f59e0b", lambda: self._show_menu_window("automacao")),
-            ("Ver Logs", "#94a3b8", lambda: self.log.setFocus(Qt.OtherFocusReason)),
+            ("Comandos SSW…", "#22c55e", lambda: self._toggle_rapido_window()),
         )
         for title, color, slot in actions:
             btn = ProActionButton(title, color)
@@ -2781,7 +2772,7 @@ class AceCrtConsole(QWidget):
         il = QVBoxLayout(info)
         il.setContentsMargins(14, 12, 14, 12)
         il.setSpacing(6)
-        il.addWidget(self._section("Informações do Sistema"))
+        il.addWidget(self._section("Sistema"))
         self._info_rows: dict[str, QLabel] = {}
         for key, label in (
             ("sessao", "Sessão"),
@@ -2804,7 +2795,6 @@ class AceCrtConsole(QWidget):
             il.addLayout(row)
         lay.addWidget(info, 1)
         return wrap
-
     def _start_automatica_ui(self) -> None:
         try:
             iv = ""
@@ -2845,7 +2835,7 @@ class AceCrtConsole(QWidget):
                 [
                     ("Coletas", "50", "Baixa coletas do dia (SSW 0157) e atualiza torres/KPIs.", "50"),
                     ("Torres / limites", "103", "Situação das coletas: limites, status e torres.", "103"),
-                    ("Entregas", "36", "Romaneios e entregas do dia na operação.", "36"),
+                    ("Entregas", "36", "Romaneios/CTRCs do ciclo (D-1≥19h · seg=sexta≥19h).", "36"),
                     ("Agendamentos", "225", "Agenda de amanhã / coletas agendadas.", "225"),
                 ],
             ),
@@ -2965,15 +2955,15 @@ class AceCrtConsole(QWidget):
             win.raise_()
             win.activateWindow()
             return
-        # posiciona perto do botão / canto do CRT
+        # posiciona perto do CRT (botão legado pode estar oculto)
         try:
             btn = getattr(self, "btn_rapido", None)
-            if btn is not None:
+            if btn is not None and btn.isVisible():
                 g = btn.mapToGlobal(btn.rect().bottomRight())
                 win.move(max(40, g.x() - win.width() + 20), g.y() + 8)
             else:
                 g = self.mapToGlobal(self.rect().topRight())
-                win.move(max(40, g.x() - win.width() - 20), g.y() + 60)
+                win.move(max(40, g.x() - win.width() - 24), g.y() + 72)
         except Exception:
             pass
         self._sync_rapido_window_chrome()
@@ -3142,9 +3132,10 @@ class AceCrtConsole(QWidget):
         form.setLabelAlignment(Qt.AlignLeft)
         form.setSpacing(8)
 
-        form.addRow(self._section("Logo das dashboards"))
+        form.addRow(self._section("Logo das dashboards (opcional)"))
         logo_tip = QLabel(
-            "Altera só a marca nas telas (GitHub Pages, Sites e local). "
+            "Telão: as telas mostram só o nome do setor (sem logo nem relógio). "
+            "A marca é opcional — use Mostrar/Ocultar. "
             "O tema do painel CRT é independente."
         )
         logo_tip.setObjectName("hint")
@@ -3190,9 +3181,9 @@ class AceCrtConsole(QWidget):
         form.addRow("URL online", wrap_url)
 
         vis = QHBoxLayout()
-        btn_show = QPushButton("Mostrar nas dashboards")
+        btn_show = QPushButton("Mostrar logo nas telas")
         btn_show.clicked.connect(self._brand_show_all)
-        btn_hide = QPushButton("Ocultar nas dashboards")
+        btn_hide = QPushButton("Ocultar logo (telão)")
         btn_hide.clicked.connect(self._brand_hide_all)
         btn_pub = QPushButton("Publicar logo")
         btn_pub.setObjectName("primary")
@@ -4048,7 +4039,14 @@ class AceCrtConsole(QWidget):
         lay.setContentsMargins(10, 10, 10, 10)
         lay.setSpacing(8)
 
-        # Sem códigos · sem repetir o bloco Rápido do centro
+        tip = QLabel(
+            "Ações administrativas. Relatórios do dia a dia ficam em "
+            "Comandos (sidebar) · Automação / Local / TV nas outras abas."
+        )
+        tip.setObjectName("hint")
+        tip.setWordWrap(True)
+        lay.addWidget(tip)
+
         lay.addWidget(self._section("Equipe"))
         for label, cmd in (
             ("Atualizar conferentes", "177"),
@@ -4058,34 +4056,17 @@ class AceCrtConsole(QWidget):
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
             lay.addWidget(b)
 
-        lay.addWidget(self._section("Armazém"))
+        lay.addWidget(self._section("Publicação parcial"))
         for label, cmd in (
             ("Enviar só o armazém", "sync78"),
-        ):
-            b = QPushButton(label)
-            b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
-            lay.addWidget(b)
-
-        lay.addWidget(self._section("Pendência"))
-        for label, cmd in (
-            ("Puxar pendência (10 códigos · SLA)", "31"),
             ("Enviar só a pendência", "sync31"),
         ):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
             lay.addWidget(b)
 
-        lay.addWidget(self._section("Mapa Operacional"))
+        lay.addWidget(self._section("Contratação (avançado)"))
         for label, cmd in (
-            ("Puxar mapa (50 · 103 · 36)", "mapa"),
-        ):
-            b = QPushButton(label)
-            b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
-            lay.addWidget(b)
-
-        lay.addWidget(self._section("Contratação (hoje)"))
-        for label, cmd in (
-            ("Puxar 073→filiais 200 (frete)", "73"),
             ("Só 073 hoje (sem frete 200)", "73 so73"),
         ):
             b = QPushButton(label)
@@ -4097,33 +4078,10 @@ class AceCrtConsole(QWidget):
             ("Ver situação da publicação", "status"),
             ("Publicar no site", "push"),
             ("Trazer atualizações", "pull"),
-            ("Ajuda", "help"),
         ):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
             lay.addWidget(b)
-
-        # Automático: preferir aba Automação (tempos por setor)
-        lay.addWidget(self._section("Atualização contínua"))
-        tip = QLabel("Tempos e setores: aba Automação · aqui só liga/para rápido")
-        tip.setObjectName("hint")
-        tip.setWordWrap(True)
-        lay.addWidget(tip)
-        row = QHBoxLayout()
-        self.auto_iv = QLineEdit()
-        self.auto_iv.setPlaceholderText("opcional · força fallback (ex.: 5m)")
-        btn_auto = QPushButton("Iniciar")
-        btn_auto.setObjectName("primary")
-        btn_auto.clicked.connect(self._start_auto)
-        btn_stop = QPushButton("Parar")
-        btn_stop.clicked.connect(self._stop_auto)
-        btn_goto = QPushButton("Abrir Automação")
-        btn_goto.clicked.connect(self._goto_automacao_tab)
-        row.addWidget(self.auto_iv, 1)
-        row.addWidget(btn_auto)
-        row.addWidget(btn_stop)
-        lay.addLayout(row)
-        lay.addWidget(btn_goto)
 
         lay.addStretch(1)
         scroll.setWidget(body)

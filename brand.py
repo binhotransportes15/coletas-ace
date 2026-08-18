@@ -22,8 +22,8 @@ DEFAULT_CRT_CUBES = ASSETS / "cubes-binho.png"
 def default_brand() -> dict[str, Any]:
     return {
         "version": 1,
-        "visible": True,
-        "mode": "file",  # file | url | hidden
+        "visible": False,  # telão: logo opcional (Menu CRT → Mostrar)
+        "mode": "hidden",  # file | url | hidden
         "file": "logo-binho.png",
         "url": "",
         "crtAsset": "brain-circuit.png",

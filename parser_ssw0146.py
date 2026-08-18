@@ -5,11 +5,12 @@ import csv
 import json
 import re
 from dataclasses import asdict, dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any
 
 from config import BASE_DIR, ensure_dirs
+from dates import datetime_corte_emissao_36
 from ocorrencias_realizadas import is_ocorrencia_realizada
 
 CACHE_DIR = BASE_DIR / "data" / "cache"
@@ -19,10 +20,13 @@ RESUMO_36_CSV = CACHE_DIR / "resumo_36.csv"
 LAST_36_JSON = CACHE_DIR / "last_run_36.json"
 
 # Indices 0-based no CSV com coluna tipo na posicao 0 (= Excel A)
-# B=1 ROMANEIO, E=4 SITUACAO, F=5 PLACA, H=7 MOTORISTA, M=12 CTRC,
-# P=15 DESTINATARIO, Z=25 DESC OCORR ROM, AA=26 DATA OCORR ROM, AB=27 HORA OCORR ROM,
+# B=1 ROMANEIO, C=2 DATA EMISSAO, D=3 HORA EMISSAO, E=4 SITUACAO, F=5 PLACA,
+# H=7 MOTORISTA, M=12 CTRC, P=15 DESTINATARIO,
+# Z=25 DESC OCORR ROM, AA=26 DATA OCORR ROM, AB=27 HORA OCORR ROM,
 # AD=29 DESC OCORR CTRC, AE=30 DATA OCORR CTRC, AF=31 HORA OCORR CTRC
 IDX_ROMANEIO = 1
+IDX_DATA_EMISSAO = 2  # Excel C
+IDX_HORA_EMISSAO = 3  # Excel D — horário de emissão
 IDX_SITUACAO = 4
 IDX_PLACA = 5
 IDX_CARRETA = 6
@@ -48,6 +52,8 @@ ENTREGA_36_FIELDS = [
     "ocorrencia",
     "data_ocorrencia",
     "hora_ocorrencia",
+    "data_emissao",
+    "hora_emissao",
     "excluido",
     "motivo_exclusao",
 ]
@@ -87,6 +93,8 @@ class EntregaCtrc:
     ocorrencia: str = ""
     data_ocorrencia: str = ""
     hora_ocorrencia: str = ""
+    data_emissao: str = ""
+    hora_emissao: str = ""
     excluido: bool = False
     motivo_exclusao: str = ""
     extras: dict[str, str] = field(default_factory=dict)
@@ -149,16 +157,16 @@ def mapear_status_entrega(
 ) -> tuple[str, bool, str]:
     """
     Retorna (status_ace, excluido, motivo).
-    - data ocorrencia = ontem → excluir
     - ocorrencia vazia → em_rota
     - ENTREGA REALIZADA [COM RESSALVAS] → realizada
     - MERCADORIA PRE-ENTREGUE (MOBILE) → realizada
     - contem SAIDA PARA ENTREGA → em_rota
     - outra ocorrencia → pendencia
     - SITUACAO PENDENTE reforça em_rota se nao for realizada
+
+    O corte por emissão (≥19h do dia-base) é feito em parse_ssw0146.
     """
-    ref = hoje or date.today()
-    ontem = ref - timedelta(days=1)
+    _ = (data_ocorr, hoje)  # data ocorrência não exclui mais o CTRC
     sit = _clean(situacao).upper()
     ocorr = _clean(ocorrencia).upper()
     # Normaliza acentos p/ bater SAIDA/SAÍDA etc.
@@ -176,9 +184,6 @@ def mapear_status_entrega(
         .replace("Ú", "U")
         .replace("Ç", "C")
     )
-
-    if data_ocorr is not None and data_ocorr == ontem:
-        return "excluido", True, "ocorrencia_ontem"
 
     # Realizado (inclui COM RESSALVAS, pré-entrega mobile e ocorrências de baixa/encerramento)
     if "ENTREGA REALIZADA" in ocorr_n:
@@ -199,6 +204,100 @@ def mapear_status_entrega(
         return "em_rota", False, ""
 
     return "pendencia", False, ""
+
+
+def _hora_to_time(raw: str) -> time | None:
+    text = _norm_hora(raw)
+    if not text:
+        return None
+    m = re.match(r"^(\d{1,2}):(\d{2})", text)
+    if not m:
+        return None
+    hh, mm = int(m.group(1)), int(m.group(2))
+    if hh > 23 or mm > 59:
+        return None
+    return time(hh, mm)
+
+
+def _combine_emissao(data_raw: str, hora_raw: str) -> datetime | None:
+    d = _parse_data_ocorr(data_raw)
+    if d is None:
+        return None
+    t = _hora_to_time(hora_raw) or time(0, 0)
+    return datetime.combine(d, t)
+
+
+def _header_index_map(header: list[str] | None) -> dict[str, int]:
+    """Resolve índices por nome do cabeçalho SSW (após coluna tipo)."""
+    out: dict[str, int] = {
+        "romaneio": IDX_ROMANEIO,
+        "data_emissao": IDX_DATA_EMISSAO,
+        "hora_emissao": IDX_HORA_EMISSAO,
+        "situacao": IDX_SITUACAO,
+        "placa": IDX_PLACA,
+        "carreta": IDX_CARRETA,
+        "motorista": IDX_MOTORISTA,
+        "ctrc": IDX_CTRC,
+        "destinatario": IDX_DESTINATARIO,
+        "desc_ocorr_rom": IDX_DESC_OCORR_ROM,
+        "data_ocorr_rom": IDX_DATA_OCORR_ROM,
+        "hora_ocorr_rom": IDX_HORA_OCORR_ROM,
+        "desc_ocorr_ctrc": IDX_DESC_OCORR_CTRC,
+        "data_ocorr_ctrc": IDX_DATA_OCORR_CTRC,
+        "hora_ocorr_ctrc": IDX_HORA_OCORR_CTRC,
+    }
+    if not header:
+        return out
+    # header inclui a coluna tipo em [0]
+    for i, name in enumerate(header):
+        key = re.sub(r"\s+", " ", _clean(name).upper())
+        key_n = (
+            key.replace("Á", "A")
+            .replace("À", "A")
+            .replace("Ã", "A")
+            .replace("Â", "A")
+            .replace("É", "E")
+            .replace("Ê", "E")
+            .replace("Í", "I")
+            .replace("Ó", "O")
+            .replace("Ô", "O")
+            .replace("Õ", "O")
+            .replace("Ú", "U")
+            .replace("Ç", "C")
+        )
+        if key_n in {"ROMANEIO"}:
+            out["romaneio"] = i
+        elif "DATA" in key_n and "EMISSAO" in key_n:
+            out["data_emissao"] = i
+        elif ("HORA" in key_n and "EMISSAO" in key_n) or key_n in {"HORA", "HR EMISSAO"}:
+            # Coluna D costuma ser só HORA / HORA EMISSAO
+            out["hora_emissao"] = i
+        elif key_n == "SITUACAO":
+            out["situacao"] = i
+        elif key_n == "PLACA":
+            out["placa"] = i
+        elif "CARRETA" in key_n:
+            out["carreta"] = i
+        elif key_n == "MOTORISTA":
+            out["motorista"] = i
+        elif key_n == "CTRC":
+            out["ctrc"] = i
+        elif "DESTINATARIO" in key_n or "NOME DESTINATARIO" in key_n:
+            out["destinatario"] = i
+        elif "DESC OCORR ROM" in key_n:
+            out["desc_ocorr_rom"] = i
+        elif "DATA OCORR ROM" in key_n:
+            out["data_ocorr_rom"] = i
+        elif "HORA OCORR ROM" in key_n:
+            out["hora_ocorr_rom"] = i
+        elif "DESC OCORR CTRC" in key_n:
+            out["desc_ocorr_ctrc"] = i
+        elif "DATA OCORR CTRC" in key_n:
+            out["data_ocorr_ctrc"] = i
+        elif "HORA OCORR CTRC" in key_n:
+            out["hora_ocorr_ctrc"] = i
+    # Se não achou HORA EMISSAO por nome, mantém Excel D (=3)
+    return out
 
 
 def _read_ssw_rows(path: Path) -> tuple[list[str] | None, list[list[str]]]:
@@ -242,14 +341,16 @@ def parse_ssw0146(
     hoje: date | None = None,
 ) -> list[EntregaCtrc]:
     file_path = Path(path)
-    _header, rows = _read_ssw_rows(file_path)
+    header, rows = _read_ssw_rows(file_path)
+    idx = _header_index_map(header)
     ref = hoje or date.today()
+    corte = datetime_corte_emissao_36(ref)
     out: list[EntregaCtrc] = []
     seen: set[str] = set()
 
     for row in rows:
-        romaneio = _cell(row, IDX_ROMANEIO)
-        ctrc = _cell(row, IDX_CTRC)
+        romaneio = _cell(row, idx["romaneio"])
+        ctrc = _cell(row, idx["ctrc"])
         if not romaneio and not ctrc:
             continue
         ctrc_id = ctrc or f"{romaneio}#"
@@ -259,30 +360,45 @@ def parse_ssw0146(
             continue
         seen.add(key)
 
-        desc_ctrc = _cell(row, IDX_DESC_OCORR_CTRC)
-        data_ctrc = _cell(row, IDX_DATA_OCORR_CTRC)
-        hora_ctrc = _cell(row, IDX_HORA_OCORR_CTRC)
-        desc_rom = _cell(row, IDX_DESC_OCORR_ROM)
-        data_rom = _cell(row, IDX_DATA_OCORR_ROM)
-        hora_rom = _cell(row, IDX_HORA_OCORR_ROM)
+        data_emi = _cell(row, idx["data_emissao"])
+        hora_emi = _norm_hora(_cell(row, idx["hora_emissao"]))
+        emi_dt = _combine_emissao(data_emi, hora_emi)
+
+        desc_ctrc = _cell(row, idx["desc_ocorr_ctrc"])
+        data_ctrc = _cell(row, idx["data_ocorr_ctrc"])
+        hora_ctrc = _cell(row, idx["hora_ocorr_ctrc"])
+        desc_rom = _cell(row, idx["desc_ocorr_rom"])
+        data_rom = _cell(row, idx["data_ocorr_rom"])
+        hora_rom = _cell(row, idx["hora_ocorr_rom"])
 
         # Texto da ocorrencia: CTRC (linha) com fallback ROM
         ocorrencia = desc_ctrc or desc_rom
-        # Data da baixa: AA (ROM) preferencial — define se conta hoje ou descarta ontem
         data_txt = data_rom or data_ctrc
-        # Hora alinhada ao texto da ocorrencia (CTRC primeiro)
         if desc_ctrc:
             hora_txt = _norm_hora(hora_ctrc) or _norm_hora(hora_rom)
         else:
             hora_txt = _norm_hora(hora_rom) or _norm_hora(hora_ctrc)
         data_d = _parse_data_ocorr(data_txt)
 
-        situacao = _cell(row, IDX_SITUACAO)
+        situacao = _cell(row, idx["situacao"])
         status, excluido, motivo = mapear_status_entrega(
             situacao, ocorrencia, data_d, hoje=ref
         )
 
-        # PENDENTE + sem realizada → em_rota (mesmo com outra ocorrencia fraca ja tratado)
+        # Corte operacional: só emissão ≥ 19:00 do dia-base (sex na seg / ontem)
+        if not excluido:
+            if emi_dt is None:
+                # Sem data/hora de emissão: mantém só se ocorrência for hoje
+                if data_d is None or data_d != ref:
+                    excluido = True
+                    motivo = "sem_emissao_fora_ciclo"
+                    status = "excluido"
+            elif emi_dt < corte:
+                excluido = True
+                motivo = "emissao_antes_19h"
+                status = "excluido"
+
+        # PENDENTE + sem realizada → em_rota
         if not excluido and situacao.upper() == "PENDENTE" and status != "realizada":
             if not ocorrencia:
                 status = "em_rota"
@@ -293,13 +409,15 @@ def parse_ssw0146(
                 romaneio=romaneio,
                 situacao=situacao,
                 status_ace=status,
-                placa=_cell(row, IDX_PLACA),
-                placa_carreta=_cell(row, IDX_CARRETA),
-                motorista=_cell(row, IDX_MOTORISTA),
-                destinatario=_cell(row, IDX_DESTINATARIO),
+                placa=_cell(row, idx["placa"]),
+                placa_carreta=_cell(row, idx["carreta"]),
+                motorista=_cell(row, idx["motorista"]),
+                destinatario=_cell(row, idx["destinatario"]),
                 ocorrencia=ocorrencia,
                 data_ocorrencia=data_txt,
                 hora_ocorrencia=hora_txt,
+                data_emissao=data_emi,
+                hora_emissao=hora_emi,
                 excluido=excluido,
                 motivo_exclusao=motivo,
             )
@@ -384,6 +502,8 @@ def analyze_report_36(
             "ocorrencia": c.ocorrencia,
             "data_ocorrencia": c.data_ocorrencia,
             "hora_ocorrencia": c.hora_ocorrencia,
+            "data_emissao": c.data_emissao,
+            "hora_emissao": c.hora_emissao,
             "excluido": "1" if c.excluido else "0",
             "motivo_exclusao": c.motivo_exclusao,
         }
@@ -404,6 +524,8 @@ def analyze_report_36(
                 "ocorrencia": c.ocorrencia,
                 "data_ocorrencia": c.data_ocorrencia,
                 "hora_ocorrencia": c.hora_ocorrencia,
+                "data_emissao": c.data_emissao,
+                "hora_emissao": c.hora_emissao,
                 "excluido": "1",
                 "motivo_exclusao": c.motivo_exclusao,
             }
@@ -435,7 +557,8 @@ def analyze_report_36(
         "totais": totais,
         "romaneios": len(romaneios),
         "modelo": (
-            "36 ssw0146: CTRC ativo se data ocorrencia != ontem. "
+            "36 ssw0146: ciclo = emissão ≥19:00 do dia-base "
+            "(sexta na segunda; ontem nos demais) até hoje (col. C data + D hora). "
             "blank/SAIDA PARA ENTREGA→em_rota, ENTREGA REALIZADA[+RESSALVAS]/PRE-ENTREGUE→realizada, outra→pendencia."
         ),
     }

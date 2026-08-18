@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import sys
 import time
 from collections import defaultdict
@@ -131,39 +132,97 @@ def _is_mapa_stop_status(status: str) -> bool:
 
 
 def _delivery_is_today(d: Any) -> bool:
-    """Filtra entregas do dia atual (ocorrência / emissão)."""
-    from datetime import date
+    """Filtra entregas do ciclo 36 (emissão ≥19h do dia-base até hoje)."""
+    from datetime import date, datetime, time
+
+    from dates import data_corte_emissao_36, datetime_corte_emissao_36
 
     today = date.today()
-    for attr in ("occurrence_date", "emission_date", "data_ocorrencia"):
-        raw = getattr(d, attr, None)
-        if raw is None:
-            continue
-        text = str(raw).strip()
+    corte_dia = data_corte_emissao_36(today)
+    corte_dt = datetime_corte_emissao_36(today)
+
+    def _parse_date(text: str) -> date | None:
+        text = str(text or "").strip()
         if not text:
-            continue
-        # ISO / YYYY-MM-DD
+            return None
         if len(text) >= 10 and text[4] == "-":
             try:
-                return date.fromisoformat(text[:10]) == today
+                return date.fromisoformat(text[:10])
             except Exception:
-                pass
-        # DD/MM/YYYY or DD/MM
-        if "/" in text:
+                return None
+        if "/" in text or "-" in text:
             parts = text.replace("-", "/").split("/")
             try:
                 if len(parts) >= 3:
                     dd, mm, yy = int(parts[0]), int(parts[1]), int(parts[2])
                     if yy < 100:
                         yy += 2000
-                    return date(yy, mm, dd) == today
+                    return date(yy, mm, dd)
                 if len(parts) == 2:
                     dd, mm = int(parts[0]), int(parts[1])
-                    return dd == today.day and mm == today.month
+                    return date(today.year, mm, dd)
             except Exception:
-                pass
+                return None
+        return None
+
+    # Preferência: data de emissão (ciclo operacional)
+    for attr in ("emission_date", "data_emissao"):
+        raw = getattr(d, attr, None)
+        if raw is None and isinstance(d, dict):
+            raw = d.get(attr)
+        parsed = _parse_date(str(raw or ""))
+        if parsed is None:
+            continue
+        if parsed > today:
+            return False
+        if parsed < corte_dia:
+            return False
+        if parsed > corte_dia:
+            return True
+        # No dia-base: sem hora no CyberMap → inclui (ACE CSV já cortou por col. D)
+        hora_raw = getattr(d, "emission_time", None) or getattr(d, "hora_emissao", None)
+        if isinstance(d, dict) and not hora_raw:
+            hora_raw = d.get("hora_emissao") or d.get("emission_time")
+        if hora_raw:
+            try:
+                ht = str(hora_raw).strip()
+                hh, mm = int(ht[:2]), int(ht[3:5])
+                return datetime.combine(parsed, time(hh, mm)) >= corte_dt
+            except Exception:
+                return True
+        return True
+
+    # Fallback: ocorrência no ciclo (hoje ou ≥ dia-base)
+    for attr in ("occurrence_date", "data_ocorrencia"):
+        raw = getattr(d, attr, None)
+        if raw is None and isinstance(d, dict):
+            raw = d.get(attr)
+        parsed = _parse_date(str(raw or ""))
+        if parsed is None:
+            continue
+        return corte_dia <= parsed <= today
+
     # Sem data explícita: mantém (relatório já é do ciclo do dia)
     return True
+
+
+def _ace_active_ctrc_ids() -> set[str]:
+    """CTRCs ativos no CSV ACE (já filtrados pelo corte 19h)."""
+    path = ENTREGAS_36_CSV
+    if not path.is_file():
+        return set()
+    out: set[str] = set()
+    with path.open(encoding="utf-8-sig", newline="") as fh:
+        for row in csv.DictReader(fh):
+            if str(row.get("excluido") or "") in {"1", "true", "True"}:
+                continue
+            st = str(row.get("status_ace") or "").strip().lower()
+            if st in {"excluido", "cancelada"}:
+                continue
+            cid = re.sub(r"\s+", "", str(row.get("ctrc_id") or "").upper())
+            if cid:
+                out.add(cid)
+    return out
 
 
 def _ace_em_rota_plates() -> set[str]:
@@ -199,6 +258,24 @@ def _ace_coleta_em_rota_plates() -> set[str]:
     return out
 
 
+def _ace_coleta_motoristas() -> dict[str, str]:
+    """Placa → motorista (103), priorizando linhas em_rota."""
+    path = COLETAS_103_CSV
+    if not path.is_file():
+        return {}
+    out: dict[str, str] = {}
+    with path.open(encoding="utf-8-sig", newline="") as fh:
+        for row in csv.DictReader(fh):
+            pl = _norm_plate(row.get("placa") or "")
+            mot = str(row.get("motorista") or "").strip()
+            if not pl or not mot:
+                continue
+            st = str(row.get("status_ace") or "").strip().lower()
+            if st == "em_rota" or pl not in out:
+                out[pl] = mot
+    return out
+
+
 def _find_report_36(explicit: Path | str | None = None) -> Path | None:
     if explicit:
         p = Path(explicit)
@@ -212,19 +289,8 @@ def _find_report_36(explicit: Path | str | None = None) -> Path | None:
             return found
     except Exception:
         pass
-    # CyberMap project path
+    # Prefere downloads do ACE (mesmo arquivo do parser 36) antes do projeto CyberMap.
     root = _cybermap_root()
-    try:
-        if str(root) not in sys.path:
-            sys.path.insert(0, str(root))
-        from map_renderer import load_project
-
-        proj = load_project()
-        rp = Path(str(getattr(proj, "report_36_path", "") or ""))
-        if rp.is_file():
-            return rp
-    except Exception:
-        pass
     for folder in (
         BASE_DIR / "data" / "downloads",
         root / "data" / "downloads",
@@ -238,6 +304,17 @@ def _find_report_36(explicit: Path | str | None = None) -> Path | None:
         )
         if cands:
             return cands[0]
+    try:
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from map_renderer import load_project
+
+        proj = load_project()
+        rp = Path(str(getattr(proj, "report_36_path", "") or ""))
+        if rp.is_file():
+            return rp
+    except Exception:
+        pass
     return None
 
 
@@ -462,6 +539,7 @@ def _build_coleta_vehicles(
     base_pt = (base_lat, base_lon)
     district_points: dict[str, tuple[float, float]] = {}
     veiculos: list[dict[str, Any]] = []
+    motoristas = _ace_coleta_motoristas()
 
     plates_sorted = sorted(plates)[:_MAX_VEICULOS]
     on_status(f"Mapa: {len(plates_sorted)} placa(s) coleta na rua…")
@@ -476,12 +554,14 @@ def _build_coleta_vehicles(
         coords: list[tuple[float, float]] = []
         peso_rota = 0.0
         frete_rota = 0.0
-        motorista = ""
+        motorista = motoristas.get(pl) or ""
         for i, (_, row) in enumerate(rows.head(_MAX_PARADAS).iterrows(), start=1):
             w = _num(row.get("PESO_CALCULADO_NUM"))
             f = _num(row.get("FRETE_NUM"))
             peso_rota += w
             frete_rota += f
+            if not motorista:
+                motorista = str(row.get("MOTORISTA") or row.get("MOTORISTA_EXIBICAO") or "").strip()
             addr = str(row.get("ENDERECO") or "")
             cep = str(row.get("CEP") or "")
             city = str(
@@ -516,6 +596,7 @@ def _build_coleta_vehicles(
                     "peso": round(w, 2),
                     "frete": round(f, 2),
                     "tipo": "coleta",
+                    "kind": "coleta",
                 }
             )
 
@@ -540,14 +621,17 @@ def _build_coleta_vehicles(
         op = cargas.get(pl) or {}
         peso_col = float(op.get("peso_coleta") or 0) or peso_rota
         frete_col = float(op.get("frete_coleta") or 0) or frete_rota
+        n_stops = len(stops_out)
 
+        # Coleta fica em paradas_coleta (merge / UI contam esse campo).
         veiculos.append(
             {
                 "placa": pl,
                 "motorista": motorista,
                 "tipo": "coleta",
                 "romaneio": "",
-                "paradas_n": len(stops_out),
+                "paradas_n": 0,
+                "paradas_coleta_n": n_stops,
                 "distance_km": round(dist_km, 1),
                 "duration_min": round(dur_min, 0),
                 "peso": round(peso_rota, 2),
@@ -558,8 +642,10 @@ def _build_coleta_vehicles(
                 "frete_entrega": 0.0,
                 "peso_coleta": round(peso_col, 2),
                 "frete_coleta": round(frete_col, 2),
-                "polyline": polyline,
-                "paradas": stops_out,
+                "polyline": [],
+                "polyline_coleta": polyline,
+                "paradas": [],
+                "paradas_coleta": stops_out,
             }
         )
 
@@ -570,6 +656,15 @@ def _build_coleta_vehicles(
 
     on_status(f"Mapa: {len(veiculos)} veículo(s) de coleta com rota")
     return veiculos
+
+
+def _coleta_stops_from_veic(cv: dict[str, Any]) -> list[Any]:
+    """Paradas de coleta (aceita payload novo ou legado com stops em `paradas`)."""
+    stops = cv.get("paradas_coleta")
+    if isinstance(stops, list) and stops:
+        return stops
+    stops = cv.get("paradas")
+    return stops if isinstance(stops, list) else []
 
 
 def _merge_coleta_into_veiculos(
@@ -589,17 +684,31 @@ def _merge_coleta_into_veiculos(
         pl = str(cv.get("placa") or "")
         if not pl:
             continue
+        col_stops = _coleta_stops_from_veic(cv)
+        col_n = int(cv.get("paradas_coleta_n") or cv.get("paradas_n") or len(col_stops) or 0)
+        poly_c = cv.get("polyline_coleta") or cv.get("polyline") or []
         if pl in by_pl:
             ev = by_pl[pl]
             ev["tipo"] = "ambos"
-            ev["polyline_coleta"] = cv.get("polyline") or []
-            ev["paradas_coleta"] = cv.get("paradas") or []
-            ev["paradas_coleta_n"] = int(cv.get("paradas_n") or 0)
+            ev["polyline_coleta"] = poly_c
+            ev["paradas_coleta"] = col_stops
+            ev["paradas_coleta_n"] = col_n
+            if not str(ev.get("motorista") or "").strip() and cv.get("motorista"):
+                ev["motorista"] = cv.get("motorista")
             if not (ev.get("peso_coleta") or ev.get("frete_coleta")):
                 ev["peso_coleta"] = cv.get("peso_coleta") or 0
                 ev["frete_coleta"] = cv.get("frete_coleta") or 0
         else:
-            by_pl[pl] = dict(cv)
+            nv = dict(cv)
+            nv["tipo"] = "coleta"
+            nv["paradas_coleta"] = col_stops
+            nv["paradas_coleta_n"] = col_n
+            nv["polyline_coleta"] = poly_c
+            # Evita contar/duplicar como entrega no mapa.
+            nv["paradas"] = []
+            nv["paradas_n"] = 0
+            nv["polyline"] = []
+            by_pl[pl] = nv
             order.append(pl)
     return [by_pl[pl] for pl in order if pl in by_pl]
 
@@ -681,7 +790,25 @@ def _build_from_cybermap_report(
     on_status(f"Mapa: parse CyberMap {report.name}")
     stats = parse_report_36(str(report))
     ace_plates = _ace_em_rota_plates()
-    # placas com atividade hoje (em rota ou já realizadas no CSV ACE)
+    ace_ctrcs = _ace_active_ctrc_ids()
+
+    # Se o 36 bruto não contém os CTRCs do ACE, geocode/rota de entrega fica errado
+    # (ex.: arquivo do CyberMap de outro ciclo). Usa CSV ACE + coleta 50.
+    if ace_ctrcs:
+        hit = 0
+        for d in stats.deliveries:
+            cid = re.sub(r"\s+", "", str(getattr(d, "ctrc", "") or "").upper())
+            if cid and cid in ace_ctrcs:
+                hit += 1
+                if hit >= 1:
+                    break
+        if hit == 0:
+            on_status(
+                "Mapa: relatório 36 sem CTRCs do ACE — entregas via CSV + coletas 50/103"
+            )
+            return _build_from_ace_csv(on_status=on_status)
+
+    # placas com atividade no ciclo (em rota ou já realizadas no CSV ACE)
     ace_today: set[str] = set(ace_plates)
     if ENTREGAS_36_CSV.is_file():
         with ENTREGAS_36_CSV.open(encoding="utf-8-sig", newline="") as fh:
@@ -697,7 +824,11 @@ def _build_from_cybermap_report(
     by_plate: dict[str, list[Any]] = defaultdict(list)
 
     for d in stats.deliveries:
-        if not _delivery_is_today(d):
+        if ace_ctrcs:
+            cid = re.sub(r"\s+", "", str(getattr(d, "ctrc", "") or "").upper())
+            if cid and cid not in ace_ctrcs:
+                continue
+        elif not _delivery_is_today(d):
             continue
         st_ace = _status_ace_from_ocorrencia(getattr(d, "status", "") or "")
         if st_ace not in {"em_rota", "realizada", "pendencia"}:
@@ -705,7 +836,7 @@ def _build_from_cybermap_report(
         pl = _norm_plate(getattr(d, "plate", "") or "")
         if not pl:
             continue
-        # Prioriza placas do dia no ACE; se vazio, usa todas do relatório de hoje
+        # Prioriza placas do ciclo no ACE; se vazio, usa todas do relatório do ciclo
         if ace_today and pl not in ace_today:
             # ainda inclui se estiver em rota no relatório
             if st_ace != "em_rota":
@@ -714,7 +845,11 @@ def _build_from_cybermap_report(
 
     if not by_plate and ace_today:
         for d in stats.deliveries:
-            if not _delivery_is_today(d):
+            if ace_ctrcs:
+                cid = re.sub(r"\s+", "", str(getattr(d, "ctrc", "") or "").upper())
+                if cid and cid not in ace_ctrcs:
+                    continue
+            elif not _delivery_is_today(d):
                 continue
             pl = _norm_plate(getattr(d, "plate", "") or "")
             if pl in ace_today and _is_mapa_stop_status(getattr(d, "status", "") or ""):
@@ -952,17 +1087,21 @@ def _build_from_ace_csv(*, on_status: StatusCallback) -> dict[str, Any]:
         report_36=_find_report_36(), cargas=cargas, on_status=on_status
     )
     veiculos = _merge_coleta_into_veiculos(veiculos, coleta_veics)
+    for v in veiculos:
+        _apply_servico(v, servico)
     tot_peso_col = sum(float(v.get("peso_coleta") or 0) for v in veiculos)
     tot_frete_col = sum(float(v.get("frete_coleta") or 0) for v in veiculos)
     tot_peso_ent = sum(float(v.get("peso_entrega") or 0) for v in veiculos)
     tot_frete_ent = sum(float(v.get("frete_entrega") or 0) for v in veiculos)
+    n_coleta = sum(1 for v in veiculos if str(v.get("tipo") or "") in {"coleta", "ambos"})
+    n_entrega = sum(1 for v in veiculos if str(v.get("tipo") or "") in {"entrega", "ambos"})
 
     return {
         "atualizado": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         "periodo": "hoje",
         "fonte": "entregas_36.csv",
         "base": _base_payload(),
-        "aviso": "Rotas aproximadas — rode `mapa` para puxar 50+36 e geocode real.",
+        "aviso": "Rotas aproximadas — rode `mapa` / `36` para geocode real das entregas.",
         "veiculos": veiculos,
         "totais": {
             "veiculos": len(veiculos),
@@ -970,6 +1109,8 @@ def _build_from_ace_csv(*, on_status: StatusCallback) -> dict[str, Any]:
                 int(v.get("paradas_n") or 0) + int(v.get("paradas_coleta_n") or 0)
                 for v in veiculos
             ),
+            "veiculos_entrega": n_entrega,
+            "veiculos_coleta": n_coleta,
             "peso": round(tot_peso_ent, 2),
             "frete": round(tot_frete_ent, 2),
             "peso_rota": round(tot_peso_ent, 2),
