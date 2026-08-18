@@ -2101,9 +2101,9 @@ class CmdWorker(QThread):
     def run(self) -> None:
         try:
             from ace_cmd import execute_line
-            from ace_stop import clear_stop, LoopStopped
+            from ace_stop import begin_command, LoopStopped
 
-            clear_stop()
+            begin_command()
             self.status.emit(f"exec · {self.raw}")
             msg, payload = execute_line(self.raw, self.payload)
             self.finished_ok.emit(msg or "OK", payload)
@@ -2146,10 +2146,10 @@ class AutoLoopWorker(QThread):
     def run(self) -> None:
         try:
             from ace_loop import resolve_interval_sec, run_loop
-            from ace_stop import clear_stop, stop_requested
+            from ace_stop import begin_command, stop_requested
             from config import load_settings
 
-            clear_stop()
+            begin_command()
             self._stop = False
             cfg = load_settings()
             sec = resolve_interval_sec(self.interval_arg, settings_intervalo=cfg.loop_intervalo)
@@ -4931,8 +4931,67 @@ class AceCrtConsole(QWidget):
         """Compat: botões Parar da UI → para tudo (loop + comando)."""
         self._stop_all()
 
+    def _disconnect_quiet(self, signal, slot) -> None:
+        try:
+            signal.disconnect(slot)
+        except Exception:
+            pass
+
+    def _abandon_cmd_worker(self) -> None:
+        """Solta o CmdWorker travado para o prompt aceitar novos comandos na hora."""
+        w = self._worker
+        self._worker = None
+        self._worker_cmd = ""
+        if w is None:
+            return
+        self._disconnect_quiet(w.finished_ok, self._on_cmd_ok)
+        self._disconnect_quiet(w.failed, self._on_cmd_fail)
+        self._disconnect_quiet(w.status, self._on_worker_status)
+        try:
+            if w.isRunning() and not w.wait(1200):
+                pass
+        except Exception:
+            pass
+
+    def _abandon_auto_worker(self) -> None:
+        aw = self._auto_worker
+        self._auto_worker = None
+        if aw is None:
+            return
+        try:
+            aw.request_stop()
+        except Exception:
+            pass
+        self._disconnect_quiet(aw.finished_ok, self._on_auto_ok)
+        self._disconnect_quiet(aw.failed, self._on_auto_fail)
+        try:
+            if aw.isRunning() and not aw.wait(1200):
+                pass
+        except Exception:
+            pass
+
+    def _unlock_prompt_after_stop(self) -> None:
+        try:
+            self.btn_run.setEnabled(True)
+        except Exception:
+            pass
+        try:
+            self.prompt.setEnabled(True)
+            self.prompt.setReadOnly(False)
+            self.prompt.setFocus(Qt.OtherFocusReason)
+        except Exception:
+            pass
+
+    def _clear_stop_flag(self) -> None:
+        try:
+            from ace_stop import clear_stop
+
+            clear_stop()
+        except Exception:
+            pass
+
     def _stop_all(self) -> None:
-        """Para QUALQUER comando/loop/processo ACE em andamento."""
+        """Para QUALQUER comando/loop/processo ACE e libera o prompt imediatamente."""
         self._pending_cmd = None
         cmd_running = bool(self._worker and self._worker.isRunning())
         auto_running = bool(self._auto_worker and self._auto_worker.isRunning())
@@ -4947,24 +5006,26 @@ class AceCrtConsole(QWidget):
             )
 
             request_stop(force_browsers=True)
-            # reforço: mata de novo (alguns drivers sobem atrasados)
             closed = close_registered_browsers()
             killed = kill_child_browsers()
             ext = stop_external_loop_process()
         except Exception:
             ext = False
 
-        if auto_running:
-            try:
-                self._auto_worker.request_stop()
-            except Exception:
-                pass
+        # Libera UI mesmo se o thread ainda estiver morrendo (antes: ficava “Fila:…” pra sempre)
+        if auto_running or (self._auto_worker is not None):
+            self._abandon_auto_worker()
+        if cmd_running or (self._worker is not None):
+            self._abandon_cmd_worker()
+
+        QTimer.singleShot(250, self._clear_stop_flag)
+        self._unlock_prompt_after_stop()
 
         if cmd_running or auto_running or ext or killed or closed:
             self.mode.setText("STOP")
             detail = []
             if cmd_running:
-                detail.append(f"comando `{self._worker_cmd or 'atual'}`")
+                detail.append("comando em andamento")
             if auto_running:
                 detail.append("loop contínuo")
             if ext:
@@ -4977,29 +5038,26 @@ class AceCrtConsole(QWidget):
             )
             self._append_log("sistema", msg)
             if hasattr(self, "auto_status"):
-                self.auto_status.setText("Parando todos os processos…")
+                self.auto_status.setText("Parado. Prompt liberado.")
             idle = self._idle_sector_rows_from_config()
             publish(
                 online=True,
                 label="STOP",
                 pct=0,
-                detail="parando tudo",
+                detail="parado · pronto",
                 mode="STOP",
                 sectors=idle,
             )
             self._seed_sector_bars_from_config(persist=False)
-            # reabilita prompt mesmo se o worker ainda estiver morrendo
-            try:
-                self.btn_run.setEnabled(True)
-            except Exception:
-                pass
         else:
+            self._clear_stop_flag()
             self._append_log(
                 "sistema",
-                "Parar: nada em execução (já parado). Sinal limpo para o próximo comando.",
+                "Parar: nada em execução (já parado). Prompt liberado.",
             )
             if hasattr(self, "auto_status"):
                 self.auto_status.setText("Automático parado.")
+            self.mode.setText("OK")
             self._seed_sector_bars_from_config(persist=True)
 
     def _start_automatica(self, interval_arg: str | None = None) -> None:

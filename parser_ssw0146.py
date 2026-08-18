@@ -11,7 +11,6 @@ from typing import Any
 
 from config import BASE_DIR, ensure_dirs
 from dates import datetime_corte_emissao_36
-from ocorrencias_realizadas import is_ocorrencia_realizada
 
 CACHE_DIR = BASE_DIR / "data" / "cache"
 ENTREGAS_36_CSV = CACHE_DIR / "entregas_36.csv"
@@ -156,20 +155,19 @@ def mapear_status_entrega(
     hoje: date | None = None,
 ) -> tuple[str, bool, str]:
     """
-    Retorna (status_ace, excluido, motivo).
-    - ocorrencia vazia → em_rota
-    - ENTREGA REALIZADA [COM RESSALVAS] → realizada
-    - MERCADORIA PRE-ENTREGUE (MOBILE) → realizada
-    - contem SAIDA PARA ENTREGA → em_rota
-    - outra ocorrencia → pendencia
-    - SITUACAO PENDENTE reforça em_rota se nao for realizada
+    Status pela coluna AD (DESC OCORR CTRC), com fallback romaneio:
+
+    - SAIDA PARA ENTREGA (ou em branco) → em_rota
+    - ENTREGA REALIZADA / PRE-ENTREGUE → realizada
+    - qualquer outra ocorrência → pendencia
+
+    Não usa códigos 18/53/99/CTE BAIXADO etc. como “realizada” no 36 —
+    isso inflava o % e mentia o painel.
 
     O corte por emissão (≥19h do dia-base) é feito em parse_ssw0146.
     """
-    _ = (data_ocorr, hoje)  # data ocorrência não exclui mais o CTRC
-    sit = _clean(situacao).upper()
+    _ = (situacao, data_ocorr, hoje)
     ocorr = _clean(ocorrencia).upper()
-    # Normaliza acentos p/ bater SAIDA/SAÍDA etc.
     ocorr_n = (
         ocorr.replace("Á", "A")
         .replace("À", "A")
@@ -185,22 +183,19 @@ def mapear_status_entrega(
         .replace("Ç", "C")
     )
 
-    # Realizado (inclui COM RESSALVAS, pré-entrega mobile e ocorrências de baixa/encerramento)
+    # Realizada (só entrega de fato — col. AD)
     if "ENTREGA REALIZADA" in ocorr_n:
         return "realizada", False, ""
     if "PRE-ENTREGUE" in ocorr_n or "PRE ENTREGUE" in ocorr_n:
         return "realizada", False, ""
-    if is_ocorrencia_realizada(ocorrencia):
+    # "REALIZADO" solto (sem CTE BAIXADO / códigos)
+    if re.search(r"\bREALIZAD[OA]\b", ocorr_n) and "CTE" not in ocorr_n:
         return "realizada", False, ""
 
-    if not ocorr:
+    if not ocorr_n:
         return "em_rota", False, ""
 
-    # Saida para entrega = ainda em rota (nao e pendencia)
     if "SAIDA PARA ENTREGA" in ocorr_n:
-        return "em_rota", False, ""
-
-    if sit == "PENDENTE":
         return "em_rota", False, ""
 
     return "pendencia", False, ""
@@ -560,7 +555,8 @@ def analyze_report_36(
         "modelo": (
             "36 ssw0146: ciclo = emissão ≥19:00 do dia-base "
             "(sexta na segunda; ontem nos demais) até hoje (col. C data + D hora). "
-            "blank/SAIDA PARA ENTREGA→em_rota, ENTREGA REALIZADA[+RESSALVAS]/PRE-ENTREGUE→realizada, outra→pendencia."
+            "blank/SAIDA PARA ENTREGA→em_rota, ENTREGA REALIZADA/PRE-ENTREGUE→realizada, "
+            "qualquer outra col.AD→pendencia (CTE BAIXADO NÃO conta como realizada)."
         ),
     }
     LAST_36_JSON.write_text(

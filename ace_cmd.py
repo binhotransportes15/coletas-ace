@@ -1474,11 +1474,11 @@ def execute_line(raw: str, payload: dict[str, Any] | None = None) -> tuple[str, 
         return ("Parado: sinal enviado a qualquer comando/processo ACE.", payload)
 
     try:
-        from ace_stop import check_stop, clear_stop, LoopStopped
+        from ace_stop import check_stop, begin_command, LoopStopped
 
         # Novo comando: limpa flag antiga (exceto se o usuário acabou de pedir parar
         # no mesmo instante — clear_stop no CmdWorker já cuida disso).
-        clear_stop()
+        begin_command()
         check_stop()
     except Exception:
         LoopStopped = Exception  # type: ignore

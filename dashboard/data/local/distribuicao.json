@@ -1,13 +1,13 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-18T13:28:32",
+  "updated_at": "2026-08-18T13:38:34",
   "resumo_50": {
     "data_cadastro": "PERIODO",
-    "total_coletas": "6",
+    "total_coletas": "7",
     "cadastrada": "2",
     "comandada": "4",
     "coletada": "0",
-    "cancelada": "0"
+    "cancelada": "1"
   },
   "resumo_103": {
     "periodo": "18/08",
@@ -20,11 +20,11 @@
   },
   "resumo_36": {
     "periodo": "17/08 a 18/08",
-    "total": "107",
-    "realizada": "10",
-    "em_rota": "97",
-    "pendencia": "0",
-    "excluido": "43"
+    "total": "269",
+    "realizada": "223",
+    "em_rota": "45",
+    "pendencia": "1",
+    "excluido": "7"
   },
   "resumo_225": {
     "periodo": "Agendamento AGOSTO",
@@ -48,6 +48,6 @@
     "frete_amanha": "3.529,25"
   },
   "extra": {
-    "report": "50"
+    "report": "36"
   }
 }

@@ -37,6 +37,11 @@ def clear_stop() -> None:
         pass
 
 
+def begin_command() -> None:
+    """Início de um novo comando: limpa sinal de parada residual."""
+    clear_stop()
+
+
 def request_stop(*, force_browsers: bool = True) -> None:
     """Sinaliza parada imediata de qualquer comando e corta navegadores."""
     _stop.set()
