@@ -27,6 +27,8 @@ LAST_31_JSON = CACHE_DIR / "last_run_31.json"
 # Colunas Excel (1-based) — fallback posicional
 COL_A_CTRC = 1
 COL_B_EMISSAO = 2
+COL_H_UNIDADE_RESP = 8  # UNIDADE RESPONSAVEL · gargalo + mapa
+COL_K_VALMERC = 11  # VALMERC · valor da mercadoria
 COL_R_ULTIMA = 18
 COL_S_COMPL_ULTIMA = 19
 COL_AM_DESC_OCORR = 39
@@ -43,15 +45,29 @@ _HEADER_ALIASES: dict[str, tuple[str, ...]] = {
     "nf": ("nro nf", "nr nf", "nota fiscal", "nfe", "nf ", "numero nf", "nº nf"),
     "remetente": ("remetente", "cliente remetente", "embarcador", "expedidor"),
     "destinatario": ("destinatario", "destinatário", "cliente destinatario", "recebedor"),
-    "filial": ("filial", "unid", "unidade", "unidade resp", "filial resp", "origem", "unid. resp"),
+    # Coluna H — NÃO usar origem/destino/prefixo do CTRC
+    "filial": (
+        "unidade responsavel",
+        "unidade responsável",
+        "unid responsavel",
+        "unid. responsavel",
+        "unidade resp",
+        "unid. resp",
+        "unid resp",
+        "filial responsavel",
+        "filial responsável",
+        "filial resp",
+    ),
     "valor_mercadoria": (
+        "valmerc",
         "val merc",
         "valor merc",
         "vl merc",
-        "mercadoria",
         "valor da mercadoria",
         "vlr mercadoria",
         "val. mercad",
+        "vl. merc",
+        "vlr merc",
     ),
     "data_ocorrencia": (
         "data ocorr",
@@ -150,6 +166,63 @@ def _cell(row: tuple[Any, ...] | list[Any], idx: int) -> str:
     return _clean(row[idx - 1])
 
 
+def _cell_money(row: tuple[Any, ...] | list[Any], idx: int) -> str:
+    """Lê valor monetário (coluna K / VALMERC) preservando número do Excel."""
+    if idx < 1 or idx > len(row):
+        return ""
+    raw = row[idx - 1]
+    if raw is None or raw == "":
+        return ""
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        return _fmt_money(float(raw))
+    return _fmt_money(_parse_money(_clean(raw)))
+
+
+def _read_valor_mercadoria(
+    row: tuple[Any, ...] | list[Any],
+    header_map: dict[str, int],
+) -> str:
+    """031: VALMERC é sempre a coluna K (11) — soma nos relatórios por código."""
+    # Coluna K tem prioridade absoluta (cabeçalho dinâmico às vezes pega volume/qtde)
+    from_k = _cell_money(row, COL_K_VALMERC)
+    if from_k and _parse_money(from_k) > 0:
+        return from_k
+    idx = header_map.get("valor_mercadoria") or 0
+    if idx and idx != COL_K_VALMERC:
+        from_h = _cell_money(row, idx)
+        if from_h and _parse_money(from_h) > 0:
+            return from_h
+    return from_k
+
+
+def _sigla_unidade(raw: str) -> str:
+    """Extrai sigla 2–4 letras (ex.: SPO, DCX) de UNIDADE RESPONSAVEL."""
+    s = _clean(raw).upper()
+    if not s:
+        return ""
+    m = re.match(r"^([A-Z]{2,4})\b", s)
+    if m:
+        return m.group(1)
+    m2 = re.search(r"\b([A-Z]{2,4})\b", s)
+    return m2.group(1) if m2 else s[:4]
+
+
+def _read_unidade_responsavel(
+    row: tuple[Any, ...] | list[Any],
+    header_map: dict[str, int],
+) -> str:
+    """031: UNIDADE RESPONSAVEL = coluna H (8) — gargalo, filtro e mapa."""
+    from_h = _sigla_unidade(_cell(row, COL_H_UNIDADE_RESP))
+    if from_h:
+        return from_h
+    idx = header_map.get("filial") or 0
+    if idx and idx != COL_H_UNIDADE_RESP:
+        from_hdr = _sigla_unidade(_cell(row, idx))
+        if from_hdr:
+            return from_hdr
+    return ""
+
+
 def _parse_br_date(raw: str) -> date | None:
     s = str(raw or "").strip()
     if not s:
@@ -205,6 +278,20 @@ def _data_ocorr_from_text(*parts: str) -> str:
     return m2.group(1) if m2 else ""
 
 
+def _header_alias_hit(cell: str, alias: str) -> bool:
+    """Match de cabeçalho sem falso positivo de substring curta (ex.: 'val' ⊂ 'valmerc')."""
+    if not cell or not alias:
+        return False
+    if cell == alias:
+        return True
+    if len(alias) >= 4 and alias in cell:
+        return True
+    # cell ⊂ alias só se o cabeçalho for razoavelmente específico
+    if len(cell) >= 5 and cell in alias:
+        return True
+    return False
+
+
 def _map_headers(row: tuple[Any, ...] | list[Any]) -> dict[str, int]:
     """Retorna field -> índice 1-based se a linha parecer cabeçalho."""
     cells = [_norm_header(_clean(c)) for c in row]
@@ -219,9 +306,25 @@ def _map_headers(row: tuple[Any, ...] | list[Any]) -> dict[str, int]:
             if field in out:
                 continue
             for al in aliases:
-                if al in cell or cell in al:
+                if _header_alias_hit(cell, al):
                     out[field] = i
                     break
+    # 031: UNIDADE RESPONSAVEL → coluna H; VALMERC → coluna K
+    if len(cells) >= COL_H_UNIDADE_RESP:
+        h_cell = cells[COL_H_UNIDADE_RESP - 1]
+        if h_cell and any(
+            _header_alias_hit(h_cell, al) for al in _HEADER_ALIASES["filial"]
+        ):
+            out["filial"] = COL_H_UNIDADE_RESP
+        elif not out.get("filial") and (
+            "responsavel" in h_cell or "responsável" in h_cell or h_cell in {"unid", "unidade"}
+        ):
+            # Cabeçalho curto na H ainda é a coluna oficial
+            out["filial"] = COL_H_UNIDADE_RESP
+    if not out.get("valor_mercadoria") and len(cells) >= COL_K_VALMERC:
+        k_cell = cells[COL_K_VALMERC - 1]
+        if k_cell and any(_header_alias_hit(k_cell, al) for al in _HEADER_ALIASES["valor_mercadoria"]):
+            out["valor_mercadoria"] = COL_K_VALMERC
     return out
 
 
@@ -318,8 +421,8 @@ def parse_excel_31(path: Path | str, *, codigo_consulta: str = "") -> list[dict[
                 "nf": g("nf"),
                 "remetente": g("remetente"),
                 "destinatario": g("destinatario"),
-                "filial": g("filial"),
-                "valor_mercadoria": g("valor_mercadoria"),
+                "filial": _read_unidade_responsavel(row, header_map),
+                "valor_mercadoria": _read_valor_mercadoria(row, header_map),
                 "data_ocorrencia": g("data_ocorrencia"),
                 "cidade": g("cidade"),
                 "uf": g("uf"),
@@ -371,8 +474,8 @@ def _parse_any(path: Path, codigo: str) -> list[dict[str, str]]:
                 "nf": g("nf"),
                 "remetente": g("remetente"),
                 "destinatario": g("destinatario"),
-                "filial": g("filial"),
-                "valor_mercadoria": g("valor_mercadoria"),
+                "filial": _read_unidade_responsavel(cols, header_map),
+                "valor_mercadoria": _read_valor_mercadoria(cols, header_map),
                 "data_ocorrencia": g("data_ocorrencia"),
                 "cidade": g("cidade"),
                 "uf": g("uf"),
@@ -395,8 +498,18 @@ def _dedupe(rows: list[dict[str, str]]) -> list[dict[str, str]]:
             continue
         score_new = 2 if r.get("codigo") in OCORR_PENDENCIA else 1
         score_old = 2 if prev.get("codigo") in OCORR_PENDENCIA else 1
+        # Preferir linha com VALMERC preenchido
+        if _parse_money(r.get("valor_mercadoria") or "") > 0:
+            score_new += 1
+        if _parse_money(prev.get("valor_mercadoria") or "") > 0:
+            score_old += 1
         if score_new >= score_old:
+            # Mantém valor se a escolhida veio sem e a anterior tinha
+            if not r.get("valor_mercadoria") and prev.get("valor_mercadoria"):
+                r = {**r, "valor_mercadoria": prev["valor_mercadoria"]}
             by[key] = r
+        elif not prev.get("valor_mercadoria") and r.get("valor_mercadoria"):
+            by[key] = {**prev, "valor_mercadoria": r["valor_mercadoria"]}
     return list(by.values())
 
 
@@ -425,12 +538,20 @@ def analyze_reports_31(
     ensure_dirs()
     all_rows: list[dict[str, str]] = []
     periodo_fmt = _format_periodo_display(periodo)
+    archive_dir = CACHE_DIR / "reports_31"
+    archive_dir.mkdir(parents=True, exist_ok=True)
     for code, path in (paths_by_code or {}).items():
         p = Path(path)
         if not p.is_file():
             status(f"[31/{code}] arquivo ausente — pulou")
             continue
         try:
+            # Mantém cópia: downloads são limpos por outros pipelines
+            try:
+                dest = archive_dir / f"pendencia_31_{code}{p.suffix.lower()}"
+                dest.write_bytes(p.read_bytes())
+            except Exception:
+                pass
             chunk = _parse_any(p, str(code))
             status(f"[31/{code}] {len(chunk)} linha(s) em {p.name}")
             all_rows.extend(chunk)
@@ -454,7 +575,16 @@ def analyze_reports_31(
     sla_pct_num = (100.0 * solucionadas / total) if total else 0.0
     sla_pct = f"{sla_pct_num:.1f}".replace(".", ",")
 
-    valor_risco = sum(_parse_money(r.get("valor_mercadoria") or "") for r in abertas_rows)
+    # VALMERC (col. K): soma de TODOS os relatórios 031 por código (todas as linhas lidas)
+    valor_todos_relatorios = sum(
+        _parse_money(r.get("valor_mercadoria") or "") for r in all_rows
+    )
+    # Fallback se algum arquivo veio sem K mas o dedupe tem valor
+    if valor_todos_relatorios <= 0:
+        valor_todos_relatorios = sum(
+            _parse_money(r.get("valor_mercadoria") or "") for r in uniq
+        )
+    valor_risco = valor_todos_relatorios
     aging_vals = [int(r.get("aging_dias") or 0) for r in abertas_rows]
     sla_medio = (sum(aging_vals) / len(aging_vals)) if aging_vals else 0.0
     aging_0_2 = sum(1 for d in aging_vals if d <= 2)
@@ -527,6 +657,7 @@ def analyze_reports_31(
     LAST_31_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     status(
         f"31 análise: {total} CTRC(s) · SLA {sla_pct}% "
-        f"(+{solucionadas} / −{abertas}) · ofensor={topo.get('codigo')}"
+        f"(+{solucionadas} / −{abertas}) · ofensor={topo.get('codigo')} "
+        f"· VALMERC R$ {resumo[0]['valor_risco']}"
     )
     return meta

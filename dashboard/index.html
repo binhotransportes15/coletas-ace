@@ -8884,7 +8884,7 @@
       <div class="pen-dash" id="penLayout">
         <div class="pen-filters" id="penFilters" aria-label="Filtros">
           <span class="pen-chip">Período · <b id="penFiltroPeriodo">—</b></span>
-          <span class="pen-chip">Filial · <b id="penFiltroFilial">Todas</b></span>
+          <span class="pen-chip">Unid. resp. · <b id="penFiltroFilial">Todas</b></span>
           <span class="pen-chip">Status · <b id="penFiltroStatus">Abertas</b></span>
           <span class="pen-chip muted" id="penAtualizado">atualizado —</span>
         </div>
@@ -8928,13 +8928,13 @@
             <div class="pen-motivos-bars" id="penMotivosBars"></div>
           </section>
 
-          <section class="pen-card ds-panel" aria-label="Gargalo por filial">
-            <header><h3>Gargalo por filial</h3><span class="meta" id="penFilialMeta">unidades</span></header>
+          <section class="pen-card ds-panel" aria-label="Gargalo por unidade responsável">
+            <header><h3>Gargalo por filial</h3><span class="meta" id="penFilialMeta">unid. responsável</span></header>
             <div class="pen-hbar-list" id="penFilialBars"></div>
           </section>
 
           <section class="pen-card ds-panel pen-map-card" aria-label="Pendências por estado">
-            <header><h3>Por estado</h3><span class="meta" id="penMapMeta">mapa</span></header>
+            <header><h3>Por estado</h3><span class="meta" id="penMapMeta">unid. responsável</span></header>
             <div class="pen-br-wrap" id="penBrMap">
               <div class="pen-leaflet" id="penMapLeaflet" aria-label="Mapa do Brasil"></div>
               <div class="pen-br-legend">
@@ -8958,7 +8958,7 @@
                   <th>CTRC</th>
                   <th>NF</th>
                   <th>Remetente</th>
-                  <th>Filial</th>
+                  <th>Unid. resp.</th>
                   <th>Ocorrência</th>
                   <th>Complemento</th>
                   <th>Data ocorr.</th>
@@ -12611,6 +12611,7 @@
       const desc = r.descricao_ocorrencia || r.descricao_codigo || '';
       const compl = r.complemento_ocorrencia || '';
       const nf = String(r.nf || '').trim() || nfFromPenText(compl, hist, desc);
+      // Unidade responsável (col. H do 031) — gargalo, filtro e mapa
       const filial = String(r.filial || '').trim().toUpperCase() || filialFromCtrc(ctrc);
       let dataOc = String(r.data_ocorrencia || '').trim() || dataOcorrFromPenText(hist, ultima, compl);
       if (!dataOc) dataOc = String(r.data_emissao || '').trim();
@@ -12618,8 +12619,7 @@
       const aging = diasDesdeOcorrenciaPen(dataOc, r.data_emissao);
       const status = String(r.status_ace || '').toLowerCase() || (cod === '63' ? 'solucionada' : 'aberta');
       const ocorr = String(r.descricao_codigo || desc || ultima || '—').trim();
-      const uf = String(r.uf || '').trim().toUpperCase()
-        || (PEN_FILIAL_UF[filial] || '');
+      const uf = (PEN_FILIAL_UF[filial] || String(r.uf || '').trim().toUpperCase());
       return {
         ...r,
         ctrc,
@@ -12649,11 +12649,11 @@
     };
 
     function ufFromPenRow(r) {
-      const uf = String(r.uf || '').trim().toUpperCase();
-      if (uf.length === 2) return uf;
-      const fil = String(r.filial || filialFromCtrc(r.ctrc) || '').toUpperCase();
+      // Mapa por UF da UNIDADE RESPONSÁVEL (não cidade destino da entrega)
+      const fil = String(r.filial || '').trim().toUpperCase() || filialFromCtrc(r.ctrc);
       if (PEN_FILIAL_UF[fil]) return PEN_FILIAL_UF[fil];
-      return '';
+      const uf = String(r.uf || '').trim().toUpperCase();
+      return uf.length === 2 ? uf : '';
     }
 
     function penOcorrColor(codigo) {

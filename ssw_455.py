@@ -35,6 +35,62 @@ SSW_455_MARKERS = (
     "ver fila",
 )
 
+
+def _sniff_455_suffix(body: bytes, hint: str = "") -> str:
+    """Detecta extensão real pelo conteúdo (SSW costuma entregar .sswweb com nome .xlsx)."""
+    raw = body or b""
+    hint_l = (hint or "").lower()
+    if raw[:2] == b"PK":
+        return ".xlsx"
+    # OLE Compound Document → .xls antigo
+    if raw[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
+        return ".xls"
+    head = raw[:240].lstrip().lower()
+    if b"<html" in head or b"<!doctype" in head:
+        return ".html"
+    if "sswweb" in hint_l:
+        return ".sswweb"
+    if "csv" in hint_l and "sswweb" not in hint_l:
+        return ".csv"
+    # Texto delimitado típico do SSW
+    sample = raw[:800]
+    if b";" in sample or b"," in sample or b"\t" in sample:
+        return ".sswweb"
+    if raw[:1] in (b'"', b"'") or raw[:1].isalnum():
+        return ".sswweb"
+    if "xlsx" in hint_l and raw[:2] == b"PK":
+        return ".xlsx"
+    return ".sswweb"
+
+
+def _normalize_455_path(path: Path, preferred_stem: str = "") -> Path:
+    """Renomeia o arquivo baixado para a extensão correta pelo conteúdo."""
+    p = Path(path)
+    if not p.is_file():
+        return p
+    try:
+        body = p.read_bytes()[:4096]
+    except OSError:
+        return p
+    suffix = _sniff_455_suffix(body, p.name)
+    if suffix == ".html":
+        raise RuntimeError("455: download veio como HTML (sem arquivo de dados)")
+    stem = preferred_stem or p.stem
+    # Evita stem com extensão residual no nome
+    if stem.lower().endswith((".xlsx", ".xls", ".csv", ".sswweb")):
+        stem = Path(stem).stem
+    dest = p.with_name(f"{stem}{suffix}")
+    if dest.resolve() == p.resolve():
+        return p
+    if dest.exists():
+        dest = p.with_name(f"{stem}_{int(time.time())}{suffix}")
+    try:
+        p.replace(dest)
+        return dest
+    except OSError:
+        return p
+
+
 _EMPTY_FILA_RE = re.compile(
     r"n[aã]o\s+selecionou|sem\s+ctrc|nenhum\s+ctrc|sem\s+dados|n[aã]o\s+h[aá]\s+regist|"
     r"nada\s+a\s+(gerar|emitir)|sem\s+movimento|nenhum\s+registro",
@@ -199,11 +255,12 @@ def download_reports_455(
                 arquivo=arq,
                 on_status=status,
             )
-            dest_name = f"emissao_455_{uni or 'ALL'}_{ts}.xlsx"
+            dest_name = f"emissao_455_{uni or 'ALL'}_{ts}.sswweb"
             status("[455] ► fila 156…")
             path = _gerar_download_455(
                 client, context, page, popup, dest_name, status
             )
+            path = _normalize_455_path(path, preferred_stem=Path(dest_name).stem)
             status(f"[455] OK {path.name} ({path.stat().st_size} bytes)")
         finally:
             for pg in (popup, fila):
@@ -800,18 +857,13 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
         head = body[:200].lower()
         if b"<html" in head or b"<!doctype" in head:
             return None
-        dest = Path(client.download_dir) / dest_name
+        suffix = _sniff_455_suffix(body, hint)
+        if suffix == ".html":
+            return None
+        stem = Path(dest_name).stem
+        dest = Path(client.download_dir) / f"{stem}{suffix}"
         if dest.exists():
             dest = dest.with_name(f"{dest.stem}_{int(time.time())}{dest.suffix}")
-        low = (hint or "").lower()
-        if "xlsx" in low or body[:2] == b"PK":
-            dest = dest.with_suffix(".xlsx")
-        elif "xls" in low and "xlsx" not in low:
-            dest = dest.with_suffix(".xls")
-        elif "csv" in low:
-            dest = dest.with_suffix(".csv")
-        elif "sswweb" in low:
-            dest = dest.with_suffix(".sswweb")
         dest.write_bytes(body)
         return dest
 
@@ -942,6 +994,7 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
 
     def _poll_new_file(wait_s: float = 3.0) -> Path | None:
         deadline = time.time() + wait_s
+        stem = Path(dest_name).stem
         while time.time() < deadline:
             for p in Path(client.download_dir).glob("*"):
                 if not p.is_file():
@@ -954,19 +1007,12 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
                         ".csv",
                         ".sswweb",
                         ".zip",
+                        "",
                     }:
-                        dest = Path(client.download_dir) / dest_name
-                        if p.resolve() != dest.resolve():
-                            try:
-                                if dest.exists():
-                                    dest = dest.with_name(
-                                        f"{dest.stem}_{int(time.time())}{dest.suffix}"
-                                    )
-                                p.replace(dest)
-                                return dest
-                            except Exception:
-                                return p
-                        return dest
+                        try:
+                            return _normalize_455_path(p, preferred_stem=stem)
+                        except Exception:
+                            return p
             time.sleep(0.35)
         return None
 
@@ -977,7 +1023,8 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
             status(f"[455] clique DOW={how}")
             if how in {"seq_sumiu", "sem_link", "click-fail", ""}:
                 raise RuntimeError(f"trigger falhou ({how})")
-        return client._save_download(di.value, dest_name)
+        saved = client._save_download(di.value, dest_name)
+        return _normalize_455_path(saved, preferred_stem=Path(dest_name).stem)
     except PlaywrightTimeoutError:
         status("[455] sem evento download — nova aba / fetch / poll…")
         got = _poll_new_file(2.0)
@@ -1018,7 +1065,7 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
                 new_page.close()
             except Exception:
                 pass
-            return path
+            return _normalize_455_path(path, preferred_stem=Path(dest_name).stem)
         except PlaywrightTimeoutError:
             try:
                 url = new_page.url or ""
@@ -1061,7 +1108,10 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
             status(f"[455] force {how}")
             if how.startswith("sem"):
                 raise RuntimeError(how)
-        return client._save_download(di.value, dest_name)
+        return _normalize_455_path(
+            client._save_download(di.value, dest_name),
+            preferred_stem=Path(dest_name).stem,
+        )
     except Exception as err:
         status(f"[455] force DOW: {err}")
         got = _poll_new_file(2.5)
@@ -1077,7 +1127,10 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
         with context.expect_event("download", timeout=25000) as di:
             link.click(timeout=5000, force=True)
             status("[455] clique DOW=locator")
-        return client._save_download(di.value, dest_name)
+        return _normalize_455_path(
+            client._save_download(di.value, dest_name),
+            preferred_stem=Path(dest_name).stem,
+        )
     except Exception as err:
         status(f"[455] locator: {err}")
         got = _poll_new_file(2.0)

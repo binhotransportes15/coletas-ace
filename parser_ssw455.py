@@ -417,8 +417,15 @@ def parse_excel_455(path: Path | str) -> list[dict[str, Any]]:
     if not p.is_file():
         raise RuntimeError(f"455: arquivo inexistente: {p}")
 
-    # .sswweb / csv fallback
-    if p.suffix.lower() in {".csv", ".sswweb", ".txt"}:
+    # .sswweb / csv / texto; ou .xlsx falso (SSW grava sswweb com extensão xlsx)
+    suf = p.suffix.lower()
+    head = b""
+    try:
+        head = p.read_bytes()[:8]
+    except OSError:
+        head = b""
+    is_zip = head[:2] == b"PK"
+    if suf in {".csv", ".sswweb", ".txt"} or not is_zip:
         return _parse_text_455(p)
 
     wb = load_workbook(p, read_only=True, data_only=True)

@@ -437,16 +437,32 @@
       };
     }
     if (SETOR === 'pendencia') {
-      const rows = await loadCsv('data/pendencia/pendencias_31.csv');
+      const raw = await loadCsv('data/pendencia/pendencias_31.csv');
+      const rows = (raw || []).map((r) => {
+        const ctrc = String(r.ctrc || '').trim();
+        const filCsv = String(r.filial || '').trim().toUpperCase();
+        const filCtrc = (ctrc.toUpperCase().replace(/\s+/g, '').match(/^([A-Z]{2,4})/) || [])[1] || '';
+        return {
+          ...r,
+          ctrc,
+          filial: filCsv || filCtrc || '—',
+          status_ace: String(r.status_ace || '').trim().toLowerCase(),
+        };
+      });
       return {
         columns: [
           colDef('ctrc', 'CTRC'),
-          colDef('data_emissao', 'Emissão'),
-          colDef('ultima_ocorrencia', 'Última ocorrência'),
+          colDef('filial', 'Unid. responsável'),
+          colDef('nf', 'NF'),
+          colDef('data_emissao', 'Emissão', { type: 'day' }),
+          colDef('data_ocorrencia', 'Data ocorr.', { type: 'day' }),
           colDef('codigo', 'Código'),
           colDef('descricao_codigo', 'Descrição código'),
-          colDef('descricao_ocorrencia', 'Descrição'),
+          colDef('ultima_ocorrencia', 'Última ocorrência'),
           colDef('complemento_ocorrencia', 'Complemento'),
+          colDef('valor_mercadoria', 'Valor merc.', { type: 'money' }),
+          colDef('aging_dias', 'Dias c/ ocorr.'),
+          colDef('status_ace', 'Status', { type: 'enum', enum: ['aberta', 'solucionada'] }),
         ],
         rows,
       };
