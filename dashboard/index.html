@@ -1402,6 +1402,24 @@
     body.tv-mode #panel-mapa .arm-kpi.ds-kpi::before {
       display: none !important;
     }
+    body.tv-mode #panel-mapa .mapa-kpi-tms {
+      gap: 6px;
+    }
+    body.tv-mode #panel-mapa .mapa-kpi-card {
+      padding: 8px 10px;
+    }
+    body.tv-mode #panel-mapa .mapa-kpi-card .val {
+      font-size: clamp(16px, 2vmin, 24px);
+    }
+    body.tv-mode #panel-mapa .mapa-live-pill .time {
+      font-size: 12px;
+    }
+    body.tv-mode #panel-mapa .mapa-prod-card {
+      bottom: 64px;
+    }
+    body.mapa-gestao-mode #mapaProdCard {
+      display: none;
+    }
     body.tv-mode #panel-mapa .mapa-zone-legend,
     body.tv-mode #panel-mapa .mapa-route-caption {
       background: transparent !important;
@@ -4081,6 +4099,446 @@
       max-width: 1800px;
       margin: 0 auto;
     }
+    /* TMS / torre de controle — identidade profissional */
+    .mapa-wrap.mapa-tms {
+      gap: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(180deg, #0b1220 0%, #0a1018 100%);
+    }
+    .mapa-top-tms {
+      align-items: center !important;
+      gap: 12px !important;
+      padding: 4px 2px 2px !important;
+      min-height: 0 !important;
+    }
+    .mapa-top-tms .arm-titles h1 {
+      font-size: clamp(18px, 2.1vmin, 24px) !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.02em !important;
+      text-transform: none !important;
+      margin: 0 !important;
+      line-height: 1.15 !important;
+    }
+    .mapa-top-tms .kicker {
+      font-size: 11px !important;
+      letter-spacing: 0.12em !important;
+      color: #64748b !important;
+      margin-bottom: 2px !important;
+    }
+    .mapa-updated {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .mapa-nav-tms .nav-btn {
+      padding: 6px 10px !important;
+      font-size: 11px !important;
+      opacity: 0.85;
+    }
+    .mapa-live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+    .mapa-live-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.22);
+    }
+    .mapa-live-pill .lbl {
+      color: #94a3b8;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+    }
+    .mapa-live-pill .time {
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      color: #f8fafc;
+    }
+    .mapa-kpi-tms {
+      display: grid !important;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .mapa-kpi-card {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid rgba(30, 41, 59, 0.95);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset;
+      min-width: 0;
+    }
+    .mapa-kpi-card .ico {
+      font-size: 16px;
+      line-height: 1;
+      margin-top: 2px;
+      opacity: 0.9;
+    }
+    .mapa-kpi-card .body { min-width: 0; flex: 1; }
+    .mapa-kpi-card .lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      letter-spacing: 0.02em;
+    }
+    .mapa-kpi-card .val {
+      font-size: clamp(18px, 2.2vmin, 26px);
+      font-weight: 800;
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.15;
+      margin: 2px 0;
+    }
+    .mapa-kpi-card .sub {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mapa-kpi-card.is-entrega { border-top: 2px solid #3b82f6; }
+    .mapa-kpi-card.is-coleta { border-top: 2px solid #22c55e; }
+    .mapa-kpi-card.is-rua { border-top: 2px solid #f59e0b; }
+    .mapa-kpi-card.is-paradas { border-top: 2px solid #ef4444; }
+    .mapa-kpi-card.is-frete { border-top: 2px solid #a855f7; }
+    .mapa-kpi-card.is-peso { border-top: 2px solid #64748b; }
+    .mapa-prod-card {
+      position: absolute;
+      left: 12px;
+      bottom: 56px;
+      z-index: 820;
+      min-width: 148px;
+      max-width: 200px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+      pointer-events: none;
+      text-align: left;
+    }
+    .mapa-prod-card .lab {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+    .mapa-prod-card .pct-wrap {
+      position: relative;
+      display: inline-block;
+      --farol-level: 0%;
+      --farol-wave: #3b82f6;
+      --farol-wave-deep: #1d4ed8;
+    }
+    .mapa-prod-card .pct,
+    .mapa-prod-card .pct-fill {
+      font-size: clamp(28px, 3.4vmin, 40px);
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: #f8fafc;
+    }
+    .mapa-prod-card .pct-fill {
+      position: absolute;
+      left: 0; top: 0;
+      color: transparent;
+      background: linear-gradient(180deg, var(--farol-wave-deep), var(--farol-wave));
+      -webkit-background-clip: text;
+      background-clip: text;
+      clip-path: inset(calc(100% - var(--farol-level)) 0 0 0);
+    }
+    .mapa-prod-card .pct-wrap[data-tone="low"] {
+      --farol-wave: #ef4444;
+      --farol-wave-deep: #b91c1c;
+    }
+    .mapa-prod-card .pct-wrap[data-tone="mid"] {
+      --farol-wave: #f59e0b;
+      --farol-wave-deep: #d97706;
+    }
+    .mapa-prod-card .pct-wrap[data-tone="good"] {
+      --farol-wave: #22c55e;
+      --farol-wave-deep: #15803d;
+    }
+    .mapa-prod-card .meta {
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      line-height: 1.35;
+      display: block !important;
+      white-space: pre-line;
+    }
+    .mapa-tms .mapa-side { display: none !important; }
+    .mapa-tms .mapa-side-right {
+      top: 10px !important;
+      bottom: 56px !important;
+      right: 10px !important;
+      width: min(280px, 26vw) !important;
+      pointer-events: none;
+    }
+    .mapa-veic-panel {
+      background: rgba(15, 23, 42, 0.92) !important;
+      border: 1px solid rgba(51, 65, 85, 0.85) !important;
+      border-radius: 12px !important;
+      box-shadow: 0 10px 32px rgba(0,0,0,0.35) !important;
+      pointer-events: auto;
+      backdrop-filter: blur(8px);
+    }
+    .mapa-veic-panel header {
+      padding: 10px 12px 6px !important;
+      text-shadow: none !important;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.6) !important;
+    }
+    .mapa-veic-panel header h2 {
+      color: #e2e8f0 !important;
+      letter-spacing: 0.06em !important;
+      font-size: 11px !important;
+    }
+    .mapa-veic-list {
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      padding: 8px !important;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+    }
+    .mapa-veic-card {
+      position: relative !important;
+      left: auto !important;
+      right: auto !important;
+      top: auto !important;
+      display: grid !important;
+      grid-template-columns: 1fr auto !important;
+      gap: 4px 8px !important;
+      align-items: start;
+      padding: 10px 10px 8px !important;
+      border-radius: 10px !important;
+      background: rgba(30, 41, 59, 0.55) !important;
+      border: 1px solid rgba(71, 85, 105, 0.45) !important;
+      box-shadow: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+      text-shadow: none !important;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .mapa-veic-card.show,
+    .mapa-veic-card.leaving,
+    .mapa-veic-card.active.show {
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+    }
+    .mapa-veic-card:hover {
+      border-color: rgba(59, 130, 246, 0.55) !important;
+      background: rgba(30, 41, 59, 0.8) !important;
+    }
+    .mapa-veic-card.active {
+      border-color: rgba(59, 130, 246, 0.75) !important;
+      background: rgba(37, 99, 235, 0.18) !important;
+      z-index: 2;
+    }
+    .mapa-veic-card .row-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      grid-column: 1 / 2;
+    }
+    .mapa-veic-card .st-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #22c55e;
+    }
+    .mapa-veic-card .st-dot.is-wait { background: #f59e0b; }
+    .mapa-veic-card .st-dot.is-late { background: #ef4444; }
+    .mapa-veic-card .st-dot.is-idle { background: #64748b; }
+    .mapa-veic-card .name {
+      font-size: 13px !important;
+      font-weight: 800 !important;
+      color: #f8fafc !important;
+      letter-spacing: 0.04em;
+      text-shadow: none !important;
+      animation: none !important;
+    }
+    .mapa-veic-card.active .name {
+      color: #93c5fd !important;
+      font-size: 13px !important;
+      text-shadow: none !important;
+      animation: none !important;
+    }
+    .mapa-veic-card .pct {
+      grid-column: 2;
+      grid-row: 1;
+      font-size: 14px;
+      font-weight: 800;
+      color: #e2e8f0;
+      font-variant-numeric: tabular-nums;
+    }
+    .mapa-veic-card .motorista {
+      grid-column: 1 / -1;
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mapa-veic-card .servico {
+      grid-column: 1 / -1;
+      font-size: 11px;
+      color: #cbd5e1;
+      font-weight: 700;
+    }
+    .mapa-veic-card .bar {
+      grid-column: 1 / -1;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .mapa-veic-card .bar > i {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: #3b82f6;
+      width: 0%;
+    }
+    .mapa-veic-foot {
+      margin-top: 4px;
+      padding: 6px 4px 2px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 0.04em;
+      text-align: center;
+    }
+    .mapa-tms .mapa-zone-legend {
+      left: 12px;
+      right: auto;
+      bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 10px;
+      max-width: min(520px, calc(100% - 220px));
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      color: #e2e8f0;
+    }
+    .mapa-tms .mapa-zone-legend .leg-title {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: #94a3b8;
+      font-weight: 800;
+      margin-right: 4px;
+    }
+    .mapa-tms .mapa-zone-legend button {
+      appearance: none;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #e2e8f0;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 1;
+    }
+    .mapa-tms .mapa-zone-legend button.is-off {
+      opacity: 0.4;
+    }
+    .mapa-tms .mapa-zone-legend button:hover {
+      border-color: rgba(148, 163, 184, 0.35);
+      background: rgba(30, 41, 59, 0.6);
+    }
+    .mapa-tms .mapa-route-caption {
+      left: auto;
+      right: calc(min(280px, 26vw) + 20px);
+      bottom: 12px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      max-width: min(360px, 40%);
+    }
+    .mapa-tms .mapa-route-caption .sub { color: #94a3b8; }
+    .mapa-truck-marker {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 2px solid #3b82f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    }
+    .mapa-truck-marker.is-coleta { border-color: #22c55e; }
+    .mapa-tms .mapa-op-stop {
+      --op-main: #3b82f6;
+      --op-soft: #93c5fd;
+      --op-ring: rgba(59, 130, 246, 0.2);
+      --op-glow: rgba(59, 130, 246, 0.35);
+      width: 22px;
+      height: 22px;
+      box-shadow: 0 0 0 3px var(--op-ring), 0 2px 8px rgba(0,0,0,0.35);
+    }
+    .mapa-tms .mapa-op-stop.is-coleta {
+      --op-main: #22c55e;
+      --op-soft: #86efac;
+      --op-ring: rgba(34, 197, 94, 0.2);
+      --op-glow: rgba(34, 197, 94, 0.3);
+    }
+    .mapa-tms .mapa-op-stop.is-done {
+      --op-main: #64748b;
+      --op-soft: #94a3b8;
+      --op-ring: rgba(100, 116, 139, 0.2);
+      --op-glow: transparent;
+      opacity: 0.75;
+    }
+    .mapa-tms .mapa-op-stop.mapa-blink { animation: none; }
+    .mapa-tms .cyber-base {
+      background: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25), 0 2px 10px rgba(0,0,0,0.35);
+    }
+    .mapa-tms .cyber-base::after { display: none; }
+    .mapa-tms .cyber-base-label {
+      color: #f8fafc;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+      letter-spacing: 0.04em;
+    }
+    @media (max-width: 1100px) {
+      .mapa-kpi-tms { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
     .mapa-kpis-top {
       grid-template-columns: repeat(8, minmax(0, 1fr));
       flex: 0 0 auto;
@@ -4450,21 +4908,15 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 11px; font-weight: 900; color: #f8fafc;
     }
-    /* Farol SP — zonas BINHO iluminadas (sem caixa atrás) */
+    /* Farol SP legado — oculto no layout TMS */
     #mapaFarolLeaflet path.mapa-zona-neon,
     .mapa-farol-hero path {
-      filter: brightness(1.18) saturate(1.25) contrast(1.05)
-              drop-shadow(0 0 1px rgba(15, 23, 42, 0.55))
-              drop-shadow(0 0 6px rgba(255, 255, 255, 0.18));
-      stroke: rgba(248, 250, 252, 0.92) !important;
-      stroke-width: 1.35px !important;
-      stroke-opacity: 0.9 !important;
+      filter: none;
     }
-    /* Mapa principal (rotas) — zonas discretas sobre tiles dark */
+    /* Mapa principal — regiões discretas (hierarquia: rota > veículo > região) */
     #mapaLeaflet path.mapa-zona-neon {
-      filter: brightness(0.9) saturate(1.1) contrast(1.05)
-              drop-shadow(0 0 2px rgba(0, 0, 0, 0.45));
-      stroke-opacity: 0.7 !important;
+      filter: none;
+      stroke-opacity: 0.35 !important;
     }
     .leaflet-div-icon.cyber-base-icon {
       background: transparent;
@@ -6942,8 +7394,8 @@
     </div>
   </div>
   <div id="panel-mapa" class="sector-root" hidden>
-    <div class="mapa-wrap">
-      <div class="arm-top ds-header">
+    <div class="mapa-wrap mapa-tms">
+      <div class="arm-top ds-header mapa-top-tms">
         <div class="arm-brand">
           <img
             class="js-sector-menu"
@@ -6954,81 +7406,102 @@
             tabindex="0"
           />
           <div class="arm-titles">
-            <div class="kicker" id="mapaKicker">BINHO · OPERACIONAL · MAPA</div>
-            <h1 id="mapaTitle">MAPA OPERACIONAL</h1>
+            <div class="kicker" id="mapaKicker">BINHO · GESTÃO</div>
+            <h1 id="mapaTitle">Mapa Operacional</h1>
+            <div class="mapa-updated" id="mapaAtualizadoTop">Atualizado —</div>
           </div>
         </div>
-        <nav class="nav">
+        <nav class="nav mapa-nav-tms">
           <button type="button" class="nav-btn active" id="btnMapaLive" data-mapa-view="live">Ao vivo</button>
           <button type="button" class="nav-btn" id="btnMapaGestao" data-mapa-view="gestao">Gestão</button>
           <button type="button" class="nav-btn tv-btn" id="btnTvMapa" title="Modo TV / tela inteira (F)">TV</button>
         </nav>
-        <div class="clock-box">
-          <div class="lbl">Tempo real</div>
-          <div class="time" id="mapaClock">--:--:--</div>
-          <div class="date" id="mapaDate">—</div>
+        <div class="mapa-live-pill" id="mapaLivePill" title="Tempo real">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="lbl">AO VIVO</span>
+          <span class="time" id="mapaClock">--:--</span>
+          <span class="date" id="mapaDate" hidden>—</span>
         </div>
       </div>
-      <div class="arm-kpis mapa-kpis-top dash-block ds-kpi-row" data-block="kpis" aria-label="Totais do dia">
-        <div class="arm-kpi ds-kpi is-ok">
-          <div class="lbl">Coleta</div>
-          <div class="val" id="mapaTotCol">—</div>
+      <div class="mapa-kpis-top mapa-kpi-tms" data-block="kpis" aria-label="Indicadores do mapa">
+        <div class="mapa-kpi-card is-coleta">
+          <div class="ico" aria-hidden="true">📦</div>
+          <div class="body">
+            <div class="lbl">Coletas</div>
+            <div class="val" id="mapaTotCol">—</div>
+            <div class="sub" id="mapaTotColSub">na rua</div>
+          </div>
         </div>
-        <div class="arm-kpi ds-kpi is-run">
-          <div class="lbl">Entrega</div>
-          <div class="val" id="mapaTotEnt">—</div>
+        <div class="mapa-kpi-card is-entrega">
+          <div class="ico" aria-hidden="true">🚚</div>
+          <div class="body">
+            <div class="lbl">Entregas</div>
+            <div class="val" id="mapaTotEnt">—</div>
+            <div class="sub" id="mapaTotEntSub">concluídas / total</div>
+          </div>
         </div>
-        <div class="arm-kpi ds-kpi is-neutral">
-          <div class="lbl">Na rua</div>
-          <div class="val" id="mapaVeic">0</div>
+        <div class="mapa-kpi-card is-rua">
+          <div class="ico" aria-hidden="true">📍</div>
+          <div class="body">
+            <div class="lbl">Na rua</div>
+            <div class="val" id="mapaVeic">0</div>
+            <div class="sub" id="mapaVeicSub">veículos ativos</div>
+          </div>
         </div>
-        <div class="arm-kpi ds-kpi is-neutral">
-          <div class="lbl">Paradas</div>
-          <div class="val" id="mapaParadas">0</div>
+        <div class="mapa-kpi-card is-paradas">
+          <div class="ico" aria-hidden="true">🛑</div>
+          <div class="body">
+            <div class="lbl">Paradas</div>
+            <div class="val" id="mapaParadas">0</div>
+            <div class="sub" id="mapaParadasSub">em operação</div>
+          </div>
         </div>
-        <div class="arm-kpi ds-kpi is-neutral">
-          <div class="lbl">Frete entrega</div>
-          <div class="val" id="mapaFreteEnt">R$ 0</div>
+        <div class="mapa-kpi-card is-frete">
+          <div class="ico" aria-hidden="true">💰</div>
+          <div class="body">
+            <div class="lbl">Frete</div>
+            <div class="val" id="mapaFreteEnt">R$ 0</div>
+            <div class="sub" id="mapaFreteEntSub">entregas</div>
+          </div>
         </div>
-        <div class="arm-kpi peso ds-kpi is-neutral">
-          <div class="lbl">Peso entrega</div>
-          <div class="val" id="mapaPesoEnt">0 kg</div>
+        <div class="mapa-kpi-card is-peso">
+          <div class="ico" aria-hidden="true">⚖️</div>
+          <div class="body">
+            <div class="lbl">Peso</div>
+            <div class="val" id="mapaPesoEnt">0 kg</div>
+            <div class="sub" id="mapaPesoEntSub">em rota</div>
+          </div>
         </div>
-        <div class="arm-kpi ds-kpi is-warn">
-          <div class="lbl">Frete coleta</div>
-          <div class="val" id="mapaFreteCol">R$ 0</div>
-        </div>
-        <div class="arm-kpi peso ds-kpi is-warn">
-          <div class="lbl">Peso coleta</div>
-          <div class="val" id="mapaPesoCol">0 kg</div>
-        </div>
+        <span id="mapaFreteCol" hidden>R$ 0</span>
+        <span id="mapaPesoCol" hidden>0 kg</span>
       </div>
       <div class="mapa-layout" id="mapaLayout">
         <section class="mapa-map-card">
           <div id="mapaLeaflet" aria-label="Mapa de rotas"></div>
           <div class="mapa-route-caption" id="mapaRouteCaption" hidden></div>
+          <div class="mapa-prod-card" id="mapaProdCard" aria-label="Produtividade na rua">
+            <div class="lab">NA RUA</div>
+            <div class="pct-wrap" id="mapaFarolWave" data-tone="low">
+              <span class="pct" id="mapaFarolPct">—</span>
+              <span class="pct-fill" id="mapaFarolPctFill" aria-hidden="true">—</span>
+            </div>
+            <div class="meta" id="mapaFarolMeta">sem dados</div>
+            <div class="lab" id="mapaFarolLab" hidden></div>
+          </div>
           <div class="mapa-zone-legend" id="mapaZoneLegend" hidden></div>
           <div class="mapa-aviso" id="mapaAviso" hidden></div>
-          <aside class="mapa-side" aria-label="São Paulo serviço">
-            <section class="mapa-farol-hero" aria-label="Serviço na rua hoje — São Paulo">
-              <div id="mapaFarolLeaflet" aria-label="Mapa farol São Paulo"></div>
-              <div class="mapa-farol-overlay">
-                <div class="mapa-farol-pct-wrap" id="mapaFarolWave" data-tone="low">
-                  <span class="big mapa-farol-pct-base" id="mapaFarolPct">—</span>
-                  <span class="big mapa-farol-pct-fill" id="mapaFarolPctFill" aria-hidden="true">—</span>
-                </div>
-                <div class="lab" id="mapaFarolLab" hidden>realizado</div>
-                <div class="meta" id="mapaFarolMeta" hidden>coleta + entrega</div>
-              </div>
+          <aside class="mapa-side" hidden aria-hidden="true">
+            <section class="mapa-farol-hero" aria-hidden="true">
+              <div id="mapaFarolLeaflet"></div>
             </section>
           </aside>
           <aside class="mapa-side-right">
-            <section class="mapa-list-card">
+            <section class="mapa-list-card mapa-veic-panel">
               <header>
                 <h2>Veículos</h2>
                 <div class="meta" id="mapaAtualizado">—</div>
               </header>
-              <div class="mapa-list pop-stack" id="mapaLista"></div>
+              <div class="mapa-list mapa-veic-list" id="mapaLista"></div>
             </section>
             <div class="arm-err" id="mapaErr" hidden></div>
           </aside>
@@ -7333,7 +7806,7 @@
     let mapaZoneLayer = null;
     const MAPA_ROUTE_MS_KEY = 'ace_mapa_route_ms';
     const MAPA_ROUTE_MS_DEFAULT = 15000;
-    const MAPA_PLACA_VISIBLE = 4;
+    const MAPA_PLACA_VISIBLE = 24;
     function loadMapaRouteMs() {
       // Tempo vem do CRT (tv_layout.mapaRouteMs / /tempo mapa) — nao do menu do dashboard
       return MAPA_ROUTE_MS_DEFAULT;
@@ -7513,7 +7986,11 @@
       }
       const mapaClock = document.getElementById('mapaClock');
       const mapaDate = document.getElementById('mapaDate');
-      if (mapaClock) mapaClock.textContent = time;
+      if (mapaClock) mapaClock.textContent = now.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
       if (mapaDate) {
         mapaDate.textContent = now.toLocaleDateString('pt-BR', {
           weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
@@ -10349,7 +10826,6 @@
       lastMapaFarolPct = pct;
       const pctEl = document.getElementById('mapaFarolPct');
       const pctFill = document.getElementById('mapaFarolPctFill');
-      const lab = document.getElementById('mapaFarolLab');
       const meta = document.getElementById('mapaFarolMeta');
       const wave = document.getElementById('mapaFarolWave');
       const level = (pct != null && Number.isFinite(pct))
@@ -10358,76 +10834,21 @@
       const label = pct == null || !Number.isFinite(pct)
         ? '—'
         : `${Math.round(pct)}%`;
-      if (pctEl) {
-        pctEl.textContent = label;
-        pctEl.style.color = '';
-      }
+      if (pctEl) pctEl.textContent = label;
       if (pctFill) pctFill.textContent = label;
       if (wave) {
         wave.style.setProperty('--farol-level', `${level}%`);
         wave.dataset.tone = level >= 70 ? 'good' : level >= 35 ? 'mid' : 'low';
       }
-      if (lab) lab.hidden = true;
       if (meta) {
-        if (detail) {
-          meta.hidden = false;
-          meta.textContent = detail;
-        } else {
-          meta.hidden = true;
-        }
+        meta.hidden = false;
+        meta.textContent = detail || 'na rua hoje';
       }
-
-      const map = ensureMapaFarolLeaflet();
-      if (!map) return;
-
-      const paintZones = async () => {
-        const zonas = await loadMapaZonas();
-        const geo = await loadMapaFarolGeo();
-        if (mapaFarolLayer) {
-          try { map.removeLayer(mapaFarolLayer); } catch (_) {}
-          mapaFarolLayer = null;
-        }
-        mapaFarolLayer = L.geoJSON(geo, {
-          style: (feat) => {
-            const p = feat.properties || {};
-            const zona = String(p.zona || '').toUpperCase();
-            const binhoZona = {
-              CENTRO: '#fff200',
-              LESTE: '#8cc63f',
-              NORTE: '#29abe2',
-              OESTE: '#ed1c24',
-              SUL: '#fbb03b',
-            };
-            const color = binhoZona[zona]
-              || p.zona_color
-              || (zonas.distritos[p.name] && zonas.distritos[p.name].color)
-              || '#8cc63f';
-            return {
-              color: '#0b1220',
-              weight: 1.4,
-              opacity: 0.9,
-              fillColor: color,
-              fillOpacity: 0.88,
-              className: 'mapa-zona-neon',
-            };
-          },
-        }).addTo(map);
-        try {
-          map.fitBounds(mapaFarolLayer.getBounds(), { padding: [4, 4], maxZoom: 11 });
-        } catch (_) {}
-        setTimeout(() => { try { map.invalidateSize(); } catch (_) {} }, 80);
-      };
-      paintZones().catch(() => {
-        if (lab) {
-          lab.hidden = false;
-          lab.textContent = 'mapa SP indisponível';
-        }
-      });
     }
 
     async function refreshMapaFarolServico() {
       try {
-        // % do farol = serviço NA RUA do dia (mapa), não o resumo geral 103+36
+        // % = serviço NA RUA do dia (mapa), não o resumo geral 103+36
         let data = lastMapaData;
         if (!data) {
           for (const url of [
@@ -10478,7 +10899,6 @@
             }
           });
         });
-        // Se não houver contagem por parada, usa serviço agregado
         if (!colTot && !entTot && total > 0) {
           entTot = total;
           entFeitas = feitas;
@@ -10488,13 +10908,17 @@
           total = colTot + entTot;
         }
         const pct = total > 0 ? (feitas / total) * 100 : null;
-        const falta = total > 0 ? Math.max(0, total - feitas) : null;
+        const falta = total > 0 ? Math.max(0, total - feitas) : 0;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set('mapaTotCol', colTot ? `${colFeitas}/${colTot}` : '—');
         set('mapaTotEnt', entTot ? `${entFeitas}/${entTot}` : '—');
+        set('mapaTotColSub', colTot ? `${colFeitas} concluída${colFeitas === 1 ? '' : 's'}` : 'sem coletas');
+        set('mapaTotEntSub', entTot ? `${entFeitas} concluída${entFeitas === 1 ? '' : 's'}` : 'sem entregas');
+        set('mapaVeicSub', veics.length === 1 ? 'veículo ativo' : 'veículos ativos');
+        set('mapaParadasSub', falta ? `${falta} pendente${falta === 1 ? '' : 's'}` : 'em operação');
         const detail = total > 0
-          ? `na rua hoje · ${feitas}/${total} · falta ${falta}`
-          : 'na rua hoje · sem paradas';
+          ? `${veics.length} veículo${veics.length === 1 ? '' : 's'} · ${feitas} de ${total}\n${falta} parada${falta === 1 ? '' : 's'} pendente${falta === 1 ? '' : 's'}`
+          : 'sem paradas na rua';
         paintMapaFarol(pct, detail);
       } catch (_) {
         paintMapaFarol(null, 'na rua hoje');
@@ -10511,6 +10935,84 @@
       if (p >= 100) return '#8cc63f';
       if (p >= 50) return '#29abe2';
       return '#fff200';
+    }
+
+    const MAPA_ZONA_COLORS = {
+      CENTRO: '#eab308',
+      LESTE: '#22c55e',
+      NORTE: '#3b82f6',
+      OESTE: '#ef4444',
+      SUL: '#f97316',
+    };
+    let mapaZoneHidden = new Set();
+    let mapaZoneGeoCache = null;
+    let mapaZoneMetaCache = null;
+
+    function mapaZoneStyle(feat) {
+      const p = feat.properties || {};
+      let zona = String(p.zona || '').toUpperCase();
+      if (!zona && p.name && mapaZoneMetaCache?.distritos?.[p.name]) {
+        zona = String(mapaZoneMetaCache.distritos[p.name].zona || '').toUpperCase();
+      }
+      const color = MAPA_ZONA_COLORS[zona]
+        || p.zona_color
+        || (mapaZoneMetaCache?.distritos?.[p.name]?.color)
+        || '#64748b';
+      const off = zona && mapaZoneHidden.has(zona);
+      return {
+        color: color,
+        weight: 1,
+        opacity: off ? 0 : 0.35,
+        fillColor: color,
+        fillOpacity: off ? 0 : 0.16,
+        className: 'mapa-zona-neon',
+      };
+    }
+
+    function refreshMapaZoneStyles() {
+      if (!mapaZoneLayer) return;
+      try {
+        mapaZoneLayer.setStyle((feat) => mapaZoneStyle(feat));
+      } catch (_) {}
+    }
+
+    function renderMapaZoneLegend() {
+      const leg = document.getElementById('mapaZoneLegend');
+      if (!leg) return;
+      const zonas = mapaZoneMetaCache?.zonas
+        || {
+          CENTRO: { label: 'Centro', color: MAPA_ZONA_COLORS.CENTRO },
+          LESTE: { label: 'Leste', color: MAPA_ZONA_COLORS.LESTE },
+          NORTE: { label: 'Norte', color: MAPA_ZONA_COLORS.NORTE },
+          OESTE: { label: 'Oeste', color: MAPA_ZONA_COLORS.OESTE },
+          SUL: { label: 'Sul', color: MAPA_ZONA_COLORS.SUL },
+        };
+      const keys = Object.keys(zonas);
+      if (!keys.length) {
+        leg.hidden = true;
+        return;
+      }
+      leg.hidden = false;
+      leg.innerHTML = `<span class="leg-title">REGIÕES</span>`
+        + keys.map((k) => {
+          const z = zonas[k];
+          const id = String(z.id || z.key || k).toUpperCase();
+          const label = z.label || id;
+          const color = MAPA_ZONA_COLORS[id] || z.color || '#64748b';
+          const off = mapaZoneHidden.has(id) ? ' is-off' : '';
+          return `<button type="button" class="${off.trim()}" data-zona="${esc(id)}" title="Mostrar / ocultar ${esc(label)}">`
+            + `<span style="background:${color}"></span>${esc(label)}</button>`;
+        }).join('');
+      leg.querySelectorAll('button[data-zona]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = String(btn.getAttribute('data-zona') || '').toUpperCase();
+          if (!id) return;
+          if (mapaZoneHidden.has(id)) mapaZoneHidden.delete(id);
+          else mapaZoneHidden.add(id);
+          btn.classList.toggle('is-off', mapaZoneHidden.has(id));
+          refreshMapaZoneStyles();
+        });
+      });
     }
 
     function ensureMapaLeaflet() {
@@ -10531,36 +11033,20 @@
         maxZoom: 19,
         subdomains: 'abcd',
       }).addTo(mapaLeaflet);
-      // zonas SP capital — overlay cyberpunk (opacidade CyberMap)
       loadMapaFarolGeo().then(async (geo) => {
         const zonas = await loadMapaZonas();
+        mapaZoneGeoCache = geo;
+        mapaZoneMetaCache = zonas;
         if (mapaZoneLayer) {
           try { mapaLeaflet.removeLayer(mapaZoneLayer); } catch (_) {}
         }
         mapaZoneLayer = L.geoJSON(geo, {
-          style: (feat) => {
-            const p = feat.properties || {};
-            const color = p.zona_color
-              || (zonas.distritos[p.name] && zonas.distritos[p.name].color)
-              || '#00f0ff';
-            return {
-              color: color,
-              weight: 1.2,
-              opacity: 0.55,
-              fillColor: color,
-              fillOpacity: 0.28,
-              className: 'mapa-zona-neon',
-            };
-          },
+          style: (feat) => mapaZoneStyle(feat),
           interactive: false,
         }).addTo(mapaLeaflet);
-        const leg = document.getElementById('mapaZoneLegend');
-        if (leg && zonas.zonas) {
-          leg.hidden = false;
-          leg.innerHTML = Object.values(zonas.zonas).map((z) =>
-            `<div><span style="background:${z.color}"></span>${esc(z.label)}</div>`
-          ).join('');
-        }
+        // Mantém zonas atrás das rotas
+        try { mapaZoneLayer.bringToBack(); } catch (_) {}
+        renderMapaZoneLegend();
       }).catch(() => {});
       return mapaLeaflet;
     }
@@ -10633,15 +11119,14 @@
 
       const poly = (v.polyline || []).filter((p) => p && p.length >= 2);
       if (poly.length >= 2) {
-        // dual-glow CyberMap (route_outer / route_inner)
         const glow = L.polyline(poly, {
-          color: '#ffd166', weight: 10, opacity: 0.16, interactive: false,
+          color: '#2563eb', weight: 8, opacity: 0.18, interactive: false,
         });
         const line = L.polyline(poly, {
-          color: v.tipo === 'coleta' ? '#00f0ff' : '#ffe27a',
-          weight: 4.5,
-          opacity: 0.9,
-          dashArray: v.tipo === 'coleta' ? '10 7' : undefined,
+          color: v.tipo === 'coleta' ? '#22c55e' : '#3b82f6',
+          weight: 4,
+          opacity: 0.95,
+          dashArray: v.tipo === 'coleta' ? '8 6' : undefined,
         });
         glow.addTo(map); line.addTo(map);
         mapaLayers.push(glow, line);
@@ -10650,10 +11135,10 @@
       const polyC = (v.polyline_coleta || []).filter((p) => p && p.length >= 2);
       if (polyC.length >= 2) {
         const glowC = L.polyline(polyC, {
-          color: '#00f0ff', weight: 9, opacity: 0.14, interactive: false,
+          color: '#16a34a', weight: 7, opacity: 0.14, interactive: false,
         });
         const lineC = L.polyline(polyC, {
-          color: '#8defff', weight: 4, opacity: 0.9, dashArray: '10 7',
+          color: '#22c55e', weight: 3.5, opacity: 0.92, dashArray: '8 6',
         });
         glowC.addTo(map); lineC.addTo(map);
         mapaLayers.push(glowC, lineC);
@@ -10672,13 +11157,13 @@
           || (v.tipo === 'coleta' && p.tipo !== 'entrega');
         const letter = isCol ? 'C' : 'E';
         const kindCls = isCol ? 'is-coleta' : 'is-entrega';
-        const stateCls = done ? 'is-done' : 'mapa-blink';
-          const icon = L.divIcon({
-            className: 'mapa-stop-icon',
-            html: `<div class="mapa-op-stop ${kindCls} ${stateCls}"><span>${letter}</span></div>`,
-            iconSize: [28, 28],
-            iconAnchor: [14, 14],
-          });
+        const stateCls = done ? 'is-done' : '';
+        const icon = L.divIcon({
+          className: 'mapa-stop-icon',
+          html: `<div class="mapa-op-stop ${kindCls} ${stateCls}"><span>${letter}</span></div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
+        });
         const mk = L.marker([p.lat, p.lon], { icon, interactive: true }).bindTooltip(
           (`${v.placa} · ${letter} ${p.seq || ''} ${p.cliente || ''}`
           + ` · ${done ? 'realizado' : 'em rota'}`
@@ -10690,6 +11175,37 @@
         mapaLayers.push(mk);
       });
 
+      // Ícone do veículo na última posição conhecida / fim da rota
+      let truckPt = null;
+      if (poly.length) truckPt = poly[poly.length - 1];
+      else if (allStops.length) {
+        const last = [...allStops].reverse().find((p) => p.lat != null && p.lon != null);
+        if (last) truckPt = [last.lat, last.lon];
+      }
+      if (truckPt) {
+        const isColV = String(v.tipo || '') === 'coleta';
+        const pct = Number(v.servico_pct) || 0;
+        const feitas = Number(v.servico_feitas) || 0;
+        const total = Number(v.servico_total) || 0;
+        const truck = L.divIcon({
+          className: 'mapa-stop-icon',
+          html: `<div class="mapa-truck-marker${isColV ? ' is-coleta' : ''}" title="${esc(String(v.placa || ''))}">🚚</div>`,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+        });
+        const popup = `<div style="min-width:180px;font:600 12px/1.35 Segoe UI,sans-serif;color:#0f172a">`
+          + `<div style="font-size:14px;font-weight:800">${esc(String(v.placa || '—'))}</div>`
+          + `<div style="color:#475569;margin-bottom:6px">${esc(v.motorista || '—')}</div>`
+          + `<div>Status · <b>${pct >= 100 ? 'Concluído' : 'Em rota'}</b></div>`
+          + `<div>${isColV ? 'Coleta' : 'Entrega'} · <b>${feitas} / ${total || '—'}</b></div>`
+          + (v.distance_km ? `<div>Distância · <b>${Number(v.distance_km).toFixed(0)} km</b></div>` : '')
+          + `<div>Progresso · <b>${Math.round(pct)}%</b></div></div>`;
+        const tmk = L.marker(truckPt, { icon: truck, zIndexOffset: 1200 })
+          .bindPopup(popup, { maxWidth: 260 });
+        tmk.addTo(map);
+        mapaLayers.push(tmk);
+      }
+
       if (allPts.length) {
         try {
           map.fitBounds(L.latLngBounds(allPts.map((p) => L.latLng(p[0], p[1]))), {
@@ -10699,7 +11215,7 @@
       }
 
       mapaSelectedPlaca = String(v.placa || '');
-      document.querySelectorAll('.mapa-placa-pop').forEach((row) => {
+      document.querySelectorAll('.mapa-veic-card, .mapa-placa-pop').forEach((row) => {
         row.classList.toggle('active', row.getAttribute('data-placa') === mapaSelectedPlaca);
       });
       const cap = document.getElementById('mapaRouteCaption');
@@ -10776,6 +11292,16 @@
       return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' kg';
     }
 
+    function mapaVeiculoStatus(v) {
+      const pct = Number(v.servico_pct) || 0;
+      const feitas = Number(v.servico_feitas) || 0;
+      const total = Number(v.servico_total) || 0;
+      if (total <= 0) return { cls: 'is-idle', label: 'Sem atividade' };
+      if (pct >= 100 || (feitas >= total && total > 0)) return { cls: 'is-idle', label: 'Concluído' };
+      if (pct <= 0 && feitas <= 0) return { cls: 'is-wait', label: 'Parado' };
+      return { cls: '', label: 'Em operação' };
+    }
+
     function renderMapaPlacaPops() {
       const stack = document.getElementById('mapaLista');
       if (!stack) return;
@@ -10784,44 +11310,38 @@
         stack.innerHTML = '<div class="arm-rank-empty">Nenhum veículo em rota</div>';
         return;
       }
-      const nVis = Math.min(MAPA_PLACA_VISIBLE, veics.length);
-      const visible = [];
-      for (let i = 0; i < nVis; i++) {
-        visible.push({ v: veics[(mapaPlacaCursor + i) % veics.length], i: (mapaPlacaCursor + i) % veics.length });
-      }
-      Array.from(stack.querySelectorAll('.mapa-placa-pop')).forEach((el) => {
-        el.classList.remove('show');
-        el.classList.add('leaving');
-        setTimeout(() => { try { el.remove(); } catch (_) {} }, 480);
-      });
-      setTimeout(() => {
-        if (!document.getElementById('mapaLista')) return;
-        const nodes = visible.map(({ v, i }) => {
-          const pct = Number(v.servico_pct) || 0;
-          const color = mapaServicoColor(pct);
-          const feitas = Number(v.servico_feitas) || 0;
-          const total = Number(v.servico_total) || 0;
-          const tipo = String(v.tipo || 'entrega');
-          const badge = tipo === 'coleta' ? 'C' : (tipo === 'ambos' ? 'E+C' : 'E');
-          const pillCls = tipo === 'coleta' ? 'is-coleta' : (tipo === 'ambos' ? 'is-ambos' : 'is-entrega');
-          const el = document.createElement('div');
-          el.className = 'mapa-placa-pop' + (String(v.placa) === String(mapaSelectedPlaca) ? ' active' : '');
-          el.setAttribute('data-placa', String(v.placa || ''));
-          el.innerHTML = `
-            <div class="donut">${donutSvg(pct, color)}<div class="pct">0%</div></div>
-            <div>
-              <div class="name">${esc(String(v.placa || '—'))}<span class="mapa-tipo-pill ${pillCls}">${tipo === 'ambos' ? 'EC' : badge}</span></div>
-              <div class="meta">${esc(v.motorista || '—')} · ${feitas}/${total || '—'}</div>
-            </div>
-            <div class="badge${pct >= 100 ? ' up' : ''}">${Math.round(pct)}%</div>`;
-          el.addEventListener('click', () => focusMapaPlaca(el.getAttribute('data-placa')));
-          stack.appendChild(el);
-          requestAnimationFrame(() => el.classList.add('show'));
-          animateDonut(el, pct);
-          return el;
+      // Lista TMS: todos os veículos (scroll), sem animação de pop
+      const html = veics.map((v) => {
+        const pct = Math.max(0, Math.min(100, Number(v.servico_pct) || 0));
+        const feitas = Number(v.servico_feitas) || 0;
+        const total = Number(v.servico_total) || 0;
+        const tipo = String(v.tipo || 'entrega');
+        const tipoLab = tipo === 'coleta' ? 'Coleta' : (tipo === 'ambos' ? 'Entrega + Coleta' : 'Entrega');
+        const st = mapaVeiculoStatus(v);
+        const active = String(v.placa) === String(mapaSelectedPlaca) ? ' active' : '';
+        const barColor = pct >= 70 ? '#22c55e' : (pct >= 35 ? '#3b82f6' : '#f59e0b');
+        const motorista = String(v.motorista || '—');
+        const motoristaShort = motorista.length > 36 ? motorista.slice(0, 34) + '…' : motorista;
+        return `<div class="mapa-veic-card mapa-placa-pop show${active}" data-placa="${esc(String(v.placa || ''))}" role="button" tabindex="0">`
+          + `<div class="row-top"><span class="st-dot ${st.cls}" title="${esc(st.label)}"></span>`
+          + `<span class="name">${esc(String(v.placa || '—'))}</span></div>`
+          + `<div class="pct">${Math.round(pct)}%</div>`
+          + `<div class="motorista" title="${esc(motorista)}">${esc(motoristaShort)}</div>`
+          + `<div class="servico">${esc(tipoLab)} ${feitas}/${total || '—'}</div>`
+          + `<div class="bar"><i style="width:${pct}%;background:${barColor}"></i></div>`
+          + `</div>`;
+      }).join('')
+        + `<div class="mapa-veic-foot">${veics.length} veículo${veics.length === 1 ? '' : 's'} ativo${veics.length === 1 ? '' : 's'}</div>`;
+      stack.innerHTML = html;
+      stack.querySelectorAll('.mapa-veic-card').forEach((el) => {
+        el.addEventListener('click', () => focusMapaPlaca(el.getAttribute('data-placa')));
+        el.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            focusMapaPlaca(el.getAttribute('data-placa'));
+          }
         });
-        layoutPops(stack, nodes);
-      }, 120);
+      });
     }
 
     /** Lista lateral acompanha a rota — sem timer próprio (era 4,5s e forçava troca). */
@@ -10988,6 +11508,8 @@
         set('mapaPesoCol', '0 kg');
         set('mapaTotCol', '—');
         set('mapaTotEnt', '—');
+        const topUp = document.getElementById('mapaAtualizadoTop');
+        if (topUp) topUp.textContent = 'Atualizado —';
         const list = document.getElementById('mapaLista');
         if (list) list.innerHTML = '<div class="arm-rank-empty">Sem dados — rode `mapa`</div>';
         clearMapaLayers();
@@ -11007,7 +11529,13 @@
       set('mapaPesoEnt', fmtMapaPeso(tot.peso_entrega != null ? tot.peso_entrega : tot.peso));
       set('mapaFreteCol', fmtMapaMoney(tot.frete_coleta));
       set('mapaPesoCol', fmtMapaPeso(tot.peso_coleta));
-      set('mapaAtualizado', data.atualizado ? `hoje · atualizado ${data.atualizado}` : 'hoje');
+      set('mapaAtualizado', data.atualizado ? `hoje · ${data.atualizado}` : 'hoje');
+      const topUp = document.getElementById('mapaAtualizadoTop');
+      if (topUp) {
+        topUp.textContent = data.atualizado
+          ? `Atualizado ${data.atualizado}`
+          : 'Atualizado —';
+      }
       if (aviso) {
         if (data.aviso) {
           aviso.hidden = false;
