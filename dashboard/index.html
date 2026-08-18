@@ -4276,9 +4276,22 @@
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-2px); }
     }
-    .mapa-farol-overlay .lab,
+    .mapa-farol-overlay .lab {
+      display: none;
+    }
     .mapa-farol-overlay .meta {
       display: none;
+      margin-top: 6px;
+      font-size: clamp(10px, 1.2vmin, 13px);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.92);
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.7);
+      max-width: 90%;
+    }
+    .mapa-farol-overlay .meta:not([hidden]) {
+      display: block;
     }
     .mapa-list-card {
       flex: 1;
@@ -6997,7 +7010,7 @@
           <div class="mapa-zone-legend" id="mapaZoneLegend" hidden></div>
           <div class="mapa-aviso" id="mapaAviso" hidden></div>
           <aside class="mapa-side" aria-label="São Paulo serviço">
-            <section class="mapa-farol-hero" aria-label="Serviço realizado São Paulo">
+            <section class="mapa-farol-hero" aria-label="Serviço na rua hoje — São Paulo">
               <div id="mapaFarolLeaflet" aria-label="Mapa farol São Paulo"></div>
               <div class="mapa-farol-overlay">
                 <div class="mapa-farol-pct-wrap" id="mapaFarolWave" data-tone="low">
@@ -10355,7 +10368,14 @@
         wave.dataset.tone = level >= 70 ? 'good' : level >= 35 ? 'mid' : 'low';
       }
       if (lab) lab.hidden = true;
-      if (meta) meta.hidden = true;
+      if (meta) {
+        if (detail) {
+          meta.hidden = false;
+          meta.textContent = detail;
+        } else {
+          meta.hidden = true;
+        }
+      }
 
       const map = ensureMapaFarolLeaflet();
       if (!map) return;
@@ -10407,36 +10427,77 @@
 
     async function refreshMapaFarolServico() {
       try {
-        let col = null;
-        let ent = null;
-        try {
-          const rows = await loadCsvLocal('data/resumo_103.csv');
-          col = rows && rows[0];
-        } catch (_) {}
-        try {
-          const rows = await loadCsvLocal('data/resumo_36.csv');
-          ent = rows && rows[0];
-        } catch (_) {}
-        const n = (v) => {
-          const x = Number(String(v ?? '').replace(/\./g, '').replace(',', '.'));
-          return Number.isFinite(x) ? x : 0;
+        // % do farol = serviço NA RUA do dia (mapa), não o resumo geral 103+36
+        let data = lastMapaData;
+        if (!data) {
+          for (const url of [
+            'data/mapa/mapa_distribuicao.json',
+            'data/local/mapa_distribuicao.json',
+          ]) {
+            try {
+              const res = await fetch(url + '?t=' + Date.now(), { cache: 'no-store' });
+              if (res.ok) {
+                data = await res.json();
+                break;
+              }
+            } catch (_) {}
+          }
+        }
+        const veics = Array.isArray(data?.veiculos) ? data.veiculos : [];
+        let feitas = 0;
+        let total = 0;
+        let colFeitas = 0;
+        let colTot = 0;
+        let entFeitas = 0;
+        let entTot = 0;
+        const isDone = (st) => {
+          const s = String(st || '').toLowerCase();
+          return s === 'realizada' || /realizad|baixad|entregue|coletada|pre-?entreg/.test(s);
         };
-        const colReal = n(col?.realizada);
-        const colTot = n(col?.total);
-        const entReal = n(ent?.realizada);
-        const entTot = n(ent?.total);
-        const real = colReal + entReal;
-        const tot = colTot + entTot;
-        const pct = tot > 0 ? (real / tot) * 100 : null;
+        veics.forEach((v) => {
+          const sf = Number(v.servico_feitas);
+          const st = Number(v.servico_total);
+          if (Number.isFinite(sf) && Number.isFinite(st) && st > 0) {
+            feitas += sf;
+            total += st;
+          }
+          const stops = []
+            .concat(Array.isArray(v.paradas) ? v.paradas : [])
+            .concat(Array.isArray(v.paradas_coleta) ? v.paradas_coleta : []);
+          stops.forEach((p) => {
+            const ace = String(p.status_ace || p.status || '');
+            const done = isDone(ace);
+            const tipo = String(p.tipo || v.tipo || 'entrega').toLowerCase();
+            const isCol = tipo.includes('coleta') || String(p.kind || '').toLowerCase() === 'coleta';
+            if (isCol) {
+              colTot += 1;
+              if (done) colFeitas += 1;
+            } else {
+              entTot += 1;
+              if (done) entFeitas += 1;
+            }
+          });
+        });
+        // Se não houver contagem por parada, usa serviço agregado
+        if (!colTot && !entTot && total > 0) {
+          entTot = total;
+          entFeitas = feitas;
+        }
+        if (!total && (colTot + entTot) > 0) {
+          feitas = colFeitas + entFeitas;
+          total = colTot + entTot;
+        }
+        const pct = total > 0 ? (feitas / total) * 100 : null;
+        const falta = total > 0 ? Math.max(0, total - feitas) : null;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-        set('mapaTotCol', colTot ? `${colReal}/${colTot}` : '—');
-        set('mapaTotEnt', entTot ? `${entReal}/${entTot}` : '—');
-        paintMapaFarol(pct, [
-          colTot ? `coleta ${colReal}/${colTot}` : null,
-          entTot ? `entrega ${entReal}/${entTot}` : null,
-        ].filter(Boolean).join(' · ') || 'coleta + entrega');
+        set('mapaTotCol', colTot ? `${colFeitas}/${colTot}` : '—');
+        set('mapaTotEnt', entTot ? `${entFeitas}/${entTot}` : '—');
+        const detail = total > 0
+          ? `na rua hoje · ${feitas}/${total} · falta ${falta}`
+          : 'na rua hoje · sem paradas';
+        paintMapaFarol(pct, detail);
       } catch (_) {
-        paintMapaFarol(null, 'coleta + entrega');
+        paintMapaFarol(null, 'na rua hoje');
       }
     }
 
