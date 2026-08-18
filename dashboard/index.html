@@ -447,6 +447,13 @@
       padding: 2px 8px 0 !important;
       gap: 8px;
       min-height: 0;
+      /* relógio / live-pill ocultos: não reservar 3ª coluna vazia */
+      grid-template-columns: 1fr auto !important;
+    }
+    body.wall-chrome #panel-mapa .mapa-top-tms,
+    body.wall-chrome.tv-mode #panel-mapa .mapa-top-tms {
+      display: flex !important;
+      grid-template-columns: unset !important;
     }
     body.wall-chrome .clock-box,
     body.wall-chrome .mapa-live-pill,
@@ -1427,6 +1434,12 @@
       border: none !important;
       background: transparent !important;
       padding: 2px 10px 0 !important;
+      /* clock-box some no TV: evita buraco à direita */
+      grid-template-columns: 1fr auto !important;
+    }
+    body.tv-mode #panel-mapa .mapa-top-tms {
+      display: flex !important;
+      grid-template-columns: unset !important;
     }
     body.tv-mode .clock-box {
       display: none !important;
@@ -1624,7 +1637,7 @@
     body.tv-mode .topbar {
       padding: clamp(8px, 1.1vmin, 16px) clamp(14px, 1.8vmin, 24px);
       border-radius: 0;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: 1fr auto;
     }
     body.tv-mode .brand img { height: clamp(48px, 6.2vmin, 84px); }
     body.tv-mode .brand .title {
@@ -1660,8 +1673,14 @@
       height: 100% !important;
       min-height: 0 !important;
     }
-    body.tv-mode #opsLayoutEntrega:not(.has-blocks) {
-      grid-template-columns: minmax(320px, 1.55fr) minmax(200px, 0.9fr) !important;
+    body.tv-mode #opsLayoutEntrega:not(.has-blocks),
+    body.tv-mode #opsLayoutEntrega.ent-ops {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      grid-template-rows: auto minmax(120px, 0.75fr) minmax(0, 1.4fr) !important;
+      gap: clamp(6px, 0.8vmin, 12px) !important;
+      height: 100% !important;
+      min-height: 0 !important;
     }
     body.tv-mode .ops-layout .ops-col,
     body.tv-mode .ops-layout .resumo-top {
@@ -3330,6 +3349,10 @@
       height: 100%;
       min-height: 0;
     }
+    .arena-single .ent-ops {
+      height: 100%;
+      min-height: 0;
+    }
     /* ops-layout/agenda-layout definem o grid; flex acima é só fallback */
     .arena-single .arena-body.ops-layout:not(.has-blocks),
     .arena-single .arena-body.agenda-layout:not(.has-blocks) {
@@ -4223,10 +4246,24 @@
       background: linear-gradient(180deg, #0b1220 0%, #0a1018 100%);
     }
     .mapa-top-tms {
+      display: flex !important;
       align-items: center !important;
+      justify-content: flex-start !important;
       gap: 12px !important;
       padding: 4px 2px 2px !important;
       min-height: 0 !important;
+      grid-template-columns: unset !important;
+    }
+    .mapa-top-tms .arm-brand {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .mapa-top-tms .mapa-nav-tms {
+      margin-left: auto;
+      flex: 0 0 auto;
+    }
+    .mapa-top-tms .mapa-live-pill {
+      flex: 0 0 auto;
     }
     .mapa-top-tms .arm-titles h1 {
       font-size: clamp(18px, 2.1vmin, 24px) !important;
@@ -6042,60 +6079,220 @@
     body.live-mode:not(.tv-mode) .resumo-single .resumo-stats b {
       font-size: clamp(22px, 2.6vw, 36px);
     }
-    /* Entrega sem blocos CRT: pizza grande + pendências laterais */
-    #opsLayoutEntrega:not(.has-blocks) {
-      grid-template-columns: minmax(320px, 1.7fr) minmax(180px, 0.75fr);
-    }
-    #opsLayoutEntrega:not(.has-blocks) > [data-block="banners"] {
-      grid-column: 1;
-      grid-row: 2;
-    }
-    #opsLayoutEntrega:not(.has-blocks) > [data-block="pendencias"] {
-      grid-column: 2;
-      grid-row: 2;
-    }
-    body.tv-mode #opsLayoutEntrega:not(.has-blocks) {
-      grid-template-columns: minmax(380px, 1.85fr) minmax(180px, 0.7fr) !important;
-    }
-    .entrega-pizza-wrap {
-      display: none;
-      place-items: center;
-      flex: 1 1 auto;
-      min-height: clamp(220px, 40vh, 520px);
-      width: 100%;
+    /* Entrega · visão operacional (KPIs + barras + alertas + tabela) */
+    #opsLayoutEntrega.ent-ops,
+    .ent-ops {
+      display: grid;
+      grid-template-rows: auto minmax(140px, 0.85fr) minmax(180px, 1.35fr);
+      gap: clamp(8px, 1vw, 14px);
       height: 100%;
+      min-height: 0;
+      padding: 2px 2px 4px;
       overflow: hidden;
     }
-    .entrega-pizza-wrap.is-on,
-    body.dash-chart-pizza #entregaPizzaWrap.is-on {
-      display: grid !important;
+    #opsLayoutEntrega:not(.has-blocks) {
+      grid-template-columns: 1fr;
     }
-    .entrega-pizza-wrap[hidden],
-    body.dash-chart-pizza #entregaPizzaWrap[hidden],
-    body.dash-chart-towers #entregaPizzaWrap,
-    body.dash-chart-bars #entregaPizzaWrap {
-      display: none !important;
+    #opsLayoutEntrega:not(.has-blocks) > [data-block="banners"],
+    #opsLayoutEntrega:not(.has-blocks) > [data-block="pendencias"] {
+      grid-column: auto;
+      grid-row: auto;
     }
-    body.dash-chart-pizza #entregaCylWrap,
-    #entregaCylWrap[hidden] {
-      display: none !important;
+    body.tv-mode #opsLayoutEntrega:not(.has-blocks) {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: auto minmax(120px, 0.75fr) minmax(0, 1.4fr) !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      gap: clamp(6px, 0.8vmin, 12px) !important;
     }
-    body.dash-chart-towers #entregaCylWrap:not([hidden]),
-    body.dash-chart-bars #entregaCylWrap:not([hidden]) {
-      display: grid !important;
+    .ent-kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: clamp(8px, 1vw, 12px);
+      min-height: 0;
     }
-    .entrega-pizza {
-      width: min(100%, 1100px);
-      height: 100%;
-      max-height: 100%;
-      min-height: clamp(200px, 34vh, 480px);
+    .ent-kpi {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: clamp(12px, 1.4vw, 18px);
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: linear-gradient(165deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 18, 0.88));
+      min-width: 0;
     }
-    body.live-mode .entrega-pizza {
-      width: min(100%, 1200px);
+    .ent-kpi.is-total { border-top: 3px solid #94a3b8; }
+    .ent-kpi.is-ok { border-top: 3px solid #22c55e; }
+    .ent-kpi.is-run { border-top: 3px solid #38bdf8; }
+    .ent-kpi.is-warn { border-top: 3px solid #f59e0b; }
+    .ent-kpi-ico {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      background: rgba(148, 163, 184, 0.12);
+      color: #cbd5e1;
+      flex: 0 0 auto;
     }
-    body.tv-mode .entrega-pizza {
-      width: 100% !important;
-      height: min(100%, 96%) !important;
+    .ent-kpi.is-ok .ent-kpi-ico { color: #86efac; background: rgba(34, 197, 94, 0.14); }
+    .ent-kpi.is-run .ent-kpi-ico { color: #7dd3fc; background: rgba(56, 189, 248, 0.14); }
+    .ent-kpi.is-warn .ent-kpi-ico { color: #fcd34d; background: rgba(245, 158, 11, 0.14); }
+    .ent-kpi-ico svg { width: 20px; height: 20px; }
+    .ent-kpi-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .ent-kpi-lbl {
+      font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: #94a3b8; font-weight: 700;
+    }
+    .ent-kpi-val {
+      font-size: clamp(28px, 3.4vw, 44px);
+      line-height: 1; font-weight: 800;
+      font-variant-numeric: tabular-nums; color: #f8fafc;
+    }
+    .ent-kpi-sub { font-size: 12px; color: #64748b; }
+    .ent-mid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(220px, 0.75fr);
+      gap: clamp(8px, 1vw, 12px);
+      min-height: 0;
+    }
+    .ent-status-panel,
+    .ent-alerts-panel,
+    .ent-table-panel {
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(8, 14, 26, 0.92);
+      padding: 10px 12px 12px;
+    }
+    .ent-panel-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 10px; margin-bottom: 10px; flex: 0 0 auto;
+    }
+    .ent-panel-head h2 {
+      margin: 0; font-size: 13px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #e2e8f0;
+    }
+    .ent-bars {
+      display: flex; flex-direction: column; gap: 14px;
+      justify-content: center; flex: 1; min-height: 0;
+    }
+    .ent-bar-row {
+      display: grid;
+      grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1.8fr) 52px;
+      gap: 10px; align-items: center;
+    }
+    .ent-bar-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .ent-bar-lbl { font-size: 13px; font-weight: 700; color: #cbd5e1; }
+    .ent-bar-meta b {
+      font-size: 18px; font-variant-numeric: tabular-nums; color: #f8fafc;
+    }
+    .ent-bar-track {
+      height: 14px; border-radius: 999px;
+      background: rgba(30, 41, 59, 0.95);
+      border: 1px solid rgba(71, 85, 105, 0.45);
+      overflow: hidden;
+    }
+    .ent-bar-fill {
+      height: 100%; width: 0; border-radius: inherit;
+      transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .ent-bar-row.is-rota .ent-bar-fill {
+      background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+    }
+    .ent-bar-row.is-real .ent-bar-fill {
+      background: linear-gradient(90deg, #16a34a, #4ade80);
+    }
+    .ent-bar-row.is-par .ent-bar-fill {
+      background: linear-gradient(90deg, #d97706, #fbbf24);
+    }
+    .ent-bar-row.is-rota .ent-bar-fill.is-zero,
+    .ent-bar-row.is-real .ent-bar-fill.is-zero,
+    .ent-bar-row.is-par .ent-bar-fill.is-zero {
+      opacity: 0.25;
+    }
+    .ent-bar-pct {
+      text-align: right; font-size: 13px; font-weight: 800;
+      font-variant-numeric: tabular-nums; color: #94a3b8;
+    }
+    .ent-alerts {
+      display: flex; flex-direction: column; gap: 8px;
+      overflow: auto; min-height: 0; flex: 1;
+    }
+    .ent-alert {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 12px; border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(15, 23, 42, 0.65);
+      font-size: 13px; color: #e2e8f0;
+    }
+    .ent-alert .ico {
+      width: 22px; height: 22px; flex: 0 0 auto;
+      display: grid; place-items: center;
+      border-radius: 999px; font-size: 12px; font-weight: 800;
+    }
+    .ent-alert.is-ok .ico { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .ent-alert.is-run .ico { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; }
+    .ent-alert.is-warn .ico { background: rgba(245, 158, 11, 0.22); color: #fcd34d; }
+    .ent-alert.is-crit .ico { background: rgba(239, 68, 68, 0.22); color: #fca5a5; }
+    .ent-alert b { display: block; font-size: 13px; margin-bottom: 2px; }
+    .ent-alert span { color: #94a3b8; font-size: 12px; }
+    .ent-table-wrap {
+      flex: 1; min-height: 0; overflow: auto;
+    }
+    .ent-table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    .ent-table th {
+      position: sticky; top: 0; z-index: 1;
+      text-align: left; padding: 8px 10px;
+      font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: #94a3b8; background: #0b1220;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    }
+    .ent-table td {
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(30, 41, 59, 0.9);
+      color: #e2e8f0; vertical-align: middle;
+    }
+    .ent-table tr:hover td { background: rgba(56, 189, 248, 0.05); }
+    .ent-table .mono { font-variant-numeric: tabular-nums; font-weight: 700; }
+    .ent-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
+    }
+    .ent-badge::before {
+      content: ""; width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor;
+    }
+    .ent-badge.st-em_rota {
+      color: #7dd3fc; background: rgba(14, 165, 233, 0.14);
+    }
+    .ent-badge.st-realizada {
+      color: #86efac; background: rgba(34, 197, 94, 0.14);
+    }
+    .ent-badge.st-parado {
+      color: #fcd34d; background: rgba(245, 158, 11, 0.14);
+    }
+    .ent-table-empty { padding: 24px; text-align: center; }
+    @media (max-width: 980px) {
+      .ent-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .ent-mid { grid-template-columns: 1fr; }
+      .ent-ops {
+        grid-template-rows: auto auto minmax(220px, 1fr);
+        overflow: auto;
+      }
+    }
+    body.tv-mode .ent-kpi-val {
+      font-size: clamp(32px, 3.8vmin, 52px) !important;
+    }
+    body.tv-mode .ent-bar-meta b {
+      font-size: clamp(16px, 2vmin, 24px) !important;
+    }
+    body.tv-mode .ent-table {
+      font-size: clamp(12px, 1.45vmin, 17px) !important;
     }
     body.tv-mode #opsLayoutEntrega .ops-col-banners {
       display: flex !important;
@@ -6103,15 +6300,13 @@
       min-height: 0 !important;
       overflow: hidden !important;
     }
-    body.tv-mode #opsLayoutEntrega .ops-col-banners .col-sub {
-      flex: 0 0 auto;
+    /* pizza/cilindro legado — ocultos na visão operacional */
+    .entrega-pizza-wrap {
+      display: none !important;
     }
-    body.live-mode .entrega-pizza .callout-pct { font-size: 56px; }
-    body.live-mode .entrega-pizza .callout-lab { font-size: 20px; }
-    body.live-mode .entrega-pizza .callout-count { font-size: 18px; }
-    body.tv-mode.live-mode .entrega-pizza .callout-pct { font-size: 72px; }
-    body.tv-mode.live-mode .entrega-pizza .callout-lab { font-size: 24px; }
-    body.tv-mode.live-mode .entrega-pizza .callout-count { font-size: 22px; }
+    #entregaCylWrap {
+      display: none !important;
+    }
     .agenda-pizza .slice.s-real { fill: #22c55e; }
     .agenda-pizza .slice-depth.s-real { fill: #15803d; }
     .agenda-pizza .callout-dot.s-real { fill: #22c55e; }
@@ -7076,75 +7271,136 @@
       </section>
     </div>
 
-    <!-- ENTREGA (tela cheia) -->
+    <!-- ENTREGA (tela cheia · visão operacional) -->
     <div class="view" id="viewEntrega">
       <section class="arena arena-single">
-        <div class="arena-body ops-layout" id="opsLayoutEntrega">
-          <div class="resumo-top resumo-single dash-block ds-kpi-row" data-block="resumo" aria-label="Resumo entrega">
-            <div class="resumo-card rc-ent ds-panel">
-              <p class="resumo-kicker">Entrega</p>
-              <div class="resumo-total"><span>Total</span><strong id="entTotal">0</strong></div>
-              <div class="resumo-stats stats-3">
-                <div class="s-real"><span>Realizada</span><b id="sumEntReal">0</b></div>
-                <div class="s-rota"><span>Em rota</span><b id="sumEntRota">0</b></div>
-                <div class="s-par"><span>Pendência</span><b id="sumEntPar">0</b></div>
-                <div class="s-pct"><span>% realização</span><b id="sumEntPct">0%</b></div>
+        <div class="ent-ops" id="opsLayoutEntrega">
+          <div class="ent-kpi-row dash-block ds-kpi-row" data-block="resumo" aria-label="KPIs entrega">
+            <article class="ent-kpi is-total">
+              <div class="ent-kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" stroke="currentColor" stroke-width="1.7"/><path d="M3.3 7.5 12 12.5l8.7-5M12 22V12.5" stroke="currentColor" stroke-width="1.7"/></svg>
               </div>
-            </div>
+              <div class="ent-kpi-body">
+                <span class="ent-kpi-lbl">Total</span>
+                <strong class="ent-kpi-val" id="entTotal">0</strong>
+                <small class="ent-kpi-sub" id="entTotalSub">Entregas planejadas</small>
+              </div>
+            </article>
+            <article class="ent-kpi is-ok">
+              <div class="ent-kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="m8 12.5 2.5 2.5L16 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="ent-kpi-body">
+                <span class="ent-kpi-lbl">Realizadas</span>
+                <strong class="ent-kpi-val" id="sumEntReal">0</strong>
+                <small class="ent-kpi-sub"><span id="sumEntPct">0%</span> concluídas</small>
+              </div>
+            </article>
+            <article class="ent-kpi is-run">
+              <div class="ent-kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M3 17h2l1.2-4.2A2 2 0 0 1 8.1 11H14a2 2 0 0 1 1.9 1.4L17 17h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M7 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0" stroke="currentColor" stroke-width="1.7"/><path d="M14 7h4l3 4v4h-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="ent-kpi-body">
+                <span class="ent-kpi-lbl">Em rota</span>
+                <strong class="ent-kpi-val" id="sumEntRota">0</strong>
+                <small class="ent-kpi-sub"><span id="entRotaPctSub">0%</span> em operação</small>
+              </div>
+            </article>
+            <article class="ent-kpi is-warn">
+              <div class="ent-kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 21 20H3L12 3.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 10v4.5M12 17.5h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </div>
+              <div class="ent-kpi-body">
+                <span class="ent-kpi-lbl">Pendências</span>
+                <strong class="ent-kpi-val" id="sumEntPar">0</strong>
+                <small class="ent-kpi-sub" id="entParSub">Nenhuma ocorrência</small>
+              </div>
+            </article>
           </div>
 
-          <div class="ops-col dash-block ops-col-banners ds-panel" data-block="banners">
-            <div class="col-sub" id="entChartSub">Entregas</div>
-            <div class="entrega-pizza-wrap" id="entregaPizzaWrap" hidden>
-              <svg id="entregaPizza" class="agenda-pizza entrega-pizza" viewBox="0 0 900 520" role="img" aria-label="Gráfico pizza de entregas"></svg>
-            </div>
-            <div class="cyl-wrap" id="entregaCylWrap" aria-label="Resumo de entregas">
-              <div class="cyl">
-                <div class="cyl-seg c-real" id="cylSegReal" style="flex-grow:1"></div>
-                <div class="cyl-seg c-rota" id="cylSegRota" style="flex-grow:1"></div>
-                <div class="cyl-seg c-par" id="cylSegPar" style="flex-grow:1"></div>
-              </div>
-              <div class="cyl-banners">
-                <div class="cyl-ban-row r-real">
-                  <div class="ban-left">
-                    <div class="ban-title">Realizada</div>
-                    <div class="ban-meta"><b id="entNReal">0</b></div>
+          <div class="ent-mid">
+            <section class="ent-status-panel dash-block ds-panel" data-block="banners" aria-label="Status das entregas">
+              <header class="ent-panel-head">
+                <h2>Status das entregas</h2>
+                <span class="muted" id="entChartSub">Distribuição operacional</span>
+              </header>
+              <div class="ent-bars" id="entregaStatusBars">
+                <div class="ent-bar-row is-rota">
+                  <div class="ent-bar-meta">
+                    <span class="ent-bar-lbl">Em rota</span>
+                    <b id="entNRota">0</b>
                   </div>
-                  <div class="cyl-ban-track">
-                    <div class="cyl-ban b-real" id="cylBanReal" style="width:100%">
-                      <div class="ban-pct" id="entPReal">0%</div>
-                    </div>
+                  <div class="ent-bar-track">
+                    <div class="ent-bar-fill" id="cylBanRota" style="width:0%"></div>
                   </div>
+                  <div class="ent-bar-pct" id="entPRota">0%</div>
                 </div>
-                <div class="cyl-ban-row r-rota">
-                  <div class="ban-left">
-                    <div class="ban-title">Em rota</div>
-                    <div class="ban-meta"><b id="entNRota">0</b></div>
+                <div class="ent-bar-row is-real">
+                  <div class="ent-bar-meta">
+                    <span class="ent-bar-lbl">Realizadas</span>
+                    <b id="entNReal">0</b>
                   </div>
-                  <div class="cyl-ban-track">
-                    <div class="cyl-ban b-rota" id="cylBanRota" style="width:100%">
-                      <div class="ban-pct" id="entPRota">0%</div>
-                    </div>
+                  <div class="ent-bar-track">
+                    <div class="ent-bar-fill" id="cylBanReal" style="width:0%"></div>
                   </div>
+                  <div class="ent-bar-pct" id="entPReal">0%</div>
                 </div>
-                <div class="cyl-ban-row r-par">
-                  <div class="ban-left">
-                    <div class="ban-title">Pendência</div>
-                    <div class="ban-meta"><b id="entNPar">0</b></div>
+                <div class="ent-bar-row is-par">
+                  <div class="ent-bar-meta">
+                    <span class="ent-bar-lbl">Pendências</span>
+                    <b id="entNPar">0</b>
                   </div>
-                  <div class="cyl-ban-track">
-                    <div class="cyl-ban b-par" id="cylBanPar" style="width:100%">
-                      <div class="ban-pct" id="entPPar">0%</div>
-                    </div>
+                  <div class="ent-bar-track">
+                    <div class="ent-bar-fill" id="cylBanPar" style="width:0%"></div>
                   </div>
+                  <div class="ent-bar-pct" id="entPPar">0%</div>
                 </div>
               </div>
+              <!-- legado (pizza/cilindro CRT) mantido oculto -->
+              <div class="entrega-pizza-wrap" id="entregaPizzaWrap" hidden>
+                <svg id="entregaPizza" class="agenda-pizza entrega-pizza" viewBox="0 0 900 520" role="img" aria-hidden="true"></svg>
+              </div>
+              <div class="cyl-wrap" id="entregaCylWrap" hidden aria-hidden="true">
+                <div class="cyl">
+                  <div class="cyl-seg c-real" id="cylSegReal"></div>
+                  <div class="cyl-seg c-rota" id="cylSegRota"></div>
+                  <div class="cyl-seg c-par" id="cylSegPar"></div>
+                </div>
+              </div>
+            </section>
+
+            <aside class="ent-alerts-panel dash-block ds-panel" data-block="pendencias" aria-label="Alertas">
+              <header class="ent-panel-head">
+                <h2>Alertas</h2>
+                <span class="muted">ao vivo</span>
+              </header>
+              <div class="ent-alerts" id="entAlerts"></div>
+              <div class="pop-stack ent-pend-stack" id="pendenciaStack" hidden></div>
+            </aside>
+          </div>
+
+          <section class="ent-table-panel dash-block ds-panel" data-block="tabela" aria-label="Entregas em rota">
+            <header class="ent-panel-head">
+              <h2>Entregas em rota</h2>
+              <span class="muted" id="entTabelaMeta">operação agora</span>
+            </header>
+            <div class="ent-table-wrap">
+              <table class="ent-table">
+                <thead>
+                  <tr>
+                    <th>CTRC</th>
+                    <th>Cliente</th>
+                    <th>Romaneio</th>
+                    <th>Veículo</th>
+                    <th>Motorista</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="entTbody"></tbody>
+              </table>
+              <div class="ent-table-empty muted" id="entTableEmpty" hidden>Nenhuma entrega em rota no momento.</div>
             </div>
-          </div>
-          <div class="ops-col dash-block" data-block="pendencias">
-            <div class="col-sub">Pendências</div>
-            <div class="pop-stack" id="pendenciaStack"></div>
-          </div>
+          </section>
         </div>
       </section>
     </div>
@@ -8449,43 +8705,178 @@
       return out;
     }
 
+    function shortEntLabel(raw, max) {
+      const s = String(raw || '').trim();
+      if (!s) return '—';
+      const n = max || 36;
+      return s.length > n ? `${s.slice(0, n - 1)}…` : s;
+    }
+
+    function motoristaCurto(raw) {
+      const parts = String(raw || '').trim().split(/\s+/).filter(Boolean);
+      if (!parts.length) return '—';
+      if (parts.length === 1) return parts[0];
+      return `${parts[0]} ${parts[parts.length - 1]}`;
+    }
+
+    function renderEntregaAlerts(counts) {
+      const box = document.getElementById('entAlerts');
+      if (!box) return;
+      const total = Math.max(0, Number(counts.total) || 0);
+      const rota = Number(counts.em_rota) || 0;
+      const real = Number(counts.realizada) || 0;
+      const par = Number(counts.parado) || 0;
+      const items = [];
+      if (par <= 0) {
+        items.push({
+          cls: 'is-ok',
+          ico: '✓',
+          title: 'Nenhuma pendência',
+          detail: 'Sem ocorrências abertas no momento',
+        });
+      } else {
+        items.push({
+          cls: par >= 5 ? 'is-crit' : 'is-warn',
+          ico: '!',
+          title: `${par} pendência${par === 1 ? '' : 's'}`,
+          detail: 'Requer atenção operacional',
+        });
+      }
+      if (rota > 0) {
+        items.push({
+          cls: 'is-run',
+          ico: '→',
+          title: `${rota} em rota`,
+          detail: total ? `${Math.round((rota / total) * 100)}% da operação em campo` : 'Em deslocamento',
+        });
+      }
+      if (real > 0) {
+        items.push({
+          cls: 'is-ok',
+          ico: '✓',
+          title: `${real} realizada${real === 1 ? '' : 's'}`,
+          detail: total ? `${Math.round((real / total) * 100)}% de conclusão` : 'Concluídas',
+        });
+      }
+      if (!total) {
+        items.length = 0;
+        items.push({
+          cls: 'is-warn',
+          ico: 'i',
+          title: 'Sem entregas no período',
+          detail: 'Aguardando dados do relatório 36',
+        });
+      }
+      // Top pendências (se houver lista)
+      const pendExtra = (PENDENCIAS_36 || []).slice(0, 3).map((p) => ({
+        cls: 'is-warn',
+        ico: '!',
+        title: shortEntLabel(p.label || p.name || 'Pendência', 40),
+        detail: [p.hora, p.veiculo].filter(Boolean).join(' · ') || 'Pendência ativa',
+      }));
+      box.innerHTML = [...items, ...pendExtra].map((a) => `
+        <div class="ent-alert ${a.cls}">
+          <div class="ico">${a.ico}</div>
+          <div><b>${esc(a.title)}</b><span>${esc(a.detail)}</span></div>
+        </div>`).join('');
+    }
+
+    function renderEntregaTabela() {
+      const tb = document.getElementById('entTbody');
+      const empty = document.getElementById('entTableEmpty');
+      const meta = document.getElementById('entTabelaMeta');
+      if (!tb) return;
+      const rows = (ENTREGAS_36 || [])
+        .filter((c) => statusAce36(c) === 'em_rota')
+        .slice()
+        .sort((a, b) => {
+          const ha = `${a.data_ocorrencia || ''} ${a.hora_ocorrencia || ''}`;
+          const hb = `${b.data_ocorrencia || ''} ${b.hora_ocorrencia || ''}`;
+          return hb.localeCompare(ha);
+        });
+      const limit = document.body.classList.contains('tv-mode') ? 40 : 80;
+      const shown = rows.slice(0, limit);
+      if (meta) {
+        meta.textContent = rows.length
+          ? `${rows.length} em operação${rows.length > limit ? ` · mostrando ${limit}` : ''}`
+          : 'nenhuma em operação';
+      }
+      if (!shown.length) {
+        tb.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+      }
+      if (empty) empty.hidden = true;
+      tb.innerHTML = shown.map((c) => {
+        const st = statusAce36(c);
+        const stLabel = st === 'em_rota' ? 'Em rota' : (st === 'realizada' ? 'Realizada' : 'Pendência');
+        const placa = parsePlaca(c.placa) || c.placa || '—';
+        return `<tr>
+          <td class="mono">${esc(c.ctrc_id || '—')}</td>
+          <td title="${esc(c.destinatario || '')}">${esc(shortEntLabel(c.destinatario, 42))}</td>
+          <td class="mono">${esc(c.romaneio || '—')}</td>
+          <td class="mono">${esc(placa)}</td>
+          <td>${esc(motoristaCurto(c.motorista))}</td>
+          <td><span class="ent-badge st-${esc(st)}">${esc(stLabel)}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
     function renderCilindroEntrega(counts) {
       const total = Math.max(0, Number(counts.total) || 0);
+      const real = Number(counts.realizada) || 0;
+      const rota = Number(counts.em_rota) || 0;
+      const par = Number(counts.parado) || 0;
+      const pctOf = (v) => (total > 0 ? Math.round((v / total) * 100) : 0);
+
+      const setTxt = (id, v) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = v;
+      };
+      setTxt('entTotal', String(total));
+      setTxt('entTotalSub', total === 1 ? 'Entrega planejada' : 'Entregas planejadas');
+      setTxt('sumEntReal', String(real));
+      setTxt('sumEntRota', String(rota));
+      setTxt('sumEntPar', String(par));
+      setTxt('sumEntPct', `${pctOf(real)}%`);
+      setTxt('entRotaPctSub', `${pctOf(rota)}%`);
+      setTxt('entParSub', par <= 0 ? 'Nenhuma ocorrência' : `${par} ocorrência${par === 1 ? '' : 's'}`);
+
       const items = [
-        { seg: 'cylSegReal', ban: 'cylBanReal', n: 'entNReal', p: 'entPReal', sum: 'sumEntReal', val: counts.realizada || 0 },
-        { seg: 'cylSegRota', ban: 'cylBanRota', n: 'entNRota', p: 'entPRota', sum: 'sumEntRota', val: counts.em_rota || 0 },
-        { seg: 'cylSegPar', ban: 'cylBanPar', n: 'entNPar', p: 'entPPar', sum: 'sumEntPar', val: counts.parado || 0 },
+        { ban: 'cylBanRota', n: 'entNRota', p: 'entPRota', val: rota },
+        { ban: 'cylBanReal', n: 'entNReal', p: 'entPReal', val: real },
+        { ban: 'cylBanPar', n: 'entNPar', p: 'entPPar', val: par },
       ];
-      const entTotal = document.getElementById('entTotal');
-      if (entTotal) entTotal.textContent = String(total);
-      const pctReal = total > 0 ? Math.round(((counts.realizada || 0) / total) * 100) : 0;
-      const pctEl = document.getElementById('sumEntPct');
-      if (pctEl) pctEl.textContent = pctReal + '%';
-      items.forEach(({ seg, ban, n, p, sum, val }) => {
-        const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-        const grow = total > 0 ? Math.max(val, 0) : 1;
+      items.forEach(({ ban, n, p, val }) => {
+        const pct = pctOf(val);
         const isZero = total > 0 && val <= 0;
-        const segEl = document.getElementById(seg);
         const banEl = document.getElementById(ban);
-        if (segEl) {
-          segEl.style.flexGrow = String(isZero ? 0.08 : Math.max(grow, 0.35));
-          segEl.classList.toggle('is-zero', isZero);
-        }
         if (banEl) {
-          // Largura mínima garante que o % caiba na ponta sem esmagar o texto
-          const w = total <= 0 ? 100 : (isZero ? 18 : Math.max(pct, 22));
-          banEl.style.width = w + '%';
+          banEl.style.width = (total <= 0 ? 0 : pct) + '%';
           banEl.classList.toggle('is-zero', isZero);
         }
-        const nEl = document.getElementById(n);
-        const pEl = document.getElementById(p);
-        const sEl = document.getElementById(sum);
-        if (nEl) nEl.textContent = String(val);
-        if (pEl) pEl.textContent = pct + '%';
-        if (sEl) sEl.textContent = String(val);
+        setTxt(n, String(val));
+        setTxt(p, pct + '%');
       });
+
+      // legado cilindro (oculto)
+      [
+        { id: 'cylSegReal', val: real },
+        { id: 'cylSegRota', val: rota },
+        { id: 'cylSegPar', val: par },
+      ].forEach(({ id, val }) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const isZero = total > 0 && val <= 0;
+        el.style.flexGrow = String(isZero ? 0.08 : Math.max(val, 0.35));
+        el.classList.toggle('is-zero', isZero);
+      });
+
       lastCountsEnt = counts;
-      renderEntregaPizza(counts.realizada || 0, counts.em_rota || 0, counts.parado || 0);
+      const sub = document.getElementById('entChartSub');
+      if (sub) sub.textContent = total ? `${total} CTRC no período` : 'sem dados';
+      renderEntregaAlerts(counts);
+      renderEntregaTabela();
     }
 
     function situacaoNorm50(c) {
@@ -9285,9 +9676,15 @@
       const entPizza = document.getElementById('entregaPizzaWrap');
       const entCyl = document.getElementById('entregaCylWrap');
       const entSub = document.getElementById('entChartSub');
-      setChartPane(entPizza, ui.chart === 'pizza');
-      setChartPane(entCyl, ui.chart !== 'pizza');
-      if (entSub) entSub.textContent = ui.chart === 'pizza' ? 'Pizza · entregas' : 'Faixas %';
+      // Entrega: visão operacional (barras) — pizza/cilindro ficam ocultos
+      setChartPane(entPizza, false);
+      setChartPane(entCyl, false);
+      if (entSub && CURRENT_VIEW === 'entrega' && lastCountsEnt) {
+        const t = Number(lastCountsEnt.total) || 0;
+        entSub.textContent = t ? `${t} CTRC no período` : 'Distribuição operacional';
+      } else if (entSub && CURRENT_VIEW === 'entrega') {
+        entSub.textContent = 'Distribuição operacional';
+      }
 
       // Coleta: faixas horizontais (mapa) — torres ficam de fallback se chart=towers
       const colTorres = document.getElementById('coletaTorres');
@@ -9311,15 +9708,11 @@
 
       document.documentElement.style.setProperty('--dash-font', String(ui.fontZoom || 1));
 
-      // Re-pinta pizza depois do pane ficar visível (evita SVG “vazio” no WebEngine)
+      // Re-pinta pizza/agenda depois do pane ficar visível (evita SVG “vazio” no WebEngine)
       if (CURRENT_SECTOR === 'distribuicao') {
         requestAnimationFrame(() => {
           if (CURRENT_VIEW === 'entrega' && lastCountsEnt) {
-            renderEntregaPizza(
-              lastCountsEnt.realizada || 0,
-              lastCountsEnt.em_rota || 0,
-              lastCountsEnt.parado || 0
-            );
+            renderCilindroEntrega(lastCountsEnt);
           }
           if (CURRENT_VIEW === 'agendamento' && lastAgendaTorreCounts) {
             renderAgendaPizza(
@@ -14593,6 +14986,7 @@
           renderPrazoPops();
           renderPendenciaPops();
         }
+        if (lastCountsEnt) renderEntregaAlerts(lastCountsEnt);
         if (VIEW === 'live' && TV_MODE && !swapTimer && (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem')) startSwapLoop();
         if (VIEW === 'gestao') {
           renderFiltrosGestao();

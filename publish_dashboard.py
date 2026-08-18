@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -35,6 +36,49 @@ def _noop(_: str) -> None:
     return None
 
 
+def _safe_write_text(path: Path, text: str, *, encoding: str = "utf-8", retries: int = 5) -> None:
+    """Grava texto com arquivo temporário + replace (evita Errno 22 / lock no Windows)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    last: BaseException | None = None
+    for attempt in range(max(1, retries)):
+        try:
+            tmp.write_text(text, encoding=encoding)
+            os.replace(str(tmp), str(path))
+            return
+        except OSError as err:
+            last = err
+            try:
+                if tmp.exists():
+                    tmp.unlink(missing_ok=True)  # type: ignore[call-arg]
+            except TypeError:
+                try:
+                    if tmp.exists():
+                        tmp.unlink()
+                except OSError:
+                    pass
+            except OSError:
+                pass
+            time.sleep(0.05 * (attempt + 1))
+            try:
+                # fallback direto (alguns AV bloqueiam só o replace)
+                path.write_text(text, encoding=encoding)
+                return
+            except OSError as err2:
+                last = err2
+                time.sleep(0.08 * (attempt + 1))
+    if last:
+        raise last
+
+
+def _copy_file(src: Path, dest: Path) -> None:
+    """Copia arquivo; se copy2 falhar em utime (Errno 22), usa copyfile."""
+    try:
+        shutil.copy2(src, dest)
+    except OSError:
+        shutil.copyfile(src, dest)
+
+
 def _copy_cache_to_dashboard() -> dict[str, str]:
     data_dir = DASHBOARD_DIR / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -54,7 +98,7 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
     ):
         dest = data_dir / name
         if src.exists():
-            shutil.copy2(src, dest)
+            _copy_file(src, dest)
             paths[name] = str(dest)
         elif not dest.exists():
             with dest.open("w", encoding="utf-8-sig", newline="") as fh:
@@ -99,12 +143,17 @@ def _copy_cache_to_dashboard() -> dict[str, str]:
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "files": paths,
     }
-    (data_dir / "meta.json").write_text(
-        json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"
+    _safe_write_text(
+        data_dir / "meta.json",
+        json.dumps(meta, indent=2, ensure_ascii=False),
+        encoding="utf-8",
     )
-    paths.update(_copy_armazem_to_dashboard())
-    paths.update(_copy_pendencia_to_dashboard())
-    paths.update(_copy_emissao_to_dashboard())
+    for copier in (_copy_armazem_to_dashboard, _copy_pendencia_to_dashboard, _copy_emissao_to_dashboard):
+        try:
+            paths.update(copier())
+        except Exception:
+            # Setor auxiliar não pode derrubar o publish inteiro (ex.: stamp com lock)
+            continue
     return paths
 
 
@@ -131,10 +180,10 @@ def _copy_pendencia_to_dashboard() -> dict[str, str]:
     ):
         dest = data_dir / name
         if src.exists():
-            shutil.copy2(src, dest)
+            _copy_file(src, dest)
             out[f"pendencia/{name}"] = str(dest)
         elif not dest.exists():
-            dest.write_text(defaults[name], encoding="utf-8-sig")
+            _safe_write_text(dest, defaults[name], encoding="utf-8-sig")
             out[f"pendencia/{name}"] = str(dest)
     return out
 
@@ -166,10 +215,10 @@ def _copy_emissao_to_dashboard() -> dict[str, str]:
     ):
         dest = data_dir / name
         if src.exists():
-            shutil.copy2(src, dest)
+            _copy_file(src, dest)
             out[f"emissao/{name}"] = str(dest)
         elif not dest.exists():
-            dest.write_text(defaults[name], encoding="utf-8-sig")
+            _safe_write_text(dest, defaults[name], encoding="utf-8-sig")
             out[f"emissao/{name}"] = str(dest)
 
     atualizado = ""
@@ -186,8 +235,12 @@ def _copy_emissao_to_dashboard() -> dict[str, str]:
         "atualizado": atualizado or datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
     }
     stamp_path = data_dir / "stamp.json"
-    stamp_path.write_text(json.dumps(stamp, ensure_ascii=False), encoding="utf-8")
-    out["emissao/stamp.json"] = str(stamp_path)
+    try:
+        _safe_write_text(stamp_path, json.dumps(stamp, ensure_ascii=False), encoding="utf-8")
+        out["emissao/stamp.json"] = str(stamp_path)
+    except OSError:
+        # TV pode manter o stamp aberto; CSVs já copiados bastam para o painel
+        pass
 
     # Bump meta.json para fetchDataVersion() na TV (senão o painel congela)
     try:
@@ -205,7 +258,11 @@ def _copy_emissao_to_dashboard() -> dict[str, str]:
         meta["updated_at"] = datetime.now().isoformat(timespec="seconds")
         meta["files"] = files
         meta_path.parent.mkdir(parents=True, exist_ok=True)
-        meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+        _safe_write_text(
+            meta_path,
+            json.dumps(meta, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
         out["meta.json"] = str(meta_path)
     except Exception:
         pass
@@ -245,14 +302,14 @@ def _copy_reciclagem_to_dashboard() -> dict[str, str]:
     ):
         dest = data_dir / name
         if src.exists():
-            shutil.copy2(src, dest)
+            _copy_file(src, dest)
             out[f"reciclagem/{name}"] = str(dest)
     # espelho do JSON também em data/reciclagem/
     local_json = DASHBOARD_DIR / "data" / "local" / "reciclagem.json"
     if local_json.is_file():
         dest = data_dir / "reciclagem.json"
         try:
-            shutil.copy2(local_json, dest)
+            _copy_file(local_json, dest)
             out["reciclagem/reciclagem.json"] = str(dest)
         except Exception:  # noqa: BLE001
             pass
@@ -279,27 +336,31 @@ def _copy_armazem_to_dashboard() -> dict[str, str]:
     ):
         dest = data_dir / name
         if src.exists():
-            shutil.copy2(src, dest)
+            _copy_file(src, dest)
             out[f"armazem/{name}"] = str(dest)
         elif not dest.exists():
             if name == "resumo_78.csv":
-                dest.write_text(
+                _safe_write_text(
+                    dest,
                     "atualizado,total_linhas,total_veiculos,peso_total,"
                     "finalizado,descarregando,atrasado,aguardando,chegou\n",
                     encoding="utf-8-sig",
                 )
             elif name == "resumo_177.csv":
-                dest.write_text(
+                _safe_write_text(
+                    dest,
                     "atualizado,mes,total_conferentes,peso_total,peso_total_fmt,topo,topo_peso\n",
                     encoding="utf-8-sig",
                 )
             elif name == "conferentes_177.csv":
-                dest.write_text(
+                _safe_write_text(
+                    dest,
                     "rank,login,conferente,nome,unidade,peso_lidos,peso_lidos_fmt,vol_lidos,pct,mes\n",
                     encoding="utf-8-sig",
                 )
             else:
-                dest.write_text(
+                _safe_write_text(
+                    dest,
                     "origem,origem_sigla,cavalo,carreta,manifesto,peso,peso_num,saida,prev_chegada,"
                     "chegada,inicio_descarga,final_descarga,status,atrasado,"
                     "tempo_descarga_min,tempo_descarga,peso_veiculo\n",
@@ -348,22 +409,17 @@ def _copy_contratacao_to_dashboard() -> dict[str, str]:
     ):
         dest = data_dir / name
         if src.exists():
-            shutil.copy2(src, dest)
+            _copy_file(src, dest)
             out[f"contratacao/{name}"] = str(dest)
         elif not dest.exists():
-            dest.write_text(empty, encoding="utf-8-sig")
+            _safe_write_text(dest, empty, encoding="utf-8-sig")
             out[f"contratacao/{name}"] = str(dest)
 
     # stamp local — painel Contratação não depende da version Sheets
-    import json
-    from datetime import datetime
-
     atualizado = ""
     resumo_dest = data_dir / "resumo_073.csv"
     if resumo_dest.exists():
         try:
-            import csv
-
             with resumo_dest.open(encoding="utf-8-sig", newline="") as fh:
                 row = next(csv.DictReader(fh), {}) or {}
                 atualizado = str(row.get("atualizado") or "")
@@ -374,8 +430,11 @@ def _copy_contratacao_to_dashboard() -> dict[str, str]:
         "atualizado": atualizado or datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
     }
     stamp_path = data_dir / "stamp.json"
-    stamp_path.write_text(json.dumps(stamp, ensure_ascii=False), encoding="utf-8")
-    out["contratacao/stamp.json"] = str(stamp_path)
+    try:
+        _safe_write_text(stamp_path, json.dumps(stamp, ensure_ascii=False), encoding="utf-8")
+        out["contratacao/stamp.json"] = str(stamp_path)
+    except OSError:
+        pass
     return out
 
 

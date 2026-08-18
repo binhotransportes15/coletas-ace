@@ -58,9 +58,34 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> Path:
+    import os
+    import time
+
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, ensure_ascii=False, indent=2)
-    path.write_text(text, encoding="utf-8")
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    last: BaseException | None = None
+    for attempt in range(5):
+        try:
+            tmp.write_text(text, encoding="utf-8")
+            os.replace(str(tmp), str(path))
+            return path
+        except OSError as err:
+            last = err
+            try:
+                if tmp.exists():
+                    tmp.unlink()
+            except OSError:
+                pass
+            time.sleep(0.05 * (attempt + 1))
+            try:
+                path.write_text(text, encoding="utf-8")
+                return path
+            except OSError as err2:
+                last = err2
+                time.sleep(0.08 * (attempt + 1))
+    if last:
+        raise last
     return path
 
 

@@ -44,7 +44,13 @@ def _persist_local_instead_of_sheets(
     from local_store import persist_sector
 
     snap = persist_sector(sector, extra=extra, on_status=on_status)
-    dash = publish_dashboard(cfg, on_status=on_status, allow_push=False)
+    # Publish completo (inclui emissão/stamp etc.) não pode invalidar o relatório
+    # que acabou de gravar — Errno 22/lock em stamp.json é comum no Windows.
+    try:
+        dash = publish_dashboard(cfg, on_status=on_status, allow_push=False)
+    except Exception as err:  # noqa: BLE001
+        on_status(f"Dashboard local (aviso, {sector} já salvo): {err}")
+        dash = {"ok": False, "error": str(err), "skipped": True}
     return {"ok": True, "via": "local_json", "local": snap, "dashboard": dash}
 
 
