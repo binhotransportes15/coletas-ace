@@ -18,6 +18,17 @@ ROMANEIOS_36_CSV = CACHE_DIR / "romaneios_36.csv"
 RESUMO_36_CSV = CACHE_DIR / "resumo_36.csv"
 LAST_36_JSON = CACHE_DIR / "last_run_36.json"
 
+# Placas de teste / fictícias — fora do relatório de entrega (36)
+PLACAS_IGNORAR_36 = frozenset({"AAA0001"})
+
+
+def _norm_placa(raw: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", str(raw or "").upper())
+
+
+def placa_ignorada_36(placa: str) -> bool:
+    return _norm_placa(placa) in PLACAS_IGNORAR_36
+
 # Indices 0-based no CSV com coluna tipo na posicao 0 (= Excel A)
 # B=1 ROMANEIO, C=2 DATA EMISSAO, D=3 HORA EMISSAO, E=4 SITUACAO, F=5 PLACA,
 # H=7 MOTORISTA, M=12 CTRC, P=15 DESTINATARIO,
@@ -374,6 +385,11 @@ def parse_ssw0146(
         data_d = _parse_data_ocorr(data_txt)
 
         situacao = _cell(row, idx["situacao"])
+        placa = _cell(row, idx["placa"])
+        # Placas fictícias (ex.: AAA0001) — fora do painel/CSV
+        if placa_ignorada_36(placa):
+            continue
+
         status, excluido, motivo = mapear_status_entrega(
             situacao, ocorrencia, data_d, hoje=ref
         )
@@ -403,7 +419,7 @@ def parse_ssw0146(
                 romaneio=romaneio,
                 situacao=situacao,
                 status_ace=status,
-                placa=_cell(row, idx["placa"]),
+                placa=placa,
                 placa_carreta=_cell(row, idx["carreta"]),
                 motorista=_cell(row, idx["motorista"]),
                 destinatario=_cell(row, idx["destinatario"]),

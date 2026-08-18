@@ -376,7 +376,10 @@
         loadCsv('data/romaneios_36.csv'),
         loadCsv('data/entregas_36.csv'),
       ]);
-      CACHE.entregas36 = ents.filter((r) => String(r.excluido || '') !== '1');
+      const ignorePlaca = (p) => String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '') === 'AAA0001';
+      CACHE.entregas36 = ents.filter((r) =>
+        String(r.excluido || '') !== '1' && !ignorePlaca(r.placa)
+      );
       return {
         columns: [
           colDef('romaneio', 'Romaneio'),
@@ -389,12 +392,12 @@
           colDef('pct', '%'),
           colDef('_act', '', { type: 'action', action: 'ctrcs' }),
         ],
-        rows: roms.map((r) => ({
+        rows: roms.filter((r) => !ignorePlaca(r.placa)).map((r) => ({
           ...r,
           pct: String(r.pct || '0').includes('%') ? r.pct : `${r.pct || 0}%`,
           _act: 'CTRCs',
         })),
-        meta: `${roms.length} romaneio(s) · clique em CTRCs p/ ver ocorrências`,
+        meta: `${roms.filter((r) => !ignorePlaca(r.placa)).length} romaneio(s) · clique em CTRCs p/ ver ocorrências`,
       };
     }
     if (SETOR === 'distribuicao' && REL === 'agendamento') {

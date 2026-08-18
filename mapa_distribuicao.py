@@ -72,6 +72,16 @@ def _norm_plate(p: str) -> str:
     return "".join(ch for ch in str(p or "").upper() if ch.isalnum())
 
 
+def _placa_ignorada_36(p: str) -> bool:
+    """Placas fictícias fora do operacional de entrega (ex.: AAA0001)."""
+    try:
+        from parser_ssw0146 import placa_ignorada_36
+
+        return placa_ignorada_36(p)
+    except Exception:
+        return _norm_plate(p) == "AAA0001"
+
+
 def _num(v: Any) -> float:
     try:
         if v is None or v == "":
@@ -216,6 +226,8 @@ def _ace_active_ctrc_ids() -> set[str]:
         for row in csv.DictReader(fh):
             if str(row.get("excluido") or "") in {"1", "true", "True"}:
                 continue
+            if _placa_ignorada_36(row.get("placa") or ""):
+                continue
             st = str(row.get("status_ace") or "").strip().lower()
             if st in {"excluido", "cancelada"}:
                 continue
@@ -237,7 +249,7 @@ def _ace_em_rota_plates() -> set[str]:
             if str(row.get("excluido") or "") in {"1", "true", "True"}:
                 continue
             pl = _norm_plate(row.get("placa") or "")
-            if pl:
+            if pl and not _placa_ignorada_36(pl):
                 out.add(pl)
     return out
 
@@ -759,6 +771,8 @@ def _servico_por_placa() -> dict[str, dict[str, float | int]]:
                 if str(row.get("excluido") or "") in {"1", "true", "True"}:
                     continue
                 pl = _norm_plate(row.get("placa") or "")
+                if not pl or _placa_ignorada_36(pl):
+                    continue
                 st = str(row.get("status_ace") or "").strip().lower()
                 if st in {"cancelada", "excluido", "excluída"}:
                     continue
@@ -818,7 +832,7 @@ def _build_from_cybermap_report(
                 st = str(row.get("status_ace") or "").strip().lower()
                 if st in {"em_rota", "realizada", "pendencia"}:
                     pl = _norm_plate(row.get("placa") or "")
-                    if pl:
+                    if pl and not _placa_ignorada_36(pl):
                         ace_today.add(pl)
 
     by_plate: dict[str, list[Any]] = defaultdict(list)
@@ -834,7 +848,7 @@ def _build_from_cybermap_report(
         if st_ace not in {"em_rota", "realizada", "pendencia"}:
             continue
         pl = _norm_plate(getattr(d, "plate", "") or "")
-        if not pl:
+        if not pl or _placa_ignorada_36(pl):
             continue
         # Prioriza placas do ciclo no ACE; se vazio, usa todas do relatório do ciclo
         if ace_today and pl not in ace_today:

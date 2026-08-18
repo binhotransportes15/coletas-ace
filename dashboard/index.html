@@ -1796,13 +1796,16 @@
     body.tv-mode .torres.agenda-torres .torre .barra {
       max-height: none !important;
     }
-    body.tv-mode .agenda-pizza-wrap {
+    body.tv-mode .agenda-bubbles-wrap.is-on {
       height: 100% !important;
       min-height: 0 !important;
       overflow: hidden !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
+    }
+    body.tv-mode .agenda-pizza-wrap {
+      display: none !important;
     }
     body.tv-mode .agenda-pizza {
       width: 100% !important;
@@ -2491,7 +2494,8 @@
       overflow: hidden;
     }
     .agenda-layout.has-blocks [data-block="chart"] .agenda-towers-wrap,
-    .agenda-layout.has-blocks [data-block="chart"] .agenda-pizza-wrap {
+    .agenda-layout.has-blocks [data-block="chart"] .agenda-pizza-wrap,
+    .agenda-layout.has-blocks [data-block="chart"] .agenda-bubbles-wrap {
       flex: 1;
       min-height: 0;
       height: 100%;
@@ -2723,9 +2727,135 @@
     .agenda-pizza-wrap[hidden],
     body.dash-chart-pizza .agenda-pizza-wrap[hidden],
     body.dash-chart-towers .agenda-pizza-wrap,
-    body.dash-chart-bars .agenda-pizza-wrap {
+    body.dash-chart-bars .agenda-pizza-wrap,
+    body.dash-chart-bubbles .agenda-pizza-wrap {
       display: none !important;
     }
+
+    /* Bolhas de progresso (Agendamento) */
+    .agenda-bubbles-wrap {
+      position: relative;
+      display: none;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(8px, 1.5vmin, 20px);
+    }
+    .agenda-bubbles-wrap.is-on,
+    body.dash-chart-bubbles .agenda-bubbles-wrap.is-on {
+      display: flex !important;
+    }
+    .agenda-bubbles-wrap[hidden],
+    body.dash-chart-towers .agenda-bubbles-wrap,
+    body.dash-chart-pizza .agenda-bubbles-wrap,
+    body.dash-chart-bars .agenda-bubbles-wrap {
+      display: none !important;
+    }
+    .agenda-bubbles {
+      display: flex;
+      align-items: center;
+      justify-content: space-evenly;
+      gap: clamp(12px, 2.5vw, 48px);
+      width: 100%;
+      height: 100%;
+      min-height: clamp(200px, 34vh, 420px);
+    }
+    .agenda-bubble {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(10px, 1.4vmin, 18px);
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 340px;
+    }
+    .agenda-bubble .ball {
+      --sz: 140px;
+      width: var(--sz);
+      height: var(--sz);
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      transition: width .45s ease, height .45s ease, box-shadow .35s ease;
+      box-shadow:
+        inset 0 -10px 28px rgba(0, 0, 0, 0.35),
+        inset 0 8px 18px rgba(255, 255, 255, 0.12),
+        0 12px 28px rgba(0, 0, 0, 0.35);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      position: relative;
+    }
+    .agenda-bubble .ball::before {
+      content: '';
+      position: absolute;
+      inset: 12% 18% auto;
+      height: 28%;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(255,255,255,.28), transparent 70%);
+      pointer-events: none;
+    }
+    .agenda-bubble.is-ok .ball {
+      background:
+        radial-gradient(circle at 32% 28%, rgba(255,255,255,.22), transparent 42%),
+        radial-gradient(circle at 50% 55%, #22c55e, #14532d 78%);
+    }
+    .agenda-bubble.is-rota .ball {
+      background:
+        radial-gradient(circle at 32% 28%, rgba(255,255,255,.22), transparent 42%),
+        radial-gradient(circle at 50% 55%, #38bdf8, #0c4a6e 78%);
+    }
+    .agenda-bubble.is-par .ball {
+      background:
+        radial-gradient(circle at 32% 28%, rgba(255,255,255,.18), transparent 42%),
+        radial-gradient(circle at 50% 55%, #fbbf24, #92400e 78%);
+    }
+    .agenda-bubble .pct {
+      font-size: clamp(22px, calc(var(--sz) * 0.28), 64px);
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      text-shadow: 0 2px 8px rgba(0,0,0,.35);
+      font-variant-numeric: tabular-nums;
+      z-index: 1;
+    }
+    .agenda-bubble .qty {
+      font-size: clamp(11px, calc(var(--sz) * 0.11), 22px);
+      font-weight: 700;
+      color: rgba(255,255,255,.88);
+      letter-spacing: 0.04em;
+      z-index: 1;
+    }
+    .agenda-bubble .lab {
+      font-size: clamp(12px, 1.6vmin, 20px);
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      text-align: center;
+    }
+    .agenda-bubble.is-ok .lab { color: #4ade80; }
+    .agenda-bubble.is-rota .lab { color: #7dd3fc; }
+    .agenda-bubble.is-par .lab { color: #fbbf24; }
+    body.tv-mode .agenda-bubbles-wrap {
+      height: 100% !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+    }
+    body.tv-mode .agenda-bubbles {
+      min-height: 0 !important;
+      height: 100% !important;
+    }
+    body.tv-mode .agenda-bubble .lab {
+      font-size: calc(clamp(14px, 2vmin, 24px) * var(--dash-font, 1));
+    }
+
     .agenda-towers-wrap {
       flex: 1;
       min-height: 0;
@@ -2737,7 +2867,8 @@
     }
     .agenda-towers-wrap[hidden],
     body.dash-chart-pizza .agenda-towers-wrap,
-    body.dash-chart-bars .agenda-towers-wrap {
+    body.dash-chart-bars .agenda-towers-wrap,
+    body.dash-chart-bubbles .agenda-towers-wrap {
       display: none !important;
     }
     body.dash-chart-towers .agenda-towers-wrap:not([hidden]) {
@@ -7597,7 +7728,7 @@
         </div>
 
         <div class="agenda-chart-stage dash-block" data-block="chart">
-          <div class="agenda-towers-wrap" id="agendaTowersWrap" aria-label="Torres de agendamento">
+          <div class="agenda-towers-wrap" id="agendaTowersWrap" aria-label="Torres de agendamento" hidden>
             <div class="torres agenda-torres" id="agendaTorres">
               <div class="torre t-col">
                 <div class="pin" title="Quantidade"><span id="agRankOk">0</span></div>
@@ -7613,6 +7744,31 @@
                 <div class="pin" title="Quantidade"><span id="agRankPar">0</span></div>
                 <div class="barra" id="agBarPar"><strong id="agNPar">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Parado</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="agenda-bubbles-wrap is-on" id="agendaBubblesWrap" aria-label="Bolhas de progresso do agendamento">
+            <div class="agenda-bubbles" id="agendaBubbles">
+              <div class="agenda-bubble is-ok" data-key="ok">
+                <div class="ball" id="agBubbleOk">
+                  <strong class="pct" id="agBubbleOkPct">0%</strong>
+                  <span class="qty" id="agBubbleOkN">0</span>
+                </div>
+                <div class="lab">Realizado</div>
+              </div>
+              <div class="agenda-bubble is-rota" data-key="rota">
+                <div class="ball" id="agBubbleRota">
+                  <strong class="pct" id="agBubbleRotaPct">0%</strong>
+                  <span class="qty" id="agBubbleRotaN">0</span>
+                </div>
+                <div class="lab">Em rota</div>
+              </div>
+              <div class="agenda-bubble is-par" data-key="par">
+                <div class="ball" id="agBubblePar">
+                  <strong class="pct" id="agBubbleParPct">0%</strong>
+                  <span class="qty" id="agBubbleParN">0</span>
+                </div>
+                <div class="lab">Parado</div>
               </div>
             </div>
           </div>
@@ -9072,6 +9228,18 @@
       return m ? m[0] : text.split(/\s+/)[0];
     }
 
+    /** Placas fictícias fora do relatório de entrega (36). */
+    const PLACAS_IGNORAR_36 = new Set(['AAA0001']);
+    function placaIgnorada36(row) {
+      const p = String(parsePlaca((row && (row.placa || row.veiculo)) || '') || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '');
+      return PLACAS_IGNORAR_36.has(p);
+    }
+    function filterEntregas36Rows(rows) {
+      return (rows || []).filter((r) => !placaIgnorada36(r));
+    }
+
     function parseLimite(c) {
       const raw = String(c.data_hora_limite || '').trim();
       const now = new Date();
@@ -9772,10 +9940,10 @@
         const views = defaults.views || {};
         ui = views[viewId] || views.patio || ui || {};
       }
-      // Agendamento: pizza · Entrega: progresso TV · Coleta: faixas
+      // Agendamento: bolhas · Entrega: progresso TV · Coleta: faixas
       let chart = String(ui.chart || 'towers').toLowerCase();
       if (sec === 'distribuicao' && viewId === 'agendamento') {
-        chart = 'pizza';
+        chart = 'bubbles';
       }
       if (sec === 'distribuicao' && viewId === 'entrega') {
         chart = 'bars';
@@ -9783,7 +9951,8 @@
       if (sec === 'distribuicao' && viewId === 'coleta') {
         chart = 'bars';
       }
-      if (!['towers', 'pizza', 'bars'].includes(chart)) chart = 'towers';
+      if (chart === 'pizza') chart = 'bubbles'; // legado pizza → bolhas
+      if (!['towers', 'pizza', 'bars', 'bubbles'].includes(chart)) chart = 'towers';
       const scale = String(ui.scale || 'large').toLowerCase();
       let fontZoom = Number(ui.fontZoom);
       if (!Number.isFinite(fontZoom)) fontZoom = 1;
@@ -9841,7 +10010,7 @@
 
     function applyDashboardChrome() {
       const wipe = [
-        'dash-chart-towers', 'dash-chart-pizza', 'dash-chart-bars',
+        'dash-chart-towers', 'dash-chart-pizza', 'dash-chart-bars', 'dash-chart-bubbles',
         'dash-scale-small', 'dash-scale-normal', 'dash-scale-large',
         'dash-hide-kpis', 'dash-hide-chart', 'dash-hide-amanha', 'dash-hide-status',
         'dash-hide-tabela',
@@ -9865,8 +10034,10 @@
 
       const pizzaWrap = document.getElementById('agendaPizzaWrap');
       const towersWrap = document.getElementById('agendaTowersWrap');
+      const bubblesWrap = document.getElementById('agendaBubblesWrap');
       setChartPane(pizzaWrap, ui.chart === 'pizza');
       setChartPane(towersWrap, ui.chart === 'towers');
+      setChartPane(bubblesWrap, ui.chart === 'bubbles');
 
       const entPizza = document.getElementById('entregaPizzaWrap');
       const entCyl = document.getElementById('entregaCylWrap');
@@ -14365,11 +14536,53 @@
     }
 
     function renderAgendaPizza(rota, parado, ok) {
-      renderStatusPizza('agendaPizza', [
-        { cls: 's-rota', label: 'EM ROTA', desc: 'Saída para entrega', value: Number(rota) || 0 },
-        { cls: 's-par', label: 'PARADO', desc: 'No armazém / agendado', value: Number(parado) || 0 },
-        { cls: 's-ok', label: 'CONCLUÍDO', desc: 'Entrega realizada', value: Number(ok) || 0 },
-      ]);
+      // legado: pizza do agendamento virou bolhas
+      renderAgendaBubbles(rota, parado, ok);
+    }
+
+    function renderAgendaBubbles(rota, parado, ok) {
+      lastAgendaTorreCounts = {
+        rota: Number(rota) || 0,
+        parado: Number(parado) || 0,
+        ok: Number(ok) || 0,
+      };
+      const items = [
+        { ball: 'agBubbleOk', pct: 'agBubbleOkPct', n: 'agBubbleOkN', val: lastAgendaTorreCounts.ok },
+        { ball: 'agBubbleRota', pct: 'agBubbleRotaPct', n: 'agBubbleRotaN', val: lastAgendaTorreCounts.rota },
+        { ball: 'agBubblePar', pct: 'agBubbleParPct', n: 'agBubbleParN', val: lastAgendaTorreCounts.parado },
+      ];
+      const total = items.reduce((s, i) => s + i.val, 0);
+      const wrap = document.getElementById('agendaBubblesWrap');
+      const host = document.getElementById('agendaBubbles');
+      let minPx = 96;
+      let maxPx = 260;
+      if (host) {
+        const h = host.clientHeight || 0;
+        const w = host.clientWidth || 0;
+        const slot = Math.min(
+          h > 0 ? h * 0.72 : 260,
+          w > 0 ? (w / 3) * 0.85 : 260
+        );
+        maxPx = Math.max(140, Math.min(320, Math.round(slot)));
+        minPx = Math.max(72, Math.round(maxPx * 0.38));
+      }
+      items.forEach((it) => {
+        const pct = total > 0 ? Math.round((it.val / total) * 100) : 0;
+        // tamanho: 0% ≈ min; 100% ≈ max (escala pela participação)
+        const t = Math.max(0, Math.min(1, pct / 100));
+        const eased = Math.sqrt(t); // bolas médias não ficam miúdas demais
+        const sz = Math.round(minPx + (maxPx - minPx) * eased);
+        const ball = document.getElementById(it.ball);
+        if (ball) {
+          ball.style.setProperty('--sz', `${sz}px`);
+          ball.title = `${it.val} de ${total} (${pct}%)`;
+        }
+        const pctEl = document.getElementById(it.pct);
+        if (pctEl) pctEl.textContent = `${pct}%`;
+        const nEl = document.getElementById(it.n);
+        if (nEl) nEl.textContent = String(it.val);
+      });
+      if (wrap) wrap.classList.add('is-on');
     }
 
     function renderEntregaPizza(real, rota, par) {
@@ -14565,7 +14778,7 @@
       }
 
       renderAgendaTorres(rota, parado, ok);
-      renderAgendaPizza(rota, parado, ok);
+      renderAgendaBubbles(rota, parado, ok);
       renderAgendaTowerSide(rota, armazem, realizado, alerta, total);
       applyDashboardChrome();
       updateAlertaSemSaidaLock();
@@ -15079,7 +15292,7 @@
                 String(r.ctrc_id || `${r.romaneio || ''}|${r.destinatario || ''}`).toUpperCase()
               );
               lastGood36 = incoming36.slice();
-              ENTREGAS_ALL = incoming36;
+              ENTREGAS_ALL = filterEntregas36Rows(incoming36);
               ENTREGAS_36 = ENTREGAS_ALL.filter((c) => {
                 const st = statusAce36(c);
                 if (st === 'realizada') return true;
@@ -15216,9 +15429,9 @@
 
         COLETAS = COLETAS_103.slice();
 
-        const incoming36 = uniqueRows((r36 && r36.rows) || [], (r) =>
+        const incoming36 = filterEntregas36Rows(uniqueRows((r36 && r36.rows) || [], (r) =>
           String(r.ctrc_id || `${r.romaneio || ''}|${r.destinatario || ''}`).toUpperCase()
-        );
+        ));
         if (incoming36.length > 0) {
           const prev = lastGood36.length;
           const richerThanCache = !prev || entregaRowsRicher(incoming36, lastGood36);
@@ -15226,13 +15439,13 @@
             && incoming36.length < Math.max(3, Math.floor(prev * 0.5))
             && !richerThanCache;
           if (dropBrusca) {
-            ENTREGAS_ALL = lastGood36.slice();
+            ENTREGAS_ALL = filterEntregas36Rows(lastGood36.slice());
           } else {
             lastGood36 = incoming36.slice();
             ENTREGAS_ALL = incoming36;
           }
         } else if (lastGood36.length) {
-          ENTREGAS_ALL = lastGood36.slice();
+          ENTREGAS_ALL = filterEntregas36Rows(lastGood36.slice());
         } else {
           ENTREGAS_ALL = [];
         }
@@ -15244,12 +15457,12 @@
           if (st === 'cancelada') return false;
           return true;
         });
-        const incomingRom = (rRom && rRom.rows) || [];
+        const incomingRom = filterEntregas36Rows((rRom && rRom.rows) || []);
         if (incomingRom.length > 0) {
           lastGoodRom36 = incomingRom.slice();
           ROMANEIOS_36 = incomingRom;
         } else {
-          ROMANEIOS_36 = keepUnlessEmpty(incomingRom, lastGoodRom36);
+          ROMANEIOS_36 = filterEntregas36Rows(keepUnlessEmpty(incomingRom, lastGoodRom36));
         }
 
         const counts = countByStatus(COLETAS);
