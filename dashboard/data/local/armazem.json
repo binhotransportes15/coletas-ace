@@ -1,19 +1,19 @@
 {
   "setor": "armazem",
-  "updated_at": "2026-08-18T13:03:27",
+  "updated_at": "2026-08-18T13:27:35",
   "resumo_78": {
-    "atualizado": "18/08/2026 13:03:25",
+    "atualizado": "18/08/2026 13:27:34",
     "total_linhas": "25",
     "total_veiculos": "13",
     "peso_total": "236.643",
     "finalizado": "11",
-    "descarregando": "0",
+    "descarregando": "1",
     "atrasado": "0",
     "aguardando": "1",
-    "chegou": "1"
+    "chegou": "0"
   },
   "resumo_177": {
-    "atualizado": "18/08/2026 13:03:27",
+    "atualizado": "18/08/2026 13:27:35",
     "mes": "08/2026",
     "total_conferentes": "6",
     "peso_total": "76181",
@@ -33,12 +33,12 @@
       "saida": "17/08 21:18",
       "prev_chegada": "18/08 21:18",
       "chegada": "18/08 10:00",
-      "inicio_descarga": "",
+      "inicio_descarga": "18/08 13:04 aliny",
       "final_descarga": "",
-      "status": "chegou",
+      "status": "descarregando",
       "atrasado": "0",
-      "tempo_descarga_min": "",
-      "tempo_descarga": "",
+      "tempo_descarga_min": "23",
+      "tempo_descarga": "23min (andamento)",
       "peso_veiculo": "8.413"
     },
     {
@@ -52,12 +52,12 @@
       "saida": "17/08 21:18",
       "prev_chegada": "18/08 21:18",
       "chegada": "18/08 10:00",
-      "inicio_descarga": "",
+      "inicio_descarga": "18/08 13:04 aliny",
       "final_descarga": "",
-      "status": "chegou",
+      "status": "descarregando",
       "atrasado": "0",
-      "tempo_descarga_min": "",
-      "tempo_descarga": "",
+      "tempo_descarga_min": "23",
+      "tempo_descarga": "23min (andamento)",
       "peso_veiculo": "8.413"
     },
     {

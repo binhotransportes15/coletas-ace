@@ -6097,12 +6097,12 @@
     body.live-mode:not(.tv-mode) .resumo-single .resumo-stats b {
       font-size: clamp(22px, 2.6vw, 36px);
     }
-    /* Entrega · visão operacional (KPIs + barras + alertas + tabela) */
+    /* Entrega · TV (KPIs gigantes + progresso + semáforo + duo) */
     #opsLayoutEntrega.ent-ops,
     .ent-ops {
       display: grid;
-      grid-template-rows: auto minmax(140px, 0.85fr) minmax(180px, 1.35fr);
-      gap: clamp(8px, 1vw, 14px);
+      grid-template-rows: auto minmax(160px, 1.1fr) minmax(120px, 0.7fr) minmax(0, 0.9fr);
+      gap: clamp(8px, 1.1vmin, 16px);
       height: 100%;
       min-height: 0;
       padding: 2px 2px 4px;
@@ -6118,144 +6118,234 @@
     }
     body.tv-mode #opsLayoutEntrega:not(.has-blocks) {
       grid-template-columns: 1fr !important;
-      grid-template-rows: auto minmax(120px, 0.75fr) minmax(0, 1.4fr) !important;
+      grid-template-rows: auto minmax(180px, 1.15fr) minmax(140px, 0.85fr) !important;
       height: 100% !important;
       min-height: 0 !important;
-      gap: clamp(6px, 0.8vmin, 12px) !important;
+      gap: clamp(8px, 1.2vmin, 18px) !important;
+    }
+    body.tv-mode #opsLayoutEntrega > [data-block="tabela"] {
+      display: none !important;
     }
     .ent-kpi-row {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: clamp(8px, 1vw, 12px);
+      gap: clamp(8px, 1.2vmin, 16px);
       min-height: 0;
     }
     .ent-kpi {
       display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: clamp(12px, 1.4vw, 18px);
-      border-radius: 14px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 4px;
+      padding: clamp(14px, 1.8vmin, 28px) clamp(10px, 1.2vmin, 18px);
+      border-radius: 16px;
       border: 1px solid rgba(148, 163, 184, 0.16);
-      background: linear-gradient(165deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 18, 0.88));
+      background: linear-gradient(165deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 18, 0.9));
       min-width: 0;
     }
-    .ent-kpi.is-total { border-top: 3px solid #94a3b8; }
-    .ent-kpi.is-ok { border-top: 3px solid #22c55e; }
-    .ent-kpi.is-run { border-top: 3px solid #38bdf8; }
-    .ent-kpi.is-warn { border-top: 3px solid #f59e0b; }
-    .ent-kpi-ico {
-      width: 36px; height: 36px;
-      border-radius: 10px;
-      display: grid; place-items: center;
-      background: rgba(148, 163, 184, 0.12);
-      color: #cbd5e1;
-      flex: 0 0 auto;
-    }
-    .ent-kpi.is-ok .ent-kpi-ico { color: #86efac; background: rgba(34, 197, 94, 0.14); }
-    .ent-kpi.is-run .ent-kpi-ico { color: #7dd3fc; background: rgba(56, 189, 248, 0.14); }
-    .ent-kpi.is-warn .ent-kpi-ico { color: #fcd34d; background: rgba(245, 158, 11, 0.14); }
-    .ent-kpi-ico svg { width: 20px; height: 20px; }
-    .ent-kpi-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .ent-kpi.is-total { border-top: 4px solid #94a3b8; }
+    .ent-kpi.is-ok { border-top: 4px solid #22c55e; }
+    .ent-kpi.is-run { border-top: 4px solid #38bdf8; }
+    .ent-kpi.is-warn { border-top: 4px solid #f59e0b; }
+    .ent-kpi.is-crit { border-top: 4px solid #ef4444; }
     .ent-kpi-lbl {
-      font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
-      color: #94a3b8; font-weight: 700;
+      font-size: clamp(11px, 1.35vmin, 18px);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      font-weight: 800;
     }
     .ent-kpi-val {
-      font-size: clamp(28px, 3.4vw, 44px);
-      line-height: 1; font-weight: 800;
-      font-variant-numeric: tabular-nums; color: #f8fafc;
+      font-size: clamp(42px, 7.5vmin, 110px);
+      line-height: 0.95;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: #f8fafc;
+      letter-spacing: -0.02em;
     }
-    .ent-kpi-sub { font-size: 12px; color: #64748b; }
-    .ent-mid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.55fr) minmax(220px, 0.75fr);
-      gap: clamp(8px, 1vw, 12px);
-      min-height: 0;
+    .ent-kpi.is-ok .ent-kpi-val { color: #86efac; }
+    .ent-kpi.is-run .ent-kpi-val { color: #7dd3fc; }
+    .ent-kpi.is-warn .ent-kpi-val { color: #fcd34d; }
+    .ent-kpi.is-crit .ent-kpi-val { color: #fca5a5; }
+    .ent-kpi-sub {
+      font-size: clamp(12px, 1.5vmin, 20px);
+      color: #64748b;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
-    .ent-status-panel,
-    .ent-alerts-panel,
+    .ent-progress-panel,
     .ent-table-panel {
       min-height: 0;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      border-radius: 14px;
+      border-radius: 16px;
       border: 1px solid rgba(148, 163, 184, 0.14);
       background: rgba(8, 14, 26, 0.92);
-      padding: 10px 12px 12px;
+      padding: clamp(12px, 1.6vmin, 22px);
     }
     .ent-panel-head {
       display: flex; align-items: baseline; justify-content: space-between;
       gap: 10px; margin-bottom: 10px; flex: 0 0 auto;
     }
+    .ent-panel-head-center {
+      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 4px;
+    }
     .ent-panel-head h2 {
-      margin: 0; font-size: 13px; letter-spacing: 0.1em;
-      text-transform: uppercase; color: #e2e8f0;
+      margin: 0;
+      font-size: clamp(13px, 1.6vmin, 22px);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #e2e8f0;
+      font-weight: 800;
     }
-    .ent-bars {
-      display: flex; flex-direction: column; gap: 14px;
-      justify-content: center; flex: 1; min-height: 0;
+    .ent-progress-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(8px, 1.2vmin, 14px);
+      flex: 1;
+      min-height: 0;
+      justify-content: center;
     }
-    .ent-bar-row {
-      display: grid;
-      grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1.8fr) 52px;
-      gap: 10px; align-items: center;
+    .ent-progress-pct {
+      font-size: clamp(36px, 6vmin, 84px);
+      font-weight: 900;
+      line-height: 1;
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
     }
-    .ent-bar-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-    .ent-bar-lbl { font-size: 13px; font-weight: 700; color: #cbd5e1; }
-    .ent-bar-meta b {
-      font-size: 18px; font-variant-numeric: tabular-nums; color: #f8fafc;
-    }
-    .ent-bar-track {
-      height: 14px; border-radius: 999px;
+    .ent-progress-track {
+      width: min(92%, 1100px);
+      height: clamp(18px, 2.8vmin, 36px);
+      border-radius: 999px;
       background: rgba(30, 41, 59, 0.95);
-      border: 1px solid rgba(71, 85, 105, 0.45);
+      border: 1px solid rgba(71, 85, 105, 0.5);
       overflow: hidden;
+      display: flex;
     }
-    .ent-bar-fill {
-      height: 100%; width: 0; border-radius: inherit;
+    .ent-progress-fill {
+      height: 100%;
+      width: 0;
       transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .ent-bar-row.is-rota .ent-bar-fill {
-      background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+    .ent-progress-fill.is-rota { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    .ent-progress-fill.is-real { background: linear-gradient(90deg, #16a34a, #4ade80); }
+    .ent-progress-fill.is-par { background: linear-gradient(90deg, #d97706, #fbbf24); }
+    .ent-progress-caption {
+      font-size: clamp(14px, 1.8vmin, 24px);
+      color: #94a3b8;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-align: center;
     }
-    .ent-bar-row.is-real .ent-bar-fill {
-      background: linear-gradient(90deg, #16a34a, #4ade80);
+    .ent-semaforo {
+      margin-top: clamp(8px, 1.2vmin, 16px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(12px, 1.6vmin, 22px);
+      padding: clamp(12px, 1.8vmin, 24px) clamp(16px, 2vmin, 32px);
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(15, 23, 42, 0.55);
+      flex: 0 0 auto;
     }
-    .ent-bar-row.is-par .ent-bar-fill {
-      background: linear-gradient(90deg, #d97706, #fbbf24);
+    .ent-semaforo-dot {
+      width: clamp(28px, 4vmin, 52px);
+      height: clamp(28px, 4vmin, 52px);
+      border-radius: 50%;
+      box-shadow: 0 0 24px currentColor;
+      flex: 0 0 auto;
     }
-    .ent-bar-row.is-rota .ent-bar-fill.is-zero,
-    .ent-bar-row.is-real .ent-bar-fill.is-zero,
-    .ent-bar-row.is-par .ent-bar-fill.is-zero {
-      opacity: 0.25;
+    .ent-semaforo[data-level="ok"] { border-color: rgba(34, 197, 94, 0.35); }
+    .ent-semaforo[data-level="ok"] .ent-semaforo-dot {
+      background: #22c55e; color: rgba(34, 197, 94, 0.55);
     }
-    .ent-bar-pct {
-      text-align: right; font-size: 13px; font-weight: 800;
-      font-variant-numeric: tabular-nums; color: #94a3b8;
+    .ent-semaforo[data-level="warn"] { border-color: rgba(245, 158, 11, 0.4); }
+    .ent-semaforo[data-level="warn"] .ent-semaforo-dot {
+      background: #f59e0b; color: rgba(245, 158, 11, 0.55);
     }
-    .ent-alerts {
-      display: flex; flex-direction: column; gap: 8px;
-      overflow: auto; min-height: 0; flex: 1;
+    .ent-semaforo[data-level="crit"] { border-color: rgba(239, 68, 68, 0.45); }
+    .ent-semaforo[data-level="crit"] .ent-semaforo-dot {
+      background: #ef4444; color: rgba(239, 68, 68, 0.55);
     }
-    .ent-alert {
-      display: flex; gap: 10px; align-items: flex-start;
-      padding: 10px 12px; border-radius: 10px;
-      border: 1px solid rgba(148, 163, 184, 0.14);
-      background: rgba(15, 23, 42, 0.65);
-      font-size: 13px; color: #e2e8f0;
+    .ent-semaforo-body { text-align: left; min-width: 0; }
+    .ent-semaforo-title {
+      font-size: clamp(18px, 2.8vmin, 36px);
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f8fafc;
+      line-height: 1.1;
     }
-    .ent-alert .ico {
-      width: 22px; height: 22px; flex: 0 0 auto;
-      display: grid; place-items: center;
-      border-radius: 999px; font-size: 12px; font-weight: 800;
+    .ent-semaforo[data-level="ok"] .ent-semaforo-title { color: #86efac; }
+    .ent-semaforo[data-level="warn"] .ent-semaforo-title { color: #fcd34d; }
+    .ent-semaforo[data-level="crit"] .ent-semaforo-title { color: #fca5a5; }
+    .ent-semaforo-detail {
+      margin-top: 4px;
+      font-size: clamp(13px, 1.7vmin, 22px);
+      color: #94a3b8;
+      font-weight: 700;
     }
-    .ent-alert.is-ok .ico { background: rgba(34, 197, 94, 0.2); color: #86efac; }
-    .ent-alert.is-run .ico { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; }
-    .ent-alert.is-warn .ico { background: rgba(245, 158, 11, 0.22); color: #fcd34d; }
-    .ent-alert.is-crit .ico { background: rgba(239, 68, 68, 0.22); color: #fca5a5; }
-    .ent-alert b { display: block; font-size: 13px; margin-bottom: 2px; }
-    .ent-alert span { color: #94a3b8; font-size: 12px; }
+    .ent-duo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(8px, 1.2vmin, 16px);
+      min-height: 0;
+    }
+    .ent-duo-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 6px;
+      padding: clamp(16px, 2vmin, 28px);
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: linear-gradient(165deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 18, 0.9));
+      min-width: 0;
+      min-height: 0;
+    }
+    .ent-duo-card.is-run { border-top: 4px solid #38bdf8; }
+    .ent-duo-card.is-warn { border-top: 4px solid #f59e0b; }
+    .ent-duo-card.is-ok { border-top: 4px solid #22c55e; }
+    .ent-duo-card.is-crit { border-top: 4px solid #ef4444; }
+    .ent-duo-lbl {
+      font-size: clamp(13px, 1.7vmin, 22px);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: #94a3b8;
+    }
+    .ent-duo-val {
+      font-size: clamp(48px, 8vmin, 120px);
+      line-height: 0.95;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: #f8fafc;
+    }
+    .ent-duo-card.is-run .ent-duo-val { color: #7dd3fc; }
+    .ent-duo-card.is-warn .ent-duo-val { color: #fcd34d; }
+    .ent-duo-card.is-ok .ent-duo-val { color: #86efac; }
+    .ent-duo-card.is-crit .ent-duo-val { color: #fca5a5; }
+    .ent-duo-sub {
+      font-size: clamp(12px, 1.5vmin, 20px);
+      color: #64748b;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    /* legado oculto */
+    .ent-bars, .ent-alerts { display: none; }
     .ent-table-wrap {
       flex: 1; min-height: 0; overflow: auto;
     }
@@ -7295,112 +7385,97 @@
       </section>
     </div>
 
-    <!-- ENTREGA (tela cheia · visão operacional) -->
+    <!-- ENTREGA (TV · números gigantes · progresso · semáforo) -->
     <div class="view" id="viewEntrega">
       <section class="arena arena-single">
         <div class="ent-ops" id="opsLayoutEntrega">
           <div class="ent-kpi-row dash-block ds-kpi-row" data-block="resumo" aria-label="KPIs entrega">
-            <article class="ent-kpi is-total">
-              <div class="ent-kpi-ico" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" stroke="currentColor" stroke-width="1.7"/><path d="M3.3 7.5 12 12.5l8.7-5M12 22V12.5" stroke="currentColor" stroke-width="1.7"/></svg>
-              </div>
-              <div class="ent-kpi-body">
-                <span class="ent-kpi-lbl">Total</span>
-                <strong class="ent-kpi-val" id="entTotal">0</strong>
-                <small class="ent-kpi-sub" id="entTotalSub">Entregas planejadas</small>
-              </div>
+            <article class="ent-kpi is-total" id="entKpiTotal">
+              <span class="ent-kpi-lbl">Total</span>
+              <strong class="ent-kpi-val" id="entTotal">0</strong>
+              <small class="ent-kpi-sub" id="entTotalSub">ENTREGAS</small>
             </article>
-            <article class="ent-kpi is-ok">
-              <div class="ent-kpi-ico" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="m8 12.5 2.5 2.5L16 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </div>
-              <div class="ent-kpi-body">
-                <span class="ent-kpi-lbl">Realizadas</span>
-                <strong class="ent-kpi-val" id="sumEntReal">0</strong>
-                <small class="ent-kpi-sub"><span id="sumEntPct">0%</span> concluídas</small>
-              </div>
+            <article class="ent-kpi is-run" id="entKpiRota">
+              <span class="ent-kpi-lbl">Em rota</span>
+              <strong class="ent-kpi-val" id="sumEntRota">0</strong>
+              <small class="ent-kpi-sub"><span id="entRotaPctSub">0%</span></small>
             </article>
-            <article class="ent-kpi is-run">
-              <div class="ent-kpi-ico" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M3 17h2l1.2-4.2A2 2 0 0 1 8.1 11H14a2 2 0 0 1 1.9 1.4L17 17h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M7 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0" stroke="currentColor" stroke-width="1.7"/><path d="M14 7h4l3 4v4h-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </div>
-              <div class="ent-kpi-body">
-                <span class="ent-kpi-lbl">Em rota</span>
-                <strong class="ent-kpi-val" id="sumEntRota">0</strong>
-                <small class="ent-kpi-sub"><span id="entRotaPctSub">0%</span> em operação</small>
-              </div>
+            <article class="ent-kpi is-ok" id="entKpiReal">
+              <span class="ent-kpi-lbl">Realizadas</span>
+              <strong class="ent-kpi-val" id="sumEntReal">0</strong>
+              <small class="ent-kpi-sub"><span id="sumEntPct">0%</span></small>
             </article>
-            <article class="ent-kpi is-warn">
-              <div class="ent-kpi-ico" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 21 20H3L12 3.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 10v4.5M12 17.5h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-              </div>
-              <div class="ent-kpi-body">
-                <span class="ent-kpi-lbl">Pendências</span>
-                <strong class="ent-kpi-val" id="sumEntPar">0</strong>
-                <small class="ent-kpi-sub" id="entParSub">Nenhuma ocorrência</small>
-              </div>
+            <article class="ent-kpi is-warn" id="entKpiPar">
+              <span class="ent-kpi-lbl">Pendências</span>
+              <strong class="ent-kpi-val" id="sumEntPar">0</strong>
+              <small class="ent-kpi-sub" id="entParSub">—</small>
             </article>
           </div>
 
-          <div class="ent-mid">
-            <section class="ent-status-panel dash-block ds-panel" data-block="banners" aria-label="Status das entregas">
-              <header class="ent-panel-head">
-                <h2>Status das entregas</h2>
-                <span class="muted" id="entChartSub">Distribuição operacional</span>
-              </header>
-              <div class="ent-bars" id="entregaStatusBars">
-                <div class="ent-bar-row is-rota">
-                  <div class="ent-bar-meta">
-                    <span class="ent-bar-lbl">Em rota</span>
-                    <b id="entNRota">0</b>
-                  </div>
-                  <div class="ent-bar-track">
-                    <div class="ent-bar-fill" id="cylBanRota" style="width:0%"></div>
-                  </div>
-                  <div class="ent-bar-pct" id="entPRota">0%</div>
-                </div>
-                <div class="ent-bar-row is-real">
-                  <div class="ent-bar-meta">
-                    <span class="ent-bar-lbl">Realizadas</span>
-                    <b id="entNReal">0</b>
-                  </div>
-                  <div class="ent-bar-track">
-                    <div class="ent-bar-fill" id="cylBanReal" style="width:0%"></div>
-                  </div>
-                  <div class="ent-bar-pct" id="entPReal">0%</div>
-                </div>
-                <div class="ent-bar-row is-par">
-                  <div class="ent-bar-meta">
-                    <span class="ent-bar-lbl">Pendências</span>
-                    <b id="entNPar">0</b>
-                  </div>
-                  <div class="ent-bar-track">
-                    <div class="ent-bar-fill" id="cylBanPar" style="width:0%"></div>
-                  </div>
-                  <div class="ent-bar-pct" id="entPPar">0%</div>
-                </div>
+          <section class="ent-progress-panel dash-block ds-panel" data-block="banners" aria-label="Progresso e status da operação">
+            <header class="ent-panel-head ent-panel-head-center">
+              <h2>Progresso da operação</h2>
+              <span class="muted" id="entChartSub">Distribuição operacional</span>
+            </header>
+            <div class="ent-progress-block">
+              <div class="ent-progress-pct" id="entProgPct">0%</div>
+              <div class="ent-progress-track" aria-hidden="true">
+                <div class="ent-progress-fill is-rota" id="entProgFillRota" style="width:0%"></div>
+                <div class="ent-progress-fill is-real" id="entProgFillReal" style="width:0%"></div>
+                <div class="ent-progress-fill is-par" id="entProgFillPar" style="width:0%"></div>
               </div>
-              <!-- legado (pizza/cilindro CRT) mantido oculto -->
-              <div class="entrega-pizza-wrap" id="entregaPizzaWrap" hidden>
-                <svg id="entregaPizza" class="agenda-pizza entrega-pizza" viewBox="0 0 900 520" role="img" aria-hidden="true"></svg>
+              <div class="ent-progress-caption" id="entProgCaption">—</div>
+            </div>
+            <div class="ent-semaforo" id="entSemaforo" data-level="ok">
+              <div class="ent-semaforo-dot" aria-hidden="true"></div>
+              <div class="ent-semaforo-body">
+                <div class="ent-semaforo-title" id="entSemTitle">OPERAÇÃO NORMAL</div>
+                <div class="ent-semaforo-detail" id="entSemDetail">Aguardando dados</div>
               </div>
-              <div class="cyl-wrap" id="entregaCylWrap" hidden aria-hidden="true">
-                <div class="cyl">
-                  <div class="cyl-seg c-real" id="cylSegReal"></div>
-                  <div class="cyl-seg c-rota" id="cylSegRota"></div>
-                  <div class="cyl-seg c-par" id="cylSegPar"></div>
-                </div>
+            </div>
+            <!-- legado (pizza/cilindro/barras) mantido oculto p/ compat -->
+            <div class="ent-bars" id="entregaStatusBars" hidden>
+              <div class="ent-bar-row is-rota">
+                <div class="ent-bar-meta"><span class="ent-bar-lbl">Em rota</span><b id="entNRota">0</b></div>
+                <div class="ent-bar-track"><div class="ent-bar-fill" id="cylBanRota" style="width:0%"></div></div>
+                <div class="ent-bar-pct" id="entPRota">0%</div>
               </div>
-            </section>
+              <div class="ent-bar-row is-real">
+                <div class="ent-bar-meta"><span class="ent-bar-lbl">Realizadas</span><b id="entNReal">0</b></div>
+                <div class="ent-bar-track"><div class="ent-bar-fill" id="cylBanReal" style="width:0%"></div></div>
+                <div class="ent-bar-pct" id="entPReal">0%</div>
+              </div>
+              <div class="ent-bar-row is-par">
+                <div class="ent-bar-meta"><span class="ent-bar-lbl">Pendências</span><b id="entNPar">0</b></div>
+                <div class="ent-bar-track"><div class="ent-bar-fill" id="cylBanPar" style="width:0%"></div></div>
+                <div class="ent-bar-pct" id="entPPar">0%</div>
+              </div>
+            </div>
+            <div class="entrega-pizza-wrap" id="entregaPizzaWrap" hidden>
+              <svg id="entregaPizza" class="agenda-pizza entrega-pizza" viewBox="0 0 900 520" role="img" aria-hidden="true"></svg>
+            </div>
+            <div class="cyl-wrap" id="entregaCylWrap" hidden aria-hidden="true">
+              <div class="cyl">
+                <div class="cyl-seg c-real" id="cylSegReal"></div>
+                <div class="cyl-seg c-rota" id="cylSegRota"></div>
+                <div class="cyl-seg c-par" id="cylSegPar"></div>
+              </div>
+            </div>
+          </section>
 
-            <aside class="ent-alerts-panel dash-block ds-panel" data-block="pendencias" aria-label="Alertas">
-              <header class="ent-panel-head">
-                <h2>Alertas</h2>
-                <span class="muted">ao vivo</span>
-              </header>
-              <div class="ent-alerts" id="entAlerts"></div>
-              <div class="pop-stack ent-pend-stack" id="pendenciaStack" hidden></div>
-            </aside>
+          <div class="ent-duo dash-block" data-block="pendencias" aria-label="Em rota e pendências">
+            <article class="ent-duo-card is-run" id="entDuoRota">
+              <div class="ent-duo-lbl">Em rota</div>
+              <strong class="ent-duo-val" id="entDuoRotaN">0</strong>
+              <div class="ent-duo-sub" id="entDuoRotaSub">veículos / entregas</div>
+            </article>
+            <article class="ent-duo-card is-warn" id="entDuoPar">
+              <div class="ent-duo-lbl">Pendências</div>
+              <strong class="ent-duo-val" id="entDuoParN">0</strong>
+              <div class="ent-duo-sub" id="entDuoParSub">NENHUMA PENDÊNCIA</div>
+            </article>
+            <div class="ent-alerts" id="entAlerts" hidden></div>
+            <div class="pop-stack ent-pend-stack" id="pendenciaStack" hidden></div>
           </div>
 
           <section class="ent-table-panel dash-block ds-panel" data-block="tabela" aria-label="Entregas em rota">
@@ -8743,66 +8818,54 @@
       return `${parts[0]} ${parts[parts.length - 1]}`;
     }
 
-    function renderEntregaAlerts(counts) {
-      const box = document.getElementById('entAlerts');
-      if (!box) return;
+    function entOperLevel(counts) {
+      const par = Number(counts.parado) || 0;
       const total = Math.max(0, Number(counts.total) || 0);
       const rota = Number(counts.em_rota) || 0;
       const real = Number(counts.realizada) || 0;
-      const par = Number(counts.parado) || 0;
-      const items = [];
-      if (par <= 0) {
-        items.push({
-          cls: 'is-ok',
-          ico: '✓',
-          title: 'Nenhuma pendência',
-          detail: 'Sem ocorrências abertas no momento',
-        });
-      } else {
-        items.push({
-          cls: par >= 5 ? 'is-crit' : 'is-warn',
-          ico: '!',
-          title: `${par} pendência${par === 1 ? '' : 's'}`,
-          detail: 'Requer atenção operacional',
-        });
+      if (par >= 12 || (total > 0 && par / total >= 0.2)) {
+        return {
+          level: 'crit',
+          title: 'AÇÃO NECESSÁRIA',
+          detail: par ? `${par} ENTREGAS COM PENDÊNCIA` : 'PENDÊNCIAS CRÍTICAS',
+          parTone: 'crit',
+          parSub: 'ENTREGAS ATRASADAS',
+        };
       }
-      if (rota > 0) {
-        items.push({
-          cls: 'is-run',
-          ico: '→',
-          title: `${rota} em rota`,
-          detail: total ? `${Math.round((rota / total) * 100)}% da operação em campo` : 'Em deslocamento',
-        });
+      if (par >= 1) {
+        return {
+          level: 'warn',
+          title: 'ATENÇÃO',
+          detail: `${par} PENDÊNCIA${par === 1 ? '' : 'S'} OPERACIONAL${par === 1 ? '' : 'IS'}`,
+          parTone: 'warn',
+          parSub: 'ATENÇÃO OPERACIONAL',
+        };
       }
-      if (real > 0) {
-        items.push({
-          cls: 'is-ok',
-          ico: '✓',
-          title: `${real} realizada${real === 1 ? '' : 's'}`,
-          detail: total ? `${Math.round((real / total) * 100)}% de conclusão` : 'Concluídas',
-        });
+      if (total > 0 && real === total) {
+        return {
+          level: 'ok',
+          title: 'OPERAÇÃO NORMAL',
+          detail: `${real} ENTREGAS REALIZADAS`,
+          parTone: 'ok',
+          parSub: 'NENHUMA PENDÊNCIA',
+        };
       }
-      if (!total) {
-        items.length = 0;
-        items.push({
-          cls: 'is-warn',
-          ico: 'i',
-          title: 'Sem entregas no período',
-          detail: 'Aguardando dados do relatório 36',
-        });
-      }
-      // Top pendências (se houver lista)
-      const pendExtra = (PENDENCIAS_36 || []).slice(0, 3).map((p) => ({
-        cls: 'is-warn',
-        ico: '!',
-        title: shortEntLabel(p.label || p.name || 'Pendência', 40),
-        detail: [p.hora, p.veiculo].filter(Boolean).join(' · ') || 'Pendência ativa',
-      }));
-      box.innerHTML = [...items, ...pendExtra].map((a) => `
-        <div class="ent-alert ${a.cls}">
-          <div class="ico">${a.ico}</div>
-          <div><b>${esc(a.title)}</b><span>${esc(a.detail)}</span></div>
-        </div>`).join('');
+      return {
+        level: 'ok',
+        title: 'OPERAÇÃO NORMAL',
+        detail: rota
+          ? `${rota} ENTREGA${rota === 1 ? '' : 'S'} EM ROTA`
+          : (total ? `${total} ENTREGAS NO CICLO` : 'AGUARDANDO DADOS'),
+        parTone: 'ok',
+        parSub: 'NENHUMA PENDÊNCIA',
+      };
+    }
+
+    function renderEntregaAlerts(counts) {
+      // Alertas textuais ficam ocultos — semáforo + duo cards cobrem a TV
+      const box = document.getElementById('entAlerts');
+      if (box) box.innerHTML = '';
+      void counts;
     }
 
     function renderEntregaTabela() {
@@ -8852,20 +8915,71 @@
       const rota = Number(counts.em_rota) || 0;
       const par = Number(counts.parado) || 0;
       const pctOf = (v) => (total > 0 ? Math.round((v / total) * 100) : 0);
+      const pctReal = pctOf(real);
+      const pctRota = pctOf(rota);
+      const pctPar = pctOf(par);
 
       const setTxt = (id, v) => {
         const el = document.getElementById(id);
         if (el) el.textContent = v;
       };
+
       setTxt('entTotal', String(total));
-      setTxt('entTotalSub', total === 1 ? 'Entrega planejada' : 'Entregas planejadas');
+      setTxt('entTotalSub', 'ENTREGAS');
       setTxt('sumEntReal', String(real));
       setTxt('sumEntRota', String(rota));
       setTxt('sumEntPar', String(par));
-      setTxt('sumEntPct', `${pctOf(real)}%`);
-      setTxt('entRotaPctSub', `${pctOf(rota)}%`);
-      setTxt('entParSub', par <= 0 ? 'Nenhuma ocorrência' : `${par} ocorrência${par === 1 ? '' : 's'}`);
+      setTxt('sumEntPct', `${pctReal}%`);
+      setTxt('entRotaPctSub', `${pctRota}%`);
 
+      const op = entOperLevel(counts);
+      setTxt('entParSub', op.parSub);
+      // Pendências 0 → visual verde no KPI
+      const kpiPar = document.getElementById('entKpiPar');
+      if (kpiPar) {
+        kpiPar.classList.remove('is-ok', 'is-warn', 'is-crit');
+        kpiPar.classList.add(par <= 0 ? 'is-ok' : (op.parTone === 'crit' ? 'is-crit' : 'is-warn'));
+      }
+
+      // Barra única de progresso (segmentada)
+      const fillR = document.getElementById('entProgFillRota');
+      const fillOk = document.getElementById('entProgFillReal');
+      const fillP = document.getElementById('entProgFillPar');
+      if (fillR) fillR.style.width = `${total ? pctRota : 0}%`;
+      if (fillOk) fillOk.style.width = `${total ? pctReal : 0}%`;
+      if (fillP) fillP.style.width = `${total ? pctPar : 0}%`;
+
+      // % principal = conclusão (realizadas); se zero realizadas, mostra % em rota
+      const mainPct = real > 0 ? pctReal : pctRota;
+      setTxt('entProgPct', `${mainPct}%`);
+      let caption = 'sem dados';
+      if (total > 0) {
+        if (real > 0 && rota > 0) caption = `${real} realizadas · ${rota} em rota · ${total} no ciclo`;
+        else if (real === total) caption = `${real} de ${total} realizadas`;
+        else if (rota === total) caption = `${rota} de ${total} em rota`;
+        else caption = `${rota} em rota · ${real} realizadas · ${par} pendências`;
+      }
+      setTxt('entProgCaption', caption);
+      setTxt('entChartSub', total ? `${total} CTRC no período` : 'sem dados');
+
+      // Semáforo operacional
+      const sem = document.getElementById('entSemaforo');
+      if (sem) sem.setAttribute('data-level', op.level);
+      setTxt('entSemTitle', op.title);
+      setTxt('entSemDetail', op.detail);
+
+      // Duo cards
+      setTxt('entDuoRotaN', String(rota));
+      setTxt('entDuoRotaSub', rota === 1 ? 'entrega em campo' : 'veículos / entregas');
+      setTxt('entDuoParN', String(par));
+      setTxt('entDuoParSub', op.parSub);
+      const duoPar = document.getElementById('entDuoPar');
+      if (duoPar) {
+        duoPar.classList.remove('is-ok', 'is-warn', 'is-crit', 'is-run');
+        duoPar.classList.add(par <= 0 ? 'is-ok' : (op.parTone === 'crit' ? 'is-crit' : 'is-warn'));
+      }
+
+      // legado barras (ocultas)
       const items = [
         { ban: 'cylBanRota', n: 'entNRota', p: 'entPRota', val: rota },
         { ban: 'cylBanReal', n: 'entNReal', p: 'entPReal', val: real },
@@ -8882,8 +8996,6 @@
         setTxt(n, String(val));
         setTxt(p, pct + '%');
       });
-
-      // legado cilindro (oculto)
       [
         { id: 'cylSegReal', val: real },
         { id: 'cylSegRota', val: rota },
@@ -8897,8 +9009,6 @@
       });
 
       lastCountsEnt = counts;
-      const sub = document.getElementById('entChartSub');
-      if (sub) sub.textContent = total ? `${total} CTRC no período` : 'sem dados';
       renderEntregaAlerts(counts);
       renderEntregaTabela();
     }
@@ -9619,10 +9729,13 @@
         const views = defaults.views || {};
         ui = views[viewId] || views.patio || ui || {};
       }
-      // Entrega + Agendamento: pizza · Coleta: faixas horizontais (mapa)
+      // Agendamento: pizza · Entrega: progresso TV · Coleta: faixas
       let chart = String(ui.chart || 'towers').toLowerCase();
-      if (sec === 'distribuicao' && (viewId === 'entrega' || viewId === 'agendamento')) {
+      if (sec === 'distribuicao' && viewId === 'agendamento') {
         chart = 'pizza';
+      }
+      if (sec === 'distribuicao' && viewId === 'entrega') {
+        chart = 'bars';
       }
       if (sec === 'distribuicao' && viewId === 'coleta') {
         chart = 'bars';
@@ -15038,9 +15151,14 @@
         } else {
           ENTREGAS_ALL = [];
         }
-        ENTREGAS_36 = ENTREGAS_ALL.filter(c =>
-          String(c.excluido || '') !== '1' && statusAce36(c) !== 'cancelada'
-        );
+        ENTREGAS_36 = ENTREGAS_ALL.filter((c) => {
+          const st = statusAce36(c);
+          // Realizadas entram mesmo se o CSV antigo marcou excluído (corte 19h)
+          if (st === 'realizada') return true;
+          if (String(c.excluido || '') === '1') return false;
+          if (st === 'cancelada') return false;
+          return true;
+        });
         const incomingRom = (rRom && rRom.rows) || [];
         if (incomingRom.length > 0) {
           lastGoodRom36 = incomingRom.slice();

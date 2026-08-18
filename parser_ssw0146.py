@@ -385,8 +385,9 @@ def parse_ssw0146(
             situacao, ocorrencia, data_d, hoje=ref
         )
 
-        # Corte operacional: só emissão ≥ 19:00 do dia-base (sex na seg / ontem)
-        if not excluido:
+        # Corte operacional: só emissão ≥ 19:00 do dia-base (sex na seg / ontem).
+        # Realizadas NÃO entram no corte — entrega concluída permanece no painel.
+        if not excluido and status != "realizada":
             if emi_dt is None:
                 # Sem data/hora de emissão: mantém só se ocorrência for hoje
                 if data_d is None or data_d != ref:
