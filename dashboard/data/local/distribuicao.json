@@ -1,28 +1,28 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-18T13:53:39",
+  "updated_at": "2026-08-18T14:05:49",
   "resumo_50": {
     "data_cadastro": "PERIODO",
-    "total_coletas": "7",
-    "cadastrada": "2",
-    "comandada": "4",
+    "total_coletas": "10",
+    "cadastrada": "3",
+    "comandada": "6",
     "coletada": "0",
     "cancelada": "1"
   },
   "resumo_103": {
     "periodo": "18/08",
-    "total": "40",
+    "total": "41",
     "parado": "1",
-    "em_rota": "27",
-    "realizada": "12",
+    "em_rota": "26",
+    "realizada": "14",
     "cancelada": "0",
     "outro": "0"
   },
   "resumo_36": {
     "periodo": "17/08 a 18/08",
     "total": "303",
-    "realizada": "51",
-    "em_rota": "43",
+    "realizada": "52",
+    "em_rota": "42",
     "pendencia": "209",
     "excluido": "7"
   },

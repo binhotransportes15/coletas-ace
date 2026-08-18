@@ -8765,7 +8765,7 @@
     }
 
     function statusAce36(c) {
-      // Coluna AD (ocorrência CTRC): SAÍDA→em_rota · REALIZADA→realizada · resto→pendência
+      // Coluna AD: SAÍDA→em_rota · REALIZADA/CTE BAIXADO→realizada · resto→pendência
       const o = String(c.ocorrencia || '')
         .toUpperCase()
         .normalize('NFD')
@@ -8775,15 +8775,14 @@
           o.includes('ENTREGA REALIZADA')
           || o.includes('PRE-ENTREGUE')
           || o.includes('PRE ENTREGUE')
-          || (/\bREALIZAD[OA]\b/.test(o) && !o.includes('CTE'))
+          || o.includes('CTE BAIXADO')
+          || /\bREALIZAD[OA]\b/.test(o)
         ) {
           return 'realizada';
         }
         if (o.includes('SAIDA PARA ENTREGA')) return 'em_rota';
-        // CTE BAIXADO, falta, agendada, etc.
         return 'parado';
       }
-      // Sem texto AD: usa status_ace do parser/CSV (não inventa “em rota”)
       const raw = String(c.status_ace || '').toLowerCase().trim();
       if (raw === 'realizada') return 'realizada';
       if (raw === 'em_rota') return 'em_rota';

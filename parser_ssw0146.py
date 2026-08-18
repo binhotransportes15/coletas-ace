@@ -158,11 +158,8 @@ def mapear_status_entrega(
     Status pela coluna AD (DESC OCORR CTRC), com fallback romaneio:
 
     - SAIDA PARA ENTREGA (ou em branco) → em_rota
-    - ENTREGA REALIZADA / PRE-ENTREGUE → realizada
+    - ENTREGA REALIZADA / PRE-ENTREGUE / CTE BAIXADO → realizada
     - qualquer outra ocorrência → pendencia
-
-    Não usa códigos 18/53/99/CTE BAIXADO etc. como “realizada” no 36 —
-    isso inflava o % e mentia o painel.
 
     O corte por emissão (≥19h do dia-base) é feito em parse_ssw0146.
     """
@@ -183,13 +180,14 @@ def mapear_status_entrega(
         .replace("Ç", "C")
     )
 
-    # Realizada (só entrega de fato — col. AD)
+    # Realizada (col. AD)
     if "ENTREGA REALIZADA" in ocorr_n:
         return "realizada", False, ""
     if "PRE-ENTREGUE" in ocorr_n or "PRE ENTREGUE" in ocorr_n:
         return "realizada", False, ""
-    # "REALIZADO" solto (sem CTE BAIXADO / códigos)
-    if re.search(r"\bREALIZAD[OA]\b", ocorr_n) and "CTE" not in ocorr_n:
+    if "CTE BAIXADO" in ocorr_n:
+        return "realizada", False, ""
+    if re.search(r"\bREALIZAD[OA]\b", ocorr_n):
         return "realizada", False, ""
 
     if not ocorr_n:
@@ -528,7 +526,11 @@ def analyze_report_36(
         )
 
     romaneios = agregar_romaneios(ativos)
-    periodo_txt = periodo or ref.strftime("%d/%m")
+    # Sempre rótulo do ciclo até a data de hoje
+    from dates import format_period, periodo_36_ontem_hoje
+
+    _ = periodo  # caller pode passar; label segue a data corrente
+    periodo_txt = format_period(*periodo_36_ontem_hoje(ref))
     resumo = [
         {
             "periodo": periodo_txt,
@@ -555,8 +557,9 @@ def analyze_report_36(
         "modelo": (
             "36 ssw0146: ciclo = emissão ≥19:00 do dia-base "
             "(sexta na segunda; ontem nos demais) até hoje (col. C data + D hora). "
-            "blank/SAIDA PARA ENTREGA→em_rota, ENTREGA REALIZADA/PRE-ENTREGUE→realizada, "
-            "qualquer outra col.AD→pendencia (CTE BAIXADO NÃO conta como realizada)."
+            "blank/SAIDA PARA ENTREGA→em_rota, "
+            "ENTREGA REALIZADA/PRE-ENTREGUE/CTE BAIXADO→realizada, "
+            "qualquer outra col.AD→pendencia."
         ),
     }
     LAST_36_JSON.write_text(

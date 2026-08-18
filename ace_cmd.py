@@ -186,12 +186,17 @@ def _save_payload(payload: dict[str, Any]) -> None:
 
 def _periodo_hint(modo: str) -> str:
     try:
+        from dates import periodo_36_ontem_hoje
+
         ini50, fim50 = periodo_50_coleta_hoje()
         ini103, fim103 = periodo_103_hoje()
+        ini36, fim36 = periodo_36_ontem_hoje()
         return (
             f"50 coleta {to_ssw_ddmmyy(ini50)}-{to_ssw_ddmmyy(fim50)} "
             f"({format_period(ini50, fim50)}) | "
-            f"103 limite {to_ssw_ddmmyy(ini103)} ({format_period(ini103, fim103)})"
+            f"103 limite {to_ssw_ddmmyy(ini103)} ({format_period(ini103, fim103)}) | "
+            f"36 {to_ssw_ddmmyy(ini36)}-{to_ssw_ddmmyy(fim36)} "
+            f"({format_period(ini36, fim36)}, fim=hoje)"
         )
     except Exception:
         return "—"

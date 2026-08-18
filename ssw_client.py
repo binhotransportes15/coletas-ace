@@ -16,7 +16,7 @@ from config import (
     login_unit,
     parse_coleta_units,
 )
-from dates import format_period, normalize_date, to_ssw_ddmmyy
+from dates import format_period, normalize_date, periodo_36_ontem_hoje, to_ssw_ddmmyy
 
 StatusCallback = Callable[[str], None]
 
@@ -665,13 +665,17 @@ class AceSswClient:
         36 - Consulta romaneios/CTRCs (ssw0146):
           Excel = S
           Unidade = sempre SPO (entregas)
-          Periodo = seg: SEXTA..hoje | demais: D-1..hoje (DDMMYY)
+          Periodo = sempre recalculado agora: seg SEXTA..hoje | demais D-1..hoje
           Parser: só emissão ≥19:00 do dia-base (col. D = hora)
           Gerar = #btn_env_periodo → ajaxEnvia('REL2')
         """
+        # Sempre data de hoje (não reutiliza período antigo da sessão / virada de dia)
+        ini, fim = periodo_36_ontem_hoje()
+        self.set_period(ini, fim)
         unidade = "SPO"
         self.on_status(
-            f"Gerando 36 Excel | periodo {self.start_date_yy} a {self.end_date_yy} | un={unidade}..."
+            f"Gerando 36 Excel | periodo {self.start_date_yy} a {self.end_date_yy} "
+            f"(fim=hoje) | un={unidade}..."
         )
         return self._download_report_36_once(page, unidade)
 
@@ -721,9 +725,12 @@ class AceSswClient:
     def _preencher_tela_36(self, popup, *, unidade: str = "SPO") -> None:
         """
         ssw0146:
-          t_excel = S, t_unidade = SPO (sempre), periodo seg=sex..hoje / demais=D-1..hoje
-          Unidade NAO usa fill/focus — o SSW abre findfil (tela de selecao).
+          t_excel = S, t_unidade = SPO (sempre), periodo sempre recalculado p/ hoje
+          (seg=sex..hoje / demais=D-1..hoje). Unidade NAO usa fill/focus (findfil).
         """
+        # Reforço: data final = hoje, mesmo se o client tiver período antigo
+        ini_ui, fim_ui = periodo_36_ontem_hoje()
+        self.set_period(ini_ui, fim_ui)
         ini, fim = self.start_date_yy, self.end_date_yy
         un = (unidade or "SPO").strip().upper() or "SPO"
         popup.locator("#t_excel").wait_for()
