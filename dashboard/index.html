@@ -144,26 +144,28 @@
     .ds-status-crit { color: var(--crit) !important; }
     .ds-status-neutral { color: var(--neutral) !important; }
 
-    /* Faixas horizontais de status (Coleta / composição) */
+    /* Faixas horizontais de status (Coleta / Situações) */
     .ds-hstatus {
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      gap: clamp(10px, 1.6vh, 18px);
+      justify-content: space-evenly;
+      gap: clamp(14px, 2.2vh, 28px);
       height: 100%;
       min-height: 0;
-      padding: clamp(8px, 1.2vmin, 16px) clamp(10px, 1.5vmin, 20px);
+      padding: clamp(12px, 1.8vmin, 24px) clamp(14px, 2vmin, 28px);
+      flex: 1;
     }
     .ds-hstatus-row {
       display: grid;
-      grid-template-columns: minmax(88px, 0.9fr) minmax(0, 2.4fr) auto;
+      grid-template-columns: minmax(130px, 1.05fr) minmax(0, 2.2fr) minmax(110px, auto);
       align-items: center;
-      gap: 10px;
+      gap: clamp(12px, 1.6vmin, 22px);
+      min-height: clamp(36px, 5.5vh, 72px);
     }
     .ds-hstatus-lab {
-      font-size: clamp(12px, 1.4vw, 18px);
+      font-size: clamp(15px, 2vmin, 26px);
       font-weight: 800;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       white-space: nowrap;
     }
@@ -172,8 +174,8 @@
     .ds-hstatus-lab.is-warn { color: var(--warn); }
     .ds-hstatus-lab.is-crit { color: var(--crit); }
     .ds-hstatus-track {
-      height: clamp(18px, 2.8vh, 28px);
-      border-radius: 6px;
+      height: clamp(22px, 3.6vh, 40px);
+      border-radius: 8px;
       background: #0f172a;
       border: 1px solid #1e293b;
       overflow: hidden;
@@ -181,7 +183,7 @@
     .ds-hstatus-fill {
       height: 100%;
       width: 0%;
-      border-radius: 5px;
+      border-radius: 7px;
       transition: width .45s ease;
       min-width: 0;
     }
@@ -191,10 +193,12 @@
     .ds-hstatus-fill.is-crit { background: linear-gradient(90deg, var(--crit-dark), var(--crit)); }
     .ds-hstatus-meta {
       font-variant-numeric: tabular-nums;
-      font-weight: 800;
-      font-size: clamp(14px, 1.6vw, 22px);
-      min-width: 4.5ch;
+      font-weight: 900;
+      font-size: clamp(18px, 2.4vmin, 32px);
+      min-width: 6ch;
       text-align: right;
+      letter-spacing: 0.02em;
+      color: #f8fafc;
     }
     .ds-pareto {
       display: flex;
@@ -353,9 +357,30 @@
     body.tv-mode .agenda-kpi.ds-kpi b {
       font-size: calc(clamp(28px, 3.6vmin, 48px) * var(--dash-font, 1)) !important;
     }
-    body.tv-mode .ds-hstatus-lab { font-size: clamp(16px, 2vmin, 24px); }
-    body.tv-mode .ds-hstatus-meta { font-size: clamp(18px, 2.4vmin, 28px); }
-    body.tv-mode .ds-hstatus-track { height: clamp(22px, 3.2vmin, 34px); }
+    body.tv-mode .ds-hstatus {
+      gap: clamp(18px, 3vh, 40px);
+      padding: clamp(16px, 2.4vmin, 32px) clamp(18px, 2.6vmin, 36px);
+    }
+    body.tv-mode .ds-hstatus-row {
+      grid-template-columns: minmax(170px, 1.1fr) minmax(0, 2.2fr) minmax(140px, auto);
+      gap: clamp(14px, 2vmin, 28px);
+      min-height: clamp(48px, 7vh, 88px);
+    }
+    body.tv-mode .ds-hstatus-lab {
+      font-size: calc(clamp(22px, 3.2vmin, 40px) * var(--dash-font, 1));
+    }
+    body.tv-mode .ds-hstatus-meta {
+      font-size: calc(clamp(26px, 3.6vmin, 48px) * var(--dash-font, 1));
+    }
+    body.tv-mode .ds-hstatus-track {
+      height: calc(clamp(28px, 4.5vmin, 52px) * var(--dash-font, 1));
+      border-radius: 10px;
+    }
+    body.tv-mode .ops-col-torres .col-sub {
+      font-size: calc(clamp(14px, 1.8vmin, 22px) * var(--dash-font, 1));
+      letter-spacing: 0.14em;
+      margin-bottom: clamp(8px, 1.2vmin, 16px);
+    }
     body.tv-mode .ds-panel { border-radius: 0 !important; border: none !important; }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
@@ -8740,26 +8765,31 @@
     }
 
     function statusAce36(c) {
-      // Coluna AD (ocorrência CTRC): só SAÍDA / REALIZADA / resto=pendência
+      // Coluna AD (ocorrência CTRC): SAÍDA→em_rota · REALIZADA→realizada · resto→pendência
       const o = String(c.ocorrencia || '')
         .toUpperCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
-      if (
-        o.includes('ENTREGA REALIZADA')
-        || o.includes('PRE-ENTREGUE')
-        || o.includes('PRE ENTREGUE')
-        || (/\bREALIZAD[OA]\b/.test(o) && !o.includes('CTE'))
-      ) {
-        return 'realizada';
+      if (o) {
+        if (
+          o.includes('ENTREGA REALIZADA')
+          || o.includes('PRE-ENTREGUE')
+          || o.includes('PRE ENTREGUE')
+          || (/\bREALIZAD[OA]\b/.test(o) && !o.includes('CTE'))
+        ) {
+          return 'realizada';
+        }
+        if (o.includes('SAIDA PARA ENTREGA')) return 'em_rota';
+        // CTE BAIXADO, falta, agendada, etc.
+        return 'parado';
       }
-      if (!o || o.includes('SAIDA PARA ENTREGA')) {
-        return 'em_rota';
-      }
+      // Sem texto AD: usa status_ace do parser/CSV (não inventa “em rota”)
       const raw = String(c.status_ace || '').toLowerCase().trim();
+      if (raw === 'realizada') return 'realizada';
+      if (raw === 'em_rota') return 'em_rota';
+      if (raw === 'pendencia' || raw === 'parado') return 'parado';
       if (raw === 'excluido') return 'cancelada';
-      // Qualquer outra ocorrência (CTE BAIXADO, falta, agendada, etc.) = pendência
-      return 'parado';
+      return 'em_rota';
     }
 
     function statusAce225(r) {
@@ -8795,6 +8825,23 @@
         else out.outro += 1;
       });
       return out;
+    }
+
+    /** CSV local do 36 é “melhor” que a planilha se tiver mais linhas ou status variados. */
+    function entregaRowsRicher(localRows, sheetRows) {
+      const local = Array.isArray(localRows) ? localRows : [];
+      const sheet = Array.isArray(sheetRows) ? sheetRows : [];
+      if (!local.length) return false;
+      if (!sheet.length) return true;
+      if (local.length > Math.max(sheet.length + 5, Math.floor(sheet.length * 1.15))) return true;
+      const hasOcorr = (rows) => rows.some((r) => String(r.ocorrencia || '').trim());
+      if (hasOcorr(local) && !hasOcorr(sheet)) return true;
+      const divers = (rows) => {
+        const s = new Set();
+        rows.forEach((r) => s.add(statusAce36(r)));
+        return s.size;
+      };
+      return divers(local) > divers(sheet);
     }
 
     function shortEntLabel(raw, max) {
@@ -15017,6 +15064,24 @@
           || lastDistDataVersion !== remoteVer;
         if (forceNextRefresh) forceNextRefresh = false;
         if (!changed && (COLETAS_103.length || COLETAS_50.length || ENTREGAS_ALL.length)) {
+          // CSV 36 pode ter sido corrigido sem mudar version da planilha — revalida
+          try {
+            const local36 = await loadCsvLocal('data/entregas_36.csv');
+            if (local36 && local36.length && entregaRowsRicher(local36, ENTREGAS_ALL)) {
+              const incoming36 = uniqueRows(local36, (r) =>
+                String(r.ctrc_id || `${r.romaneio || ''}|${r.destinatario || ''}`).toUpperCase()
+              );
+              lastGood36 = incoming36.slice();
+              ENTREGAS_ALL = incoming36;
+              ENTREGAS_36 = ENTREGAS_ALL.filter((c) => {
+                const st = statusAce36(c);
+                if (st === 'realizada') return true;
+                if (String(c.excluido || '') === '1') return false;
+                if (st === 'cancelada') return false;
+                return true;
+              });
+            }
+          } catch (_) { /* mantém cache */ }
           if (status) status.textContent = `Atualizado · v${getLastDataVersionLabel()} (sem mudança)`;
           // TV / iframe: layout assenta depois do 1º paint — re-pinta senão fica 0 na Coleta
           if (lastCounts) renderTorres(lastCounts);
@@ -15034,14 +15099,21 @@
         let r50 = { rows: [] };
         let r36 = null;
         let rRom = { rows: [] };
+        let local36 = [];
+        let localRom = [];
+        try {
+          local36 = await loadCsvLocal('data/entregas_36.csv').catch(() => []);
+          localRom = await loadCsvLocal('data/romaneios_36.csv').catch(() => []);
+        } catch (_) {
+          local36 = [];
+          localRom = [];
+        }
 
         if (PREFER_LOCAL_CSV) {
           if (status) status.textContent = 'Local/LAN · lendo CSV…';
-          const [local50, local103, local36, localRom] = await Promise.all([
+          const [local50, local103] = await Promise.all([
             loadCsvLocal(COLETAS_50_CSV_PATH).catch(() => []),
             loadCsvLocal(COLETAS_103_CSV_PATH).catch(() => []),
-            loadCsvLocal('data/entregas_36.csv').catch(() => []),
-            loadCsvLocal('data/romaneios_36.csv').catch(() => []),
           ]);
           r50 = { rows: local50 || [] };
           r103 = { rows: local103 || [] };
@@ -15058,6 +15130,20 @@
           r50 = pack[1];
           r36 = pack[2];
           rRom = pack[3];
+          // Planilha velha / incompleta: CSV local do ACE manda (tem col. AD completa)
+          const sheet36 = (r36 && r36.rows) || [];
+          if (local36 && local36.length) {
+            const richer = entregaRowsRicher(local36, sheet36);
+            if (!sheet36.length || richer) {
+              r36 = { rows: local36 };
+            }
+          }
+          if (localRom && localRom.length) {
+            const sheetRom = (rRom && rRom.rows) || [];
+            if (!sheetRom.length || localRom.length >= sheetRom.length) {
+              rRom = { rows: localRom };
+            }
+          }
         }
         if (seq !== refreshSeq) return;
         await carregarAgendamentos225().catch(() => {});
@@ -15128,7 +15214,10 @@
         );
         if (incoming36.length > 0) {
           const prev = lastGood36.length;
-          const dropBrusca = prev > 0 && incoming36.length < Math.max(3, Math.floor(prev * 0.5));
+          const richerThanCache = !prev || entregaRowsRicher(incoming36, lastGood36);
+          const dropBrusca = prev > 0
+            && incoming36.length < Math.max(3, Math.floor(prev * 0.5))
+            && !richerThanCache;
           if (dropBrusca) {
             ENTREGAS_ALL = lastGood36.slice();
           } else {
