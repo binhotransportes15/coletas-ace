@@ -1710,13 +1710,27 @@
       min-height: 0 !important;
     }
     body.tv-mode #opsLayoutEntrega:not(.has-blocks),
-    body.tv-mode #opsLayoutEntrega.ent-ops {
+    body.tv-mode #opsLayoutEntrega.ops-layout:not(.has-blocks) {
       display: grid !important;
-      grid-template-columns: 1fr !important;
-      grid-template-rows: auto minmax(120px, 0.75fr) minmax(0, 1.4fr) !important;
-      gap: clamp(6px, 0.8vmin, 12px) !important;
+      grid-template-columns: minmax(150px, 0.85fr) minmax(280px, 1.7fr) minmax(150px, 0.85fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+      gap: clamp(8px, 1.1vmin, 14px) !important;
       height: 100% !important;
       min-height: 0 !important;
+    }
+    body.tv-mode #opsLayoutEntrega > [data-block="tabela"] {
+      display: none !important;
+    }
+    body.tv-mode #entregaHStatus,
+    body.tv-mode #coletaHStatus {
+      display: none !important;
+    }
+    body.tv-mode #opsLayoutEntrega #entregaTorres,
+    body.tv-mode #opsLayoutColeta #coletaTorres {
+      display: flex !important;
+      flex: 1;
+      height: 100%;
+      min-height: 0;
     }
     body.tv-mode .ops-layout .ops-col,
     body.tv-mode .ops-layout .resumo-top {
@@ -6187,7 +6201,8 @@
     }
     .ops-layout .ops-col .pop-stack,
     .ops-layout .ops-col .torres,
-    .ops-layout .ops-col .cyl-wrap {
+    .ops-layout .ops-col .cyl-wrap,
+    .ops-layout .ops-col .ds-hstatus {
       flex: 1 1 auto;
       min-height: 0;
     }
@@ -6261,28 +6276,77 @@
     body.live-mode:not(.tv-mode) .resumo-single .resumo-stats b {
       font-size: clamp(22px, 2.6vw, 36px);
     }
-    /* Entrega · TV (KPIs gigantes + progresso + semáforo + duo) */
-    #opsLayoutEntrega.ent-ops,
-    .ent-ops {
+    /* Entrega usa o mesmo ops-layout da Coleta */
+    #opsLayoutEntrega.ops-layout:not(.has-blocks) {
       display: grid;
-      grid-template-rows: auto minmax(160px, 1.1fr) minmax(120px, 0.7fr) minmax(0, 0.9fr);
-      gap: clamp(8px, 1.1vmin, 16px);
+      grid-template-columns: minmax(160px, 0.9fr) minmax(280px, 1.7fr) minmax(160px, 0.9fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: clamp(8px, 1vw, 14px);
+      align-content: stretch;
       height: 100%;
       min-height: 0;
-      padding: 2px 2px 4px;
-      overflow: hidden;
     }
-    #opsLayoutEntrega:not(.has-blocks) {
-      grid-template-columns: 1fr;
+    #opsLayoutEntrega.ops-layout:not(.has-blocks) > [data-block="resumo"] {
+      grid-column: 1 / -1;
+      grid-row: 1;
     }
-    #opsLayoutEntrega:not(.has-blocks) > [data-block="banners"],
-    #opsLayoutEntrega:not(.has-blocks) > [data-block="pendencias"] {
-      grid-column: auto;
-      grid-row: auto;
+    #opsLayoutEntrega.ops-layout:not(.has-blocks) > [data-block="placas"] {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    #opsLayoutEntrega.ops-layout:not(.has-blocks) > [data-block="torres"] {
+      grid-column: 2;
+      grid-row: 2;
+    }
+    #opsLayoutEntrega.ops-layout:not(.has-blocks) > [data-block="pendencias"] {
+      grid-column: 3;
+      grid-row: 2;
+    }
+    #opsLayoutColeta #coletaTorres,
+    #opsLayoutEntrega #entregaTorres {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      height: 100%;
+    }
+    #opsLayoutColeta #coletaHStatus,
+    #opsLayoutEntrega #entregaHStatus,
+    body.tv-mode #opsLayoutColeta #coletaHStatus,
+    body.tv-mode #opsLayoutEntrega #entregaHStatus {
+      display: none !important;
+    }
+    body.tv-mode #opsLayoutColeta .torres.arm-torres,
+    body.tv-mode #opsLayoutEntrega .torres.arm-torres {
+      height: 100% !important;
+      min-height: 0 !important;
+      max-height: none !important;
+    }
+    body.tv-mode .agenda-towers-wrap .torres.arm-torres.agenda-torres {
+      height: 100% !important;
+      min-height: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+    }
+    body.tv-mode .agenda-towers-wrap .torres.arm-torres .torre {
+      width: min(180px, 18vw) !important;
+    }
+    #opsLayoutEntrega > [hidden],
+    #opsLayoutEntrega > [aria-hidden="true"] {
+      display: none !important;
+      position: absolute !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      pointer-events: none !important;
+    }
+    /* Legado ent-ops (não usado) */
+    #opsLayoutEntrega.ent-ops,
+    .ent-ops {
+      display: none;
     }
     body.tv-mode #opsLayoutEntrega:not(.has-blocks) {
-      grid-template-columns: 1fr !important;
-      grid-template-rows: auto minmax(180px, 1.15fr) minmax(140px, 0.85fr) !important;
+      grid-template-columns: minmax(150px, 0.85fr) minmax(280px, 1.7fr) minmax(150px, 0.85fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
       height: 100% !important;
       min-height: 0 !important;
       gap: clamp(8px, 1.2vmin, 18px) !important;
@@ -7496,49 +7560,33 @@
           </div>
           <div class="ops-col dash-block ops-col-torres ds-panel" data-block="torres">
             <div class="col-sub">Situações</div>
-            <div class="torres" id="coletaTorres">
-              <div class="torre t-col">
+            <div class="torres arm-torres" id="coletaTorres">
+              <div class="torre t-col t-fin">
                 <div class="pin" title="Quantidade"><span id="rankReal">0</span></div>
                 <div class="barra" id="barReal"><strong id="nReal">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Realizada</div></div>
               </div>
-              <div class="torre t-com">
+              <div class="torre t-com t-che">
                 <div class="pin" title="Quantidade"><span id="rankRota">0</span></div>
                 <div class="barra" id="barRota"><strong id="nRota">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Em rota</div></div>
               </div>
-              <div class="torre t-cad">
+              <div class="torre t-cad t-des">
                 <div class="pin" title="Quantidade"><span id="rankPar">0</span></div>
                 <div class="barra" id="barPar"><strong id="nPar">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Parado</div></div>
               </div>
-              <div class="torre t-can">
+              <div class="torre t-can t-atr">
                 <div class="pin" title="Quantidade"><span id="rankCan">0</span></div>
                 <div class="barra" id="barCan"><strong id="nCan">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Cancelada</div></div>
               </div>
             </div>
-            <div class="ds-hstatus" id="coletaHStatus" hidden aria-label="Status das coletas em faixas">
-              <div class="ds-hstatus-row">
-                <div class="ds-hstatus-lab is-ok">Realizadas</div>
-                <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-ok" id="colHFillReal"></div></div>
-                <div class="ds-hstatus-meta"><span id="colHNreal">0</span> · <span id="colHPreal">0%</span></div>
-              </div>
-              <div class="ds-hstatus-row">
-                <div class="ds-hstatus-lab is-run">Em rota</div>
-                <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-run" id="colHFillRota"></div></div>
-                <div class="ds-hstatus-meta"><span id="colHNRota">0</span> · <span id="colHPRota">0%</span></div>
-              </div>
-              <div class="ds-hstatus-row">
-                <div class="ds-hstatus-lab is-warn">Pendentes</div>
-                <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-warn" id="colHFillPar"></div></div>
-                <div class="ds-hstatus-meta"><span id="colHNPar">0</span> · <span id="colHPPar">0%</span></div>
-              </div>
-              <div class="ds-hstatus-row">
-                <div class="ds-hstatus-lab is-crit">Canceladas</div>
-                <div class="ds-hstatus-track"><div class="ds-hstatus-fill is-crit" id="colHFillCan"></div></div>
-                <div class="ds-hstatus-meta"><span id="colHNCan">0</span> · <span id="colHPCan">0%</span></div>
-              </div>
+            <div class="ds-hstatus" id="coletaHStatus" hidden aria-hidden="true">
+              <div id="colHFillReal"></div><span id="colHNreal"></span><span id="colHPreal"></span>
+              <div id="colHFillRota"></div><span id="colHNRota"></span><span id="colHPRota"></span>
+              <div id="colHFillPar"></div><span id="colHNPar"></span><span id="colHPPar"></span>
+              <div id="colHFillCan"></div><span id="colHNCan"></span><span id="colHPCan"></span>
             </div>
           </div>
           <div class="ops-col dash-block ds-panel" data-block="prazo">
@@ -7549,121 +7597,91 @@
       </section>
     </div>
 
-    <!-- ENTREGA (TV · números gigantes · progresso · semáforo) -->
+    <!-- ENTREGA (mesmo padrão da Coleta) -->
     <div class="view" id="viewEntrega">
       <section class="arena arena-single">
-        <div class="ent-ops" id="opsLayoutEntrega">
-          <div class="ent-kpi-row dash-block ds-kpi-row" data-block="resumo" aria-label="KPIs entrega">
-            <article class="ent-kpi is-total" id="entKpiTotal">
-              <span class="ent-kpi-lbl">Total</span>
-              <strong class="ent-kpi-val" id="entTotal">0</strong>
-              <small class="ent-kpi-sub" id="entTotalSub">ENTREGAS</small>
-            </article>
-            <article class="ent-kpi is-run" id="entKpiRota">
-              <span class="ent-kpi-lbl">Em rota</span>
-              <strong class="ent-kpi-val" id="sumEntRota">0</strong>
-              <small class="ent-kpi-sub"><span id="entRotaPctSub">0%</span></small>
-            </article>
-            <article class="ent-kpi is-ok" id="entKpiReal">
-              <span class="ent-kpi-lbl">Realizadas</span>
-              <strong class="ent-kpi-val" id="sumEntReal">0</strong>
-              <small class="ent-kpi-sub"><span id="sumEntPct">0%</span></small>
-            </article>
-            <article class="ent-kpi is-warn" id="entKpiPar">
-              <span class="ent-kpi-lbl">Pendências</span>
-              <strong class="ent-kpi-val" id="sumEntPar">0</strong>
-              <small class="ent-kpi-sub" id="entParSub">—</small>
-            </article>
+        <div class="arena-body ops-layout" id="opsLayoutEntrega">
+          <div class="resumo-top resumo-single dash-block ds-kpi-row" data-block="resumo" aria-label="Resumo entrega">
+            <div class="resumo-card rc-ent ds-panel">
+              <p class="resumo-kicker">Entrega</p>
+              <div class="resumo-total"><span>Total</span><strong id="entTotal">0</strong></div>
+              <div class="resumo-stats stats-3">
+                <div class="s-real"><span>Realizada</span><b id="sumEntReal">0</b></div>
+                <div class="s-rota"><span>Em rota</span><b id="sumEntRota">0</b></div>
+                <div class="s-par"><span>Pendência</span><b id="sumEntPar">0</b></div>
+                <div class="s-pct"><span>% realização</span><b id="sumEntPct">0%</b></div>
+              </div>
+            </div>
           </div>
 
-          <section class="ent-progress-panel dash-block ds-panel" data-block="banners" aria-label="Progresso e status da operação">
-            <header class="ent-panel-head ent-panel-head-center">
-              <h2>Progresso da operação</h2>
-              <span class="muted" id="entChartSub">Distribuição operacional</span>
-            </header>
-            <div class="ent-progress-block">
-              <div class="ent-progress-pct" id="entProgPct">0%</div>
-              <div class="ent-progress-track" aria-hidden="true">
-                <div class="ent-progress-fill is-rota" id="entProgFillRota" style="width:0%"></div>
-                <div class="ent-progress-fill is-real" id="entProgFillReal" style="width:0%"></div>
-                <div class="ent-progress-fill is-par" id="entProgFillPar" style="width:0%"></div>
-              </div>
-              <div class="ent-progress-caption" id="entProgCaption">—</div>
-            </div>
-            <div class="ent-semaforo" id="entSemaforo" data-level="ok">
-              <div class="ent-semaforo-dot" aria-hidden="true"></div>
-              <div class="ent-semaforo-body">
-                <div class="ent-semaforo-title" id="entSemTitle">OPERAÇÃO NORMAL</div>
-                <div class="ent-semaforo-detail" id="entSemDetail">Aguardando dados</div>
-              </div>
-            </div>
-            <!-- legado (pizza/cilindro/barras) mantido oculto p/ compat -->
-            <div class="ent-bars" id="entregaStatusBars" hidden>
-              <div class="ent-bar-row is-rota">
-                <div class="ent-bar-meta"><span class="ent-bar-lbl">Em rota</span><b id="entNRota">0</b></div>
-                <div class="ent-bar-track"><div class="ent-bar-fill" id="cylBanRota" style="width:0%"></div></div>
-                <div class="ent-bar-pct" id="entPRota">0%</div>
-              </div>
-              <div class="ent-bar-row is-real">
-                <div class="ent-bar-meta"><span class="ent-bar-lbl">Realizadas</span><b id="entNReal">0</b></div>
-                <div class="ent-bar-track"><div class="ent-bar-fill" id="cylBanReal" style="width:0%"></div></div>
-                <div class="ent-bar-pct" id="entPReal">0%</div>
-              </div>
-              <div class="ent-bar-row is-par">
-                <div class="ent-bar-meta"><span class="ent-bar-lbl">Pendências</span><b id="entNPar">0</b></div>
-                <div class="ent-bar-track"><div class="ent-bar-fill" id="cylBanPar" style="width:0%"></div></div>
-                <div class="ent-bar-pct" id="entPPar">0%</div>
-              </div>
-            </div>
-            <div class="entrega-pizza-wrap" id="entregaPizzaWrap" hidden>
-              <svg id="entregaPizza" class="agenda-pizza entrega-pizza" viewBox="0 0 900 520" role="img" aria-hidden="true"></svg>
-            </div>
-            <div class="cyl-wrap" id="entregaCylWrap" hidden aria-hidden="true">
-              <div class="cyl">
-                <div class="cyl-seg c-real" id="cylSegReal"></div>
-                <div class="cyl-seg c-rota" id="cylSegRota"></div>
-                <div class="cyl-seg c-par" id="cylSegPar"></div>
-              </div>
-            </div>
-          </section>
-
-          <div class="ent-duo dash-block" data-block="pendencias" aria-label="Em rota e pendências">
-            <article class="ent-duo-card is-run" id="entDuoRota">
-              <div class="ent-duo-lbl">Em rota</div>
-              <strong class="ent-duo-val" id="entDuoRotaN">0</strong>
-              <div class="ent-duo-sub" id="entDuoRotaSub">veículos / entregas</div>
-            </article>
-            <article class="ent-duo-card is-warn" id="entDuoPar">
-              <div class="ent-duo-lbl">Pendências</div>
-              <strong class="ent-duo-val" id="entDuoParN">0</strong>
-              <div class="ent-duo-sub" id="entDuoParSub">NENHUMA PENDÊNCIA</div>
-            </article>
-            <div class="ent-alerts" id="entAlerts" hidden></div>
-            <div class="pop-stack ent-pend-stack" id="pendenciaStack" hidden></div>
+          <div class="ops-col dash-block ds-panel" data-block="placas">
+            <div class="col-sub">Placas</div>
+            <div class="pop-stack" id="placaStackEnt"></div>
           </div>
 
-          <section class="ent-table-panel dash-block ds-panel" data-block="tabela" aria-label="Entregas em rota">
-            <header class="ent-panel-head">
-              <h2>Entregas em rota</h2>
-              <span class="muted" id="entTabelaMeta">operação agora</span>
-            </header>
-            <div class="ent-table-wrap">
-              <table class="ent-table">
-                <thead>
-                  <tr>
-                    <th>CTRC</th>
-                    <th>Cliente</th>
-                    <th>Romaneio</th>
-                    <th>Veículo</th>
-                    <th>Motorista</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="entTbody"></tbody>
-              </table>
-              <div class="ent-table-empty muted" id="entTableEmpty" hidden>Nenhuma entrega em rota no momento.</div>
+          <div class="ops-col dash-block ops-col-torres ds-panel" data-block="torres">
+            <div class="col-sub">Situações</div>
+            <div class="torres arm-torres" id="entregaTorres">
+              <div class="torre t-fin">
+                <div class="pin" title="Quantidade"><span id="entRankReal">0</span></div>
+                <div class="barra" id="entBarReal"><strong id="entNRealPct">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Realizada</div></div>
+              </div>
+              <div class="torre t-che">
+                <div class="pin" title="Quantidade"><span id="entRankRota">0</span></div>
+                <div class="barra" id="entBarRota"><strong id="entNRotaPct">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Em rota</div></div>
+              </div>
+              <div class="torre t-des">
+                <div class="pin" title="Quantidade"><span id="entRankPar">0</span></div>
+                <div class="barra" id="entBarPar"><strong id="entNParPct">0<span class="pct-sign">%</span></strong></div>
+                <div class="base"><div class="lbl">Pendência</div></div>
+              </div>
             </div>
-          </section>
+            <div class="ds-hstatus" id="entregaHStatus" hidden aria-hidden="true">
+              <div id="entHFillReal"></div><span id="entHNReal"></span><span id="entHPReal"></span>
+              <div id="entHFillRota"></div><span id="entHNRota"></span><span id="entHPRota"></span>
+              <div id="entHFillPar"></div><span id="entHNPar"></span><span id="entHPPar"></span>
+            </div>
+          </div>
+
+          <div class="ops-col dash-block ds-panel" data-block="pendencias">
+            <div class="col-sub">Pendências</div>
+            <div class="pop-stack" id="pendenciaStack"></div>
+          </div>
+
+          <!-- legado oculto (IDs mantidos p/ JS antigo) -->
+          <div hidden aria-hidden="true">
+            <span id="entTotalSub"></span>
+            <span id="entRotaPctSub"></span>
+            <span id="entParSub"></span>
+            <span id="entProgPct"></span>
+            <span id="entProgCaption"></span>
+            <span id="entChartSub"></span>
+            <span id="entSemTitle"></span>
+            <span id="entSemDetail"></span>
+            <span id="entDuoRotaN"></span>
+            <span id="entDuoRotaSub"></span>
+            <span id="entDuoParN"></span>
+            <span id="entDuoParSub"></span>
+            <div id="entProgFillRota"></div>
+            <div id="entProgFillReal"></div>
+            <div id="entProgFillPar"></div>
+            <div id="entSemaforo"></div>
+            <div id="entKpiPar"></div>
+            <div id="entDuoPar"></div>
+            <div id="entAlerts"></div>
+            <tbody id="entTbody"></tbody>
+            <div id="entTableEmpty"></div>
+            <span id="entTabelaMeta"></span>
+            <div id="cylBanRota"></div><div id="cylBanReal"></div><div id="cylBanPar"></div>
+            <span id="entNRota"></span><span id="entNReal"></span><span id="entNPar"></span>
+            <span id="entPRota"></span><span id="entPReal"></span><span id="entPPar"></span>
+            <div id="cylSegReal"></div><div id="cylSegRota"></div><div id="cylSegPar"></div>
+            <div id="entregaPizzaWrap"></div>
+            <div id="entregaCylWrap"></div>
+            <svg id="entregaPizza"></svg>
+          </div>
         </div>
       </section>
     </div>
@@ -7728,26 +7746,26 @@
         </div>
 
         <div class="agenda-chart-stage dash-block" data-block="chart">
-          <div class="agenda-towers-wrap" id="agendaTowersWrap" aria-label="Torres de agendamento" hidden>
-            <div class="torres agenda-torres" id="agendaTorres">
-              <div class="torre t-col">
+          <div class="agenda-towers-wrap is-on" id="agendaTowersWrap" aria-label="Torres de agendamento">
+            <div class="torres arm-torres agenda-torres" id="agendaTorres">
+              <div class="torre t-fin">
                 <div class="pin" title="Quantidade"><span id="agRankOk">0</span></div>
                 <div class="barra" id="agBarOk"><strong id="agNOk">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Realizado</div></div>
               </div>
-              <div class="torre t-com">
+              <div class="torre t-che">
                 <div class="pin" title="Quantidade"><span id="agRankRota">0</span></div>
                 <div class="barra" id="agBarRota"><strong id="agNRota">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Em rota</div></div>
               </div>
-              <div class="torre t-cad">
+              <div class="torre t-des">
                 <div class="pin" title="Quantidade"><span id="agRankPar">0</span></div>
                 <div class="barra" id="agBarPar"><strong id="agNPar">0<span class="pct-sign">%</span></strong></div>
                 <div class="base"><div class="lbl">Parado</div></div>
               </div>
             </div>
           </div>
-          <div class="agenda-bubbles-wrap is-on" id="agendaBubblesWrap" aria-label="Bolhas de progresso do agendamento">
+          <div class="agenda-bubbles-wrap" id="agendaBubblesWrap" hidden aria-hidden="true">
             <div class="agenda-bubbles" id="agendaBubbles">
               <div class="agenda-bubble is-ok" data-key="ok">
                 <div class="ball" id="agBubbleOk">
@@ -8706,6 +8724,7 @@
     let lastGoodArmConf = [];
     let lastGoodArmResumo177 = null;
     let PLACAS = [];
+    let PLACAS_ENT = [];
     let URGENTES = [];
     let PENDENCIAS_36 = [];
     let AGENDAMENTOS_225 = [];
@@ -9137,79 +9156,71 @@
 
       const op = entOperLevel(counts);
       setTxt('entParSub', op.parSub);
-      // Pendências 0 → visual verde no KPI
-      const kpiPar = document.getElementById('entKpiPar');
-      if (kpiPar) {
-        kpiPar.classList.remove('is-ok', 'is-warn', 'is-crit');
-        kpiPar.classList.add(par <= 0 ? 'is-ok' : (op.parTone === 'crit' ? 'is-crit' : 'is-warn'));
-      }
 
-      // Barra única de progresso (segmentada)
+      // Faixas legado (ocultas) + torres (padrão Armazém)
+      const bands = [
+        { fill: 'entHFillReal', n: 'entHNReal', p: 'entHPReal', val: real, pct: pctReal },
+        { fill: 'entHFillRota', n: 'entHNRota', p: 'entHPRota', val: rota, pct: pctRota },
+        { fill: 'entHFillPar', n: 'entHNPar', p: 'entHPPar', val: par, pct: pctPar },
+      ];
+      bands.forEach(({ fill, n, p, val, pct }) => {
+        const fillEl = document.getElementById(fill);
+        if (fillEl && fillEl.style) fillEl.style.width = `${total > 0 ? pct : 0}%`;
+        setTxt(n, String(val));
+        setTxt(p, `${pct}%`);
+      });
+
+      const max = Math.max(real, rota, par, 1);
+      const torreItems = [
+        { pin: 'entRankReal', bar: 'entBarReal', n: 'entNRealPct', val: real, pct: pctReal },
+        { pin: 'entRankRota', bar: 'entBarRota', n: 'entNRotaPct', val: rota, pct: pctRota },
+        { pin: 'entRankPar', bar: 'entBarPar', n: 'entNParPct', val: par, pct: pctPar },
+      ];
+      torreItems.forEach(({ pin, bar, n, val, pct }) => {
+        const nEl = document.getElementById(n);
+        if (nEl) {
+          nEl.innerHTML = `${pct}<span class="pct-sign">%</span>`;
+          nEl.title = `${val} de ${total}`;
+        }
+        const pinEl = document.getElementById(pin);
+        if (pinEl) {
+          pinEl.textContent = String(val);
+          pinEl.classList.toggle('pin-lg', val >= 100);
+          pinEl.title = `${val} CTRC`;
+        }
+        const barEl = document.getElementById(bar);
+        if (barEl) barEl.style.height = alturaTorre(val, max) + 'px';
+      });
+
+      // legado (elementos ocultos — no-op se ausentes)
       const fillR = document.getElementById('entProgFillRota');
       const fillOk = document.getElementById('entProgFillReal');
       const fillP = document.getElementById('entProgFillPar');
-      if (fillR) fillR.style.width = `${total ? pctRota : 0}%`;
-      if (fillOk) fillOk.style.width = `${total ? pctReal : 0}%`;
-      if (fillP) fillP.style.width = `${total ? pctPar : 0}%`;
-
-      // % principal = sempre conclusão (% realizadas) — nunca “100% em rota”
+      if (fillR && fillR.style) fillR.style.width = `${total ? pctRota : 0}%`;
+      if (fillOk && fillOk.style) fillOk.style.width = `${total ? pctReal : 0}%`;
+      if (fillP && fillP.style) fillP.style.width = `${total ? pctPar : 0}%`;
       setTxt('entProgPct', `${pctReal}%`);
-      let caption = 'sem dados';
-      if (total > 0) {
-        caption = `${real} de ${total} realizadas · ${rota} em rota · ${par} pendências`;
-      }
-      setTxt('entProgCaption', caption);
+      setTxt('entProgCaption', total
+        ? `${real} de ${total} realizadas · ${rota} em rota · ${par} pendências`
+        : 'sem dados');
       setTxt('entChartSub', total ? `${total} CTRC · col. AD (ocorrência)` : 'sem dados');
-
-      // Semáforo operacional
       const sem = document.getElementById('entSemaforo');
       if (sem) sem.setAttribute('data-level', op.level);
       setTxt('entSemTitle', op.title);
       setTxt('entSemDetail', op.detail);
-
-      // Duo cards
       setTxt('entDuoRotaN', String(rota));
       setTxt('entDuoRotaSub', rota === 1 ? 'entrega em campo' : 'veículos / entregas');
       setTxt('entDuoParN', String(par));
       setTxt('entDuoParSub', op.parSub);
-      const duoPar = document.getElementById('entDuoPar');
-      if (duoPar) {
-        duoPar.classList.remove('is-ok', 'is-warn', 'is-crit', 'is-run');
-        duoPar.classList.add(par <= 0 ? 'is-ok' : (op.parTone === 'crit' ? 'is-crit' : 'is-warn'));
-      }
-
-      // legado barras (ocultas)
-      const items = [
-        { ban: 'cylBanRota', n: 'entNRota', p: 'entPRota', val: rota },
-        { ban: 'cylBanReal', n: 'entNReal', p: 'entPReal', val: real },
-        { ban: 'cylBanPar', n: 'entNPar', p: 'entPPar', val: par },
-      ];
-      items.forEach(({ ban, n, p, val }) => {
-        const pct = pctOf(val);
-        const isZero = total > 0 && val <= 0;
-        const banEl = document.getElementById(ban);
-        if (banEl) {
-          banEl.style.width = (total <= 0 ? 0 : pct) + '%';
-          banEl.classList.toggle('is-zero', isZero);
-        }
-        setTxt(n, String(val));
-        setTxt(p, pct + '%');
-      });
-      [
-        { id: 'cylSegReal', val: real },
-        { id: 'cylSegRota', val: rota },
-        { id: 'cylSegPar', val: par },
-      ].forEach(({ id, val }) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        const isZero = total > 0 && val <= 0;
-        el.style.flexGrow = String(isZero ? 0.08 : Math.max(val, 0.35));
-        el.classList.toggle('is-zero', isZero);
-      });
 
       lastCountsEnt = counts;
-      renderEntregaAlerts(counts);
-      renderEntregaTabela();
+      PLACAS_ENT = buildPlacasEntrega();
+      if (CURRENT_VIEW === 'entrega') {
+        renderPlacaPops();
+        renderPendenciaPops();
+      }
+      try { renderEntregaAlerts(counts); } catch (_) { /* legado */ }
+      try { renderEntregaTabela(); } catch (_) { /* legado */ }
     }
 
     function situacaoNorm50(c) {
@@ -9285,14 +9296,17 @@
 
     function alturaTorre(valor, max) {
       const tv = document.body.classList.contains('tv-mode');
-      const view = document.body.getAttribute('data-view') || '';
+      const view = document.body.getAttribute('data-view') || CURRENT_VIEW || '';
       let wrap = null;
       if (view === 'agendamento') {
         wrap = document.querySelector('#agendaTowersWrap')
           || document.querySelector('.agenda-towers-wrap');
+      } else if (view === 'entrega') {
+        wrap = document.querySelector('#opsLayoutEntrega #entregaTorres')
+          || document.querySelector('#opsLayoutEntrega .ops-col-torres .torres');
       } else {
-        wrap = document.querySelector('#opsLayoutColeta .ops-col-torres .torres')
-          || document.querySelector('#opsLayoutColeta [data-block="torres"] .torres')
+        wrap = document.querySelector('#opsLayoutColeta #coletaTorres')
+          || document.querySelector('#opsLayoutColeta .ops-col-torres .torres')
           || document.querySelector('.ops-col-torres .torres');
       }
       const pin = tv ? 72 : 62;
@@ -9302,7 +9316,9 @@
       if (!avail) {
         const col = view === 'agendamento'
           ? document.querySelector('#viewAgendamento .agenda-chart-stage')
-          : document.querySelector('#opsLayoutColeta [data-block="torres"]');
+          : view === 'entrega'
+            ? document.querySelector('#opsLayoutEntrega [data-block="torres"]')
+            : document.querySelector('#opsLayoutColeta [data-block="torres"]');
         avail = col && col.clientHeight > 100
           ? Math.round(col.clientHeight - (view === 'agendamento' ? 8 : 28))
           : Math.round((window.innerHeight || 800) * (tv ? 0.42 : 0.50));
@@ -9426,6 +9442,32 @@
 
     function rerenderTorres() {
       if (lastCounts) renderTorres(lastCounts);
+      if (lastCountsEnt) {
+        const real = Number(lastCountsEnt.realizada) || 0;
+        const rota = Number(lastCountsEnt.em_rota) || 0;
+        const par = Number(lastCountsEnt.parado) || 0;
+        const total = Math.max(0, Number(lastCountsEnt.total) || 0);
+        const max = Math.max(real, rota, par, 1);
+        const pctOf = (v) => (total > 0 ? Math.round((v / total) * 100) : 0);
+        [
+          { pin: 'entRankReal', bar: 'entBarReal', n: 'entNRealPct', val: real, pct: pctOf(real) },
+          { pin: 'entRankRota', bar: 'entBarRota', n: 'entNRotaPct', val: rota, pct: pctOf(rota) },
+          { pin: 'entRankPar', bar: 'entBarPar', n: 'entNParPct', val: par, pct: pctOf(par) },
+        ].forEach(({ pin, bar, n, val, pct }) => {
+          const nEl = document.getElementById(n);
+          if (nEl) {
+            nEl.innerHTML = `${pct}<span class="pct-sign">%</span>`;
+            nEl.title = `${val} de ${total}`;
+          }
+          const pinEl = document.getElementById(pin);
+          if (pinEl) {
+            pinEl.textContent = String(val);
+            pinEl.classList.toggle('pin-lg', val >= 100);
+          }
+          const barEl = document.getElementById(bar);
+          if (barEl) barEl.style.height = alturaTorre(val, max) + 'px';
+        });
+      }
       if (lastArmTorreCounts) renderArmTorres(lastArmTorreCounts);
       if (lastAgendaTorreCounts) {
         renderAgendaTorres(
@@ -9940,18 +9982,14 @@
         const views = defaults.views || {};
         ui = views[viewId] || views.patio || ui || {};
       }
-      // Agendamento: bolhas · Entrega: progresso TV · Coleta: faixas
+      // Coleta / Entrega / Agendamento: torres (estilo Armazém)
       let chart = String(ui.chart || 'towers').toLowerCase();
-      if (sec === 'distribuicao' && viewId === 'agendamento') {
-        chart = 'bubbles';
+      if (sec === 'distribuicao' && (viewId === 'agendamento' || viewId === 'entrega' || viewId === 'coleta')) {
+        chart = 'towers';
       }
-      if (sec === 'distribuicao' && viewId === 'entrega') {
-        chart = 'bars';
+      if (chart === 'pizza' || chart === 'bubbles' || chart === 'bars') {
+        if (sec === 'distribuicao') chart = 'towers';
       }
-      if (sec === 'distribuicao' && viewId === 'coleta') {
-        chart = 'bars';
-      }
-      if (chart === 'pizza') chart = 'bubbles'; // legado pizza → bolhas
       if (!['towers', 'pizza', 'bars', 'bubbles'].includes(chart)) chart = 'towers';
       const scale = String(ui.scale || 'large').toLowerCase();
       let fontZoom = Number(ui.fontZoom);
@@ -10052,15 +10090,18 @@
         entSub.textContent = 'Distribuição operacional';
       }
 
-      // Coleta: faixas horizontais (mapa) — torres ficam de fallback se chart=towers
+      // Coleta: torres (estilo armazém) — faixas ficam ocultas
       const colTorres = document.getElementById('coletaTorres');
       const colH = document.getElementById('coletaHStatus');
       if (colTorres && colH) {
-        const useBars = CURRENT_SECTOR === 'distribuicao'
-          && CURRENT_VIEW === 'coleta'
-          && ui.chart !== 'towers';
-        setChartPane(colTorres, !useBars);
-        setChartPane(colH, useBars);
+        setChartPane(colTorres, true);
+        setChartPane(colH, false);
+      }
+      const entTorres = document.getElementById('entregaTorres');
+      const entH = document.getElementById('entregaHStatus');
+      if (entTorres && entH) {
+        setChartPane(entTorres, true);
+        setChartPane(entH, false);
       }
       const penTorres = document.getElementById('penTorres');
       const penPareto = document.getElementById('penPareto');
@@ -10327,16 +10368,22 @@
       if (ve) ve.classList.toggle('active', live && CURRENT_VIEW === 'entrega');
       if (va) va.classList.toggle('active', live && CURRENT_VIEW === 'agendamento');
       if (live && CURRENT_VIEW === 'agendamento') renderAgendamento();
-      if (live && CURRENT_VIEW === 'entrega' && lastCountsEnt) renderCilindroEntrega(lastCountsEnt);
+      if (live && CURRENT_VIEW === 'entrega' && lastCountsEnt) {
+        renderCilindroEntrega(lastCountsEnt);
+      }
       document.body.setAttribute('data-view', CURRENT_VIEW);
       updateOpsBrandTitle();
-      // Troca Coleta/Entrega/Agendamento: reaplica pizza vs torres
+      // Troca Coleta/Entrega/Agendamento: reaplica layout
       applyDashboardChrome();
-      // Recalcula torres depois do layout assentar (desktop + TV)
+      // Recalcula torres/pops depois do layout assentar (desktop + TV)
       if (live) {
         requestAnimationFrame(() => {
           rerenderTorres();
           if (CURRENT_VIEW === 'entrega' && lastCountsEnt) renderCilindroEntrega(lastCountsEnt);
+          if (CURRENT_VIEW === 'entrega') {
+            renderPlacaPops();
+            renderPendenciaPops();
+          }
           if (CURRENT_VIEW === 'agendamento' && lastAgendaTorreCounts) {
             renderAgendaPizza(
               lastAgendaTorreCounts.rota,
@@ -13612,16 +13659,52 @@
       );
     }
 
-    /** Lista da vitrine: prioriza placas com realizadas; completa com as demais. */
-    function placaVitrineList() {
-      const comBaixa = PLACAS.filter(p => p.feitas > 0);
-      const semBaixa = PLACAS.filter(p => p.feitas <= 0);
-      if (comBaixa.length) return comBaixa.concat(semBaixa);
-      return semBaixa.length ? semBaixa : PLACAS;
+    /** Placas da Entrega (36) — mesmo formato da vitrine de Coleta. */
+    function buildPlacasEntrega() {
+      const byPlaca = new Map();
+      (ENTREGAS_36 || []).forEach((c) => {
+        const st = statusAce36(c);
+        if (st === 'cancelada') return;
+        const placa = parsePlaca(c.placa || '');
+        if (!placa || placaIgnorada36(c)) return;
+        if (!byPlaca.has(placa)) {
+          byPlaca.set(placa, { placa, total: 0, feitas: 0, motorista: c.motorista || '' });
+        }
+        const row = byPlaca.get(placa);
+        row.total += 1;
+        if (st === 'realizada') row.feitas += 1;
+        if (!row.motorista && c.motorista) row.motorista = c.motorista;
+      });
+      return Array.from(byPlaca.values()).map((r) => {
+        const pct = r.total ? Math.round((r.feitas / r.total) * 100) : 0;
+        return {
+          ...r,
+          pct,
+          delta: 0,
+          hot: false,
+          emProgresso: r.feitas > 0 && r.feitas < r.total,
+          concluida: r.total > 0 && r.feitas >= r.total,
+        };
+      }).sort((a, b) =>
+        (b.feitas - a.feitas)
+        || (b.pct - a.pct)
+        || (Number(b.emProgresso) - Number(a.emProgresso))
+        || (b.total - a.total)
+        || a.placa.localeCompare(b.placa)
+      );
     }
 
-    function visiblePlacas() {
-      const lista = placaVitrineList();
+    /** Lista da vitrine: prioriza placas com realizadas; completa com as demais. */
+    function placaVitrineList(source) {
+      const list = Array.isArray(source) ? source : PLACAS;
+      const comBaixa = list.filter(p => p.feitas > 0);
+      const semBaixa = list.filter(p => p.feitas <= 0);
+      if (comBaixa.length) return comBaixa.concat(semBaixa);
+      return semBaixa.length ? semBaixa : list;
+    }
+
+    function visiblePlacas(source) {
+      const lista = placaVitrineList(source);
       if (!lista.length) return [];
       const n = Math.min(PLACA_VISIBLE, lista.length);
       const comBaixa = lista.filter(p => p.feitas > 0);
@@ -13725,19 +13808,22 @@
     }
 
     function renderPlacaPops() {
-      const stack = document.getElementById('placaStack');
+      const isEnt = CURRENT_VIEW === 'entrega';
+      const stackId = isEnt ? 'placaStackEnt' : 'placaStack';
+      const stack = document.getElementById(stackId);
+      const list = isEnt ? PLACAS_ENT : PLACAS;
       if (!stack) return;
-      if (!PLACAS.length) {
+      if (!list.length) {
         stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem placas</div></div>';
         return;
       }
-      const visible = visiblePlacas();
+      const visible = visiblePlacas(list);
       Array.from(stack.querySelectorAll('.pop')).forEach(el => {
         el.classList.remove('show'); el.classList.add('leaving');
         setTimeout(() => { try { el.remove(); } catch (_) {} }, 480);
       });
       setTimeout(() => {
-        if (!document.getElementById('placaStack')) return;
+        if (!document.getElementById(stackId)) return;
         const nodes = visible.map(p => {
           const color = p.pct >= 100 ? '#8cc63f' : p.pct >= 50 ? '#29abe2' : '#fff200';
           const el = document.createElement('div');
@@ -14536,53 +14622,26 @@
     }
 
     function renderAgendaPizza(rota, parado, ok) {
-      // legado: pizza do agendamento virou bolhas
-      renderAgendaBubbles(rota, parado, ok);
+      // legado: pizza/bolhas → torres (estilo Armazém)
+      renderAgendaTorres(rota, parado, ok);
     }
 
     function renderAgendaBubbles(rota, parado, ok) {
-      lastAgendaTorreCounts = {
-        rota: Number(rota) || 0,
-        parado: Number(parado) || 0,
-        ok: Number(ok) || 0,
-      };
+      // legado: mantém IDs das bolhas atualizados, mas a UI usa torres
+      renderAgendaTorres(rota, parado, ok);
       const items = [
-        { ball: 'agBubbleOk', pct: 'agBubbleOkPct', n: 'agBubbleOkN', val: lastAgendaTorreCounts.ok },
-        { ball: 'agBubbleRota', pct: 'agBubbleRotaPct', n: 'agBubbleRotaN', val: lastAgendaTorreCounts.rota },
-        { ball: 'agBubblePar', pct: 'agBubbleParPct', n: 'agBubbleParN', val: lastAgendaTorreCounts.parado },
+        { ball: 'agBubbleOk', pct: 'agBubbleOkPct', n: 'agBubbleOkN', val: Number(ok) || 0 },
+        { ball: 'agBubbleRota', pct: 'agBubbleRotaPct', n: 'agBubbleRotaN', val: Number(rota) || 0 },
+        { ball: 'agBubblePar', pct: 'agBubbleParPct', n: 'agBubbleParN', val: Number(parado) || 0 },
       ];
       const total = items.reduce((s, i) => s + i.val, 0);
-      const wrap = document.getElementById('agendaBubblesWrap');
-      const host = document.getElementById('agendaBubbles');
-      let minPx = 96;
-      let maxPx = 260;
-      if (host) {
-        const h = host.clientHeight || 0;
-        const w = host.clientWidth || 0;
-        const slot = Math.min(
-          h > 0 ? h * 0.72 : 260,
-          w > 0 ? (w / 3) * 0.85 : 260
-        );
-        maxPx = Math.max(140, Math.min(320, Math.round(slot)));
-        minPx = Math.max(72, Math.round(maxPx * 0.38));
-      }
       items.forEach((it) => {
         const pct = total > 0 ? Math.round((it.val / total) * 100) : 0;
-        // tamanho: 0% ≈ min; 100% ≈ max (escala pela participação)
-        const t = Math.max(0, Math.min(1, pct / 100));
-        const eased = Math.sqrt(t); // bolas médias não ficam miúdas demais
-        const sz = Math.round(minPx + (maxPx - minPx) * eased);
-        const ball = document.getElementById(it.ball);
-        if (ball) {
-          ball.style.setProperty('--sz', `${sz}px`);
-          ball.title = `${it.val} de ${total} (${pct}%)`;
-        }
         const pctEl = document.getElementById(it.pct);
         if (pctEl) pctEl.textContent = `${pct}%`;
         const nEl = document.getElementById(it.n);
         if (nEl) nEl.textContent = String(it.val);
       });
-      if (wrap) wrap.classList.add('is-on');
     }
 
     function renderEntregaPizza(real, rota, par) {
@@ -15469,9 +15528,10 @@
         renderTorres(counts);
         renderCilindroEntrega(countByStatus36(ENTREGAS_36));
         PLACAS = buildPlacas();
+        PLACAS_ENT = buildPlacasEntrega();
         URGENTES = buildUrgentes();
         PENDENCIAS_36 = buildPendencias36();
-        if (placaCursor >= PLACAS.length) placaCursor = 0;
+        if (placaCursor >= Math.max(PLACAS.length, PLACAS_ENT.length, 1)) placaCursor = 0;
         if (prazoCursor >= URGENTES.length) prazoCursor = 0;
         if (pendCursor >= PENDENCIAS_36.length) pendCursor = 0;
         if (!placaTimer || !prazoTimer || !pendTimer) {

@@ -25,7 +25,7 @@
       },
       "views": {
         "coleta": {
-          "chart": "bars",
+          "chart": "towers",
           "scale": "large",
           "fontZoom": 1.2,
           "showKpis": true,
@@ -36,7 +36,7 @@
           "blocks": []
         },
         "entrega": {
-          "chart": "bars",
+          "chart": "towers",
           "scale": "large",
           "fontZoom": 1.2,
           "showKpis": true,
@@ -47,7 +47,7 @@
           "blocks": []
         },
         "agendamento": {
-          "chart": "pizza",
+          "chart": "towers",
           "scale": "large",
           "fontZoom": 1.2,
           "showKpis": true,
