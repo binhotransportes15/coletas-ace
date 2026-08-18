@@ -6481,8 +6481,41 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: clamp(8px, 1vw, 14px);
-      min-height: clamp(140px, 22vh, 220px);
-      max-height: 28vh;
+      min-height: clamp(160px, 24vh, 260px);
+      max-height: 30vh;
+    }
+    .ent-dash-bottom .ent-side {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      height: 100%;
+      padding: clamp(10px, 1.2vw, 14px);
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(180deg, #111827, #0b1220);
+      border: 1px solid rgba(148,163,184,.14);
+    }
+    .ent-dash-bottom .ent-side .pop-stack {
+      flex: 1 1 auto;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .ent-dash-bottom .pop.pop-placa,
+    .ent-dash-bottom .pop.pop-prazo {
+      position: absolute;
+      left: 0;
+      right: 0;
+    }
+    body.tv-mode #opsLayoutEntrega .ent-dash-bottom {
+      min-height: clamp(140px, 22vh, 240px) !important;
+      max-height: 26vh !important;
+    }
+    body.tv-mode #opsLayoutEntrega .ent-dash-bottom .pop .name {
+      font-size: clamp(13px, 1.5vmin, 18px);
+    }
+    body.tv-mode #opsLayoutEntrega .ent-dash-bottom .pop .hora {
+      font-size: clamp(18px, 2.2vmin, 28px);
     }
     .ent-side {
       display: flex;
@@ -6664,10 +6697,6 @@
       min-height: 0 !important;
       gap: clamp(6px, 0.9vmin, 12px) !important;
     }
-    body.tv-mode #opsLayoutEntrega .ent-dash-bottom {
-      min-height: clamp(120px, 20vh, 200px) !important;
-      max-height: 24vh !important;
-    }
     body.tv-mode #opsLayoutEntrega .ent-kpi-card .ent-kpi-val {
       font-size: clamp(28px, 3.6vmin, 46px);
     }
@@ -6678,7 +6707,7 @@
     body.tv-mode #opsLayoutEntrega > [data-block="tabela"] {
       display: none !important;
     }
-\n    .ent-kpi-row {
+    .ent-kpi-row {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: clamp(8px, 1.2vmin, 16px);
@@ -7986,19 +8015,19 @@
           </section>
 
           <div class="ent-dash-bottom">
-            <aside class="ent-side ds-panel dash-block" data-block="motivos" aria-label="Motivos de pendência">
+            <aside class="ent-side ds-panel dash-block" data-block="placas" aria-label="Placas">
               <div class="ent-side-head">
-                <h3>Motivos de pendência</h3>
-                <span class="meta" id="entMotivosMeta">por ocorrência</span>
+                <h3>Placas</h3>
+                <span class="meta" id="entFrotaMeta">serviço</span>
               </div>
-              <div class="ent-hbar-list" id="entMotivosBars"></div>
+              <div class="pop-stack" id="placaStackEnt"></div>
             </aside>
-            <aside class="ent-side ds-panel dash-block" data-block="frota" aria-label="Visão geral da frota">
+            <aside class="ent-side ds-panel dash-block" data-block="ocorrencias" aria-label="Ocorrências">
               <div class="ent-side-head">
-                <h3>Visão geral da frota</h3>
-                <span class="meta" id="entFrotaMeta">veículos</span>
+                <h3>Ocorrências</h3>
+                <span class="meta" id="entMotivosMeta">pendências</span>
               </div>
-              <div class="ent-hbar-list" id="entFrotaBars"></div>
+              <div class="pop-stack" id="pendenciaStack"></div>
             </aside>
           </div>
 
@@ -8012,8 +8041,8 @@
 
           <!-- legado oculto (IDs mantidos p/ JS antigo) -->
           <div hidden aria-hidden="true">
-            <div id="placaStackEnt"></div>
-            <div id="pendenciaStack"></div>
+            <div id="entMotivosBars"></div>
+            <div id="entFrotaBars"></div>
             <div id="entregaTorres">
               <span id="entRankReal"></span><div id="entBarReal"></div><strong id="entNRealPct"></strong>
               <span id="entRankRota"></span><div id="entBarRota"></div><strong id="entNRotaPct"></strong>
@@ -9589,9 +9618,16 @@
 
       lastCountsEnt = counts;
       PLACAS_ENT = buildPlacasEntrega();
+      PENDENCIAS_36 = buildPendencias36();
       renderEntregaRing(real, rota, par, total);
-      renderEntMotivos();
-      renderEntFrota();
+      const frotaMeta = document.getElementById('entFrotaMeta');
+      if (frotaMeta) frotaMeta.textContent = PLACAS_ENT.length
+        ? `${PLACAS_ENT.length} placa${PLACAS_ENT.length === 1 ? '' : 's'}`
+        : 'sem placas';
+      const motMeta = document.getElementById('entMotivosMeta');
+      if (motMeta) motMeta.textContent = par
+        ? `${par} pendência${par === 1 ? '' : 's'}`
+        : 'sem pendências';
       if (CURRENT_VIEW === 'entrega') {
         ensureMapaEntregaLeaflet();
         renderPlacaPops();
@@ -9618,98 +9654,6 @@
         .replace(/ENDERECO INCOMPLETO OU ERRADO/i, 'Endereço inválido');
       if (s.length <= lim) return s;
       return s.slice(0, lim - 1).trimEnd() + '…';
-    }
-
-    function buildMotivosPendencia36() {
-      const map = new Map();
-      (ENTREGAS_36 || []).forEach((c) => {
-        if (statusAce36(c) !== 'parado') return;
-        if (placaIgnorada36(c)) return;
-        const key = String(c.ocorrencia || '')
-          .toUpperCase()
-          .replace(/\s+/g, ' ')
-          .trim() || 'SEM OCORRÊNCIA';
-        map.set(key, (map.get(key) || 0) + 1);
-      });
-      return Array.from(map.entries())
-        .map(([key, n]) => ({ key, n, label: shortMotivoLabel(key) }))
-        .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label))
-        .slice(0, 6);
-    }
-
-    function renderEntMotivos() {
-      const host = document.getElementById('entMotivosBars');
-      const meta = document.getElementById('entMotivosMeta');
-      if (!host) return;
-      const items = buildMotivosPendencia36();
-      const totalMot = items.reduce((s, i) => s + i.n, 0);
-      if (meta) meta.textContent = totalMot ? `${totalMot} CTRC` : 'sem pendências';
-      if (!items.length) {
-        host.innerHTML = '<div class="ent-hbar is-mute"><span class="ent-hbar-lab">Nenhuma pendência</span><span class="ent-hbar-n">0</span><div class="ent-hbar-track"><i class="ent-hbar-fill" style="width:0%"></i></div></div>';
-        return;
-      }
-      const max = Math.max(...items.map((i) => i.n), 1);
-      const tones = ['is-par', 'is-rota', 'is-alt', 'is-warn', 'is-mute', 'is-real'];
-      host.innerHTML = items.map((it, idx) => {
-        const w = Math.max(8, Math.round((it.n / max) * 100));
-        const tone = tones[idx % tones.length];
-        return `<div class="ent-hbar ${tone}" title="${esc(it.key)}">
-          <span class="ent-hbar-lab">${esc(it.label)}</span>
-          <span class="ent-hbar-n">${it.n}</span>
-          <div class="ent-hbar-track"><i class="ent-hbar-fill" style="width:${w}%"></i></div>
-        </div>`;
-      }).join('');
-    }
-
-    function buildFrotaEntrega() {
-      const by = new Map();
-      (ENTREGAS_36 || []).forEach((c) => {
-        const st = statusAce36(c);
-        if (st === 'cancelada') return;
-        if (placaIgnorada36(c)) return;
-        const placa = parsePlaca(c.placa || '');
-        if (!placa) return;
-        if (!by.has(placa)) by.set(placa, { total: 0, real: 0, rota: 0, par: 0 });
-        const row = by.get(placa);
-        row.total += 1;
-        if (st === 'realizada') row.real += 1;
-        else if (st === 'em_rota') row.rota += 1;
-        else if (st === 'parado') row.par += 1;
-      });
-      let total = 0;
-      let oper = 0;
-      let done = 0;
-      let pend = 0;
-      by.forEach((r) => {
-        total += 1;
-        if (r.total > 0 && r.real >= r.total) done += 1;
-        else if (r.rota > 0) oper += 1;
-        else pend += 1;
-      });
-      return { total, oper, done, pend };
-    }
-
-    function renderEntFrota() {
-      const host = document.getElementById('entFrotaBars');
-      const meta = document.getElementById('entFrotaMeta');
-      if (!host) return;
-      const f = buildFrotaEntrega();
-      if (meta) meta.textContent = f.total ? `${f.total} placas` : 'sem veículos';
-      const items = [
-        { lab: 'Total veículos', n: f.total, tone: 'is-mute' },
-        { lab: 'Em operação', n: f.oper, tone: 'is-real' },
-        { lab: 'Concluídos', n: f.done, tone: 'is-rota' },
-        { lab: 'Com pendência', n: f.pend, tone: 'is-par' },
-      ];
-      const max = Math.max(f.total, 1);
-      host.innerHTML = items.map((it) => {
-        const w = Math.max(it.n ? 8 : 0, Math.round((it.n / max) * 100));
-        return `<div class="ent-hbar ${it.tone}">
-          <span class="ent-hbar-lab">${esc(it.lab)}</span>
-          <span class="ent-hbar-n">${it.n}</span>
-          <div class="ent-hbar-track"><i class="ent-hbar-fill" style="width:${w}%"></i></div>
-        </div>`;
-      }).join('');
     }
 
     function renderEntregaRing(real, rota, par, total) {
@@ -14356,19 +14300,93 @@
 
     function buildPendencias36() {
       const out = [];
-      ENTREGAS_36.forEach(c => {
+      ENTREGAS_36.forEach((c) => {
         if (statusAce36(c) !== 'parado') return;
+        if (placaIgnorada36(c)) return;
         const hora = String(c.hora_ocorrencia || '').trim()
           || (String(c.data_ocorrencia || '').match(/(\d{1,2}:\d{2})/) || [])[1]
           || '--:--';
+        const occRaw = String(c.ocorrencia || '').trim();
         out.push({
           label: c.ctrc_id || c.romaneio || '',
           hora,
           veiculo: parsePlaca(c.placa || ''),
+          ocorrencia: shortMotivoLabel(occRaw, 36),
+          ocorrenciaKey: occRaw.toUpperCase().replace(/\s+/g, ' ').trim() || 'SEM OCORRÊNCIA',
         });
       });
       out.sort((a, b) => String(b.hora).localeCompare(String(a.hora)));
       return out.slice(0, 40);
+    }
+
+    /** Ocorrências agregadas (motivo + qtd) para pops da Entrega. */
+    function buildOcorrenciasPopEntrega() {
+      const map = new Map();
+      (PENDENCIAS_36 || []).forEach((r) => {
+        const key = r.ocorrenciaKey || r.ocorrencia || 'SEM OCORRÊNCIA';
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            label: r.ocorrencia || shortMotivoLabel(key),
+            n: 0,
+            hora: r.hora || '--:--',
+            veiculo: r.veiculo || '',
+          });
+        }
+        const row = map.get(key);
+        row.n += 1;
+        if (r.hora && (!row.hora || r.hora > row.hora)) row.hora = r.hora;
+        if (r.veiculo && !row.veiculo) row.veiculo = r.veiculo;
+      });
+      return Array.from(map.values()).sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
+    }
+
+    function renderPendenciaPops() {
+      const stack = document.getElementById('pendenciaStack');
+      if (!stack) return;
+      const isEnt = CURRENT_VIEW === 'entrega';
+      const list = isEnt ? buildOcorrenciasPopEntrega() : (PENDENCIAS_36 || []);
+      if (!list.length) {
+        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem pendências</div></div>';
+        return;
+      }
+      const visible = [];
+      const nVis = pendenciaVisivel();
+      const n = Math.min(nVis, list.length);
+      for (let i = 0; i < n; i++) visible.push(list[(pendCursor + i) % list.length]);
+      Array.from(stack.querySelectorAll('.pop')).forEach((el) => {
+        el.classList.remove('show'); el.classList.add('leaving');
+        setTimeout(() => { try { el.remove(); } catch (_) {} }, 480);
+      });
+      setTimeout(() => {
+        if (!document.getElementById('pendenciaStack')) return;
+        const nodes = visible.map((r) => {
+          const el = document.createElement('div');
+          el.className = 'pop pop-prazo warn';
+          if (isEnt) {
+            const qtd = Number(r.n) || 1;
+            el.innerHTML = `
+              <div class="hora">${esc(String(qtd))}</div>
+              <div>
+                <div class="name">${esc(r.label || 'Ocorrência')}</div>
+                <div class="meta">${qtd} CTRC${qtd === 1 ? '' : 's'}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
+              </div>
+              <div class="tag">OCORR.</div>`;
+          } else {
+            el.innerHTML = `
+              <div class="hora">${esc(r.hora || '--:--')}</div>
+              <div>
+                <div class="name">${esc(r.label)}</div>
+                <div class="meta">${r.veiculo ? esc(r.veiculo) : ''}</div>
+              </div>
+              <div class="tag">PENDÊNCIA</div>`;
+          }
+          stack.appendChild(el);
+          requestAnimationFrame(() => el.classList.add('show'));
+          return el;
+        });
+        layoutPops(stack, nodes);
+      }, 120);
     }
 
     function animateDonut(el, targetPct) {
@@ -14476,41 +14494,6 @@
               <div class="meta">${esc(r.sit)}${r.veiculo ? ' · ' + esc(r.veiculo) : ''}</div>
             </div>
             <div class="tag">${esc(tag)}</div>`;
-          stack.appendChild(el);
-          requestAnimationFrame(() => el.classList.add('show'));
-          return el;
-        });
-        layoutPops(stack, nodes);
-      }, 120);
-    }
-
-    function renderPendenciaPops() {
-      const stack = document.getElementById('pendenciaStack');
-      if (!stack) return;
-      if (!PENDENCIAS_36.length) {
-        stack.innerHTML = '<div class="pop show" style="position:relative;opacity:.7;transform:none;"><div class="meta">Sem pendências</div></div>';
-        return;
-      }
-      const visible = [];
-      const nVis = pendenciaVisivel();
-      const n = Math.min(nVis, PENDENCIAS_36.length);
-      for (let i = 0; i < n; i++) visible.push(PENDENCIAS_36[(pendCursor + i) % PENDENCIAS_36.length]);
-      Array.from(stack.querySelectorAll('.pop')).forEach(el => {
-        el.classList.remove('show'); el.classList.add('leaving');
-        setTimeout(() => { try { el.remove(); } catch (_) {} }, 480);
-      });
-      setTimeout(() => {
-        if (!document.getElementById('pendenciaStack')) return;
-        const nodes = visible.map(r => {
-          const el = document.createElement('div');
-          el.className = 'pop pop-prazo warn';
-          el.innerHTML = `
-            <div class="hora">${esc(r.hora || '--:--')}</div>
-            <div>
-              <div class="name">${esc(r.label)}</div>
-              <div class="meta">${r.veiculo ? esc(r.veiculo) : ''}</div>
-            </div>
-            <div class="tag">PENDÊNCIA</div>`;
           stack.appendChild(el);
           requestAnimationFrame(() => el.classList.add('show'));
           return el;
