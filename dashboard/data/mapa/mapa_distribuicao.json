@@ -1,7 +1,7 @@
 {
-  "atualizado": "18/08/2026 13:38:34",
+  "atualizado": "18/08/2026 13:47:10",
   "periodo": "hoje",
-  "fonte": "C:\\Users\\analista.qualidade\\Desktop\\ACE_AnalisadorColetaEntrega\\data\\downloads\\CSVssw0146BIN[1]133901.sswweb",
+  "fonte": "C:\\Users\\analista.qualidade\\Desktop\\ACE_AnalisadorColetaEntrega\\data\\downloads\\CSVssw0146BIN[1]134728.sswweb",
   "base": {
     "nome": "BINHO TRANSPORTES",
     "lat": -23.4265324,
@@ -26171,9 +26171,9 @@
           "frete": 257.95
         }
       ],
-      "servico_feitas": 4,
+      "servico_feitas": 5,
       "servico_total": 12,
-      "servico_pct": 33.3,
+      "servico_pct": 41.7,
       "polyline_coleta": [
         [
           -23.426532,

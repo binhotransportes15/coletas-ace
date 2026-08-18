@@ -1,6 +1,6 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-18T13:38:34",
+  "updated_at": "2026-08-18T13:47:10",
   "resumo_50": {
     "data_cadastro": "PERIODO",
     "total_coletas": "7",
@@ -20,10 +20,10 @@
   },
   "resumo_36": {
     "periodo": "17/08 a 18/08",
-    "total": "269",
-    "realizada": "223",
-    "em_rota": "45",
-    "pendencia": "1",
+    "total": "303",
+    "realizada": "51",
+    "em_rota": "43",
+    "pendencia": "209",
     "excluido": "7"
   },
   "resumo_225": {
