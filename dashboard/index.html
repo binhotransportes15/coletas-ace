@@ -4178,23 +4178,33 @@
     .pen-br-svg .br-land {
       fill: #0b1220;
       stroke: #38bdf8;
-      stroke-width: 1.4;
-      stroke-opacity: 0.55;
+      stroke-width: 2;
+      stroke-opacity: 0.75;
+      stroke-linejoin: round;
+      stroke-linecap: round;
     }
     .pen-br-svg .br-heat {
-      fill-opacity: 0.72;
-      stroke: rgba(255,255,255,0.18);
-      stroke-width: 0.8;
+      fill-opacity: 0.78;
+      stroke: rgba(255,255,255,0.22);
+      stroke-width: 0.9;
       filter: url(#penHeatGlow);
     }
+    .pen-br-svg .br-heat.is-empty {
+      fill-opacity: 0.35;
+      filter: none;
+      stroke: none;
+    }
     .pen-br-svg .br-uf-lab {
-      fill: #e2e8f0;
-      font-size: 9px;
+      fill: #f8fafc;
+      font-size: 11px;
       font-weight: 800;
       letter-spacing: 0.04em;
       text-anchor: middle;
       dominant-baseline: central;
       pointer-events: none;
+      paint-order: stroke;
+      stroke: rgba(2, 6, 23, 0.75);
+      stroke-width: 2.5px;
     }
     .pen-br-legend {
       display: flex;
@@ -6732,10 +6742,10 @@
       top: 0;
       bottom: 0;
       z-index: 4;
-      width: min(220px, 22%);
+      width: min(300px, 28%);
       display: flex;
       flex-direction: column;
-      padding: clamp(8px, 1vw, 14px) clamp(6px, 0.8vw, 10px);
+      padding: clamp(8px, 1vw, 14px) clamp(8px, 1vw, 12px);
       pointer-events: none;
       background: transparent;
       border: none;
@@ -6754,11 +6764,46 @@
       position: absolute;
       left: 0;
       right: 0;
+      min-height: 58px;
+      padding: 12px 14px;
+      gap: 8px 12px;
       background: rgba(15, 23, 42, 0.42);
       border: 1px solid rgba(148, 163, 184, 0.22);
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+    .ent-overlay .pop.pop-placa {
+      grid-template-columns: 52px minmax(0, 1fr) auto;
+    }
+    .ent-overlay .pop.pop-prazo {
+      grid-template-columns: 58px minmax(0, 1fr) auto;
+    }
+    .ent-overlay .pop .name {
+      font-size: clamp(14px, 1.55vw, 18px);
+      line-height: 1.2;
+      white-space: normal;
+      overflow: visible;
+      word-break: break-word;
+    }
+    .ent-overlay .pop .meta {
+      font-size: clamp(11px, 1.2vw, 13px);
+      white-space: normal;
+      overflow: visible;
+      line-height: 1.25;
+    }
+    .ent-overlay .pop-prazo .tag {
+      font-size: 10px;
+      padding: 4px 8px;
+      white-space: nowrap;
+    }
+    .ent-overlay .pop-placa .donut {
+      width: 48px;
+      height: 48px;
+    }
+    .ent-overlay .pop-placa .donut svg {
+      width: 48px;
+      height: 48px;
     }
     .ent-dash-mid .ent-side {
       display: none !important;
@@ -6850,7 +6895,7 @@
       flex: 1 1 auto !important;
     }
     body.tv-mode #opsLayoutEntrega .ent-overlay {
-      width: min(240px, 20%) !important;
+      width: min(320px, 26%) !important;
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
@@ -8878,7 +8923,7 @@
           <section class="pen-card ds-panel pen-map-card" aria-label="Pendências por estado">
             <header><h3>Por estado</h3><span class="meta" id="penMapMeta">mapa</span></header>
             <div class="pen-br-wrap" id="penBrMap">
-              <svg class="pen-br-svg" id="penBrSvg" viewBox="0 0 300 340" aria-hidden="true"></svg>
+              <svg class="pen-br-svg" id="penBrSvg" viewBox="0 0 400 420" aria-hidden="true"></svg>
               <div class="pen-br-legend">
                 <span>0</span>
                 <i></i>
@@ -10243,8 +10288,8 @@
       const stack = document.getElementById('pendenciaStack');
       if (!stack) return tv ? 3 : 2;
       const h = stack.clientHeight || 0;
-      // Card + gap; margem menor para nao clipar a borda inferior
-      const slot = tv ? 78 : 72;
+      // Card + gap (mais alto na entrega p/ texto quebrar linha)
+      const slot = tv ? 92 : 84;
       const bySpace = Math.max(1, Math.floor(Math.max(0, h - 6) / slot));
       return Math.min(bySpace, tv ? 4 : 3);
     }
@@ -12560,16 +12605,49 @@
       };
     }
 
-    /** Posições aproximadas no viewBox 300×340 (silhueta Brasil). */
-    const PEN_UF_POS = {
-      RR: [88, 52], AP: [168, 58], AM: [95, 98], PA: [168, 105],
-      AC: [42, 135], RO: [88, 145], MT: [128, 160], TO: [168, 150],
-      MA: [205, 118], PI: [220, 140], CE: [242, 122], RN: [258, 128],
-      PB: [258, 142], PE: [248, 152], AL: [252, 162], SE: [248, 170],
-      BA: [220, 180], DF: [168, 178], GO: [155, 185], MG: [198, 200],
-      ES: [228, 212], RJ: [218, 232], SP: [188, 238], PR: [168, 258],
-      SC: [178, 278], RS: [158, 300], MS: [132, 220],
+    /** Centróides geográficos (lon, lat) dos estados. */
+    const PEN_UF_GEO = {
+      RR: [-61.3, 1.8], AP: [-51.8, 1.4], AM: [-64.7, -3.4], PA: [-52.5, -3.8],
+      AC: [-70.5, -9.0], RO: [-63.3, -10.9], MT: [-56.0, -12.6], TO: [-48.3, -10.2],
+      MA: [-45.3, -5.4], PI: [-43.0, -7.5], CE: [-39.3, -5.2], RN: [-36.5, -5.8],
+      PB: [-36.8, -7.2], PE: [-37.6, -8.4], AL: [-36.6, -9.6], SE: [-37.4, -10.6],
+      BA: [-41.7, -12.6], DF: [-47.9, -15.8], GO: [-49.3, -15.8], MG: [-44.4, -18.5],
+      ES: [-40.3, -19.6], RJ: [-42.7, -22.3], SP: [-48.5, -22.5], PR: [-51.6, -24.6],
+      SC: [-50.3, -27.3], RS: [-53.0, -30.0], MS: [-54.8, -20.5],
     };
+
+    /** Contorno do Brasil (lon,lat) — silhueta reconhecível. */
+    const PEN_BR_OUTLINE = [
+      [-51.65, 4.25], [-50.5, 1.8], [-49.5, 0.2], [-48.2, -0.8], [-46.5, -1.0],
+      [-44.5, -2.2], [-42.5, -2.8], [-40.5, -3.2], [-38.5, -3.8], [-37.0, -4.8],
+      [-35.5, -5.2], [-34.8, -6.5], [-34.8, -7.8], [-35.0, -9.0], [-35.8, -10.5],
+      [-37.0, -12.0], [-38.2, -13.5], [-38.8, -15.5], [-39.2, -17.5], [-39.5, -19.0],
+      [-40.2, -20.5], [-40.8, -21.8], [-41.5, -22.6], [-42.8, -22.9], [-44.0, -23.2],
+      [-45.5, -23.8], [-47.0, -24.5], [-48.2, -25.5], [-48.5, -27.0], [-48.8, -28.5],
+      [-49.5, -29.8], [-50.8, -31.2], [-52.0, -32.5], [-53.2, -33.5], [-54.5, -33.7],
+      [-56.0, -32.0], [-57.2, -30.0], [-57.6, -27.5], [-57.8, -25.0], [-57.5, -22.8],
+      [-58.5, -20.5], [-60.0, -18.0], [-62.0, -16.0], [-64.5, -14.0], [-67.0, -12.0],
+      [-69.0, -11.0], [-71.0, -10.0], [-73.0, -9.5], [-73.8, -8.0], [-72.5, -7.0],
+      [-70.0, -6.5], [-67.5, -5.0], [-65.0, -3.5], [-62.5, -2.0], [-60.0, -0.5],
+      [-57.5, 1.0], [-55.0, 2.2], [-53.0, 3.2], [-51.65, 4.25],
+    ];
+
+    function penProjectLonLat(lon, lat, w = 400, h = 420) {
+      const x0 = -74.2;
+      const x1 = -34.0;
+      const y0 = 5.5;
+      const y1 = -34.2;
+      const x = ((lon - x0) / (x1 - x0)) * w;
+      const y = ((y0 - lat) / (y0 - y1)) * h;
+      return [x, y];
+    }
+
+    function penBrOutlinePath(w = 400, h = 420) {
+      return PEN_BR_OUTLINE.map((pt, i) => {
+        const [x, y] = penProjectLonLat(pt[0], pt[1], w, h);
+        return `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`;
+      }).join(' ') + ' Z';
+    }
 
     function ufFromPenRow(r) {
       const uf = String(r.uf || '').trim().toUpperCase();
@@ -12681,31 +12759,38 @@
       }
       if (maxLab) maxLab.textContent = max ? String(max) : 'máx';
 
-      // Silhueta simplificada do Brasil (contorno único)
-      const land = 'M118 28 L148 22 L178 38 L198 55 L215 78 L228 95 L248 108 L262 128 L268 148 L258 168 L248 188 L238 208 L228 228 L218 248 L205 268 L188 288 L168 308 L148 318 L128 312 L112 292 L98 268 L88 248 L78 228 L62 208 L48 188 L38 168 L32 148 L42 128 L58 108 L72 88 L88 68 L102 48 Z';
-      const heats = Object.keys(PEN_UF_POS).map((uf) => {
-        const [x, y] = PEN_UF_POS[uf];
+      const W = 400;
+      const H = 420;
+      const land = penBrOutlinePath(W, H);
+      const heats = Object.keys(PEN_UF_GEO).map((uf) => {
+        const geo = PEN_UF_GEO[uf];
+        const [x, y] = penProjectLonLat(geo[0], geo[1], W, H);
         const qtd = counts[uf] || 0;
         if (!qtd) {
-          return `<circle class="br-heat" cx="${x}" cy="${y}" r="4.5" fill="#1e3a8a" fill-opacity="0.28"/>`;
+          return `<circle class="br-heat is-empty" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="#1e3a8a"/>`;
         }
         const t = max ? qtd / max : 0;
-        const r = 8 + t * 20;
+        const r = 9 + t * 22;
         const fill = penHeatColor(t);
-        return `<circle class="br-heat" cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${fill}">
+        return `<circle class="br-heat" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}">
             <title>${uf}: ${qtd} pendências</title>
           </circle>
-          <text class="br-uf-lab" x="${x}" y="${y}">${uf}</text>`;
+          <text class="br-uf-lab" x="${x.toFixed(1)}" y="${y.toFixed(1)}">${uf}</text>`;
       }).join('');
 
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
       svg.innerHTML = `
         <defs>
-          <filter id="penHeatGlow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="1.4" result="b"/>
+          <filter id="penHeatGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2" result="b"/>
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
+          <linearGradient id="penBrFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0f2744"/>
+            <stop offset="100%" stop-color="#071018"/>
+          </linearGradient>
         </defs>
-        <path class="br-land" d="${land}"/>
+        <path class="br-land" d="${land}" fill="url(#penBrFill)"/>
         ${heats}`;
     }
 
@@ -15045,7 +15130,7 @@
           romaneio: c.romaneio || '',
           hora,
           veiculo: parsePlaca(c.placa || ''),
-          ocorrencia: shortMotivoLabel(occRaw, 36),
+          ocorrencia: shortMotivoLabel(occRaw, 48),
           ocorrenciaFull: occRaw || '—',
           ocorrenciaKey: occRaw.toUpperCase().replace(/\s+/g, ' ').trim() || 'SEM OCORRÊNCIA',
           status: 'Pendência',

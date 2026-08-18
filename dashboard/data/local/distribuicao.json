@@ -1,29 +1,29 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-18T15:45:28",
+  "updated_at": "2026-08-18T16:00:10",
   "resumo_50": {
     "data_cadastro": "PERIODO",
-    "total_coletas": "14",
-    "cadastrada": "5",
-    "comandada": "8",
-    "coletada": "0",
+    "total_coletas": "18",
+    "cadastrada": "9",
+    "comandada": "7",
+    "coletada": "1",
     "cancelada": "1"
   },
   "resumo_103": {
     "periodo": "18/08",
     "total": "41",
     "parado": "1",
-    "em_rota": "23",
-    "realizada": "17",
+    "em_rota": "19",
+    "realizada": "21",
     "cancelada": "0",
     "outro": "0"
   },
   "resumo_36": {
     "periodo": "17/08 a 18/08",
-    "total": "98",
-    "realizada": "59",
+    "total": "101",
+    "realizada": "61",
     "em_rota": "37",
-    "pendencia": "2",
+    "pendencia": "3",
     "excluido": "5"
   },
   "resumo_225": {
@@ -46,5 +46,8 @@
     "peso_amanha": "2.244,53",
     "volumes_amanha": "2.599,56",
     "frete_amanha": "3.529,25"
+  },
+  "extra": {
+    "report": "36"
   }
 }
