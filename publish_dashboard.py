@@ -380,7 +380,8 @@ def _copy_armazem_to_dashboard() -> dict[str, str]:
             elif name == "resumo_177.csv":
                 _safe_write_text(
                     dest,
-                    "atualizado,mes,total_conferentes,peso_total,peso_total_fmt,topo,topo_peso\n",
+                    "atualizado,mes,total_conferentes,peso_total,peso_total_fmt,"
+                    "vol_total,vol_total_fmt,topo,topo_peso,topo_vol\n",
                     encoding="utf-8-sig",
                 )
             elif name == "conferentes_177.csv":
@@ -662,8 +663,11 @@ def publish_dashboard(
         status(f"Mapa publish: {err}")
     result: dict[str, Any] = {"ok": True, "local": paths, "pushed": False}
 
-    if not allow_push or getattr(cfg, "modo_local", False):
-        status("Dashboard local atualizado (sem GitHub).")
+    if not allow_push or not getattr(cfg, "sync_remoto", True):
+        status(
+            "Dashboard local atualizado"
+            + (" (sync remoto OFF — sem Sheets/Pages)." if not getattr(cfg, "sync_remoto", True) else " (sem GitHub).")
+        )
         result["skipped_push"] = True
         result["publish_target"] = resolve_publish_target(cfg)
         return result

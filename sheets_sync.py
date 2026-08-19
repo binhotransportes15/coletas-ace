@@ -312,16 +312,18 @@ def sync_google_sheets(
     settings: AceSettings | None = None,
     *,
     on_status: StatusCallback | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """
     Envia CSVs locais para a planilha via Google Apps Script (Web App).
     Nao usa conta de servico / gspread.
+    force=True: envia mesmo com modo_local.
     """
     status = on_status or _noop
     cfg = settings or load_settings()
     result: dict[str, Any] = {"ok": False, "skipped": False}
 
-    gate = _ensure_apps_script(cfg, status, ping=False)
+    gate = _ensure_apps_script(cfg, status, ping=False, force=force)
     if not gate.get("ok"):
         return gate
 
@@ -390,13 +392,15 @@ def _ensure_apps_script(
     status: StatusCallback,
     *,
     ping: bool = True,
+    force: bool = False,
 ) -> dict[str, Any]:
     """Valida config (+ ping opcional). Retorna {ok, url, token} ou erro/skipped."""
     result: dict[str, Any] = {"ok": False, "skipped": False}
-    if getattr(cfg, "modo_local", False):
+    # force=True: sync manual ignora sync_remoto=OFF (comando de emergência)
+    if not force and not bool(getattr(cfg, "sync_remoto", True)):
         result["skipped"] = True
-        result["reason"] = "modo_local"
-        status("Modo local: planilha ignorada (JSON/CSV interno).")
+        result["reason"] = "sync_remoto=false"
+        status("Sync remoto DESLIGADO — planilha não recebe dados (local segue ok).")
         return result
     if not cfg.enable_sheets:
         result["skipped"] = True
@@ -473,13 +477,14 @@ def sync_cycle_sheets(
     do_225: bool = False,
     include_historico: bool = True,
     on_status: StatusCallback | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """Um lote só após o ciclo dual — bem mais rápido que 4 syncs separados."""
     status = on_status or _noop
     status("Sheets: preparando envio…")
     cfg = settings or load_settings()
     # Sem ping: o atraso de 30–60s estava aqui, antes de qualquer gravação
-    gate = _ensure_apps_script(cfg, status, ping=False)
+    gate = _ensure_apps_script(cfg, status, ping=False, force=force)
     if not gate.get("ok"):
         return gate
 
@@ -546,11 +551,12 @@ def sync_google_sheets_103(
     settings: AceSettings | None = None,
     *,
     on_status: StatusCallback | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """Envia cache 103 (Coletas103 + Resumo103) para a planilha."""
     status = on_status or _noop
     cfg = settings or load_settings()
-    gate = _ensure_apps_script(cfg, status, ping=False)
+    gate = _ensure_apps_script(cfg, status, ping=False, force=force)
     if not gate.get("ok"):
         return gate
 
@@ -602,11 +608,12 @@ def sync_google_sheets_36(
     settings: AceSettings | None = None,
     *,
     on_status: StatusCallback | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """Envia cache 36 (Entregas36 + Romaneios36 + Resumo36) para a planilha."""
     status = on_status or _noop
     cfg = settings or load_settings()
-    gate = _ensure_apps_script(cfg, status, ping=False)
+    gate = _ensure_apps_script(cfg, status, ping=False, force=force)
     if not gate.get("ok"):
         return gate
 
@@ -660,11 +667,12 @@ def sync_google_sheets_225(
     settings: AceSettings | None = None,
     *,
     on_status: StatusCallback | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """Envia cache 225 (Resumo225 + Alertas225 + Agendamentos225)."""
     status = on_status or _noop
     cfg = settings or load_settings()
-    gate = _ensure_apps_script(cfg, status, ping=False)
+    gate = _ensure_apps_script(cfg, status, ping=False, force=force)
     if not gate.get("ok"):
         return gate
 

@@ -34,17 +34,19 @@ def sync_sheets_78(
     on_status: StatusCallback | None = None,
     include_78: bool = True,
     include_177: bool = True,
+    force: bool = False,
 ) -> dict[str, Any]:
     """
     Envia abas do Armazém (078 e/ou 177).
     Usar include_177=False para mandar o pátio assim que o 078 ficar pronto.
+    force=True: envia mesmo com modo_local (espelho do site público).
     """
     status = on_status or _noop
     cfg = settings or load_settings()
     result: dict[str, Any] = {"ok": False, "via": "apps_script"}
 
     status("Sheets Armazém: preparando envio…")
-    gate = _ensure_apps_script(cfg, status, ping=False)
+    gate = _ensure_apps_script(cfg, status, ping=False, force=force)
     if not gate.get("ok"):
         result.update(gate)
         return result

@@ -1616,8 +1616,7 @@
     body.tv-mode .arm-hero-card,
     body.tv-mode .arm-panel,
     body.tv-mode .arm-best-list,
-    body.tv-mode .arm-best-badge,
-    body.tv-mode .arm-best-avatar,
+    body.tv-mode .arm-best-medal,
     body.tv-mode .arm-best-track,
     body.tv-mode .zone,
     body.tv-mode .zone-head,
@@ -7978,55 +7977,37 @@
     }
     .arm-best-row {
       display: grid;
-      grid-template-columns: 56px 48px minmax(0, 1.15fr) minmax(120px, 1.4fr) minmax(110px, 0.85fr);
-      gap: 12px;
+      grid-template-columns: 58px minmax(0, 1.2fr) minmax(120px, 1.4fr) minmax(110px, 0.85fr);
+      gap: 14px;
       align-items: center;
       padding: 12px 18px;
       border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-      min-height: 58px;
+      min-height: 62px;
       transition: background 0.15s ease;
     }
     .arm-best-row:last-child { border-bottom: none; }
     .arm-best-row:hover { background: rgba(56, 189, 248, 0.06); }
-    .arm-best-row.r1 { background: rgba(251, 191, 36, 0.06); }
-    .arm-best-row.r2 { background: rgba(203, 213, 225, 0.05); }
-    .arm-best-row.r3 { background: rgba(180, 120, 70, 0.07); }
-    .arm-best-badge {
-      --badge: #2563eb;
-      position: relative;
-      width: 44px;
-      height: 32px;
+    .arm-best-row.r1 { background: linear-gradient(90deg, rgba(251, 191, 36, 0.12), transparent 55%); }
+    .arm-best-row.r2 { background: linear-gradient(90deg, rgba(203, 213, 225, 0.1), transparent 55%); }
+    .arm-best-row.r3 { background: linear-gradient(90deg, rgba(180, 120, 70, 0.12), transparent 55%); }
+    .arm-best-medal {
+      width: 52px;
+      height: 56px;
       display: grid;
       place-items: center;
-      color: #fff;
-      font-weight: 900;
-      font-size: clamp(15px, 1.6vw, 20px);
-      font-variant-numeric: tabular-nums;
-      letter-spacing: -0.02em;
-      background: var(--badge);
-      clip-path: polygon(0 0, 82% 0, 100% 50%, 82% 100%, 0 100%);
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
-    }
-    .arm-best-row.r1 .arm-best-badge { --badge: linear-gradient(145deg, #f6c453, #d4a017); background: linear-gradient(145deg, #f6c453, #c9970e); color: #1a1300; }
-    .arm-best-row.r2 .arm-best-badge { background: linear-gradient(145deg, #e8edf5, #9aa7b8); color: #1e293b; }
-    .arm-best-row.r3 .arm-best-badge { background: linear-gradient(145deg, #e0a070, #a85a2a); color: #fff7ed; }
-    .arm-best-avatar {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      font-weight: 800;
-      font-size: 13px;
-      letter-spacing: 0.04em;
-      color: #0b1220;
-      background: linear-gradient(145deg, #7dd3fc, #38bdf8);
-      border: 2px solid rgba(255, 255, 255, 0.18);
       flex-shrink: 0;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
     }
-    .arm-best-row.r1 .arm-best-avatar { background: linear-gradient(145deg, #fde68a, #f59e0b); }
-    .arm-best-row.r2 .arm-best-avatar { background: linear-gradient(145deg, #e2e8f0, #94a3b8); }
-    .arm-best-row.r3 .arm-best-avatar { background: linear-gradient(145deg, #fdba74, #b45309); color: #fff7ed; }
+    .arm-best-medal svg {
+      width: 48px;
+      height: 52px;
+      display: block;
+    }
+    .arm-best-medal .m-num {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
     .arm-best-who {
       min-width: 0;
       display: flex;
@@ -8102,7 +8083,16 @@
       letter-spacing: -0.02em;
       line-height: 1.1;
     }
+    .arm-best-val .arm-best-vol {
+      display: block;
+      font-size: 0.62em;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0;
+      margin-top: 2px;
+    }
     .arm-best-row.r1 .arm-best-val { color: #fde68a; }
+    .arm-best-row.r1 .arm-best-val .arm-best-vol { color: #fcd34d; }
     .arm-rank-empty {
       padding: 28px 16px;
       color: var(--muted);
@@ -8113,20 +8103,18 @@
       padding: clamp(10px, 1.2vmin, 18px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-best-row {
-      grid-template-columns: 68px 56px minmax(0, 1.2fr) minmax(160px, 1.5fr) minmax(130px, 0.9fr) !important;
+      grid-template-columns: 72px minmax(0, 1.2fr) minmax(160px, 1.5fr) minmax(130px, 0.9fr) !important;
       padding: clamp(14px, 1.5vmin, 20px) clamp(18px, 2vmin, 28px) !important;
       gap: clamp(12px, 1.4vmin, 18px) !important;
-      min-height: clamp(64px, 6.5vmin, 84px) !important;
+      min-height: clamp(68px, 7vmin, 88px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-best-badge {
-      width: 54px !important;
-      height: 38px !important;
-      font-size: clamp(18px, 2.2vmin, 26px) !important;
+    body.tv-mode #viewArmConferentes .arm-best-medal {
+      width: 64px !important;
+      height: 68px !important;
     }
-    body.tv-mode #viewArmConferentes .arm-best-avatar {
-      width: 52px !important;
-      height: 52px !important;
-      font-size: 15px !important;
+    body.tv-mode #viewArmConferentes .arm-best-medal svg {
+      width: 60px !important;
+      height: 64px !important;
     }
     body.tv-mode #viewArmConferentes .arm-best-who .nm {
       font-size: clamp(17px, 2vmin, 26px) !important;
@@ -8142,14 +8130,13 @@
     }
     @media (max-width: 900px) {
       .arm-best-row {
-        grid-template-columns: 44px 40px minmax(0, 1fr) minmax(90px, 0.9fr);
+        grid-template-columns: 48px minmax(0, 1fr) minmax(90px, 0.9fr);
         grid-template-areas:
-          "badge avatar who val"
-          "badge avatar track track";
+          "medal who val"
+          "medal track track";
         row-gap: 8px;
       }
-      .arm-best-badge { grid-area: badge; }
-      .arm-best-avatar { grid-area: avatar; }
+      .arm-best-medal { grid-area: medal; }
       .arm-best-who { grid-area: who; }
       .arm-best-track { grid-area: track; }
       .arm-best-val { grid-area: val; align-self: end; }
@@ -8944,6 +8931,7 @@
         <div class="arm-kpis arm-kpis-conf dash-block ds-kpi-row" data-block="kpis">
           <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Conferentes</div><div class="val" id="kConfN">0</div></div>
           <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Peso total</div><div class="val" id="kConfPeso">0</div></div>
+          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Volumes</div><div class="val" id="kConfVol">0</div></div>
           <div class="arm-kpi lider ds-kpi is-ok"><div class="lbl">Líder</div><div class="val" id="kConfLeader">—</div></div>
           <div class="arm-kpi finalizado ds-kpi is-run"><div class="lbl">Mês</div><div class="val" id="kConfMes">—</div></div>
         </div>
@@ -12484,6 +12472,7 @@
           login: String(r.login || '').trim(),
           unidade: String(r.unidade || '').trim(),
           kg: String(r.peso_lidos_fmt || r.peso_lidos || '0').replace(/\s*kg$/i, ''),
+          vol: String(r.vol_lidos_fmt || r.vol_lidos || '0'),
           peso: Number(r.peso_lidos) || 0,
         }))
         .filter((r) => r.peso > 0)
@@ -12492,12 +12481,6 @@
       const totalPeso = ranked.reduce((s, r) => s + r.peso, 0)
         || Number((resumo && (resumo.peso_total || resumo.peso)) || 0);
       const topPeso = ranked[0] ? ranked[0].peso : 0;
-      const initials = (name) => {
-        const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-        if (!parts.length) return '?';
-        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      };
       const sharePct = (peso) => (totalPeso > 0 ? Math.round((peso / totalPeso) * 1000) / 10 : 0);
       const barVsLeader = (peso) => (topPeso > 0 ? Math.max(6, Math.round((peso / topPeso) * 100)) : 0);
       const fmtShare = (p) => `${String(p).replace('.', ',')}%`;
@@ -12507,13 +12490,61 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 
+      /** Medalha SVG — ouro / prata / bronze / demais */
+      const armMedalSvg = (place) => {
+        const n = Math.max(1, Math.min(99, Number(place) || 1));
+        let c1 = '#94a3b8';
+        let c2 = '#475569';
+        let c3 = '#cbd5e1';
+        let ribbonL = '#334155';
+        let ribbonR = '#1e293b';
+        let ink = '#0f172a';
+        let glow = 'rgba(148,163,184,0.25)';
+        if (n === 1) {
+          c1 = '#ffe08a'; c2 = '#d4a017'; c3 = '#fff3c4';
+          ribbonL = '#b45309'; ribbonR = '#92400e'; ink = '#422006';
+          glow = 'rgba(251,191,36,0.45)';
+        } else if (n === 2) {
+          c1 = '#f8fafc'; c2 = '#94a3b8'; c3 = '#e2e8f0';
+          ribbonL = '#64748b'; ribbonR = '#475569'; ink = '#0f172a';
+          glow = 'rgba(226,232,240,0.35)';
+        } else if (n === 3) {
+          c1 = '#fdba74'; c2 = '#c2410c'; c3 = '#ffedd5';
+          ribbonL = '#9a3412'; ribbonR = '#7c2d12'; ink = '#fff7ed';
+          glow = 'rgba(234,88,12,0.4)';
+        }
+        const fs = n >= 10 ? 12 : 15;
+        return `<span class="arm-best-medal" aria-label="${n}º lugar" title="${n}º lugar">
+          <svg viewBox="0 0 64 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <radialGradient id="mshine${n}" cx="35%" cy="30%" r="65%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
+                <stop offset="45%" stop-color="${c1}" stop-opacity="1"/>
+                <stop offset="100%" stop-color="${c2}" stop-opacity="1"/>
+              </radialGradient>
+            </defs>
+            <path d="M20 2 L32 22 L16 22 Z" fill="${ribbonL}"/>
+            <path d="M44 2 L32 22 L48 22 Z" fill="${ribbonR}"/>
+            <ellipse cx="32" cy="64" rx="14" ry="3.5" fill="${glow}"/>
+            <circle cx="32" cy="42" r="22" fill="${c2}"/>
+            <circle cx="32" cy="42" r="18.5" fill="url(#mshine${n})"/>
+            <circle cx="32" cy="42" r="14.5" fill="none" stroke="${c3}" stroke-width="2" opacity="0.95"/>
+            <circle cx="32" cy="42" r="11" fill="none" stroke="${c2}" stroke-width="1.2" opacity="0.5"/>
+            <text class="m-num" x="32" y="47.5" text-anchor="middle" fill="${ink}"
+              font-size="${fs}" font-weight="900" font-family="Segoe UI, system-ui, sans-serif">${n}</text>
+          </svg>
+        </span>`;
+      };
+
       const mes = (resumo && (resumo.mes || resumo.Mes || resumo.periodo)) || '';
       if (meta) {
         const tot = (resumo && (resumo.peso_total_fmt || resumo.peso_total)) || '';
+        const vol = (resumo && (resumo.vol_total_fmt || resumo.vol_total)) || '';
         const atualizado = (resumo && resumo.atualizado) || '';
         meta.textContent = [
-          mes ? `peso lido · ${mes}` : 'peso lido no mês',
+          mes ? `SSWBAR · ${mes}` : 'SSWBAR no mês',
           tot ? `${tot}${String(tot).toLowerCase().includes('kg') ? '' : ' kg'}` : '',
+          vol ? `${vol} vol` : '',
           ranked.length ? `${ranked.length} conferentes` : '',
           atualizado ? `atualizado ${atualizado}` : '',
         ].filter(Boolean).join(' · ');
@@ -12522,9 +12553,14 @@
 
       if (!ranked.length) {
         rest.innerHTML = `<div class="arm-rank-empty">Aguardando leitura 177…</div>`;
-        ['kConfN', 'kConfPeso', 'kConfLeader', 'kConfMes'].forEach((id) => {
+        ['kConfN', 'kConfPeso', 'kConfVol', 'kConfLeader', 'kConfMes'].forEach((id) => {
           const el = document.getElementById(id);
-          if (el) el.textContent = id === 'kConfN' ? '0' : (id === 'kConfPeso' ? '0 kg' : '—');
+          if (el) {
+            if (id === 'kConfN') el.textContent = '0';
+            else if (id === 'kConfPeso') el.textContent = '0 kg';
+            else if (id === 'kConfVol') el.textContent = '0';
+            else el.textContent = '—';
+          }
         });
         return;
       }
@@ -12536,19 +12572,21 @@
         const pct = sharePct(r.peso);
         const w = barVsLeader(r.peso);
         return `<div class="arm-best-row${cls}">
-          <span class="arm-best-badge" aria-label="${place}º lugar">${place}</span>
-          <span class="arm-best-avatar" title="${esc(r.login || r.nome)}">${esc(initials(r.nome))}</span>
+          ${armMedalSvg(place)}
           <div class="arm-best-who">
             <span class="nm" title="${esc(r.login || r.nome)}">${esc(r.nome)}</span>
             <span class="un">${esc(r.unidade || 'SPO')}</span>
           </div>
           <span class="arm-best-track" title="${fmtShare(pct)} do total · ${w}% do líder"><i style="--w:${w}%"></i><b>${fmtShare(pct)}</b></span>
-          <div class="arm-best-val">${esc(r.kg)} kg</div>
+          <div class="arm-best-val">${esc(r.kg)} kg<span class="arm-best-vol">${esc(
+            Number(r.vol) ? Number(r.vol).toLocaleString('pt-BR') : r.vol
+          )} vol</span></div>
         </div>`;
       }).join('');
 
       const kn = document.getElementById('kConfN');
       const kp = document.getElementById('kConfPeso');
+      const kv = document.getElementById('kConfVol');
       const kl = document.getElementById('kConfLeader');
       const km = document.getElementById('kConfMes');
       if (kn) kn.textContent = String(ranked.length);
@@ -12556,6 +12594,14 @@
         const p = (resumo && (resumo.peso_total_fmt || resumo.peso_total || resumo.peso))
           || (totalPeso ? totalPeso.toLocaleString('pt-BR') : '0');
         kp.textContent = p ? (String(p).toLowerCase().includes('kg') ? String(p) : `${p} kg`) : '0 kg';
+      }
+      if (kv) {
+        const v = (resumo && (resumo.vol_total_fmt || resumo.vol_total)) || '';
+        if (v) kv.textContent = String(v);
+        else {
+          const sumVol = (rows || []).reduce((s, r) => s + (Number(r.vol_lidos) || 0), 0);
+          kv.textContent = sumVol ? sumVol.toLocaleString('pt-BR') : '0';
+        }
       }
       if (kl) kl.textContent = ranked[0] ? ranked[0].nome.split(/\s+/)[0] : '—';
       if (km) km.textContent = String((resumo && (resumo.periodo || resumo.mes || resumo.atualizado)) || mes || 'mês');

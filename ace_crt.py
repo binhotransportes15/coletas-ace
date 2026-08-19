@@ -1943,7 +1943,8 @@ _FIELD_LABELS: dict[str, str] = {
     "auto_baixar_ao_abrir": "Baixar ao abrir",
     "loop_intervalo": "Intervalo padrão (fallback)",
     "ciclo_paralelo": "Rodar setores juntos (paralelo)",
-    "modo_local": "Modo local (sem planilha)",
+    "modo_local": "Modo local (JSON/CSV interno)",
+    "sync_remoto": "Sincronizar Sheets + Pages",
     "dashboard_lan": "Dashboard na rede (LAN)",
     "dashboard_port": "Porta do dashboard",
     "enable_sheets": "Enviar à planilha",
@@ -3349,8 +3350,8 @@ class AceCrtConsole(QWidget):
         groups = {
             "ssw": ("Acesso ao SSW", "URL, empresa, usuário e senha do sistema."),
             "auto": ("Atualização geral", "Opções de coleta/entrega e período (diário ou sexta)."),
-            "local": ("Modo local / rede", "Sem planilha e acesso na Wi‑Fi (detalhes também na aba Local)."),
-            "cloud": ("Planilha e site", "Google Sheets, Sites e GitHub Pages."),
+            "cloud": ("Planilha e site", "Interruptor sync_remoto + Sheets/Pages. Local é independente."),
+            "local": ("Modo local / rede", "JSON interno e acesso na Wi‑Fi (detalhes na aba Local)."),
             "armazem": ("Armazém", "Ajustes do setor 078."),
             "pendencia": ("Pendência", "Ajustes do setor 031."),
             "contratacao": ("Contratação", "Ajustes 073 → 200."),
@@ -3498,6 +3499,21 @@ class AceCrtConsole(QWidget):
         tip.setWordWrap(True)
         lay.addWidget(tip)
 
+        lay.addWidget(self._section("Sincronização remota"))
+        sync_default = self.payload.get("sync_remoto")
+        if sync_default is None:
+            sync_default = not bool(self.payload.get("modo_local", False))
+        self.chk_sync_remoto_auto = QCheckBox("Sincronizar Sheets + GitHub Pages")
+        self.chk_sync_remoto_auto.setChecked(bool(sync_default))
+        self.chk_sync_remoto_auto.stateChanged.connect(self._local_toggle_sync)
+        lay.addWidget(self.chk_sync_remoto_auto)
+        sync_tip = QLabel(
+            "Desligado = só local · Ligado = sobe planilha e site (local continua)."
+        )
+        sync_tip.setObjectName("hint")
+        sync_tip.setWordWrap(True)
+        lay.addWidget(sync_tip)
+
         lay.addWidget(self._section("Intervalo padrão"))
         self._fields["loop_intervalo"] = QLineEdit()
         self._fields["loop_intervalo"].setPlaceholderText("ex.: 5m")
@@ -3637,20 +3653,35 @@ class AceCrtConsole(QWidget):
         outer.setSpacing(8)
 
         tip = QLabel(
-            "Dashboard interno · sem GitHub e sem planilha.\n"
-            "Relatórios ficam em CSV + JSON rápido (data/cache/local).\n"
+            "Dashboard interno · JSON/CSV local sempre funcionam.\n"
+            "Use o interruptor de sincronização para ligar/desligar Sheets + Pages.\n"
             "Marque as telas e abra várias ao mesmo tempo."
         )
         tip.setObjectName("hint")
         tip.setWordWrap(True)
         outer.addWidget(tip)
 
-        outer.addWidget(self._section("Armazenamento"))
-        self.chk_modo_local = QCheckBox("Não enviar à planilha (só JSON/CSV interno)")
+        outer.addWidget(self._section("Sincronização (Sheets + Pages)"))
+        sync_default = self.payload.get("sync_remoto")
+        if sync_default is None:
+            sync_default = not bool(self.payload.get("modo_local", False))
+        self.chk_sync_remoto = QCheckBox("Sincronizar Sheets + GitHub Pages")
+        self.chk_sync_remoto.setChecked(bool(sync_default))
+        self.chk_sync_remoto.stateChanged.connect(self._local_toggle_sync)
+        outer.addWidget(self.chk_sync_remoto)
+        sync_hint = QLabel(
+            "LIGADO: sobe planilha e site · DESLIGADO: só local (não sobe nuvem)."
+        )
+        sync_hint.setObjectName("hint")
+        sync_hint.setWordWrap(True)
+        outer.addWidget(sync_hint)
+
+        outer.addWidget(self._section("Armazenamento local"))
+        self.chk_modo_local = QCheckBox("Gravar JSON/CSV interno (dashboard LAN)")
         self.chk_modo_local.setChecked(bool(self.payload.get("modo_local", False)))
         self.chk_modo_local.stateChanged.connect(self._local_toggle_modo)
         outer.addWidget(self.chk_modo_local)
-        path_hint = QLabel("Pasta: data/cache/local/*.json")
+        path_hint = QLabel("Pasta: data/cache/local/*.json — independente do sync remoto")
         path_hint.setObjectName("hint")
         outer.addWidget(path_hint)
 
@@ -3720,24 +3751,63 @@ class AceCrtConsole(QWidget):
         for chk in getattr(self, "_local_checks", {}).values():
             chk.setChecked(checked)
 
+    def _local_toggle_sync(self, state: int) -> None:
+        """Liga/desliga sync remoto (Sheets + Pages). Local continua independente."""
+        on = bool(state)
+        self.payload["sync_remoto"] = on
+        if on:
+            self.payload["enable_sheets"] = True
+            self.payload["enable_github_publish"] = True
+            if str(self.payload.get("publish_target") or "auto").lower() in {"", "auto", "local"}:
+                self.payload["publish_target"] = "github"
+        try:
+            from ace_cmd import _save_payload
+
+            _save_payload(self.payload)
+            for key in ("sync_remoto", "enable_sheets", "enable_github_publish"):
+                w = self._fields.get(key)
+                if isinstance(w, QCheckBox):
+                    w.blockSignals(True)
+                    w.setChecked(bool(self.payload.get(key)))
+                    w.blockSignals(False)
+            for chk in (
+                getattr(self, "chk_sync_remoto", None),
+                getattr(self, "chk_sync_remoto_auto", None),
+            ):
+                if isinstance(chk, QCheckBox) and chk is not self.sender():
+                    chk.blockSignals(True)
+                    chk.setChecked(on)
+                    chk.blockSignals(False)
+            self._local_status.setText(
+                "SYNC LIGADO — sobe Sheets + Pages (local continua)."
+                if on
+                else "SYNC DESLIGADO — não sobe Sheets nem Pages (local ok)."
+            )
+            if hasattr(self, "_auto_status") and self._auto_status:
+                self._auto_status.setText(
+                    "Sync remoto LIGADO" if on else "Sync remoto DESLIGADO (só local)"
+                )
+            self._append_log("sistema", f"sync_remoto={str(on).lower()}")
+        except Exception as err:  # noqa: BLE001
+            self._local_status.setText(f"Falha ao salvar sync_remoto: {err}")
+
     def _local_toggle_modo(self, state: int) -> None:
-        """Liga/desliga modo_local e grava na config."""
+        """Liga/desliga modo_local (JSON interno). Não controla a nuvem."""
         on = bool(state)
         self.payload["modo_local"] = on
         try:
             from ace_cmd import _save_payload
 
             _save_payload(self.payload)
-            # espelha no campo da aba Configuração, se existir
             w = self._fields.get("modo_local")
             if isinstance(w, QCheckBox):
                 w.blockSignals(True)
                 w.setChecked(on)
                 w.blockSignals(False)
             self._local_status.setText(
-                "Modo local LIGADO — relatórios não vão ao Sheets."
+                "Modo local LIGADO — JSON/CSV interno ativo."
                 if on
-                else "Modo local desligado — planilha volta a valer (se enable_sheets)."
+                else "Modo local desligado — sync remoto segue a opção acima."
             )
             self._append_log("sistema", f"modo_local={str(on).lower()}")
         except Exception as err:  # noqa: BLE001

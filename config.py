@@ -106,8 +106,11 @@ class AceSettings:
     cybermap_path: str = r"D:\MapaCustoRegiaoSP"
     # /automatica: blocos em paralelo (1 browser cada)
     ciclo_paralelo: bool = True
-    # Modo local: não envia Sheets/GitHub — só cache CSV + JSON em data/cache/local
+    # Modo local: sempre grava JSON/CSV interno (dashboard LAN). Não controla nuvem.
     modo_local: bool = False
+    # Interruptor mestre: Sheets + GitHub Pages. Independente do modo local.
+    # OFF = só local; ON = local + planilha + Pages (conforme enable_*).
+    sync_remoto: bool = True
     # Servir dashboard na LAN (0.0.0.0) para outros aparelhos na mesma rede
     dashboard_lan: bool = False
     # Porta fixa na LAN (0 = automática). Padrão útil: 8787
@@ -209,6 +212,7 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         ),
         ciclo_paralelo=bool(payload.get("ciclo_paralelo", defaults.ciclo_paralelo)),
         modo_local=bool(payload.get("modo_local", defaults.modo_local)),
+        sync_remoto=_resolve_sync_remoto(payload, defaults),
         dashboard_lan=bool(payload.get("dashboard_lan", defaults.dashboard_lan)),
         dashboard_port=int(payload.get("dashboard_port") or defaults.dashboard_port or 8787),
         headless=bool(payload.get("headless", defaults.headless)),
@@ -230,10 +234,28 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
     )
 
 
-def sheets_enabled(settings: AceSettings | None = None) -> bool:
-    """True só se planilha ligada E não estiver em modo local."""
+def _resolve_sync_remoto(payload: dict, defaults: AceSettings) -> bool:
+    """
+    sync_remoto: interruptor Sheets + Pages.
+    Legado sem a chave: se modo_local estava ligado, sync ficava off.
+    """
+    if "sync_remoto" in payload:
+        return bool(payload.get("sync_remoto"))
+    if bool(payload.get("modo_local", False)):
+        return False
+    return bool(getattr(defaults, "sync_remoto", True))
+
+
+def sync_remoto_enabled(settings: AceSettings | None = None) -> bool:
+    """True = pode espelhar planilha / Pages. Local sempre funciona à parte."""
     cfg = settings or load_settings()
-    if getattr(cfg, "modo_local", False):
+    return bool(getattr(cfg, "sync_remoto", True))
+
+
+def sheets_enabled(settings: AceSettings | None = None) -> bool:
+    """True se sync remoto ligado E planilha habilitada."""
+    cfg = settings or load_settings()
+    if not sync_remoto_enabled(cfg):
         return False
     return bool(getattr(cfg, "enable_sheets", False))
 
@@ -249,23 +271,36 @@ def resolve_publish_target(settings: AceSettings | None = None) -> str:
     if raw in {"local", "lan", "offline"}:
         return "local"
     # auto
-    if getattr(cfg, "modo_local", False):
+    if not sync_remoto_enabled(cfg):
         return "local"
     if getattr(cfg, "enable_github_publish", False):
         return "github"
     if getattr(cfg, "enable_sheets", False):
         return "sites"
+    if getattr(cfg, "modo_local", False):
+        return "local"
     return "local"
 
 
 def github_publish_allowed(settings: AceSettings | None = None) -> bool:
-    """Push Pages só se destino for github e flags ok."""
+    """Push Pages só se sync remoto ligado, destino github e flag ok."""
     cfg = settings or load_settings()
-    if getattr(cfg, "modo_local", False):
+    if not sync_remoto_enabled(cfg):
         return False
     if resolve_publish_target(cfg) != "github":
         return False
     return bool(getattr(cfg, "enable_github_publish", False))
+
+
+def cloud_sync_allowed(settings: AceSettings | None = None) -> bool:
+    """Atalho: sync remoto + (sheets ou github)."""
+    cfg = settings or load_settings()
+    if not sync_remoto_enabled(cfg):
+        return False
+    return bool(
+        getattr(cfg, "enable_sheets", False)
+        or getattr(cfg, "enable_github_publish", False)
+    )
 
 
 def load_credentials() -> SswCredentials:

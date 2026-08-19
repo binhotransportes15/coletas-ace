@@ -1,53 +1,53 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-19T10:30:54",
+  "updated_at": "2026-08-19T11:30:39",
   "resumo_50": {
     "data_cadastro": "PERIODO",
-    "total_coletas": "6",
-    "cadastrada": "4",
+    "total_coletas": "9",
+    "cadastrada": "7",
     "comandada": "2",
     "coletada": "0",
     "cancelada": "0"
   },
   "resumo_103": {
     "periodo": "19/08",
-    "total": "45",
-    "parado": "11",
-    "em_rota": "32",
+    "total": "46",
+    "parado": "5",
+    "em_rota": "33",
     "realizada": "0",
-    "cancelada": "2",
+    "cancelada": "8",
     "outro": "0"
   },
   "resumo_36": {
     "periodo": "18/08 a 19/08",
-    "total": "79",
-    "realizada": "39",
+    "total": "81",
+    "realizada": "41",
     "em_rota": "40",
     "pendencia": "0",
     "excluido": "17"
   },
   "resumo_225": {
     "periodo": "Agendamento AGOSTO",
-    "total": "103",
-    "em_rota": "25",
-    "parado": "14",
-    "concluido": "64",
+    "total": "102",
+    "em_rota": "23",
+    "parado": "13",
+    "concluido": "66",
     "alerta": "0",
-    "peso_total": "181.845,98",
-    "volumes_total": "239.099,05",
-    "frete_total": "154.339,19",
-    "realizado": "64",
-    "peso_realizado": "147.940,84",
-    "frete_realizado": "113.531,55",
-    "armazem": "14",
-    "peso_armazem": "31.657,73",
-    "frete_armazem": "37.097,33",
+    "peso_total": "168.570,83",
+    "volumes_total": "209.111,95",
+    "frete_total": "145.619,36",
+    "realizado": "66",
+    "peso_realizado": "148.024,47",
+    "frete_realizado": "114.043,86",
+    "armazem": "13",
+    "peso_armazem": "18.382,58",
+    "frete_armazem": "28.377,50",
     "amanha": "2",
     "peso_amanha": "1.475,96",
     "volumes_amanha": "2.933,74",
     "frete_amanha": "1.967,62"
   },
   "extra": {
-    "report": "36"
+    "report": "225"
   }
 }

@@ -32,12 +32,13 @@ def sync_sheets_455(
     settings: AceSettings | None = None,
     *,
     on_status: StatusCallback | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     status = on_status or _noop
     cfg = settings or load_settings()
     result: dict[str, Any] = {"ok": False, "via": "apps_script"}
     status("Sheets Emissão 455: preparando…")
-    gate = _ensure_apps_script(cfg, status, ping=False)
+    gate = _ensure_apps_script(cfg, status, ping=False, force=force)
     if not gate.get("ok"):
         result.update(gate)
         return result

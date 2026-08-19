@@ -78,6 +78,7 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "cybermap_path": ("automacao", "str", False),
     # Sheets / dashboard
     "enable_sheets": ("cloud", "bool", False),
+    "sync_remoto": ("cloud", "bool", False),
     "apps_script_url": ("cloud", "str", False),
     "apps_script_token": ("cloud", "str", True),
     "google_sheet_id": ("cloud", "str", False),
@@ -150,6 +151,11 @@ def _save_payload(payload: dict[str, Any]) -> None:
         reciclagem_intervalo=str(payload.get("reciclagem_intervalo") or "30m"),
         mapa_intervalo=str(payload.get("mapa_intervalo") or "10m"),
         enable_sheets=bool(payload.get("enable_sheets", False)),
+        sync_remoto=(
+            bool(payload["sync_remoto"])
+            if "sync_remoto" in payload
+            else (False if payload.get("modo_local") else True)
+        ),
         apps_script_url=str(payload.get("apps_script_url") or ""),
         apps_script_token=str(payload.get("apps_script_token") or ""),
         google_sheet_id=str(payload.get("google_sheet_id") or ""),
@@ -427,6 +433,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     _enable_windows_ansi()
     modo = str(payload.get("periodo_modo") or "diario")
     sheets_on = bool(payload.get("enable_sheets"))
+    sync_on = bool(payload.get("sync_remoto", not bool(payload.get("modo_local", False))))
     viz_on = not bool(payload.get("headless", True))
     arm_on = bool(payload.get("armazem_in_loop", True))
     pend_on = bool(payload.get("pendencia_in_loop", True))
@@ -438,7 +445,8 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
 
     print_header_banner(subtitle="OPERACIONAL · Console CMD", payload=payload)
     print(
-        f"  {status_online('SHEETS') if sheets_on and not local_on else status_idle('SHEETS')}  "
+        f"  {status_online('SYNC') if sync_on else status_idle('SYNC·OFF')}  "
+        f"{status_online('SHEETS') if sheets_on and sync_on else status_idle('SHEETS')}  "
         f"{status_work('SSW·VIZ') if viz_on else status_idle('SSW·HIDE')}  "
         f"{status_online('078') if arm_on else status_idle('078·OFF')}  "
         f"{status_online('031') if pend_on else status_idle('031·OFF')}  "
@@ -446,7 +454,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
         f"{status_online('455') if emi_on else status_idle('455·OFF')}  "
         f"{status_online('MAPA') if mapa_on else status_idle('MAPA·OFF')}  "
         f"{status_online('PARA') if para_on else status_idle('SEQ')}  "
-        f"{status_online('LOCAL') if local_on else status_idle('CLOUD')}"
+        f"{status_online('LOCAL') if local_on else status_idle('LOCAL·OFF')}"
     )
     print(f"  {rule()}")
     print(f"  {muted('config')}  {CONFIG_PATH}")
@@ -526,8 +534,16 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     )
     print(f"  {g('[PARALELO]', bold=True)}")
     print(f"    {muted('ciclo_paralelo'.ljust(18))} {str(para_on).lower()}")
+    print(f"  {g('[SYNC REMOTO]', bold=True)}")
+    print(
+        f"    {muted('sync_remoto'.ljust(18))} {str(sync_on).lower()}  "
+        f"(OFF=só local · ON=Sheets+Pages)"
+    )
     print(f"  {g('[MODO LOCAL]', bold=True)}")
-    print(f"    {muted('modo_local'.ljust(18))} {str(local_on).lower()}  (sem Sheets; JSON em data/cache/local)")
+    print(
+        f"    {muted('modo_local'.ljust(18))} {str(local_on).lower()}  "
+        f"(JSON/CSV interno — independente do sync)"
+    )
     print(
         f"    {muted('dashboard_lan'.ljust(18))} "
         f"{str(bool(payload.get('dashboard_lan', False))).lower()}  "
@@ -663,7 +679,9 @@ def cmd_help() -> str:
             "────────────────────────────────────",
             "  local [tela]  Abre telas internas (coleta, entrega, armazem…).",
             "  lan           Lista URLs do dashboard na rede local.",
-            "  /e modo_local true     Não envia Sheets (só cache local).",
+            "  /e sync_remoto true    Liga sync Sheets + Pages (local segue).",
+            "  /e sync_remoto false   Desliga nuvem — só modo local.",
+            "  /e modo_local true     JSON/CSV interno (independente do sync).",
             "  /e dashboard_lan true  Serve dashboard na LAN.",
             "  /e dashboard_port 8787 Porta fixa (0 = automática).",
             "",
@@ -729,6 +747,10 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "cpf": "document",
         "modo": "periodo_modo",
         "sheets": "enable_sheets",
+        "sync": "sync_remoto",
+        "sync_remoto": "sync_remoto",
+        "sincronizacao": "sync_remoto",
+        "nuvem": "sync_remoto",
         "token": "apps_script_token",
         "script": "apps_script_url",
         "repo": "github_repo",
@@ -770,6 +792,7 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "local_mode": "modo_local",
         "modo_local": "modo_local",
         "sem_planilha": "modo_local",
+        "json_local": "modo_local",
         "lan_rede": "dashboard_lan",
         "dashboard_lan": "dashboard_lan",
         "porta_dash": "dashboard_port",
@@ -1259,6 +1282,7 @@ def apply_piloto_sites(payload: dict[str, Any] | None = None) -> str:
     """Liga fluxo Sheets→Sites e desliga GitHub Pages (piloto TV)."""
     payload = dict(payload or _load_payload())
     payload["modo_local"] = False
+    payload["sync_remoto"] = True
     payload["enable_sheets"] = True
     payload["enable_github_publish"] = False
     payload["publish_target"] = "sites"
@@ -1266,6 +1290,7 @@ def apply_piloto_sites(payload: dict[str, Any] | None = None) -> str:
     url = str(payload.get("google_sites_url") or "").strip()
     lines = [
         "Piloto Google Sites aplicado:",
+        "  sync_remoto=true",
         "  modo_local=false",
         "  enable_sheets=true",
         "  enable_github_publish=false",
@@ -1293,6 +1318,7 @@ def run_sites(open_browser: bool = True) -> str:
     lines = [
         f"publish_target (config) = {getattr(cfg, 'publish_target', 'auto')}",
         f"destino efetivo         = {target}",
+        f"sync_remoto             = {str(bool(getattr(cfg, 'sync_remoto', True))).lower()}",
         f"enable_sheets           = {str(bool(cfg.enable_sheets)).lower()}",
         f"enable_github_publish   = {str(bool(cfg.enable_github_publish)).lower()}",
         f"modo_local              = {str(bool(cfg.modo_local)).lower()}",

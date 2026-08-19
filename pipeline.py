@@ -65,10 +65,27 @@ def _sync_after_report(
     on_status: StatusCallback,
     sync_fn: Callable[[], dict[str, Any]],
 ) -> dict[str, Any]:
-    """Sheets ou JSON local conforme modo_local."""
+    """
+    Sheets ou JSON local conforme modo_local.
+    Em modo_local + sync_remoto + enable_sheets: grava local E espelha a planilha.
+    sync_remoto=OFF → só local (site/planilha não sobem).
+    """
+    from config import sheets_enabled
+
     if _should_use_local_store(cfg):
-        on_status(f"[{label}] Modo local: salvando JSON (sem planilha)…")
-        return _persist_local_instead_of_sheets(label, cfg=cfg, on_status=on_status, extra={"report": label})
+        on_status(f"[{label}] Modo local: salvando JSON…")
+        local = _persist_local_instead_of_sheets(
+            label, cfg=cfg, on_status=on_status, extra={"report": label}
+        )
+        if sheets_enabled(cfg):
+            on_status(f"[{label}] Espelhando planilha (sync remoto ON)…")
+            try:
+                sheets = sync_fn()
+                local["sheets"] = sheets
+            except Exception as err:  # noqa: BLE001
+                on_status(f"[{label}] Sheets aviso: {err}")
+                local["sheets"] = {"ok": False, "error": str(err)}
+        return local
     return sync_fn()
 
 
@@ -1531,8 +1548,21 @@ def run_pipeline_78(
         html=str(capture.get("html") or ""),
     )
     if _should_use_local_store(cfg):
-        status("078 capturado — modo local (JSON, sem Sheets)…")
-        sheets78 = _persist_local_instead_of_sheets("78", cfg=cfg, on_status=status)
+        status("078 capturado — modo local (JSON)…")
+        local78 = _persist_local_instead_of_sheets("78", cfg=cfg, on_status=status)
+        sheets78 = local78
+        from config import sheets_enabled
+
+        if sheets_enabled(cfg):
+            status("078 — espelhando planilha (sync remoto ON)…")
+            try:
+                sheets78 = sync_sheets_78(
+                    cfg, on_status=status, include_78=True, include_177=False
+                )
+                sheets78["local"] = local78
+            except Exception as err:  # noqa: BLE001
+                status(f"078 Sheets aviso: {err}")
+                sheets78 = {"ok": False, "error": str(err), "local": local78}
     else:
         status("078 capturado — enviando Sheets (pátio) agora…")
         sheets78 = sync_sheets_78(cfg, on_status=status, include_78=True, include_177=False)
@@ -1546,7 +1576,20 @@ def run_pipeline_78(
         conf177["download"] = dl177
         if _should_use_local_store(cfg):
             status("177 analisado — modo local (JSON)…")
-            sheets177 = _persist_local_instead_of_sheets("177", cfg=cfg, on_status=status)
+            local177 = _persist_local_instead_of_sheets("177", cfg=cfg, on_status=status)
+            sheets177 = local177
+            from config import sheets_enabled
+
+            if sheets_enabled(cfg):
+                status("177 — espelhando planilha (sync remoto ON)…")
+                try:
+                    sheets177 = sync_sheets_78(
+                        cfg, on_status=status, include_78=False, include_177=True
+                    )
+                    sheets177["local"] = local177
+                except Exception as err:  # noqa: BLE001
+                    status(f"177 Sheets aviso: {err}")
+                    sheets177 = {"ok": False, "error": str(err), "local": local177}
         else:
             status("177 analisado — enviando Sheets (conferentes) agora…")
             sheets177 = sync_sheets_78(cfg, on_status=status, include_78=False, include_177=True)
