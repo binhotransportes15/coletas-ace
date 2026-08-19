@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-19T11:54:03",
+  "updated_at": "2026-08-19T11:57:25",
   "sectors": {
     "distribuicao": {
       "file": "distribuicao.json",
@@ -7,7 +7,7 @@
     },
     "armazem": {
       "file": "armazem.json",
-      "updated_at": "2026-08-19T11:54:03"
+      "updated_at": "2026-08-19T11:57:25"
     },
     "pendencia": {
       "file": "pendencia.json",

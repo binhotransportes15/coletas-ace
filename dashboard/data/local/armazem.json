@@ -1,8 +1,8 @@
 {
   "setor": "armazem",
-  "updated_at": "2026-08-19T11:54:03",
+  "updated_at": "2026-08-19T11:57:25",
   "resumo_78": {
-    "atualizado": "19/08/2026 11:53:56",
+    "atualizado": "19/08/2026 11:57:13",
     "total_linhas": "20",
     "total_veiculos": "10",
     "peso_total": "152.866",
@@ -13,16 +13,16 @@
     "chegou": "1"
   },
   "resumo_177": {
-    "atualizado": "19/08/2026 11:54:03",
+    "atualizado": "19/08/2026 11:57:25",
     "mes": "08/2026",
-    "total_conferentes": "7",
-    "peso_total": "76182",
-    "peso_total_fmt": "76.182",
-    "vol_total": "4533",
-    "vol_total_fmt": "4.533",
-    "topo": "Gerson Lula",
-    "topo_peso": "31.015",
-    "topo_vol": "159"
+    "total_conferentes": "13",
+    "peso_total": "1584384",
+    "peso_total_fmt": "1.584.384",
+    "vol_total": "76169",
+    "vol_total_fmt": "76.169",
+    "topo": "m.silva",
+    "topo_peso": "247.572",
+    "topo_vol": "12.574"
   },
   "veiculos_amostra": [
     {

@@ -1532,16 +1532,17 @@ def run_pipeline_78(
     from parser_ssw177 import analyze_report_177
     from publish_dashboard import publish_armazem_local
     from sheets_sync_78 import sync_sheets_78
-    from ssw_177 import download_report_177
-    from ssw_78 import capture_ssw78
+    from ssw_78 import capture_armazem_78_177
 
-    status(f"ACE ARMAZÉM · 78 | {datetime.now():%d/%m %H:%M:%S}")
+    status(f"ACE ARMAZÉM · 78+177 (login único) | {datetime.now():%d/%m %H:%M:%S}")
     use_headless = cfg.headless if headless is None else headless
-    capture = capture_ssw78(
+    bundled = capture_armazem_78_177(
         credentials=creds,
         headless=use_headless,
         on_status=status,
     )
+    capture = bundled.get("78") or {}
+    dl177_pre = bundled.get("177") or {}
     analysis = analyze_78(
         capture.get("table_rows") or None,
         body_text=str(capture.get("body_text") or ""),
@@ -1570,10 +1571,11 @@ def run_pipeline_78(
     conf177: dict[str, Any] = {"ok": False}
     sheets177: dict[str, Any] = {"ok": False, "skipped": True}
     try:
-        status("ACE ARMAZÉM · 177 conferentes (mensal)...")
-        dl177 = download_report_177(headless=use_headless, on_status=status)
-        conf177 = analyze_report_177(dl177["path"], on_status=status)
-        conf177["download"] = dl177
+        if not dl177_pre.get("ok") or not dl177_pre.get("path"):
+            raise RuntimeError(dl177_pre.get("error") or "177 não baixado na sessão do 78")
+        status("ACE ARMAZÉM · analisando 177 (já baixado na mesma sessão)...")
+        conf177 = analyze_report_177(dl177_pre["path"], on_status=status)
+        conf177["download"] = dl177_pre
         if _should_use_local_store(cfg):
             status("177 analisado — modo local (JSON)…")
             local177 = _persist_local_instead_of_sheets("177", cfg=cfg, on_status=status)
@@ -1595,7 +1597,7 @@ def run_pipeline_78(
             sheets177 = sync_sheets_78(cfg, on_status=status, include_78=False, include_177=True)
     except Exception as err:  # noqa: BLE001
         status(f"177 falhou (pátio 078 segue): {err}")
-        conf177 = {"ok": False, "error": str(err)}
+        conf177 = {"ok": False, "error": str(err), "download": dl177_pre}
 
     pub = publish_armazem_local(on_status=status)
     sheets = {
