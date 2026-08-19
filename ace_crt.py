@@ -52,6 +52,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMenu,
     QMessageBox,
     QProgressBar,
     QPushButton,
@@ -1213,17 +1214,19 @@ class QuickCmdButton(QPushButton):
 
 
 class AceBrandHeader(QFrame):
-    """Só o cavalo — grande, centrado, sem texto ao lado."""
+    """Cavalo fixo — tamanho travado; posição absoluta no canto da janela."""
 
-    _LOGO_PX = 132
+    # Quase encosta no título (direita) e em PRINCIPAL (embaixo)
+    _LOGO_PX = 204
+    _BOX = 216
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("brandHeader")
-        self.setMinimumHeight(148)
-        self.setMaximumHeight(160)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setFixedSize(self._BOX, self._BOX)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         self.setAutoFillBackground(False)
         self._pm = QPixmap()
         self._theme_id = DEFAULT_CRT_THEME
@@ -1231,21 +1234,20 @@ class AceBrandHeader(QFrame):
         self._c1 = QColor("#a855f7")
         self._c2 = QColor("#38bdf8")
         lay = QHBoxLayout(self)
-        lay.setContentsMargins(4, 8, 4, 4)
+        lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
         self._logo = QLabel()
         self._logo.setObjectName("brandLogo")
-        self._logo.setFixedSize(self._LOGO_PX + 12, self._LOGO_PX + 12)
+        self._logo.setFixedSize(self._LOGO_PX, self._LOGO_PX)
         self._logo.setAlignment(Qt.AlignCenter)
         self._logo.setAttribute(Qt.WA_TranslucentBackground, True)
+        self._logo.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         self._logo.setStyleSheet("background: transparent; border: none;")
         self._title = QLabel("ACE • GESTÃO")
         self._title.hide()
         self._sub = QLabel("PAINEL OPERACIONAL")
         self._sub.hide()
-        lay.addStretch(1)
         lay.addWidget(self._logo, 0, Qt.AlignCenter)
-        lay.addStretch(1)
 
     def apply_theme(self, theme_id: str, meta: dict | None = None) -> None:
         tid = normalize_crt_theme(theme_id)
@@ -1274,12 +1276,12 @@ class AceBrandHeader(QFrame):
         p.setRenderHint(QPainter.Antialiasing, True)
         lx = self.width() / 2.0
         ly = self.height() / 2.0
-        radius = self._LOGO_PX * 0.68
+        radius = self._LOGO_PX * 0.62
         glow = QRadialGradient(lx, ly, radius)
         g0 = QColor(self._c0)
-        g0.setAlpha(120)
+        g0.setAlpha(110)
         g1 = QColor(self._c1)
-        g1.setAlpha(50)
+        g1.setAlpha(42)
         g2 = QColor(self._c1)
         g2.setAlpha(0)
         glow.setColorAt(0.0, g0)
@@ -1288,17 +1290,17 @@ class AceBrandHeader(QFrame):
         p.setPen(Qt.NoPen)
         p.setBrush(QBrush(glow))
         p.drawEllipse(int(lx - radius), int(ly - radius), int(radius * 2), int(radius * 2))
-        shadow = QRadialGradient(lx, ly + 8, radius * 0.9)
-        s0 = QColor(0, 0, 0, 100)
+        shadow = QRadialGradient(lx, ly + 6, radius * 0.85)
+        s0 = QColor(0, 0, 0, 80)
         s1 = QColor(0, 0, 0, 0)
         shadow.setColorAt(0.4, s0)
         shadow.setColorAt(1.0, s1)
         p.setBrush(QBrush(shadow))
         p.drawEllipse(
-            int(lx - radius * 0.9),
-            int(ly - radius * 0.5),
-            int(radius * 1.8),
-            int(radius * 1.8),
+            int(lx - radius * 0.85),
+            int(ly - radius * 0.45),
+            int(radius * 1.7),
+            int(radius * 1.7),
         )
         p.end()
         super().paintEvent(event)
@@ -1368,33 +1370,31 @@ class SectorMeterRow(QWidget):
     def __init__(self, sector_id: str, title: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.sector_id = sector_id
-        self.setFixedHeight(44)
+        self.setFixedHeight(52)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         root = QVBoxLayout(self)
-        root.setContentsMargins(0, 2, 0, 2)
-        root.setSpacing(2)
+        root.setContentsMargins(0, 3, 0, 3)
+        root.setSpacing(3)
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
-        top.setSpacing(8)
-        icon_txt = _NAV_ICONS.get(sector_id, "•")
-        self._icon = QLabel(icon_txt)
-        self._icon.setObjectName("sectorIcon")
-        self._icon.setFixedWidth(18)
-        self._icon.setAlignment(Qt.AlignCenter)
+        top.setSpacing(10)
+        self._glyph = NavGlyphIcon(sector_id if sector_id in _NAV_ICON_KEYS else "home", size=24)
+        self._glyph.set_color("#cbd5e1")
+        self._icon = self._glyph  # compat
         self._title = QLabel(title)
         self._title.setObjectName("sysMeterTitle")
-        self._title.setFixedWidth(96)
+        self._title.setFixedWidth(100)
         self._bar = QProgressBar()
         self._bar.setObjectName("sectorMeter")
         self._bar.setRange(0, 1000)
         self._bar.setValue(0)
         self._bar.setTextVisible(False)
-        self._bar.setFixedHeight(10)
+        self._bar.setFixedHeight(14)
         self._val = QLabel("—")
         self._val.setObjectName("sysMeterVal")
-        self._val.setFixedWidth(40)
+        self._val.setFixedWidth(42)
         self._val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        top.addWidget(self._icon)
+        top.addWidget(self._glyph, 0, Qt.AlignVCenter)
         top.addWidget(self._title)
         top.addWidget(self._bar, 1)
         top.addWidget(self._val)
@@ -1407,23 +1407,22 @@ class SectorMeterRow(QWidget):
         self._detail.setTextInteractionFlags(Qt.NoTextInteraction)
         root.addWidget(self._detail)
         self._accent = self._STATE_COLOR["off"]
-        self._track = "#0e1016"
-        self._track_border = "#2a2d38"
+        self._track = "#151821"
+        self._track_border = "#3a3f4d"
         self._apply_chunk(self._accent)
 
     @property
     def bar_widget(self) -> QProgressBar:
         return self._bar
 
-    def apply_chrome(self, *, height: int = 10, track: str = "#0e1016", border: str = "#2a2d38") -> None:
-        self._bar.setFixedHeight(max(8, int(height)))
+    def apply_chrome(self, *, height: int = 14, track: str = "#151821", border: str = "#3a3f4d") -> None:
+        self._bar.setFixedHeight(max(12, int(height)))
         self._track = track
         self._track_border = border
         self._apply_chunk(self._accent)
 
     def _apply_chunk(self, accent: str) -> None:
         self._accent = accent
-        # Gradiente arco-íris quando há progresso; cinza quando off
         chunk = _RAINBOW_CHUNK if accent not in {self._STATE_COLOR["off"], self._STATE_COLOR["err"]} else accent
         if accent == self._STATE_COLOR["err"]:
             chunk = accent
@@ -1432,21 +1431,26 @@ class SectorMeterRow(QWidget):
             QProgressBar#sectorMeter {{
                 background: {self._track};
                 border: 1px solid {self._track_border};
-                border-radius: 5px;
+                border-radius: 7px;
                 text-align: center;
                 color: transparent;
                 font-size: 1px;
+                min-height: 12px;
             }}
             QProgressBar#sectorMeter::chunk {{
                 background: {chunk};
-                border-radius: 4px;
+                border-radius: 6px;
+                margin: 1px;
             }}
             """
         )
         try:
-            self._icon.setStyleSheet(
-                f"color: {accent}; font-size: 12px; background: transparent;"
-            )
+            if hasattr(self, "_glyph") and isinstance(self._glyph, NavGlyphIcon):
+                self._glyph.set_color(accent if accent != self._STATE_COLOR["off"] else "#cbd5e1")
+            elif hasattr(self, "_icon"):
+                self._icon.setStyleSheet(
+                    f"color: {accent}; font-size: 14px; background: transparent;"
+                )
         except Exception:
             pass
 
@@ -1577,7 +1581,7 @@ class NavGlyphIcon(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
         pen = QPen(self._color)
-        pen.setWidthF(1.7)
+        pen.setWidthF(2.1 if self.width() >= 20 else 1.7)
         pen.setCapStyle(Qt.RoundCap)
         pen.setJoinStyle(Qt.RoundJoin)
         p.setPen(pen)
@@ -1720,17 +1724,21 @@ class ProActionButton(QPushButton):
             "danger": "proActionDanger",
             "accent": "proActionAccent",
             "muted": "proActionMuted",
+            "dashboard": "proActionDashboard",
         }
         self.setObjectName(names.get(variant, "proAction"))
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(48)
+        self.setMinimumHeight(52)
         root = QHBoxLayout(self)
-        root.setContentsMargins(14, 10, 14, 10)
-        root.setSpacing(12)
+        root.setContentsMargins(16, 12, 16, 12)
+        root.setSpacing(14)
         ico = QLabel(icon)
         ico.setObjectName("proActionIcon")
-        ico.setStyleSheet(f"color: {accent}; font-size: 16px; background: transparent; font-weight: 700;")
-        ico.setFixedWidth(22)
+        ico.setAlignment(Qt.AlignCenter)
+        ico.setStyleSheet(
+            f"color: {accent}; font-size: 18px; background: transparent; font-weight: 800;"
+        )
+        ico.setFixedWidth(28)
         lab = QLabel(title)
         lab.setObjectName("proActionTitle")
         root.addWidget(ico)
@@ -1991,7 +1999,7 @@ QLabel#navGroup {{
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 1.5px;
-    padding: 12px 8px 4px;
+    padding: 2px 8px 4px;
     background: transparent;
 }}
 QPushButton#navBtn {{
@@ -2066,7 +2074,7 @@ QFrame#kpiCard {{
 QPushButton#proAction, QPushButton#proActionMuted {{
     background: {card_bg};
     border: 1px solid {t['line']};
-    border-radius: 12px;
+    border-radius: 14px;
     text-align: left;
     padding: 0;
 }}
@@ -2077,8 +2085,8 @@ QPushButton#proAction:hover, QPushButton#proActionMuted:hover {{
 QPushButton#proActionPrimary {{
     background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
         stop:0 #db2777, stop:0.45 #ec4899, stop:1 #6366f1);
-    border: none;
-    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
     text-align: left;
     padding: 0;
 }}
@@ -2087,19 +2095,20 @@ QPushButton#proActionPrimary:hover {{
         stop:0 #e11d48, stop:0.45 #f472b6, stop:1 #818cf8);
 }}
 QPushButton#proActionPrimary QLabel#proActionTitle,
-QPushButton#proActionAccent QLabel#proActionTitle {{
+QPushButton#proActionAccent QLabel#proActionTitle,
+QPushButton#proActionDashboard QLabel#proActionTitle {{
     color: #ffffff;
     font-weight: 700;
 }}
 QPushButton#proActionDanger {{
-    background: #1c1e26;
-    border: 1px solid rgba(239, 68, 68, 0.45);
-    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.55);
+    border-radius: 14px;
     text-align: left;
     padding: 0;
 }}
 QPushButton#proActionDanger:hover {{
-    background: rgba(239, 68, 68, 0.12);
+    background: rgba(239, 68, 68, 0.18);
     border-color: #ef4444;
 }}
 QPushButton#proActionDanger QLabel#proActionTitle {{
@@ -2109,8 +2118,8 @@ QPushButton#proActionDanger QLabel#proActionTitle {{
 QPushButton#proActionAccent {{
     background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
         stop:0 #be185d, stop:0.5 #db2777, stop:1 #7c3aed);
-    border: none;
-    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 14px;
     text-align: left;
     padding: 0;
 }}
@@ -2118,8 +2127,24 @@ QPushButton#proActionAccent:hover {{
     background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
         stop:0 #db2777, stop:0.5 #ec4899, stop:1 #8b5cf6);
 }}
+QPushButton#proActionDashboard {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #0e7490, stop:0.5 #0891b2, stop:1 #2563eb);
+    border: 1px solid rgba(165, 243, 252, 0.25);
+    border-radius: 14px;
+    text-align: left;
+    padding: 0;
+}}
+QPushButton#proActionDashboard:hover {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #155e75, stop:0.5 #06b6d4, stop:1 #3b82f6);
+}}
 QPushButton#proActionMuted {{
-    border-color: rgba(56, 189, 248, 0.35);
+    border-color: rgba(56, 189, 248, 0.45);
+    background: rgba(56, 189, 248, 0.06);
+}}
+QPushButton#proActionMuted:hover {{
+    background: rgba(56, 189, 248, 0.14);
 }}
 QPushButton#proActionMuted QLabel#proActionTitle {{
     color: #bae6fd;
@@ -2127,6 +2152,22 @@ QPushButton#proActionMuted QLabel#proActionTitle {{
 QLabel#proActionTitle {{
     color: {t['text']};
     font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    background: transparent;
+}}
+QLabel#proActionIcon {{
+    background: transparent;
+}}
+QLabel#sysBlurb {{
+    color: {t['dim']};
+    font-size: 12px;
+    line-height: 1.35;
+    background: transparent;
+}}
+QLabel#footVersion {{
+    color: {t['muted']};
+    font-size: 11px;
     font-weight: 600;
     background: transparent;
 }}
@@ -2143,9 +2184,44 @@ QLabel#infoVal {{
 }}
 QLabel#onlineDot {{
     color: #22c55e;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
     background: transparent;
+}}
+QProgressBar#footMeter {{
+    background: #151821;
+    border: 1px solid #3a3f4d;
+    border-radius: 6px;
+    text-align: center;
+    color: transparent;
+    min-height: 10px;
+}}
+QProgressBar#footMeter::chunk {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 {t['chunk0']}, stop:0.55 {t['chunk1']}, stop:1 {t['chunk2']});
+    border-radius: 5px;
+    margin: 1px;
+}}
+QMenu#dashMenu {{
+    background: {card_bg};
+    border: 1px solid {t['line']};
+    border-radius: 10px;
+    padding: 6px;
+    color: {t['text']};
+}}
+QMenu#dashMenu::item {{
+    padding: 8px 18px;
+    border-radius: 6px;
+}}
+QMenu#dashMenu::item:selected {{
+    background: rgba(56, 189, 248, 0.18);
+    color: #e0f2fe;
+}}
+QMenu#dashMenu::separator {{
+    height: 1px;
+    background: {t['line']};
+    margin: 4px 8px;
 }}
 QLabel#title {{
     color: {t['text']};
@@ -3126,6 +3202,7 @@ class AceCrtConsole(QWidget):
 
         sidebar = self._build_sidebar()
         sidebar.setFixedWidth(210)
+        self._sidebar = sidebar
         shell.addWidget(sidebar)
 
         main = self._build_main()
@@ -3142,6 +3219,11 @@ class AceCrtConsole(QWidget):
         foot_row.addWidget(self.foot, 1)
         foot_row.addWidget(self.foot_right, 1)
         root.addLayout(foot_row)
+
+        # Cavalo flutuante: tamanho e canto superior esquerdo travados
+        self._brand_header = AceBrandHeader(self)
+        self._brand_logo = self._brand_header._logo
+        self._place_brand_logo()
 
         # Abas ficam na janela Configurações (sidebar)
         tabs = self._build_right()
@@ -3249,14 +3331,15 @@ class AceCrtConsole(QWidget):
         box = QFrame()
         box.setObjectName("sidebar")
         lay = QVBoxLayout(box)
-        lay.setContentsMargins(10, 10, 10, 12)
+        lay.setContentsMargins(6, 4, 6, 12)
         lay.setSpacing(2)
 
-        brand = AceBrandHeader()
-        self._brand_header = brand
-        self._brand_logo = brand._logo  # compat
-        lay.addWidget(brand)
-        lay.addSpacing(6)
+        brand_slot = QWidget()
+        brand_slot.setObjectName("brandSlot")
+        brand_slot.setFixedHeight(AceBrandHeader._BOX - 2)
+        brand_slot.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        lay.addWidget(brand_slot)
+        lay.addSpacing(0)
 
         self._nav_group = QButtonGroup(self)
         self._nav_group.setExclusive(True)
@@ -3298,25 +3381,22 @@ class AceCrtConsole(QWidget):
         foot = QFrame()
         foot.setObjectName("sidebarFoot")
         fl = QVBoxLayout(foot)
-        fl.setContentsMargins(10, 10, 10, 10)
-        fl.setSpacing(4)
-        self.status = QLabel("●  Sistema Online")
+        fl.setContentsMargins(12, 12, 12, 12)
+        fl.setSpacing(8)
+        self.status = QLabel("●  ONLINE")
         self.status.setObjectName("onlineDot")
-        self.detail = QLabel("Última atualização: —")
-        self.detail.setObjectName("hint")
-        self.detail.setWordWrap(False)
-        self.detail.setFixedHeight(16)
-        self.detail.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+        self.detail = QLabel("")  # compat (_refresh_status)
+        self.detail.hide()
         self.bar = QProgressBar()
+        self.bar.setObjectName("footMeter")
         self.bar.setRange(0, 1000)
         self.bar.setValue(0)
         self.bar.setFormat("%p%")
-        self.bar.setFixedHeight(8)
+        self.bar.setFixedHeight(12)
         self.bar.setTextVisible(False)
         ver = QLabel(f"Versão {CRT_APP_VERSION}")
-        ver.setObjectName("hint")
+        ver.setObjectName("footVersion")
         fl.addWidget(self.status)
-        fl.addWidget(self.detail)
         fl.addWidget(self.bar)
         fl.addWidget(ver)
         lay.addWidget(foot)
@@ -3510,11 +3590,14 @@ class AceCrtConsole(QWidget):
             ("Iniciar Automação", "#ffffff", "▶", "primary", lambda: self._start_automatica_ui()),
             ("Parar Automação", "#f87171", "■", "danger", lambda: self._stop_all()),
             ("Forçar Atualização", "#ffffff", "↻", "accent", lambda: self.run_command("sync")),
+            ("Dashboard", "#a5f3fc", "▦", "dashboard", lambda: self._show_dashboard_menu()),
             ("Comandos SSW", "#7dd3fc", ">_", "muted", lambda: self._toggle_rapido_window()),
         )
         for title, color, icon, variant, slot in actions:
             btn = ProActionButton(title, color, icon=icon, variant=variant)
             btn.clicked.connect(slot)
+            if variant == "dashboard":
+                self._btn_dashboard = btn
             cl.addWidget(btn)
         cl.addStretch(1)
         lay.addWidget(cmds, 1)
@@ -3522,31 +3605,44 @@ class AceCrtConsole(QWidget):
         info = self._card()
         il = QVBoxLayout(info)
         il.setContentsMargins(14, 12, 14, 12)
-        il.setSpacing(6)
+        il.setSpacing(8)
         il.addWidget(self._section("Sistema"))
         self._info_rows: dict[str, QLabel] = {}
-        for key, label in (
-            ("sessao", "Sessão"),
-            ("units", "Unidades (menu / coleta)"),
-            ("filiais", "Filiais"),
-            ("planilha", "Planilha"),
-            ("auto", "Automático"),
-            ("setores", "Setores no loop"),
-        ):
-            row = QHBoxLayout()
-            k = QLabel(label)
-            k.setObjectName("infoKey")
-            v = QLabel("—")
-            v.setObjectName("infoVal")
-            v.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            v.setWordWrap(False)
-            v.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
-            self._info_rows[key] = v
-            row.addWidget(k)
-            row.addWidget(v, 1)
-            il.addLayout(row)
+        blurb = QLabel(
+            "O ACE automatiza a coleta no SSW, atualiza TVs/planilhas e acompanha "
+            "em tempo real distribuição, armazém, pendência, contratação, emissão e mapa — "
+            "com loop automático, modo local e comandos rápidos."
+        )
+        blurb.setObjectName("sysBlurb")
+        blurb.setWordWrap(True)
+        blurb.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        il.addWidget(blurb, 1)
         lay.addWidget(info, 1)
         return wrap
+
+    def _show_dashboard_menu(self) -> None:
+        """Menu seletor de dashboards (modo local)."""
+        if self._is_ui_locked():
+            self._challenge_lock()
+            return
+        try:
+            from ace_local_view import LOCAL_SCREEN_ORDER, screen_label
+        except Exception as err:  # noqa: BLE001
+            QMessageBox.warning(self, "Dashboard", str(err))
+            return
+        menu = QMenu(self)
+        menu.setObjectName("dashMenu")
+        act_all = menu.addAction("Todas as telas")
+        act_all.triggered.connect(lambda: self._open_local_screens(None))
+        menu.addSeparator()
+        for sid in LOCAL_SCREEN_ORDER:
+            act = menu.addAction(screen_label(sid))
+            act.triggered.connect(lambda _checked=False, s=sid: self._open_local_screens([s]))
+        btn = getattr(self, "_btn_dashboard", None) or self.sender()
+        if isinstance(btn, QWidget):
+            menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
+        else:
+            menu.exec()
     def _start_automatica_ui(self) -> None:
         try:
             iv = ""
@@ -4678,6 +4774,10 @@ class AceCrtConsole(QWidget):
         try:
             from ace_local_view import open_local_screens, screen_label
 
+            try:
+                self._local_ensure_modo()
+            except Exception:
+                pass
             result = open_local_screens(
                 ids,
                 parent=None,  # janelas independentes (não filhas do CRT)
@@ -4688,11 +4788,14 @@ class AceCrtConsole(QWidget):
             labels = ", ".join(screen_label(s) for s in (result.get("screens") or []))
             mode = "janelas internas" if result.get("embed") else "navegador"
             msg = f"Local OK · {mode} · {labels}"
-            self._local_status.setText(msg)
+            if hasattr(self, "_local_status") and self._local_status is not None:
+                self._local_status.setText(msg)
             self._append_log("ok", msg)
-            self.mode.setText("LOCAL")
+            if hasattr(self, "mode") and self.mode is not None:
+                self.mode.setText("LOCAL")
         except Exception as err:  # noqa: BLE001
-            self._local_status.setText(f"Falha local: {err}")
+            if hasattr(self, "_local_status") and self._local_status is not None:
+                self._local_status.setText(f"Falha local: {err}")
             self._append_log("erro", str(err))
             QMessageBox.warning(self, "Modo local", str(err))
 
@@ -5074,11 +5177,28 @@ class AceCrtConsole(QWidget):
         """Compat — layout novo não usa splitter principal."""
         return
 
+    def _place_brand_logo(self) -> None:
+        """Mantém o cavalo no canto superior esquerdo, tamanho fixo."""
+        header = getattr(self, "_brand_header", None)
+        if header is None:
+            return
+        try:
+            # Quase toca o título à direita (main) e PRINCIPAL embaixo
+            x = 6
+            y = 4
+            header.setFixedSize(AceBrandHeader._BOX, AceBrandHeader._BOX)
+            header.move(x, y)
+            header.raise_()
+            header.show()
+        except Exception:
+            pass
+
     def _relayout_chrome(self) -> None:
         """Reencaixa overlays após resize / sair de tela cheia."""
         r = self.rect()
         if r.width() < 50 or r.height() < 50:
             return
+        self._place_brand_logo()
         if hasattr(self, "_scan") and self._scan is not None:
             self._scan.setGeometry(r)
             self._scan.hide()
@@ -5091,6 +5211,17 @@ class AceCrtConsole(QWidget):
             lock.setGeometry(r)
             if lock.is_armed():
                 lock.raise_()
+        # Cavalo fica acima do chrome, abaixo do cadeado se armado
+        header = getattr(self, "_brand_header", None)
+        if header is not None:
+            try:
+                if lock is not None and lock.is_armed():
+                    header.lower()
+                    lock.raise_()
+                else:
+                    header.raise_()
+            except Exception:
+                pass
 
     def _wire_circuit_bus(self) -> None:
         """Circuitos desativados na identidade profissional."""
@@ -5282,7 +5413,12 @@ class AceCrtConsole(QWidget):
             pm = QPixmap(str(path))
             if pm.isNull():
                 return
-            scaled = pm.scaled(132, 132, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            scaled = pm.scaled(
+                AceBrandHeader._LOGO_PX,
+                AceBrandHeader._LOGO_PX,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
+            )
             lab.setPixmap(scaled)
             lab.setToolTip(f"Tema: {meta.get('label', tid)}")
         except Exception:
@@ -5307,9 +5443,9 @@ class AceCrtConsole(QWidget):
             bus = getattr(self, "_circuit_bus", None)
             if bus is not None:
                 bus.hide()
-        meter_h = int(meta.get("meter_h") or (18 if frost else 12))
-        track = "rgba(15,23,42,220)" if frost else "#0f172a"
-        border = "rgba(148,163,184,40)" if frost else "#1e293b"
+        meter_h = int(meta.get("meter_h") or (18 if frost else 14))
+        track = "rgba(15,23,42,220)" if frost else "#151821"
+        border = "rgba(148,163,184,55)" if frost else "#3a3f4d"
         for meter in (
             getattr(self, "meter_cpu", None),
             getattr(self, "meter_mem", None),
@@ -5319,12 +5455,12 @@ class AceCrtConsole(QWidget):
                 meter.apply_chrome(height=meter_h, track=track, border=border)
         for meter in (getattr(self, "_sector_meters", {}) or {}).values():
             try:
-                meter.apply_chrome(height=max(10, meter_h - 2), track=track, border=border)
+                meter.apply_chrome(height=max(12, meter_h), track=track, border=border)
             except Exception:
                 pass
         if hasattr(self, "bar"):
             self.bar.setTextVisible(False)
-            self.bar.setFixedHeight(8)
+            self.bar.setFixedHeight(12)
         self._harden_frost_widgets(frost)
         fp = frost_params(fa, fb) if frost else None
         tint = int(fp["tint"]) if fp else int(meta.get("acrylic_tint") or 0x401A1A1A)
@@ -5734,27 +5870,6 @@ class AceCrtConsole(QWidget):
             self.meta.setToolTip(
                 "Resumo da sessão e do que cada setor do automático puxa no SSW."
             )
-        info = getattr(self, "_info_rows", None) or {}
-        if info:
-            info.get("sessao") and info["sessao"].setText("Ativa" if user and user != "—" else "—")
-            if info.get("sessao") and user and user != "—":
-                info["sessao"].setStyleSheet("color: #22c55e; font-weight: 700; background: transparent;")
-            info.get("units") and info["units"].setText(units)
-            info.get("filiais") and info["filiais"].setText("Conectadas")
-            info.get("planilha") and info["planilha"].setText(
-                f"{'ON' if p.get('enable_sheets') else 'TV só local'} ({dest_txt})"
-            )
-            info.get("auto") and info["auto"].setText(f"Padrão {fallback}")
-            ons = []
-            for g in _SECTOR_GUIDE:
-                default_on = g["id"] != "455"
-                if bool(p.get(g["flag"], default_on)):
-                    ons.append(g["title"])
-            info.get("setores") and info["setores"].setText(
-                (" · ".join(ons) + " [ON]") if ons else "nenhum"
-            )
-            if info.get("setores") and ons:
-                info["setores"].setStyleSheet("color: #22c55e; font-weight: 700; background: transparent;")
 
     def _submit_prompt(self) -> None:
         raw = self.prompt.text().strip()
@@ -6366,28 +6481,21 @@ class AceCrtConsole(QWidget):
         detail = str(st.get("detail") or "")
         pct = float(st.get("pct") or 0.0)
 
-        self.status.setText("●  Sistema Online" if online and "OFF" not in label and "ERR" not in label else f"●  {label[:18]}")
+        is_on = online and "OFF" not in label and "ERR" not in label
+        self.status.setText("●  ONLINE" if is_on else "●  OFFLINE")
         theme = CRT_THEMES.get(self._theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
         accent = str(theme.get("ok") or "#22c55e")
-        color = accent if online and "OFF" not in label and "ERR" not in label else OFF
+        color = accent if is_on else OFF
         if "ERR" in label or mode == "ERR":
             color = ERR
+            self.status.setText("●  OFFLINE")
         self.status.setStyleSheet(
-            f"color: {color}; font-size: 12px; font-weight: 700; background: transparent;"
+            f"color: {color}; font-size: 13px; font-weight: 800; letter-spacing: 0.6px; background: transparent;"
         )
-        stamp = ""
-        try:
-            if STATUS_PATH.is_file():
-                stamp = datetime.fromtimestamp(STATUS_PATH.stat().st_mtime).strftime("%H:%M:%S")
-        except Exception:
-            stamp = ""
-        self.detail.setText(
-            _ui_clip(
-                f"Última atualização: {stamp or '—'}"
-                + (f" · {detail}" if detail else ""),
-                56,
-            )
-        )
+        if hasattr(self, "detail") and self.detail is not None:
+            tip = detail.strip() if detail else ""
+            self.detail.setText(tip)
+            self.status.setToolTip(tip or ("Sistema operacional" if is_on else "Sistema offline"))
         self.bar.setValue(int(round(pct * 10)))
         self.bar.setFormat(f"{pct:5.1f}%")
         self._refresh_sector_meters(st)
