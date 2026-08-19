@@ -624,7 +624,7 @@ def _download_frete_filial_paralelo(
                 files76.append(str(path76))
             except FilaSemDados as empty_err:
                 errors76[tag] = str(empty_err)
-                status(f"[{tag}] 076 sem base — próxima filial ({empty_err})")
+                status(f"[{tag}] 076 sem CTRCs — desconsidera ({empty_err})")
             except Exception as batch_err:  # noqa: BLE001
                 msg = str(batch_err)
                 # Timeout na 156: não queima 40 placas (piora a fila). Próxima filial.
@@ -658,7 +658,7 @@ def _download_frete_filial_paralelo(
                             files76.append(str(path76))
                         except FilaSemDados as empty_err:
                             errors76[key] = str(empty_err)
-                            status(f"[{tag}/76/{key}] sem base — pula")
+                            status(f"[{tag}/76/{key}] sem CTRCs — desconsidera")
                         except Exception as err:  # noqa: BLE001
                             errors76[key] = str(err)
                             status(f"[{tag}/76/{key}] FALHOU: {err}")
@@ -1550,6 +1550,8 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
             const seq = (cells[0] || '').replace(/\\D/g, '');
             if (!seq || seq.length < 4) continue;
             const opcao = cells[1] || '';
+            const dataHora = cells[2] || '';
+            const usuario = cells[3] || '';
             const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || cells[6] || '';
             const links = Array.from(tr.querySelectorAll('a[onclick], a[href], img[onclick]')).map(a => {
               const text = norm(a.textContent || a.alt || a.title || '');
@@ -1567,6 +1569,8 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
             jobs.push({
               seq,
               opcao,
+              data_hora: dataHora,
+              usuario,
               situacao: sit,
               concluido: /conclu/i.test(sit),
               is0332: /0332|073\\s*-|ctrb|consulta de ctrb/i.test(blobAll),
@@ -1651,6 +1655,11 @@ def _baixar_todos_da_fila(
     keys_order = [q["key"] for q in queued]
     deadline = time.time() + max(180, 60 * want)
     downloaded_seqs: set[str] = set()
+    login_user = re.sub(
+        r"\s+",
+        "",
+        str(getattr(getattr(client, "credentials", None), "user", "") or "").strip().lower(),
+    )
 
     while time.time() < deadline and len(paths) < want:
         try:
@@ -1664,6 +1673,12 @@ def _baixar_todos_da_fila(
             _safe_wait(fila, 1000)
             jobs = _ler_jobs_fila(fila)
 
+            def _is_login(j: dict[str, Any]) -> bool:
+                if not login_user:
+                    return True
+                got = re.sub(r"\s+", "", str(j.get("usuario") or "").strip().lower())
+                return (not got) or got == login_user
+
             ours = [
                 j
                 for j in jobs
@@ -1672,6 +1687,7 @@ def _baixar_todos_da_fila(
                 and str(j.get("seq") or "") not in downloaded_seqs
                 and j.get("is0332")
                 and str(j.get("seq") or "") not in known_before
+                and _is_login(j)
             ]
             if len(ours) < (want - len(paths)):
                 extras = [

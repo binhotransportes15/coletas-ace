@@ -1722,24 +1722,55 @@ def run_pipeline_455(
         on_status=emit,
         clean_downloads=clean_downloads,
     )
+    if dl.get("empty") or not (dl.get("files") or []):
+        emit("sem CTRCs/dados — desconsidera (não contabiliza)")
+        return {
+            "ok": True,
+            "empty": True,
+            "download": dl,
+            "analysis": {"ok": True, "empty": True, "rows": []},
+            "publish": {"ok": True, "skipped": True},
+            "sheets": {"ok": True, "skipped": True, "empty": True},
+        }
     analysis = analyze_reports_455(
         dl.get("files") or [],
         periodo=str(dl.get("periodo_fmt") or dl.get("period") or ""),
         on_status=emit,
     )
+    pub = publish_emissao_local(on_status=emit)
+    sheets: dict[str, Any] = {"ok": False, "skipped": True}
+    from config import sheets_enabled
+
     if _should_use_local_store(cfg):
-        emit("455 analisado — modo local (JSON/CSV, sem Sheets)…")
-        sheets: dict[str, Any] = {"ok": True, "local": True}
-    else:
+        emit("455 analisado — modo local (JSON/CSV)…")
+        sheets = {"ok": True, "local": True}
+        if sheets_enabled(cfg):
+            from sheets_sync_455 import sync_sheets_455
+
+            emit("455 — espelhando planilha (sync remoto ON)…")
+            try:
+                remote = sync_sheets_455(settings=cfg, on_status=emit)
+                sheets = {**remote, "local": True}
+            except Exception as err:  # noqa: BLE001
+                emit(f"455 Sheets aviso: {err}")
+                sheets = {"ok": False, "error": str(err), "local": True}
+    elif sheets_enabled(cfg):
         from sheets_sync_455 import sync_sheets_455
 
         emit("455 analisado — sync Sheets (Sites/TV)…")
         sheets = sync_sheets_455(settings=cfg, on_status=emit)
-    pub = publish_emissao_local(on_status=emit)
+    else:
+        emit("455: Sheets OFF (sync_remoto/enable_sheets) — só dashboard local.")
+
     resumo = analysis.get("resumo") or {}
     emit(
         f"OK · CTEs={resumo.get('ctes')} frete={resumo.get('frete_fmt')} "
         f"dia={resumo.get('dia')} noite={resumo.get('noite')}"
+        + (
+            f" · sheets={'OK' if sheets.get('ok') else '—'}"
+            if sheets_enabled(cfg)
+            else ""
+        )
     )
     return {
         "download": dl,

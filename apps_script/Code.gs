@@ -491,9 +491,18 @@ function sheetToObjects_(name) {
 function cellToText_(val, key) {
   if (val === null || val === undefined || val === '') return '';
   var k = String(key || '').toLowerCase();
+  // Horas455.hora = índice 0–23 (não é horário HH:mm)
+  if (k === 'hora') {
+    if (Object.prototype.toString.call(val) === '[object Date]' && !isNaN(val.getTime())) {
+      return String(val.getHours());
+    }
+    var nH = Number(val);
+    if (!isNaN(nH) && isFinite(nH)) return String(Math.floor(nH));
+    return String(val);
+  }
   if (Object.prototype.toString.call(val) === '[object Date]' && !isNaN(val.getTime())) {
     var year = val.getFullYear();
-    var isHoraCol = /(^hora$|_hora$|hora_)/.test(k);
+    var isHoraCol = /(^hora_|_hora$|hora_emissao|hora_autorizacao)/.test(k);
     var isDataCol = /(^data$|_data$|data_)/.test(k) || k === 'data_cadastro' || k === 'data_limite_inicial';
     var isChegadaCol = /(chegada|saida|prev_|inicio_descarga|final_descarga)/.test(k);
     // Serial de hora no Sheets (epoch 1899)

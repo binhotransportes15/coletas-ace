@@ -18,6 +18,15 @@ from typing import Any, Callable
 from config import DOWNLOAD_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
 from dates import periodo_hoje, to_ssw_ddmmyy
 from ssw_client import AceSswClient, cleanup_downloads
+from ssw_fila156 import (
+    FilaSemDados,
+    aguardar_baixar,
+    atualizar_fila as _atualizar_fila156,
+    find_baixar_meta,
+    ler_jobs as _ler_jobs156,
+    abrir_fila as _abrir_fila156,
+    safe_wait as _safe_wait156,
+)
 
 StatusCallback = Callable[[str], None]
 
@@ -33,6 +42,16 @@ SSW_455_MARKERS = (
     "excel",
     "emiss",
     "ver fila",
+)
+
+# Padrões da coluna Opção na fila 156 para o 455
+_455_OPTION_PATTERNS = (
+    r"455\s*-",
+    r"\b455\b",
+    r"0230",
+    r"ssw0230",
+    r"fretes?\s+exped",
+    r"expedidos",
 )
 
 
@@ -91,14 +110,7 @@ def _normalize_455_path(path: Path, preferred_stem: str = "") -> Path:
         return p
 
 
-_EMPTY_FILA_RE = re.compile(
-    r"n[aã]o\s+selecionou|sem\s+ctrc|nenhum\s+ctrc|sem\s+dados|n[aã]o\s+h[aá]\s+regist|"
-    r"nada\s+a\s+(gerar|emitir)|sem\s+movimento|nenhum\s+registro",
-    re.IGNORECASE,
-)
-
-
-class FilaSemDados455(RuntimeError):
+class FilaSemDados455(FilaSemDados):
     """Job 455 concluído sem arquivo."""
 
 
@@ -115,13 +127,7 @@ def _ensure_playwright_path() -> None:
 
 
 def _safe_wait(page, ms: int) -> None:
-    try:
-        if page is None or (hasattr(page, "is_closed") and page.is_closed()):
-            time.sleep(ms / 1000.0)
-            return
-        page.wait_for_timeout(ms)
-    except Exception:
-        time.sleep(ms / 1000.0)
+    _safe_wait156(page, ms)
 
 
 def _cap_period_31d(ini_ddmm: str, fim_ddmm: str) -> tuple[str, str]:
@@ -262,6 +268,19 @@ def download_reports_455(
             )
             path = _normalize_455_path(path, preferred_stem=Path(dest_name).stem)
             status(f"[455] OK {path.name} ({path.stat().st_size} bytes)")
+        except FilaSemDados as empty_err:
+            status(f"[455] sem dados — desconsidera ({empty_err})")
+            return {
+                "ok": True,
+                "files": [],
+                "paths": {},
+                "empty": True,
+                "error": str(empty_err),
+                "period": f"{ini}-{fim}",
+                "periodo_fmt": ini_ddmm if ini_ddmm == fim_ddmm else f"{ini_ddmm} – {fim_ddmm}",
+                "unidade": uni,
+                "download_dir": str(DOWNLOAD_DIR),
+            }
         finally:
             for pg in (popup, fila):
                 try:
@@ -407,440 +426,125 @@ def _gerar_download_455(client, context, page, popup, dest_name: str, status) ->
     status(f"[455] ► {clicked}")
     _safe_wait(popup, 800)
     enqueue_t0 = time.time()
+    login_user = str(getattr(getattr(client, "credentials", None), "user", "") or "").strip()
     return _baixar_via_fila_455(
-        client, context, page, popup, dest_name, status, enqueue_t0=enqueue_t0
+        client,
+        context,
+        page,
+        popup,
+        dest_name,
+        status,
+        enqueue_t0=enqueue_t0,
+        login_user=login_user,
     )
 
 
 def _abrir_fila_455(client, context, page, status, popup=None):
-    status("[455] abrindo fila 156…")
-    try:
-        try:
-            page.bring_to_front()
-        except Exception:
-            pass
-        with context.expect_page(timeout=10000) as pi:
-            page.evaluate(
-                """() => {
-                  if (typeof ajaxEnvia === 'function') {
-                    try { ajaxEnvia('', 1, 'ssw1440'); return '1440'; } catch (e) {}
-                  }
-                  return '';
-                }"""
-            )
-        fila = pi.value
-        try:
-            fila.on("dialog", lambda d: d.accept())
-        except Exception:
-            pass
-        status("[455] fila via ajax")
-        _safe_wait(fila, 500)
-        return fila
-    except Exception as err:
-        status(f"[455] ajax fila: {err}")
-
-    if popup is not None:
-        try:
-            if not popup.is_closed():
-                with context.expect_page(timeout=4000) as pi:
-                    ok = popup.evaluate(
-                        """() => {
-                          const a = document.getElementById('42');
-                          if (a) { a.click(); return '42'; }
-                          if (typeof ajaxEnvia === 'function') {
-                            try { ajaxEnvia('', 1, 'ssw1440'); return 'ajax'; } catch (e) {}
-                          }
-                          return '';
-                        }"""
-                    )
-                    if not ok:
-                        raise RuntimeError("sem Ver fila")
-                fila = pi.value
-                try:
-                    fila.on("dialog", lambda d: d.accept())
-                except Exception:
-                    pass
-                status("[455] fila via Ver fila")
-                return fila
-        except Exception as err:
-            status(f"[455] Ver fila: {err}")
-
-    fila = context.new_page()
-    try:
-        fila.on("dialog", lambda d: d.accept())
-    except Exception:
-        pass
-    fila.goto(SSW_FILA_URL, wait_until="domcontentloaded", timeout=30000)
-    status("[455] fila via goto")
-    return fila
+    return _abrir_fila156(client, context, page, status, popup=popup, tag="455")
 
 
 def _ler_jobs_455(fila) -> list[dict]:
-    """Lê fila 156 — hasDow só com link real ou célula Baixar/DOW (como 076)."""
-    return fila.evaluate(
-        """() => {
-          const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
-          const jobs = [];
-          for (const tr of Array.from(document.querySelectorAll('tr'))) {
-            const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
-            if (cells.length < 4) continue;
-            const seq = (cells[0] || '').replace(/\\D/g, '');
-            if (!seq || seq.length < 4) continue;
-            const opcao = cells[1] || '';
-            let sit = '';
-            for (const c of cells) {
-              if (/^(conclu[ií]d[oa]|processando|na fila|em fila|erro|abortad)/i.test(c)) {
-                sit = c; break;
-              }
-            }
-            if (!sit) {
-              sit = cells.find(c => /conclu|processando|na\\s*fila|erro|abort/i.test(c)) || '';
-            }
-            const links = Array.from(tr.querySelectorAll(
-              'a[onclick], a[href], img[onclick], input[onclick], button[onclick]'
-            )).map(a => {
-              const text = norm(a.textContent || a.alt || a.title || a.value || '');
-              const onclick = String(a.getAttribute('onclick') || '');
-              const href = String(a.getAttribute('href') || '');
-              return { text, onclick, href, blob: (onclick + ' ' + text + ' ' + href).toLowerCase() };
-            });
-            const dows = links.filter(x => {
-              if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(x.text)
-                  && !/\\b(dow|baixar)\\b/i.test(x.text)) return false;
-              if (/^(dow|baixar)$/i.test(x.text) || /\\bdow\\b/i.test(x.text)) return true;
-              return /\\bdow\\b|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob);
-            });
-            if (!dows.length) {
-              for (const td of Array.from(tr.querySelectorAll('td'))) {
-                const t = norm(td.innerText || '');
-                if (/^(dow|baixar)$/i.test(t) || (t.length <= 10 && /\\b(dow|baixar)\\b/i.test(t))) {
-                  dows.push({ text: t, onclick: '', href: '', blob: 'dow baixar' });
-                  break;
-                }
-              }
-            }
-            let mensagem = '';
-            for (let i = cells.length - 1; i >= 0; i--) {
-              const c = cells[i] || '';
-              if (!c) continue;
-              if (/^\\d{1,2}:\\d{2}(:\\d{2})?$/.test(c)) continue;
-              if (/^(conclu|process|fila|erro)/i.test(c) && c.length < 24) continue;
-              if (/^\\d{1,2}\\/\\d{1,2}/.test(c)) continue;
-              if (/^(dow|baixar)$/i.test(c)) continue;
-              if (c.length >= 8 && !/^(conclu|process|fila)/i.test(c)) { mensagem = c; break; }
-            }
-            const blob = (opcao + ' ' + cells.join(' ') + ' ' + links.map(l => l.blob).join(' ')).toLowerCase();
-            jobs.push({
-              seq,
-              opcao,
-              situacao: sit,
-              mensagem,
-              concluido: /conclu/i.test(sit) && !/n[aã]o\\s*conclu|inconclu/i.test(sit),
-              is455: /0230|455\\s*-|455\\b|fretes\\s+exped|ssw0230|expedidos/.test(blob),
-              hasDow: dows.length > 0,
-              dows,
-            });
-          }
-          return jobs;
-        }"""
-    )
+    return _ler_jobs156(fila)
 
 
 def _atualizar_fila(fila) -> None:
-    try:
-        fila.evaluate(
-            """() => {
-              if (typeof ajaxEnvia === 'function') {
-                try { ajaxEnvia('', 0); return; } catch (e) {}
-              }
-              const a = document.getElementById('2');
-              if (a) a.click();
-            }"""
-        )
-    except Exception:
-        pass
+    _atualizar_fila156(fila)
 
 
 def _baixar_via_fila_455(
-    client, context, page, popup, dest_name: str, status, *, enqueue_t0: float
+    client,
+    context,
+    page,
+    popup,
+    dest_name: str,
+    status,
+    *,
+    enqueue_t0: float,
+    login_user: str = "",
 ) -> Path:
-    fila = _abrir_fila_455(client, context, page, status, popup=popup)
-    _safe_wait(fila, 600)
-    floor = 0
-    tracked: set[str] = set()
-    try:
-        jobs0 = _ler_jobs_455(fila)
-        only0 = [j for j in jobs0 if j.get("is455") and j.get("seq")]
-
-        def _n0(j: dict) -> int:
-            return int(re.sub(r"\D", "", str(j.get("seq") or "")) or 0)
-
-        # floor = maior seq JÁ concluída (jobs de outros / rodadas antigas)
-        concluded0 = [j for j in only0 if j.get("concluido")]
-        if concluded0:
-            floor = max(_n0(j) for j in concluded0)
-        # processando agora = candidato(s) desta rodada
-        for j in only0:
-            if not j.get("concluido"):
-                tracked.add(str(j.get("seq") or ""))
-        # se o nosso já concluiu entre ► e abrir fila: pega o mais novo com Baixar
-        if not tracked:
-            with_dow = sorted(
-                [j for j in only0 if j.get("hasDow")],
-                key=_n0,
-            )
-            if with_dow and _n0(with_dow[-1]) >= floor:
-                tracked.add(str(with_dow[-1].get("seq") or ""))
-                # não sobe floor acima dele — senão some do filtro
-                if concluded0:
-                    older = [j for j in concluded0 if _n0(j) < _n0(with_dow[-1])]
-                    floor = max((_n0(j) for j in older), default=0)
-        status(f"[455] fila · floor={floor} · tracked={sorted(tracked)}")
-    except Exception as err:
-        status(f"[455] bootstrap: {err}")
-
-    deadline = time.time() + 420
-    last_log = 0.0
-    last_err = ""
+    """Acompanha 156 por usuário/opção/sequência até Baixar."""
+    user = (login_user or "").strip() or str(
+        getattr(getattr(client, "credentials", None), "user", "") or ""
+    ).strip()
+    fila, job = aguardar_baixar(
+        client,
+        context,
+        page,
+        popup,
+        status,
+        login_user=user,
+        option_patterns=_455_OPTION_PATTERNS,
+        enqueue_t0=enqueue_t0,
+        tag="455",
+        timeout_s=420.0,
+        stuck_sem_dow_s=120.0,
+    )
+    seq = str(job.get("seq") or "")
+    status(
+        f"[455] DOW · seq={seq} · user={job.get('usuario')} · "
+        f"{job.get('data_hora')} · {(job.get('opcao') or '')[:40]}"
+    )
     dow_fails = 0
-    while time.time() < deadline:
+    last_err = ""
+    while dow_fails < 6:
         try:
-            if fila is None or fila.is_closed():
-                fila = _abrir_fila_455(client, context, page, status, popup=None)
-            _atualizar_fila(fila)
-            _safe_wait(fila, 1000)
-            jobs = _ler_jobs_455(fila)
-
-            def _num(j: dict) -> int:
-                return int(re.sub(r"\D", "", str(j.get("seq") or "")) or 0)
-
-            for j in jobs:
-                if not j.get("is455") or not j.get("seq"):
-                    continue
-                n = _num(j)
-                seq = str(j.get("seq"))
-                if n > floor:
-                    tracked.add(seq)
-                elif not j.get("concluido") and (time.time() - enqueue_t0) < 90:
-                    tracked.add(seq)
-
-            def _nosso(j: dict) -> bool:
-                if not j.get("is455") or not j.get("seq"):
-                    return False
-                seq = str(j.get("seq"))
-                if tracked and seq in tracked:
-                    return True
-                return _num(j) > floor
-
-            nossos = [j for j in jobs if _nosso(j)]
-            if not nossos:
-                proc = sorted(
-                    [j for j in jobs if j.get("is455") and not j.get("concluido")],
-                    key=_num,
-                )
-                if proc:
-                    nossos = proc[-1:]
-                    tracked.add(str(proc[-1].get("seq") or ""))
-
-            now = time.time()
-            if now - last_log >= 4:
-                last_log = now
-                proc = [j for j in nossos if not j.get("concluido")]
-                status(
-                    f"[455] aguardando DOW · {len(proc)} processando · "
-                    f"{sum(1 for j in nossos if j.get('hasDow'))} prontos · floor={floor}"
-                )
-                for j in proc[:2]:
-                    status(
-                        f"[455]   ⏳ seq={j.get('seq')} · {j.get('situacao') or '?'} · "
-                        f"{(j.get('opcao') or '')[:42]}"
-                    )
-
-            def _sem_dados(j: dict) -> bool:
-                if not j.get("concluido") or j.get("hasDow"):
-                    return False
-                msg = str(j.get("mensagem") or "").strip()
-                # duração 00:00:04 NÃO é "sem base"
-                if not msg or re.match(r"^\d{1,2}:\d{2}(:\d{2})?$", msg):
-                    return False
-                return bool(_EMPTY_FILA_RE.search(msg))
-
-            vazios = [j for j in nossos if _sem_dados(j)]
-            if vazios and not any(j.get("hasDow") for j in nossos):
-                vazios.sort(key=_num)
-                jv = vazios[-1]
-                raise FilaSemDados455(
-                    f"sem base · seq={jv.get('seq')} · "
-                    f"{str(jv.get('mensagem') or '')[:80]}"
-                )
-
-            # Concluído sem DOW e sem msg explícita: espera o link (não aborta em 35s)
-            stuck = [
-                j
-                for j in nossos
-                if j.get("concluido") and not j.get("hasDow") and not _sem_dados(j)
-            ]
-            if (
-                stuck
-                and (time.time() - enqueue_t0) > 120
-                and not any(j.get("hasDow") for j in nossos)
-            ):
-                jv = sorted(stuck, key=_num)[-1]
-                raise FilaSemDados455(
-                    f"sem DOW após 120s · seq={jv.get('seq')} · "
-                    f"{str(jv.get('mensagem') or jv.get('situacao') or '')[:60]}"
-                )
-
-            ready = [j for j in nossos if j.get("concluido") and j.get("hasDow")]
-            if not ready:
-                _safe_wait(fila, 1800)
-                continue
-
-            job = sorted(ready, key=_num)[-1]
-            seq = str(job.get("seq") or "")
-            status(f"[455] DOW · seq={seq} · {(job.get('opcao') or '')[:40]}")
             try:
-                try:
-                    fila.bring_to_front()
-                except Exception:
-                    pass
-                path = _clicar_dow_455(
-                    client, context, fila, job, dest_name, status
-                )
-                try:
-                    if fila and not fila.is_closed():
-                        fila.close()
-                except Exception:
-                    pass
-                return path
-            except Exception as err:
-                last_err = str(err)
-                dow_fails += 1
-                status(f"[455] retry DOW #{dow_fails} ({last_err[:80]})")
-                if dow_fails >= 6:
-                    raise RuntimeError(
-                        f"455: DOW falhou {dow_fails}x na seq={seq} ({last_err})"
-                    ) from err
-                # recarrega a fila (link às vezes some após clique falho)
-                try:
-                    if fila and not fila.is_closed():
-                        fila.reload(wait_until="domcontentloaded")
-                    else:
-                        fila = _abrir_fila_455(client, context, page, status, popup=None)
-                except Exception:
-                    try:
-                        fila = _abrir_fila_455(client, context, page, status, popup=None)
-                    except Exception:
-                        pass
-                _safe_wait(fila, 2000)
-                continue
-        except FilaSemDados455:
-            raise
+                fila.bring_to_front()
+            except Exception:
+                pass
+            path = _clicar_dow_455(client, context, fila, job, dest_name, status)
+            try:
+                if fila and not fila.is_closed():
+                    fila.close()
+            except Exception:
+                pass
+            return path
         except Exception as err:
             last_err = str(err)
-            status(f"[455] loop: {err}")
-            time.sleep(1.5)
-
-    raise RuntimeError(f"455: timeout na fila 156 ({last_err})")
-
+            dow_fails += 1
+            status(f"[455] retry DOW #{dow_fails} ({last_err[:80]})")
+            try:
+                if fila and not fila.is_closed():
+                    fila.reload(wait_until="domcontentloaded")
+                else:
+                    fila = _abrir_fila_455(client, context, page, status, popup=None)
+            except Exception:
+                try:
+                    fila = _abrir_fila_455(client, context, page, status, popup=None)
+                except Exception:
+                    pass
+            _safe_wait(fila, 2000)
+            # revalida job na seq
+            try:
+                jobs = _ler_jobs_455(fila)
+                hit = next((j for j in jobs if str(j.get("seq")) == seq), None)
+                if hit and hit.get("hasDow"):
+                    job = hit
+            except Exception:
+                pass
+    raise RuntimeError(f"455: DOW falhou {dow_fails}x na seq={seq} ({last_err})")
 
 def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) -> Path:
     """Clica Baixar/DOW da seq (fila 156) com fallbacks fortes.
 
-    SSW 455 às vezes não dispara 'download' (abre aba / ajax) — cobre todos os caminhos.
+    SSW 455 usa ajaxEnvia('DOW' + seq) — muitas vezes NÃO dispara evento
+    'download' do Playwright. Prioriza esse ajax + poll no disco / response.
     """
     from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
     seq = str(job.get("seq") or "")
-    # NÃO atualiza a fila logo antes do clique — ajaxEnvia('',0) pode sumir o link
+    seq_digits = re.sub(r"\D", "", seq)
     try:
         fila.bring_to_front()
     except Exception:
         pass
-    _safe_wait(fila, 500)
+    _safe_wait(fila, 400)
 
-    meta = fila.evaluate(
-        """({ seq }) => {
-          const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
-          const want = String(seq || '').replace(/\\D/g, '');
-          if (!want) return { ok: false, why: 'seq_vazia' };
-          for (const tr of document.querySelectorAll('tr')) {
-            const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
-            const s = (cells[0] || '').replace(/\\D/g, '');
-            if (s !== want) continue;
-            const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || '';
-            if (sit && /processando|na\\s*fila|em\\s*fila/i.test(sit) && !/conclu/i.test(sit)) {
-              return { ok: false, why: 'ainda_processando' };
-            }
-            const links = Array.from(tr.querySelectorAll(
-              'a[onclick], a[href], img[onclick], input[onclick], button[onclick]'
-            ));
-            const scored = [];
-            for (const a of links) {
-              const text = norm(a.textContent || a.alt || a.title || a.value || '');
-              const onclick = String(a.getAttribute('onclick') || '');
-              const href = String(a.getAttribute('href') || '');
-              const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
-              if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(text)
-                  && !/\\b(dow|baixar)\\b/i.test(text)) continue;
-              let score = 0;
-              if (/^(dow|baixar)$/i.test(text)) score += 50;
-              if (/\\b(dow|baixar)\\b/i.test(text)) score += 20;
-              if (/\\bdow\\b|baixar|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|arquivo/.test(blob)) score += 15;
-              if (onclick) score += 10;
-              if (href && href !== '#' && !/^javascript:/i.test(href)) score += 8;
-              if (score > 0) scored.push({
-                text, onclick, href, score, tag: (a.tagName || '').toLowerCase()
-              });
-            }
-            scored.sort((x, y) => y.score - x.score);
-            if (scored.length) {
-              return { ok: true, why: 'link', best: scored[0], n: scored.length };
-            }
-            for (const td of Array.from(tr.querySelectorAll('td'))) {
-              const t = norm(td.innerText || '');
-              if (!(/^(dow|baixar)$/i.test(t) || (t.length <= 10 && /\\b(dow|baixar)\\b/i.test(t)))) continue;
-              const child = td.querySelector(
-                'a[onclick], a[href], img[onclick], input[onclick], button[onclick]'
-              );
-              if (child) {
-                return {
-                  ok: true,
-                  why: 'td-child',
-                  best: {
-                    text: t,
-                    onclick: String(child.getAttribute('onclick') || ''),
-                    href: String(child.getAttribute('href') || ''),
-                    score: 40,
-                    tag: (child.tagName || '').toLowerCase(),
-                  },
-                  n: 1,
-                };
-              }
-              // célula Baixar sem <a> — ainda dá pra clicar (SSW usa font/span)
-              return {
-                ok: true,
-                why: 'td-text',
-                best: {
-                  text: t,
-                  onclick: String(td.getAttribute('onclick') || ''),
-                  href: '',
-                  score: 30,
-                  tag: 'td',
-                },
-                n: 1,
-              };
-            }
-            return { ok: false, why: 'sem_dow_real', cells: cells.slice(0, 8) };
-          }
-          return { ok: false, why: 'seq_sumiu' };
-        }""",
-        {"seq": seq},
-    )
+    meta = find_baixar_meta(fila, seq)
     if not meta or not meta.get("ok"):
         why = (meta or {}).get("why") or "desconhecido"
         if why == "ainda_processando":
-            raise RuntimeError(f"455: seq ainda processando — não clicou Baixar")
+            raise RuntimeError("455: seq ainda processando — não clicou Baixar")
         raise RuntimeError(f"455: Baixar da seq={seq} não encontrado ({why})")
 
     best = meta.get("best") or {}
@@ -853,7 +557,6 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
     def _write_body(body: bytes, hint: str = "") -> Path | None:
         if not body or len(body) < 64:
             return None
-        # HTML de erro SSW
         head = body[:200].lower()
         if b"<html" in head or b"<!doctype" in head:
             return None
@@ -884,7 +587,7 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
         except Exception as err:
             status(f"[455] fetch href falhou: {err}")
 
-    # extrai URL de onclick (window.open / location / ajax path)
+    # URL embutida no onclick
     oc = str(best.get("onclick") or "")
     m_url = re.search(
         r"""['"]((?:https?:)?//[^'"]+\.(?:xlsx|xls|csv|sswweb)[^'"]*)['"]""",
@@ -915,23 +618,93 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
         for p in Path(client.download_dir).glob("*")
         if p.is_file()
     }
+    captured_bodies: list[tuple[str, bytes]] = []
 
-    def _trigger() -> str:
+    def _on_response(resp) -> None:
+        try:
+            url = str(resp.url or "")
+            headers = resp.headers or {}
+            ct = str(headers.get("content-type") or headers.get("Content-Type") or "").lower()
+            cd = str(
+                headers.get("content-disposition") or headers.get("Content-Disposition") or ""
+            ).lower()
+            look = (url + " " + ct + " " + cd).lower()
+            if not any(
+                x in look
+                for x in (
+                    ".sswweb",
+                    ".xlsx",
+                    ".xls",
+                    ".csv",
+                    "octet-stream",
+                    "spreadsheet",
+                    "excel",
+                    "attachment",
+                    "dow",
+                )
+            ):
+                return
+            if resp.status and int(resp.status) >= 400:
+                return
+            body = resp.body()
+            if body and len(body) >= 64:
+                captured_bodies.append((url, body))
+        except Exception:
+            pass
+
+    try:
+        context.on("response", _on_response)
+    except Exception:
+        pass
+
+    def _poll_new_file(wait_s: float = 3.0) -> Path | None:
+        deadline = time.time() + wait_s
+        stem = Path(dest_name).stem
+        while time.time() < deadline:
+            for url, body in list(captured_bodies):
+                got = _write_body(body, url)
+                if got:
+                    return got
+            for p in Path(client.download_dir).glob("*"):
+                if not p.is_file():
+                    continue
+                mtime = p.stat().st_mtime
+                if p.name not in before_files or mtime > before_files.get(p.name, 0) + 0.2:
+                    if p.stat().st_size > 64 and p.suffix.lower() in {
+                        ".xlsx",
+                        ".xls",
+                        ".csv",
+                        ".sswweb",
+                        ".zip",
+                        "",
+                    }:
+                        try:
+                            return _normalize_455_path(p, preferred_stem=stem)
+                        except Exception:
+                            return p
+            time.sleep(0.25)
+        return None
+
+    def _trigger(prefer_ajax: bool = True) -> str:
         return str(
             fila.evaluate(
-                """({ seq }) => {
+                """({ seq, preferAjax }) => {
                   const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
                   const want = String(seq || '').replace(/\\D/g, '');
                   const wantNum = parseInt(want, 10) || 0;
+                  // Forma real do SSW 455: ajaxEnvia('DOW494628') — 1 argumento
+                  if (preferAjax && typeof ajaxEnvia === 'function' && want) {
+                    try { ajaxEnvia('DOW' + want); return 'ajax-DOW-concat'; } catch (e0) {}
+                    try { ajaxEnvia('DOW' + wantNum); return 'ajax-DOW-concat-n'; } catch (e1) {}
+                  }
                   for (const tr of document.querySelectorAll('tr')) {
                     const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
                     const s = (cells[0] || '').replace(/\\D/g, '');
                     if (s !== want) continue;
-                    // seleciona a linha (alguns SSW exigem)
                     try {
                       const first = tr.querySelector('td');
                       if (first) first.click();
-                    } catch (e0) {}
+                    } catch (eSel) {}
                     const links = Array.from(tr.querySelectorAll(
                       'a[onclick], a[href], img[onclick], input[onclick], button[onclick]'
                     ));
@@ -946,6 +719,7 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
                       let score = 0;
                       if (/^(dow|baixar)$/i.test(text)) score += 50;
                       if (/\\b(dow|baixar)\\b/i.test(text)) score += 20;
+                      if (/dow\\d+|ajaxenvia\\s*\\(\\s*['\"]dow/i.test(blob)) score += 40;
                       if (/\\bdow\\b|baixar|download\\(|\\.xlsx|\\.csv|\\.sswweb|arquivo/.test(blob)) score += 15;
                       if (score > 0) pick.push({ a, score, onclick, href });
                     }
@@ -954,13 +728,17 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
                       const el = pick[0].a;
                       const oc = pick[0].onclick || '';
                       try { el.scrollIntoView({ block: 'center' }); } catch (eS) {}
+                      // Se o onclick já é ajaxEnvia('DOW'+seq), prefira eval direto
+                      const m = oc.match(/ajaxEnvia\\s*\\(\\s*['\"]DOW(\\d+)['\"]\\s*\\)/i);
+                      if (m && typeof ajaxEnvia === 'function') {
+                        try { ajaxEnvia('DOW' + m[1]); return 'ajax-from-onclick'; } catch (eA) {}
+                      }
                       try { el.click(); return 'click'; } catch (e1) {}
                       if (oc) {
                         try { (function(){ eval(oc); })(); return 'eval-onclick'; } catch (e2) {}
                       }
                       return 'click-fail';
                     }
-                    // célula / font Baixar
                     for (const td of Array.from(tr.querySelectorAll('td'))) {
                       const t = norm(td.innerText || '');
                       if (!(/^(dow|baixar)$/i.test(t) || (t.length <= 10 && /\\b(dow|baixar)\\b/i.test(t)))) continue;
@@ -979,55 +757,46 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
                       } catch (e3) {}
                     }
                     if (typeof ajaxEnvia === 'function') {
-                      try { ajaxEnvia('DOW', wantNum); return 'ajax-DOW-num'; } catch (e4) {}
-                      try { ajaxEnvia('DOW', want); return 'ajax-DOW'; } catch (e5) {}
-                      try { ajaxEnvia('DOW', 0); return 'ajax-DOW0'; } catch (e6) {}
+                      try { ajaxEnvia('DOW' + want); return 'ajax-DOW-concat'; } catch (e4) {}
+                      try { ajaxEnvia('DOW', wantNum); return 'ajax-DOW-num'; } catch (e5) {}
+                      try { ajaxEnvia('DOW', want); return 'ajax-DOW'; } catch (e6) {}
                     }
                     return 'sem_link';
                   }
                   return 'seq_sumiu';
                 }""",
-                {"seq": seq},
+                {"seq": seq_digits or seq, "preferAjax": prefer_ajax},
             )
             or ""
         )
 
-    def _poll_new_file(wait_s: float = 3.0) -> Path | None:
-        deadline = time.time() + wait_s
-        stem = Path(dest_name).stem
-        while time.time() < deadline:
-            for p in Path(client.download_dir).glob("*"):
-                if not p.is_file():
-                    continue
-                mtime = p.stat().st_mtime
-                if p.name not in before_files or mtime > before_files.get(p.name, 0) + 0.2:
-                    if p.stat().st_size > 64 and p.suffix.lower() in {
-                        ".xlsx",
-                        ".xls",
-                        ".csv",
-                        ".sswweb",
-                        ".zip",
-                        "",
-                    }:
-                        try:
-                            return _normalize_455_path(p, preferred_stem=stem)
-                        except Exception:
-                            return p
-            time.sleep(0.35)
-        return None
-
-    # 1) evento download + resposta de arquivo
+    # 1) ajaxEnvia('DOW'+seq) + poll disco/response (caminho mais confiável)
     try:
-        with context.expect_event("download", timeout=45000) as di:
-            how = _trigger()
-            status(f"[455] clique DOW={how}")
+        how = _trigger(prefer_ajax=True)
+        status(f"[455] clique DOW={how}")
+        if how in {"seq_sumiu", "sem_link", "click-fail", ""}:
+            raise RuntimeError(f"trigger falhou ({how})")
+        got = _poll_new_file(18.0)
+        if got:
+            status(f"[455] arquivo no disco · {got.name}")
+            return got
+    except RuntimeError:
+        raise
+    except Exception as err:
+        status(f"[455] ajax/poll: {err}")
+
+    # 2) evento download (alguns ambientes ainda usam)
+    try:
+        with context.expect_event("download", timeout=12000) as di:
+            how = _trigger(prefer_ajax=False)
+            status(f"[455] clique(download) DOW={how}")
             if how in {"seq_sumiu", "sem_link", "click-fail", ""}:
                 raise RuntimeError(f"trigger falhou ({how})")
         saved = client._save_download(di.value, dest_name)
         return _normalize_455_path(saved, preferred_stem=Path(dest_name).stem)
     except PlaywrightTimeoutError:
-        status("[455] sem evento download — nova aba / fetch / poll…")
-        got = _poll_new_file(2.0)
+        status("[455] sem evento download — nova aba / poll…")
+        got = _poll_new_file(4.0)
         if got:
             status(f"[455] arquivo no disco · {got.name}")
             return got
@@ -1036,12 +805,12 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
     except Exception as err:
         status(f"[455] download context: {err}")
 
-    # 2) nova aba / popup
+    # 3) nova aba / popup
     pages_before = list(context.pages)
     new_page = None
     try:
-        with context.expect_page(timeout=15000) as pi:
-            how = _trigger()
+        with context.expect_page(timeout=10000) as pi:
+            how = _trigger(prefer_ajax=True)
             status(f"[455] clique(aba) DOW={how}")
         new_page = pi.value
     except PlaywrightTimeoutError:
@@ -1055,7 +824,7 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
         except Exception:
             pass
         try:
-            with new_page.expect_download(timeout=25000) as di:
+            with new_page.expect_download(timeout=20000) as di:
                 try:
                     new_page.wait_for_load_state("load", timeout=5000)
                 except Exception:
@@ -1085,36 +854,7 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
                 new_page.close()
             except Exception:
                 pass
-
-    # 3) ajaxEnvia('DOW', seq) forçado (número)
-    try:
-        with context.expect_event("download", timeout=30000) as di:
-            how = str(
-                fila.evaluate(
-                    """({ seq }) => {
-                      const want = String(seq || '').replace(/\\D/g, '');
-                      const n = parseInt(want, 10) || 0;
-                      if (typeof ajaxEnvia === 'function') {
-                        try { ajaxEnvia('DOW', n); return 'ajax-DOW-num'; } catch (e) {}
-                        try { ajaxEnvia('DOW', want); return 'ajax-DOW'; } catch (e2) {}
-                        try { ajaxEnvia('DOW', 0); return 'ajax-DOW0'; } catch (e3) {}
-                      }
-                      return 'sem-ajax';
-                    }""",
-                    {"seq": seq},
-                )
-                or ""
-            )
-            status(f"[455] force {how}")
-            if how.startswith("sem"):
-                raise RuntimeError(how)
-        return _normalize_455_path(
-            client._save_download(di.value, dest_name),
-            preferred_stem=Path(dest_name).stem,
-        )
-    except Exception as err:
-        status(f"[455] force DOW: {err}")
-        got = _poll_new_file(2.5)
+        got = _poll_new_file(3.0)
         if got:
             return got
 
@@ -1124,7 +864,7 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
         link = row.locator(
             "a[onclick], a[href], img[onclick], td:has-text('Baixar'), td:has-text('DOW')"
         ).first
-        with context.expect_event("download", timeout=25000) as di:
+        with context.expect_event("download", timeout=15000) as di:
             link.click(timeout=5000, force=True)
             status("[455] clique DOW=locator")
         return _normalize_455_path(
@@ -1133,8 +873,13 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
         )
     except Exception as err:
         status(f"[455] locator: {err}")
-        got = _poll_new_file(2.0)
+        got = _poll_new_file(4.0)
         if got:
             return got
+
+    # 5) último poll após responses capturadas
+    got = _poll_new_file(6.0)
+    if got:
+        return got
 
     raise RuntimeError(f"455: DOW não gerou download (seq={seq})")

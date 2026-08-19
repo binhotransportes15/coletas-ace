@@ -30,7 +30,7 @@ def publish(
     label: str = "ONLINE",
     pct: float = 0.0,
     detail: str = "",
-    title: str = "BINHO · ACE",
+    title: str = "ACE",
     mode: str = "STANDBY",
     sectors: list[dict[str, Any]] | None = None,
     clear_sectors: bool = False,
@@ -44,7 +44,7 @@ def publish(
         "label": str(label or ("ONLINE" if online else "OFFLINE")),
         "pct": max(0.0, min(100.0, float(pct))),
         "detail": str(detail or ""),
-        "title": str(title or "BINHO · ACE"),
+        "title": str(title or "ACE"),
         "mode": str(mode or "STANDBY"),
     }
     if sectors is not None:
@@ -174,7 +174,7 @@ def read_status() -> dict[str, Any]:
             "label": "ONLINE",
             "pct": 0.0,
             "detail": "aguardando…",
-            "title": "BINHO · ACE",
+            "title": "ACE",
             "mode": "STANDBY",
             "ts": time.time(),
         }
@@ -186,7 +186,7 @@ def read_status() -> dict[str, Any]:
             "label": "OFFLINE",
             "pct": 0.0,
             "detail": "status ilegível",
-            "title": "BINHO · ACE",
+            "title": "ACE",
             "mode": "ERR",
             "ts": time.time(),
         }

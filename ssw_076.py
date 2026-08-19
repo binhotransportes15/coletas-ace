@@ -16,6 +16,13 @@ from typing import Any, Callable
 from config import DOWNLOAD_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
 from dates import periodo_mes_ate_hoje, to_ssw_ddmmyy
 from ssw_client import AceSswClient, cleanup_downloads
+from ssw_fila156 import (
+    FilaSemDados,
+    aguardar_baixar,
+    atualizar_fila as _atualizar_fila156,
+    ler_jobs as _ler_jobs156,
+    abrir_fila as _abrir_fila156,
+)
 
 StatusCallback = Callable[[str], None]
 
@@ -30,16 +37,31 @@ SSW_076_MARKERS = (
     "ver fila",
 )
 
-
-class FilaSemDados(RuntimeError):
-    """Job concluiu na 156 sem arquivo (ex.: NÃO SELECIONOU CTRCS)."""
+_076_OPTION_PATTERNS = (
+    r"076\s*-",
+    r"\b076\b",
+    r"remuner",
+    r"demonstrativo",
+    r"coletas?/entrega",
+    r"ssw0?76",
+)
 
 
 _EMPTY_FILA_RE = re.compile(
-    r"n[aã]o\s+selecionou|sem\s+ctrc|nenhum\s+ctrc|sem\s+dados|n[aã]o\s+h[aá]\s+regist|"
-    r"nada\s+a\s+(gerar|emitir)|sem\s+movimento|sem\s+demonstrativ",
+    r"n[aã]o\s+selecionou|nao\s+selecionou|sem\s+ctrcs?|nenhum\s+ctrcs?|"
+    r"sem\s+dados|n[aã]o\s+h[aá]\s+regist|nada\s+a\s+(gerar|emitir)|"
+    r"sem\s+movimento|sem\s+demonstrativ|sem\s+base",
     re.IGNORECASE,
 )
+
+
+def _is_empty_fila_msg(text: str) -> bool:
+    s = str(text or "").lower()
+    if not s:
+        return False
+    if "sem base" in s:
+        return True
+    return bool(_EMPTY_FILA_RE.search(s))
 
 
 def _noop(_: str) -> None:
@@ -149,11 +171,11 @@ def download_reports_076(
             status(f"[76/{file_tag}] OK {path.name}")
         except FilaSemDados as empty_err:
             errors[file_tag] = str(empty_err)
-            status(f"[76/{file_tag}] sem base — pula ({empty_err})")
+            status(f"[76/{file_tag}] sem CTRCs — desconsidera ({empty_err})")
         except Exception as batch_err:  # noqa: BLE001
             if isinstance(batch_err, FilaSemDados):
                 errors[file_tag] = str(batch_err)
-                status(f"[76/{file_tag}] sem base — pula ({batch_err})")
+                status(f"[76/{file_tag}] sem CTRCs — desconsidera ({batch_err})")
                 return
             status(f"[76/{file_tag}] lote falhou ({batch_err}); tentando por placa…")
             for idx, placa in enumerate(runs[:40], start=1):
@@ -178,7 +200,7 @@ def download_reports_076(
                     paths.append(str(path))
                 except FilaSemDados as empty_err:
                     errors[key] = str(empty_err)
-                    status(f"[76/{key}] sem base — pula ({empty_err})")
+                    status(f"[76/{key}] sem CTRCs — desconsidera ({empty_err})")
                 except Exception as err:  # noqa: BLE001
                     errors[key] = str(err)
                     status(f"[76/{key}] FALHOU: {err}")
@@ -220,14 +242,10 @@ def download_reports_076(
                     pass
 
     if not paths and errors:
-        # só "sem base" → ok parcial (filial sem movimento); não derruba o fluxo
-        only_empty = all(
-            "sem base" in str(v).lower() or "nāo selecionou" in str(v).lower()
-            or "não selecionou" in str(v).lower()
-            or "nao selecionou" in str(v).lower()
-            for v in errors.values()
-        )
+        # «NÃO SELECIONOU CTRCS…» / sem base → ok parcial; não derruba nem contabiliza
+        only_empty = all(_is_empty_fila_msg(v) for v in errors.values())
         if only_empty:
+            status(f"[76/{file_tag}] sem CTRCs — desconsiderado (não contabiliza)")
             return {
                 "ok": True,
                 "files": [],
@@ -462,187 +480,21 @@ def _safe_wait(page, ms: int) -> None:
 
 
 def _abrir_fila_156_76(client, context, page, status, popup=None):
-    """Abre 156 rápido: ajax/goto primeiro (Ver fila só com timeout curto)."""
-    status("[76] abrindo fila 156…")
-
-    # 1) ajaxEnvia ssw1440 a partir da página principal
-    try:
-        try:
-            page.bring_to_front()
-        except Exception:
-            pass
-        with context.expect_page(timeout=10000) as pi:
-            page.evaluate(
-                """() => {
-                  if (typeof ajaxEnvia === 'function') {
-                    try { ajaxEnvia('', 1, 'ssw1440'); return '1440'; } catch (e) {}
-                  }
-                  return '';
-                }"""
-            )
-        fila = pi.value
-        try:
-            fila.on("dialog", lambda d: d.accept())
-        except Exception:
-            pass
-        try:
-            fila.wait_for_load_state("domcontentloaded", timeout=12000)
-        except Exception:
-            pass
-        status("[76] fila 156 via ajaxEnvia ssw1440")
-        _safe_wait(fila, 500)
-        return _garantir_url_fila_76(client, page, fila, status)
-    except Exception as err:
-        status(f"[76] ajax 156: {err}")
-
-    # 2) Ver fila na tela 076 (timeout curto — não fica 12s preso)
-    if popup is not None:
-        try:
-            if not popup.is_closed():
-                with context.expect_page(timeout=4000) as pi:
-                    clicked = popup.evaluate(
-                        """() => {
-                          const els = Array.from(document.querySelectorAll('a, span, button'));
-                          for (const a of els) {
-                            const t = ((a.innerText || a.textContent || '') + '').replace(/\\s+/g, ' ').trim();
-                            if (/^Ver fila$/i.test(t) || /ver\\s*fila/i.test(t)) {
-                              a.click(); return t;
-                            }
-                          }
-                          return '';
-                        }"""
-                    )
-                    if not clicked:
-                        raise RuntimeError("sem Ver fila")
-                fila = pi.value
-                try:
-                    fila.on("dialog", lambda d: d.accept())
-                except Exception:
-                    pass
-                status(f"[76] fila 156 via '{clicked}'")
-                _safe_wait(fila, 500)
-                return _garantir_url_fila_76(client, page, fila, status)
-        except Exception as err:
-            status(f"[76] Ver fila: {err}")
-
-    # 3) goto direto
-    try:
-        try:
-            page.bring_to_front()
-        except Exception:
-            pass
-        fila = context.new_page()
-        try:
-            fila.on("dialog", lambda d: d.accept())
-        except Exception:
-            pass
-        fila.goto(SSW_FILA_URL, wait_until="domcontentloaded", timeout=30000)
-        status("[76] fila 156 via goto ssw1440")
-        _safe_wait(fila, 500)
-        return fila
-    except Exception as err:
-        status(f"[76] goto fila: {err}")
-
-    # 4) menu 156
-    try:
-        fila = client._open_menu_option(
-            page, "156", markers=("fila", "dow", "156", "1440", "processamento", "lotes")
-        )
-        status("[76] fila 156 via menu")
-        return _garantir_url_fila_76(client, page, fila, status)
-    except Exception as err:
-        status(f"[76] menu 156: {err}")
-        raise RuntimeError(f"076: não abriu fila 156 ({err})") from err
+    return _abrir_fila156(client, context, page, status, popup=popup, tag="76")
 
 
 def _garantir_url_fila_76(client, page, fila, status):
-    try:
-        url = (fila.url or "").lower()
-    except Exception:
-        url = ""
-    if "blank" in url or "ssw1440" not in url:
-        status("[76] recuperando ssw1440…")
-        try:
-            fila.goto(SSW_FILA_URL, wait_until="domcontentloaded", timeout=30000)
-            _safe_wait(fila, 600)
-        except Exception as err:
-            status(f"[76] goto ssw1440: {err}")
-            try:
-                client._recuperar_blank(page, fila, "1440", ("fila", "dow", "156", "1440"))
-            except Exception:
-                pass
     return fila
 
+
 def _ler_jobs_fila_76(fila) -> list[dict]:
-    return fila.evaluate(
-        """() => {
-          const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
-          const jobs = [];
-          for (const tr of Array.from(document.querySelectorAll('tr'))) {
-            const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
-            if (cells.length < 4) continue;
-            const seq = (cells[0] || '').replace(/\\D/g, '');
-            if (!seq || seq.length < 4) continue;
-            const opcao = cells[1] || '';
-            let sit = '';
-            for (const c of cells) {
-              if (/^(conclu[ií]d[oa]|processando|na fila|em fila|erro|abortad)/i.test(c)) {
-                sit = c; break;
-              }
-            }
-            if (!sit) {
-              sit = cells.find(c => /conclu|processando|na\\s*fila|erro|abort/i.test(c)) || cells[6] || '';
-            }
-            const links = Array.from(tr.querySelectorAll(
-              'a[onclick], a[href], img[onclick], input[onclick], button[onclick]'
-            )).map(a => {
-              const text = norm(a.textContent || a.alt || a.title || a.value || '');
-              const onclick = String(a.getAttribute('onclick') || '');
-              const href = String(a.getAttribute('href') || '');
-              const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
-              return { text, onclick, href, blob };
-            });
-            const dows = links.filter(x => {
-              if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(x.text)
-                  && !/\\b(dow|baixar)\\b/i.test(x.text)) return false;
-              if (/^(dow|baixar)$/i.test(x.text) || /\\bdow\\b/i.test(x.text)) return true;
-              return /\\bdow\\b|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob);
-            });
-            if (!dows.length) {
-              for (const td of Array.from(tr.querySelectorAll('td'))) {
-                const t = norm(td.innerText || '');
-                if (/^(dow|baixar)$/i.test(t) || (t.length <= 8 && /\\b(dow|baixar)\\b/i.test(t))) {
-                  dows.push({ text: t, onclick: '', href: '', blob: 'dow baixar' });
-                  break;
-                }
-              }
-            }
-            // última coluna costuma ser a mensagem (ex.: NÃO SELECIONOU CTRCS…)
-            let mensagem = '';
-            for (let i = cells.length - 1; i >= 0; i--) {
-              const c = cells[i] || '';
-              if (!c) continue;
-              if (/^(conclu|process|fila|erro|abort|\\d)/i.test(c) && c.length < 20) continue;
-              if (/^\\d{1,2}\\/\\d{1,2}/.test(c)) continue;
-              if (/^dow$/i.test(c) || /^baixar$/i.test(c)) continue;
-              if (c.length >= 8) { mensagem = c; break; }
-            }
-            const blobAll = (opcao + ' ' + cells.join(' ') + ' ' + links.map(l => l.blob).join(' ')).toLowerCase();
-            const concluido = /conclu/i.test(sit) && !/n[aã]o\\s*conclu|inconclu/i.test(sit);
-            jobs.push({
-              seq,
-              opcao,
-              situacao: sit,
-              mensagem,
-              concluido,
-              is076: /076|remuner|demonstrativo|ssw0?76|coletas\\/entrega/i.test(blobAll),
-              hasDow: dows.length > 0,
-              dows,
-            });
-          }
-          return jobs;
-        }"""
-    )
+    jobs = _ler_jobs156(fila)
+    for j in jobs:
+        blob = f"{j.get('opcao') or ''} {' '.join(str(x) for x in (j.get('cells') or []))}".lower()
+        j["is076"] = bool(
+            re.search(r"076|remuner|demonstrativo|ssw0?76|coletas?/entrega", blob, re.I)
+        )
+    return jobs
 
 
 def _job_076_sem_dados(job: dict) -> bool:
@@ -652,25 +504,11 @@ def _job_076_sem_dados(job: dict) -> bool:
     msg = str(job.get("mensagem") or job.get("situacao") or "")
     if _EMPTY_FILA_RE.search(msg):
         return True
-    # Concluído 076 sem link DOW = sem base (não fica esperando eternamente)
-    return bool(job.get("is076"))
+    return True
 
 
 def _atualizar_fila_76(fila) -> None:
-    try:
-        fila.evaluate(
-            """() => {
-              if (typeof ajaxEnvia === 'function') {
-                try { ajaxEnvia('', 0); return 'atu'; } catch (e) {}
-                try { ajaxEnvia('ATU', 0); return 'ATU'; } catch (e) {}
-              }
-              const a = document.getElementById('2');
-              if (a) { a.click(); return '2'; }
-              return '';
-            }"""
-        )
-    except Exception:
-        pass
+    _atualizar_fila156(fila)
 
 
 def _baixar_via_fila_76(
@@ -686,190 +524,43 @@ def _baixar_via_fila_76(
     min_seq: int = 0,
     enqueue_t0: float | None = None,
 ) -> Path:
-    """Espera job 076 concluído na 156 e clica DOW. Sem base → FilaSemDados."""
-    done = set(known_done or ())
-    floor = int(min_seq or 0)
+    """Espera job 076 do login na 156 e clica Baixar. Sem base → FilaSemDados."""
+    _ = known_done, min_seq
     t0 = float(enqueue_t0 or time.time())
-    fila = None
-
-    # Abre 156 UMA vez (depois do ►) e define floor no 1º poll
-    fila = _abrir_fila_156_76(client, context, page, status, popup=popup)
-    _safe_wait(fila, 600)
-    tracked: set[str] = set()  # seqs desta rodada
-    try:
-        bootstrap = _ler_jobs_fila_76(fila)
-        only76 = [j for j in bootstrap if j.get("is076") and str(j.get("seq") or "")]
-        only76.sort(key=lambda j: int("".join(ch for ch in str(j.get("seq") or "") if ch.isdigit()) or 0))
-        processing = [j for j in only76 if not j.get("concluido")]
-        concluded = [j for j in only76 if j.get("concluido")]
-        if processing:
-            for j in processing:
-                tracked.add(str(j.get("seq") or ""))
-            if concluded:
-                floor = max(
-                    int("".join(ch for ch in str(j.get("seq") or "") if ch.isdigit()) or 0)
-                    for j in concluded
-                )
-                for j in concluded:
-                    done.add(str(j.get("seq") or ""))
-        elif only76:
-            # Job pode ter concluído antes do 1º poll — pega o mais novo
-            newest = only76[-1]
-            nseq = str(newest.get("seq") or "")
-            tracked.add(nseq)
-            floor = int("".join(ch for ch in nseq if ch.isdigit()) or 0) - 1
-            for j in only76[:-1]:
-                if j.get("concluido"):
-                    done.add(str(j.get("seq") or ""))
-        status(
-            f"[76] fila wait · tracked={len(tracked) or 'auto'} · "
-            f"floor={floor} · known={len(done)}"
-        )
-    except Exception as err:
-        status(f"[76] bootstrap fila: {err}")
-
-    def _seq_num(j: dict) -> int:
-        seq = str(j.get("seq") or "")
+    login_user = str(getattr(getattr(client, "credentials", None), "user", "") or "").strip()
+    fila, job = aguardar_baixar(
+        client,
+        context,
+        page,
+        popup,
+        status,
+        login_user=login_user,
+        option_patterns=_076_OPTION_PATTERNS,
+        enqueue_t0=t0,
+        tag=f"76/{key}",
+        timeout_s=240.0,
+        stuck_sem_dow_s=90.0,
+    )
+    seq = str(job.get("seq") or "")
+    status(
+        f"[76/{key}] DOW na fila · seq={seq} · user={job.get('usuario')} · "
+        f"{job.get('data_hora')} · {job.get('opcao') or ''}"
+    )
+    path = _clicar_dow_76(client, context, fila, job, dest_name, status, key)
+    size = path.stat().st_size if path.exists() else 0
+    if size < 64:
         try:
-            return int("".join(ch for ch in seq if ch.isdigit()) or 0)
-        except Exception:
-            return 0
-
-    def _is_nosso(j: dict) -> bool:
-        seq = str(j.get("seq") or "")
-        if not seq or not j.get("is076"):
-            return False
-        if seq in done:
-            return False
-        if tracked and seq in tracked:
-            return True
-        num = _seq_num(j)
-        if floor > 0 and num <= floor:
-            return False
-        return True
-
-    def _ensure_fila():
-        nonlocal fila
-        try:
-            if fila is not None and not fila.is_closed():
-                url = (fila.url or "").lower()
-                if "ssw1440" in url and "blank" not in url:
-                    return fila
+            path.unlink(missing_ok=True)
         except Exception:
             pass
-        status("[76] 156 caiu — reabrindo…")
-        fila = _abrir_fila_156_76(client, context, page, status, popup=None)
-        _safe_wait(fila, 600)
-        return fila
-
-    deadline = time.time() + 240
-    last_err = ""
-    last_log = 0.0
-    while time.time() < deadline:
-        try:
-            f = _ensure_fila()
-            try:
-                f.bring_to_front()
-            except Exception:
-                pass
-            _atualizar_fila_76(f)
-            _safe_wait(f, 1000)
-            jobs = _ler_jobs_fila_76(f)
-
-            # Novos processando → entram no tracked
-            for j in jobs:
-                if j.get("is076") and not j.get("concluido"):
-                    seq = str(j.get("seq") or "")
-                    if seq:
-                        tracked.add(seq)
-
-            nossos = [j for j in jobs if _is_nosso(j)]
-            if not nossos:
-                only76 = [j for j in jobs if j.get("is076") and str(j.get("seq") or "")]
-                only76.sort(key=_seq_num)
-                if only76 and not tracked:
-                    nossos = only76[-1:]
-                    tracked.add(str(only76[-1].get("seq") or ""))
-
-            vazios = [j for j in nossos if _job_076_sem_dados(j)]
-            if vazios:
-                vazios.sort(key=_seq_num, reverse=True)
-                job = vazios[0]
-                msg = str(job.get("mensagem") or "sem DOW")
-                raise FilaSemDados(f"sem base · seq={job.get('seq')} · {msg[:80]}")
-
-            cands = [
-                j for j in nossos if j.get("concluido") and j.get("hasDow")
-            ]
-            cands.sort(key=_seq_num, reverse=True)
-
-            now = time.time()
-            if now - last_log >= 4:
-                last_log = now
-                proc = [j for j in nossos if not j.get("concluido")]
-                status(
-                    f"[76/{key}] aguardando Concluído+DOW na 156 "
-                    f"({len(proc)} processando · {len(cands)} prontos)…"
-                )
-                for j in proc[:3]:
-                    status(
-                        f"[76]   ⏳ seq={j.get('seq')} · {j.get('situacao') or '?'} · "
-                        f"{(j.get('opcao') or '')[:40]}"
-                    )
-
-            if not cands:
-                _safe_wait(f, 1800)
-                continue
-
-            job = cands[0]
-            seq = str(job.get("seq") or "")
-            status(f"[76/{key}] DOW na fila · seq={seq} · {job.get('opcao') or ''}")
-            path = _clicar_dow_76(client, context, f, job, dest_name, status, key)
-            size = path.stat().st_size if path.exists() else 0
-            if size < 64:
-                try:
-                    path.unlink(missing_ok=True)
-                except Exception:
-                    pass
-                raise RuntimeError(f"arquivo suspeito ({size} bytes)")
-            status(f"[76/{key}] OK {path.name} ({size} bytes)")
-            # mantém 156 aberta? fecha só no fim deste download
-            try:
-                if f is not None and not f.is_closed():
-                    f.close()
-            except Exception:
-                pass
-            return path
-        except FilaSemDados:
-            try:
-                if fila is not None and not fila.is_closed():
-                    fila.close()
-            except Exception:
-                pass
-            raise
-        except Exception as err:  # noqa: BLE001
-            last_err = str(err)
-            status(f"[76/{key}] fila loop: {err}")
-            crashed = (
-                "crash" in last_err.lower()
-                or "closed" in last_err.lower()
-                or "target" in last_err.lower()
-            )
-            if crashed:
-                try:
-                    if fila is not None and not fila.is_closed():
-                        fila.close()
-                except Exception:
-                    pass
-                fila = None
-            time.sleep(1.5)
-
+        raise RuntimeError(f"arquivo suspeito ({size} bytes)")
+    status(f"[76/{key}] OK {path.name} ({size} bytes)")
     try:
         if fila is not None and not fila.is_closed():
             fila.close()
     except Exception:
         pass
-    raise RuntimeError(f"076/{key}: timeout na fila 156 ({last_err})")
+    return path
 
 
 def _clicar_dow_76(client, context, fila, job: dict, dest_name: str, status, key: str) -> Path:

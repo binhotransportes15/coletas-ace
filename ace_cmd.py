@@ -51,6 +51,7 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "document": ("ssw", "str", False),
     "user": ("ssw", "str", False),
     "password": ("ssw", "str", True),
+    "menu_unit": ("ssw", "str", False),
     "unit": ("ssw", "str", False),
     # Automacao geral
     "coleta_option": ("auto", "str", False),
@@ -135,8 +136,13 @@ def _save_payload(payload: dict[str, Any]) -> None:
         document=str(payload.get("document") or ""),
         user=str(payload.get("user") or ""),
         password=str(payload.get("password") or ""),
+        menu_unit=str(payload.get("menu_unit") or "").strip().upper(),
         unit=str(payload.get("unit") or ""),
     )
+    if not creds.menu_unit:
+        from config import login_unit as _login_unit
+
+        creds.menu_unit = _login_unit(creds.unit) or "SPO"
     settings = AceSettings(
         coleta_option=str(payload.get("coleta_option") or "50"),
         entrega_option=str(payload.get("entrega_option") or ""),
@@ -185,7 +191,7 @@ def _save_payload(payload: dict[str, Any]) -> None:
         crt_frost_blur=max(
             0, min(100, int(payload.get("crt_frost_blur", 70) or 0))
         ),
-        crt_lock_password=str(payload.get("crt_lock_password") or "binho"),
+        crt_lock_password=str(payload.get("crt_lock_password") or "ace"),
     )
     save_all(creds, settings)
 
@@ -581,7 +587,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
             pct=0,
             detail=(message or "menu operacional")[:100],
             mode="MENU",
-            title="BINHO · ACE",
+            title="ACE",
         )
     except Exception:
         pass
@@ -590,7 +596,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
 def cmd_help() -> str:
     return "\n".join(
         [
-            "=== AJUDA ACE · BINHO OPERACIONAL ===",
+            "=== AJUDA ACE · OPERACIONAL ===",
             "",
             "Digite o comando no prompt (ACE>) ou use os atalhos do painel.",
             "Menu (F2): Configuração · Automação · Local · TV · Gestão.",
@@ -660,7 +666,7 @@ def cmd_help() -> str:
             "  Em Automação você marca: Distribuição, Armazém, Pendência,",
             "  Contratação, Emissão, Reciclagem, Mapa — e o intervalo de cada um.",
             "  Tema do CRT: Configurações (sidebar) → Aparência do painel",
-            "  (Escuro, Verde BINHO, Azul painel, Verde ops, Claro, Escuro fosco).",
+            "  (ACE padrão, Azul, Amarelo, Vermelho, Verde — troca a cor do cavalo).",
             "  A logo das dashboards muda em Configurações → Branding.",
             "",
             "────────────────────────────────────",
@@ -743,6 +749,12 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "senha": "password",
         "usuario": "user",
         "unidade": "unit",
+        "unidades": "unit",
+        "coleta_unidades": "unit",
+        "menu_unit": "menu_unit",
+        "unidade_menu": "menu_unit",
+        "unidade_login": "menu_unit",
+        "login_unit": "menu_unit",
         "dominio": "domain",
         "cpf": "document",
         "modo": "periodo_modo",

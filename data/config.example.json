@@ -17,5 +17,6 @@
   "enable_github_publish": false,
   "github_repo": "binhotransportes15/coletas-ace",
   "github_branch": "main",
-  "github_token_env": "GH_TOKEN"
+  "github_token_env": "GH_TOKEN",
+  "menu_unit": "SPO"
 }

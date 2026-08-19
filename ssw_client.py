@@ -445,8 +445,11 @@ class AceSswClient:
         page.wait_for_timeout(600)
 
     def _ensure_unit(self, page) -> None:
-        # Menu pos-login: usa so a 1ª sigla (contexto do operador).
-        unit = login_unit(getattr(self.credentials, "unit", "") or "")
+        # Menu pos-login: menu_unit (se houver) senão 1ª da lista de coleta.
+        unit = login_unit(
+            getattr(self.credentials, "unit", "") or "",
+            menu_unit=getattr(self.credentials, "menu_unit", "") or "",
+        )
         if not unit:
             return
         self._set_menu_unit(page, unit)

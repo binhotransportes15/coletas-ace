@@ -1,5 +1,5 @@
 """
-BINHO · ACE CRT — painel de gestão operacional (UI profissional).
+ACE CRT — painel de gestão operacional (UI profissional).
 
 Layout:
   sidebar → navegação (operação + sistema + Configurações)
@@ -21,11 +21,12 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QEvent, QThread, QTimer, Signal, QPointF
+from PySide6.QtCore import Qt, QEvent, QThread, QTimer, Signal, QPointF, QRectF
 from PySide6.QtGui import (
     QColor,
     QFont,
     QFontDatabase,
+    QIcon,
     QPainter,
     QPalette,
     QPen,
@@ -34,6 +35,8 @@ from PySide6.QtGui import (
     QRadialGradient,
     QBrush,
     QPolygonF,
+    QPainterPath,
+    QConicalGradient,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -69,6 +72,7 @@ _ROOT = Path(__file__).resolve().parent
 _CUBES = _ROOT / "assets" / "cubes-binho.png"
 _BRAIN = _ROOT / "assets" / "brain-circuit.png"
 _LOGO = _ROOT / "assets" / "logo-binho.png"
+_HORSE = _ROOT / "assets" / "ace-horse.png"
 _FONT_SHARE_TECH = _ROOT / "assets" / "fonts" / "ShareTechMono-Regular.ttf"
 
 # Fonte profissional do CRT (UI) + mono só no log
@@ -115,67 +119,62 @@ _CUBE_COLORS = (
     QColor("#29abe2"),
 )
 
-# Temas do CRT (fundo + texto + accentos) — padrão: Gestão profissional
+def _hex_rgba(hex_color: str, alpha: float) -> str:
+    """Converte #RRGGBB → rgba() para stylesheet."""
+    h = str(hex_color or "").strip().lstrip("#")
+    if len(h) >= 6:
+        try:
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            return f"rgba({r}, {g}, {b}, {max(0.0, min(1.0, float(alpha))):.3f})"
+        except Exception:
+            pass
+    return f"rgba(236, 72, 153, {max(0.0, min(1.0, float(alpha))):.3f})"
+
+
+# Temas do CRT — padrão ACE (cavalo magenta) + 4 cores do ícone
+# grad0/1/2 = degrade de fundo (esq → dir), no estilo da referência
 CRT_THEMES: dict[str, dict[str, object]] = {
-    "gestao": {
-        "label": "Escuro",
-        "bg": "#0b1220",
-        "panel": "#111827",
-        "card": "#151c2c",
-        "line": "#1e293b",
+    "ace": {
+        "label": "ACE (padrão)",
+        "horse": "ace",
+        "bg": "#121418",
+        "grad0": "#4a152c",
+        "grad1": "#1c121a",
+        "grad2": "#121418",
+        "panel": "#1a1c24",
+        "card": "#1c1e26",
+        "line": "#2a2d38",
         "text": "#f1f5f9",
         "dim": "#94a3b8",
         "muted": "#64748b",
-        "input_bg": "#0f172a",
+        "input_bg": "#0e1016",
         "input_text": "#e2e8f0",
-        "btn_bg": "#1e293b",
-        "btn_hover": "#334155",
-        "btn_press": "#475569",
-        "btn_dis_bd": "#1e293b",
-        "sel": "#1d4ed8",
-        "prog_bg": "#0f172a",
-        "chunk0": "#2563eb",
-        "chunk1": "#3b82f6",
-        "chunk2": "#60a5fa",
-        "accent": "#3b82f6",
+        "btn_bg": "#22252f",
+        "btn_hover": "#2c303c",
+        "btn_press": "#363a48",
+        "btn_dis_bd": "#2a2d38",
+        "sel": "#9d174d",
+        "prog_bg": "#0e1016",
+        "chunk0": "#ec4899",
+        "chunk1": "#a855f7",
+        "chunk2": "#38bdf8",
+        "accent": "#ec4899",
         "ok": "#22c55e",
         "warn": "#f59e0b",
         "err": "#ef4444",
-        "log_bg": "#0a101c",
+        "log_bg": "#0a0b10",
         "label_bg": "transparent",
         "scan": False,
-        "radius": "10px",
+        "radius": "12px",
         "pro": True,
     },
-    "binho": {
-        "label": "Verde BINHO",
-        "bg": "#050805",
-        "panel": "#0a100c",
-        "card": "#0d1510",
-        "line": "#1a3d28",
-        "text": "#e8ffe8",
-        "dim": "#6b8f71",
-        "muted": "#3d5c45",
-        "input_bg": "#07110a",
-        "input_text": "#d1fae5",
-        "btn_bg": "#07140c",
-        "btn_hover": "#0d2416",
-        "btn_press": "#11301c",
-        "btn_dis_bd": "#102016",
-        "sel": "#1a5c36",
-        "prog_bg": "#07110a",
-        "chunk0": "#009245",
-        "chunk1": "#22c55e",
-        "chunk2": "#8cc63f",
-        "accent": "#22c55e",
-        "log_bg": "#050805",
-        "scan": False,
-        "radius": "10px",
-        "pro": True,
-    },
-    "painel": {
-        "label": "Azul painel",
+    "azul": {
+        "label": "Azul",
+        "horse": "azul",
         "bg": "#050a14",
+        "grad0": "#0a2744",
+        "grad1": "#08101c",
+        "grad2": "#050a14",
         "panel": "#0a121e",
         "card": "#0d1828",
         "line": "#1a2f4a",
@@ -194,103 +193,204 @@ CRT_THEMES: dict[str, dict[str, object]] = {
         "chunk1": "#38bdf8",
         "chunk2": "#7dd3fc",
         "accent": "#38bdf8",
+        "ok": "#22c55e",
+        "warn": "#f59e0b",
+        "err": "#ef4444",
         "log_bg": "#050a14",
         "scan": False,
         "radius": "10px",
         "pro": True,
     },
-    "ops": {
-        "label": "Verde ops",
-        "bg": "#080b09",
-        "panel": "#0e1511",
-        "card": "#121a15",
-        "line": "#2a4032",
-        "text": "#ecfccb",
-        "dim": "#9caf88",
-        "muted": "#5c6f58",
-        "input_bg": "#0a100c",
-        "input_text": "#e8f5c8",
-        "btn_bg": "#101a14",
-        "btn_hover": "#1a2a1e",
-        "btn_press": "#243828",
-        "btn_dis_bd": "#121a14",
-        "sel": "#3f6212",
-        "prog_bg": "#0a100c",
-        "chunk0": "#65a30d",
-        "chunk1": "#a3e635",
-        "chunk2": "#d9f99d",
-        "accent": "#a3e635",
-        "log_bg": "#080b09",
+    "amarelo": {
+        "label": "Amarelo",
+        "horse": "amarelo",
+        "bg": "#100e06",
+        "grad0": "#3d2e08",
+        "grad1": "#18140a",
+        "grad2": "#100e06",
+        "panel": "#1a160a",
+        "card": "#221c0e",
+        "line": "#4a3d14",
+        "text": "#fffbeb",
+        "dim": "#d6c48a",
+        "muted": "#8a7a48",
+        "input_bg": "#141008",
+        "input_text": "#fef3c7",
+        "btn_bg": "#221c0c",
+        "btn_hover": "#332a10",
+        "btn_press": "#443816",
+        "btn_dis_bd": "#2a220e",
+        "sel": "#a16207",
+        "prog_bg": "#141008",
+        "chunk0": "#ca8a04",
+        "chunk1": "#eab308",
+        "chunk2": "#fde047",
+        "accent": "#eab308",
+        "ok": "#22c55e",
+        "warn": "#f59e0b",
+        "err": "#ef4444",
+        "log_bg": "#0c0a05",
         "scan": False,
         "radius": "10px",
         "pro": True,
     },
-    "claro": {
-        "label": "Claro",
-        "bg": "#f1f5f9",
-        "panel": "#ffffff",
-        "card": "#ffffff",
-        "line": "#e2e8f0",
-        "text": "#0f172a",
-        "dim": "#475569",
-        "muted": "#64748b",
-        "input_bg": "#ffffff",
-        "input_text": "#0f172a",
-        "btn_bg": "#f8fafc",
-        "btn_hover": "#e2e8f0",
-        "btn_press": "#cbd5e1",
-        "btn_dis_bd": "#dbe3ec",
-        "sel": "#bae6fd",
-        "prog_bg": "#dde5ee",
-        "chunk0": "#0284c7",
-        "chunk1": "#0ea5e9",
-        "chunk2": "#38bdf8",
-        "accent": "#2563eb",
-        "log_bg": "#f8fafc",
+    "vermelho": {
+        "label": "Vermelho",
+        "horse": "vermelho",
+        "bg": "#120808",
+        "grad0": "#4a1010",
+        "grad1": "#1a0c0c",
+        "grad2": "#120808",
+        "panel": "#1a0e0e",
+        "card": "#221212",
+        "line": "#4a1c1c",
+        "text": "#fef2f2",
+        "dim": "#d4a0a0",
+        "muted": "#8a5858",
+        "input_bg": "#140a0a",
+        "input_text": "#fee2e2",
+        "btn_bg": "#220e0e",
+        "btn_hover": "#331616",
+        "btn_press": "#441e1e",
+        "btn_dis_bd": "#2a1212",
+        "sel": "#991b1b",
+        "prog_bg": "#140a0a",
+        "chunk0": "#b91c1c",
+        "chunk1": "#ef4444",
+        "chunk2": "#fca5a5",
+        "accent": "#ef4444",
+        "ok": "#22c55e",
+        "warn": "#f59e0b",
+        "err": "#ef4444",
+        "log_bg": "#0e0606",
         "scan": False,
         "radius": "10px",
         "pro": True,
     },
-    "fosco": {
-        "label": "Escuro fosco",
-        "bg": "transparent",
-        "panel": "rgba(14, 18, 24, 160)",
-        "card": "rgba(18, 24, 34, 180)",
-        "line": "rgba(180, 190, 205, 55)",
-        "text": "#f4f7fb",
-        "dim": "#a8b4c4",
-        "muted": "#7a8798",
-        "input_bg": "rgba(8, 12, 18, 230)",
-        "input_text": "#eef3f8",
-        "btn_bg": "rgba(22, 28, 38, 180)",
-        "btn_hover": "rgba(42, 56, 76, 210)",
-        "btn_press": "rgba(58, 78, 104, 230)",
-        "btn_dis_bd": "rgba(50, 58, 70, 90)",
-        "sel": "rgba(56, 120, 160, 140)",
-        "prog_bg": "rgba(6, 10, 16, 200)",
-        "chunk0": "#38bdf8",
-        "chunk1": "#7dd3fc",
-        "chunk2": "#bae6fd",
-        "accent": "#38bdf8",
-        "label_bg": "rgba(12, 16, 22, 235)",
-        "log_bg": "#0a0e14",
+    "verde": {
+        "label": "Verde",
+        "horse": "verde",
+        "bg": "#050805",
+        "grad0": "#0a2a16",
+        "grad1": "#08140c",
+        "grad2": "#050805",
+        "panel": "#0a100c",
+        "card": "#0d1510",
+        "line": "#1a3d28",
+        "text": "#e8ffe8",
+        "dim": "#6b8f71",
+        "muted": "#3d5c45",
+        "input_bg": "#07110a",
+        "input_text": "#d1fae5",
+        "btn_bg": "#07140c",
+        "btn_hover": "#0d2416",
+        "btn_press": "#11301c",
+        "btn_dis_bd": "#102016",
+        "sel": "#1a5c36",
+        "prog_bg": "#07110a",
+        "chunk0": "#009245",
+        "chunk1": "#22c55e",
+        "chunk2": "#8cc63f",
+        "accent": "#22c55e",
+        "ok": "#22c55e",
+        "warn": "#f59e0b",
+        "err": "#ef4444",
+        "log_bg": "#050805",
         "scan": False,
-        "frost": True,
-        "acrylic_tint": 0x381A1A1A,
-        "meter_h": 18,
         "radius": "10px",
         "pro": True,
     },
 }
 
-# Cores de setor (KPIs / barras) — identidade profissional
+# IDs antigos → novos (config salva / payloads legados)
+_LEGACY_CRT_THEMES: dict[str, str] = {
+    "gestao": "ace",
+    "binho": "verde",
+    "painel": "azul",
+    "ops": "verde",
+    "claro": "ace",
+    "fosco": "ace",
+    "circuitos": "ace",
+    "escuro": "ace",
+}
+
+DEFAULT_CRT_THEME = "ace"
+
+_HORSE_FILES: dict[str, Path] = {
+    "ace": _HORSE,
+    "azul": _ROOT / "assets" / "ace-horse-azul.png",
+    "amarelo": _ROOT / "assets" / "ace-horse-amarelo.png",
+    "vermelho": _ROOT / "assets" / "ace-horse-vermelho.png",
+    "verde": _ROOT / "assets" / "ace-horse-verde.png",
+}
+
+
+def normalize_crt_theme(theme_id: str | None) -> str:
+    tid = str(theme_id or "").strip().lower()
+    tid = _LEGACY_CRT_THEMES.get(tid, tid)
+    if tid not in CRT_THEMES:
+        return DEFAULT_CRT_THEME
+    return tid
+
+
+def resolve_crt_horse_path(theme_id: str | None = None) -> Path:
+    tid = normalize_crt_theme(theme_id)
+    horse_key = str((CRT_THEMES.get(tid) or {}).get("horse") or tid)
+    path = _HORSE_FILES.get(horse_key, _HORSE)
+    if path.is_file():
+        return path
+    return _HORSE if _HORSE.is_file() else path
+
+
+def crt_window_icon(theme_id: str | None = None) -> QIcon:
+    path = resolve_crt_horse_path(theme_id)
+    return QIcon(str(path)) if path.is_file() else QIcon()
+
+# Cores de setor (KPIs / barras) — referência Painel Operacional
 _SECTOR_ACCENTS: dict[str, str] = {
-    "dist": "#3b82f6",
-    "78": "#22c55e",
-    "31": "#f59e0b",
-    "73": "#f97316",
+    "dist": "#ec4899",
+    "78": "#eab308",
+    "31": "#f97316",
+    "73": "#fb923c",
     "455": "#a855f7",
-    "mapa": "#ef4444",
+    "mapa": "#38bdf8",
+}
+
+_RAINBOW_CHUNK = (
+    "qlineargradient(x1:0,y1:0,x2:1,y2:0,"
+    "stop:0 #ec4899, stop:0.28 #f59e0b, stop:0.55 #22d3ee, stop:0.78 #6366f1, stop:1 #a855f7)"
+)
+
+CRT_APP_VERSION = "2.0.0"
+
+# Ícones da sidebar (desenhados) — chave = id do nav
+_NAV_ICON_KEYS = (
+    "home",
+    "dist",
+    "78",
+    "31",
+    "73",
+    "455",
+    "mapa",
+    "logs",
+    "rapido",
+    "cfg",
+    "help",
+)
+
+# Compat: glyphs texto (KPI / fallbacks)
+_NAV_ICONS: dict[str, str] = {
+    "home": "⌂",
+    "dist": "▦",
+    "78": "▣",
+    "31": "⚑",
+    "73": "⇄",
+    "455": "◉",
+    "mapa": "◎",
+    "logs": "☰",
+    "rapido": ">_",
+    "cfg": "⚙",
+    "help": "?",
 }
 
 
@@ -329,8 +429,6 @@ def frost_params(
         "root_a": max(25, root_a),
         "opacity": round(max(0.55, min(1.0, opacity)), 3),
     }
-
-DEFAULT_CRT_THEME = "gestao"
 
 
 def _ui_clip(text: str, max_chars: int = 72) -> str:
@@ -412,8 +510,8 @@ _SECTOR_GUIDE: tuple[dict[str, str], ...] = (
 )
 
 
-class BinhoCubesWidget(QWidget):
-    """Cerebro BINHO parado — circuitos acendem por setor / automacao."""
+class AceBrainWidget(QWidget):
+    """Cérebro ACE — circuitos acendem por setor / automação."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -736,7 +834,7 @@ class CircuitBusOverlay(QWidget):
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self._t = 0.0
-        self._brain: BinhoCubesWidget | None = None
+        self._brain: AceBrainWidget | None = None
         self._meters: dict[str, QWidget] = {}
         self._main_bar: QWidget | None = None
         self._active: set[str] = set()
@@ -770,7 +868,7 @@ class CircuitBusOverlay(QWidget):
             return QColor(_SECTOR_TRACE_COLORS[sid])
         return QColor(self._accent)
 
-    def bind(self, *, brain: BinhoCubesWidget, meters: dict[str, QWidget], main_bar: QWidget | None = None) -> None:
+    def bind(self, *, brain: AceBrainWidget, meters: dict[str, QWidget], main_bar: QWidget | None = None) -> None:
         self._brain = brain
         self._meters = dict(meters or {})
         self._main_bar = main_bar
@@ -1114,6 +1212,147 @@ class QuickCmdButton(QPushButton):
             w.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
 
+class AceBrandHeader(QFrame):
+    """Só o cavalo — grande, centrado, sem texto ao lado."""
+
+    _LOGO_PX = 132
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("brandHeader")
+        self.setMinimumHeight(148)
+        self.setMaximumHeight(160)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setAutoFillBackground(False)
+        self._pm = QPixmap()
+        self._theme_id = DEFAULT_CRT_THEME
+        self._c0 = QColor("#ec4899")
+        self._c1 = QColor("#a855f7")
+        self._c2 = QColor("#38bdf8")
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(4, 8, 4, 4)
+        lay.setSpacing(0)
+        self._logo = QLabel()
+        self._logo.setObjectName("brandLogo")
+        self._logo.setFixedSize(self._LOGO_PX + 12, self._LOGO_PX + 12)
+        self._logo.setAlignment(Qt.AlignCenter)
+        self._logo.setAttribute(Qt.WA_TranslucentBackground, True)
+        self._logo.setStyleSheet("background: transparent; border: none;")
+        self._title = QLabel("ACE • GESTÃO")
+        self._title.hide()
+        self._sub = QLabel("PAINEL OPERACIONAL")
+        self._sub.hide()
+        lay.addStretch(1)
+        lay.addWidget(self._logo, 0, Qt.AlignCenter)
+        lay.addStretch(1)
+
+    def apply_theme(self, theme_id: str, meta: dict | None = None) -> None:
+        tid = normalize_crt_theme(theme_id)
+        self._theme_id = tid
+        m = meta or CRT_THEMES.get(tid) or CRT_THEMES[DEFAULT_CRT_THEME]
+        self._c0 = QColor(str(m.get("chunk0") or m.get("accent") or "#ec4899"))
+        self._c1 = QColor(str(m.get("chunk1") or m.get("accent") or "#a855f7"))
+        self._c2 = QColor(str(m.get("chunk2") or "#38bdf8"))
+        path = resolve_crt_horse_path(tid)
+        if path.is_file():
+            pm = QPixmap(str(path))
+            if not pm.isNull():
+                self._pm = pm
+                scaled = pm.scaled(
+                    self._LOGO_PX,
+                    self._LOGO_PX,
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation,
+                )
+                self._logo.setPixmap(scaled)
+        self.setToolTip("ACE · " + str(m.get("label", tid)))
+        self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+        lx = self.width() / 2.0
+        ly = self.height() / 2.0
+        radius = self._LOGO_PX * 0.68
+        glow = QRadialGradient(lx, ly, radius)
+        g0 = QColor(self._c0)
+        g0.setAlpha(120)
+        g1 = QColor(self._c1)
+        g1.setAlpha(50)
+        g2 = QColor(self._c1)
+        g2.setAlpha(0)
+        glow.setColorAt(0.0, g0)
+        glow.setColorAt(0.48, g1)
+        glow.setColorAt(1.0, g2)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(glow))
+        p.drawEllipse(int(lx - radius), int(ly - radius), int(radius * 2), int(radius * 2))
+        shadow = QRadialGradient(lx, ly + 8, radius * 0.9)
+        s0 = QColor(0, 0, 0, 100)
+        s1 = QColor(0, 0, 0, 0)
+        shadow.setColorAt(0.4, s0)
+        shadow.setColorAt(1.0, s1)
+        p.setBrush(QBrush(shadow))
+        p.drawEllipse(
+            int(lx - radius * 0.9),
+            int(ly - radius * 0.5),
+            int(radius * 1.8),
+            int(radius * 1.8),
+        )
+        p.end()
+        super().paintEvent(event)
+
+
+class CircularProgress(QWidget):
+    """Anel de progresso compacto (KPI)."""
+
+    def __init__(self, accent: str = "#ec4899", *, size: int = 58, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._accent = QColor(accent)
+        self._pct = 0.0
+        self._center = ""
+        self.setFixedSize(size, size)
+
+    def set_accent(self, color: str) -> None:
+        self._accent = QColor(color)
+        self.update()
+
+    def set_progress(self, pct: float, center: str | None = None) -> None:
+        self._pct = max(0.0, min(100.0, float(pct)))
+        if center is not None:
+            self._center = str(center)
+        self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+        w, h = self.width(), self.height()
+        pen_w = 5.0
+        rect = self.rect().adjusted(int(pen_w), int(pen_w), -int(pen_w), -int(pen_w))
+        # track
+        track = QPen(QColor(255, 255, 255, 22))
+        track.setWidthF(pen_w)
+        track.setCapStyle(Qt.RoundCap)
+        p.setPen(track)
+        p.drawEllipse(rect)
+        # arc
+        span = int(-self._pct * 16 * 3.6)  # Qt uses 1/16 degree
+        if abs(span) > 0:
+            pen = QPen(self._accent)
+            pen.setWidthF(pen_w)
+            pen.setCapStyle(Qt.RoundCap)
+            p.setPen(pen)
+            p.drawArc(rect, 90 * 16, span)
+        # center %
+        p.setPen(QColor("#e2e8f0"))
+        f = crt_font(9, bold=True)
+        p.setFont(f)
+        txt = self._center if self._center else (f"{self._pct:.0f}%" if self._pct > 0 else "—")
+        p.drawText(self.rect(), Qt.AlignCenter, txt)
+        p.end()
+
+
 class SectorMeterRow(QWidget):
     """Barrinha de automação por setor ( Dist / Armazém / … )."""
 
@@ -1129,7 +1368,7 @@ class SectorMeterRow(QWidget):
     def __init__(self, sector_id: str, title: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.sector_id = sector_id
-        self.setFixedHeight(40)
+        self.setFixedHeight(44)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 2, 0, 2)
@@ -1137,19 +1376,25 @@ class SectorMeterRow(QWidget):
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
         top.setSpacing(8)
+        icon_txt = _NAV_ICONS.get(sector_id, "•")
+        self._icon = QLabel(icon_txt)
+        self._icon.setObjectName("sectorIcon")
+        self._icon.setFixedWidth(18)
+        self._icon.setAlignment(Qt.AlignCenter)
         self._title = QLabel(title)
         self._title.setObjectName("sysMeterTitle")
-        self._title.setFixedWidth(108)
+        self._title.setFixedWidth(96)
         self._bar = QProgressBar()
-        self._bar.setObjectName("sysMeter")
+        self._bar.setObjectName("sectorMeter")
         self._bar.setRange(0, 1000)
         self._bar.setValue(0)
         self._bar.setTextVisible(False)
-        self._bar.setFixedHeight(14)
+        self._bar.setFixedHeight(10)
         self._val = QLabel("—")
         self._val.setObjectName("sysMeterVal")
-        self._val.setFixedWidth(44)
+        self._val.setFixedWidth(40)
         self._val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        top.addWidget(self._icon)
         top.addWidget(self._title)
         top.addWidget(self._bar, 1)
         top.addWidget(self._val)
@@ -1162,38 +1407,48 @@ class SectorMeterRow(QWidget):
         self._detail.setTextInteractionFlags(Qt.NoTextInteraction)
         root.addWidget(self._detail)
         self._accent = self._STATE_COLOR["off"]
-        self._track = "rgba(0, 0, 0, 140)"
-        self._track_border = "rgba(255, 255, 255, 28)"
+        self._track = "#0e1016"
+        self._track_border = "#2a2d38"
         self._apply_chunk(self._accent)
 
     @property
     def bar_widget(self) -> QProgressBar:
         return self._bar
 
-    def apply_chrome(self, *, height: int = 14, track: str = "rgba(0,0,0,140)", border: str = "rgba(255,255,255,28)") -> None:
-        self._bar.setFixedHeight(max(10, int(height)))
+    def apply_chrome(self, *, height: int = 10, track: str = "#0e1016", border: str = "#2a2d38") -> None:
+        self._bar.setFixedHeight(max(8, int(height)))
         self._track = track
         self._track_border = border
         self._apply_chunk(self._accent)
 
     def _apply_chunk(self, accent: str) -> None:
         self._accent = accent
+        # Gradiente arco-íris quando há progresso; cinza quando off
+        chunk = _RAINBOW_CHUNK if accent not in {self._STATE_COLOR["off"], self._STATE_COLOR["err"]} else accent
+        if accent == self._STATE_COLOR["err"]:
+            chunk = accent
         self._bar.setStyleSheet(
             f"""
-            QProgressBar#sysMeter {{
+            QProgressBar#sectorMeter {{
                 background: {self._track};
                 border: 1px solid {self._track_border};
-                border-radius: 6px;
+                border-radius: 5px;
                 text-align: center;
                 color: transparent;
                 font-size: 1px;
             }}
-            QProgressBar#sysMeter::chunk {{
-                background: {accent};
-                border-radius: 5px;
+            QProgressBar#sectorMeter::chunk {{
+                background: {chunk};
+                border-radius: 4px;
             }}
             """
         )
+        try:
+            self._icon.setStyleSheet(
+                f"color: {accent}; font-size: 12px; background: transparent;"
+            )
+        except Exception:
+            pass
 
     def set_row(self, row: dict) -> None:
         state = str(row.get("state") or "off").lower()
@@ -1205,7 +1460,7 @@ class SectorMeterRow(QWidget):
         self._title.setText(label)
         if not enabled:
             self._bar.setValue(0)
-            self._val.setText("off")
+            self._val.setText("0%")
             self._detail.setText(_ui_clip(detail or "fora do automático", 64))
             self._apply_chunk(self._STATE_COLOR["off"])
             self.setEnabled(False)
@@ -1218,7 +1473,6 @@ class SectorMeterRow(QWidget):
         elif state in {"due", "wait"}:
             self._val.setText("0%")
         elif state == "ok":
-            # Entre ciclos a barra fica em 0; rótulo OK (não 100% fantasma)
             self._val.setText("OK" if v < 1 else f"{v:.0f}%")
         elif state == "err":
             self._val.setText("ERR")
@@ -1241,28 +1495,24 @@ class SectorMeterRow(QWidget):
 
 
 class KpiCard(QFrame):
-    """Card KPI do topo (setor · valor · status)."""
+    """Card KPI do topo (setor · valor · status · anel)."""
 
     def __init__(self, sector_id: str, title: str, accent: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.sector_id = sector_id
         self.setObjectName("kpiCard")
-        self.setFixedHeight(92)
+        self.setFixedHeight(100)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         lay = QHBoxLayout(self)
-        lay.setContentsMargins(14, 12, 14, 12)
-        lay.setSpacing(12)
-        icon = QLabel("●")
-        icon.setObjectName("kpiIcon")
-        icon.setStyleSheet(f"color: {accent}; font-size: 18px; background: transparent;")
-        icon.setFixedWidth(22)
+        lay.setContentsMargins(16, 12, 14, 12)
+        lay.setSpacing(10)
         col = QVBoxLayout()
         col.setSpacing(2)
         self._lab = QLabel(title)
         self._lab.setObjectName("kpiLabel")
         self._val = QLabel("—")
         self._val.setObjectName("kpiValue")
-        self._sub = QLabel("Aguardando automático")
+        self._sub = QLabel("aguardando aut")
         self._sub.setObjectName("kpiSub")
         self._sub.setWordWrap(False)
         self._sub.setFixedHeight(16)
@@ -1270,9 +1520,11 @@ class KpiCard(QFrame):
         self._sub.setTextInteractionFlags(Qt.NoTextInteraction)
         col.addWidget(self._lab)
         col.addWidget(self._val)
+        col.addStretch(1)
         col.addWidget(self._sub)
-        lay.addWidget(icon, 0, Qt.AlignTop)
+        self._ring = CircularProgress(accent, size=58)
         lay.addLayout(col, 1)
+        lay.addWidget(self._ring, 0, Qt.AlignVCenter)
         self._accent = accent
 
     def set_row(self, row: dict) -> None:
@@ -1284,6 +1536,7 @@ class KpiCard(QFrame):
         if not enabled:
             self._val.setText("off")
             self._sub.setText(_ui_clip(detail or "fora do automático", 42))
+            self._ring.set_progress(0, "—")
             return
         if state == "run":
             self._val.setText(f"{pct:.0f}%")
@@ -1293,39 +1546,196 @@ class KpiCard(QFrame):
             self._val.setText("OK")
         else:
             self._val.setText("—")
-        self._sub.setText(_ui_clip(detail or "Aguardando automático", 42))
+        sub = detail or "aguardando aut"
+        # Encurta "Aguardando automático" como na referência
+        if "aguardando" in sub.lower():
+            sub = "aguardando aut"
+        self._sub.setText(_ui_clip(sub, 42))
+        ring_pct = pct if state == "run" else (100.0 if state == "ok" and pct >= 1 else 0.0)
+        self._ring.set_progress(ring_pct, f"{ring_pct:.0f}%" if ring_pct > 0 else "—")
+
+
+class NavGlyphIcon(QWidget):
+    """Ícone de linha da sidebar (setores / sistema), sem caixa."""
+
+    def __init__(self, kind: str = "home", *, size: int = 20, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._kind = str(kind or "home")
+        self._color = QColor("#94a3b8")
+        self.setFixedSize(size, size)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+
+    def set_kind(self, kind: str) -> None:
+        self._kind = str(kind or "home")
+        self.update()
+
+    def set_color(self, color: str | QColor) -> None:
+        self._color = QColor(color)
+        self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+        pen = QPen(self._color)
+        pen.setWidthF(1.7)
+        pen.setCapStyle(Qt.RoundCap)
+        pen.setJoinStyle(Qt.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        r = QRectF(self.rect()).adjusted(2.2, 2.2, -2.2, -2.2)
+        x, y, w, h = r.x(), r.y(), r.width(), r.height()
+        k = self._kind
+
+        if k == "home":
+            path = QPainterPath()
+            path.moveTo(x + w * 0.12, y + h * 0.48)
+            path.lineTo(x + w * 0.5, y + h * 0.12)
+            path.lineTo(x + w * 0.88, y + h * 0.48)
+            p.drawPath(path)
+            p.drawRect(QRectF(x + w * 0.28, y + h * 0.48, w * 0.44, h * 0.40))
+            p.drawRect(QRectF(x + w * 0.42, y + h * 0.58, w * 0.16, h * 0.30))
+        elif k == "dist":
+            gap = w * 0.12
+            s = (w - gap) / 2
+            p.drawRoundedRect(QRectF(x, y, s, s), 1.5, 1.5)
+            p.drawRoundedRect(QRectF(x + s + gap, y, s, s), 1.5, 1.5)
+            p.drawRoundedRect(QRectF(x, y + s + gap, s, s), 1.5, 1.5)
+            p.drawRoundedRect(QRectF(x + s + gap, y + s + gap, s, s), 1.5, 1.5)
+        elif k == "78":
+            p.drawRoundedRect(QRectF(x + w * 0.12, y + h * 0.28, w * 0.76, h * 0.58), 2, 2)
+            p.drawLine(QPointF(x + w * 0.12, y + h * 0.42), QPointF(x + w * 0.88, y + h * 0.42))
+            p.drawLine(QPointF(x + w * 0.5, y + h * 0.28), QPointF(x + w * 0.5, y + h * 0.86))
+            path = QPainterPath()
+            path.moveTo(x + w * 0.12, y + h * 0.28)
+            path.lineTo(x + w * 0.5, y + h * 0.12)
+            path.lineTo(x + w * 0.88, y + h * 0.28)
+            p.drawPath(path)
+        elif k == "31":
+            p.drawLine(QPointF(x + w * 0.28, y + h * 0.12), QPointF(x + w * 0.28, y + h * 0.88))
+            flag = QPainterPath()
+            flag.moveTo(x + w * 0.28, y + h * 0.14)
+            flag.lineTo(x + w * 0.82, y + h * 0.30)
+            flag.lineTo(x + w * 0.28, y + h * 0.46)
+            flag.closeSubpath()
+            p.setBrush(QBrush(self._color))
+            p.setPen(Qt.NoPen)
+            p.drawPath(flag)
+            p.setBrush(Qt.NoBrush)
+            p.setPen(pen)
+        elif k == "73":
+            p.drawLine(QPointF(x + w * 0.18, y + h * 0.36), QPointF(x + w * 0.82, y + h * 0.36))
+            p.drawLine(QPointF(x + w * 0.66, y + h * 0.22), QPointF(x + w * 0.82, y + h * 0.36))
+            p.drawLine(QPointF(x + w * 0.66, y + h * 0.50), QPointF(x + w * 0.82, y + h * 0.36))
+            p.drawLine(QPointF(x + w * 0.82, y + h * 0.64), QPointF(x + w * 0.18, y + h * 0.64))
+            p.drawLine(QPointF(x + w * 0.34, y + h * 0.50), QPointF(x + w * 0.18, y + h * 0.64))
+            p.drawLine(QPointF(x + w * 0.34, y + h * 0.78), QPointF(x + w * 0.18, y + h * 0.64))
+        elif k == "455":
+            p.drawEllipse(QRectF(x + w * 0.18, y + h * 0.12, w * 0.64, h * 0.64))
+            p.drawEllipse(QRectF(x + w * 0.32, y + h * 0.26, w * 0.36, h * 0.36))
+            p.drawLine(QPointF(x + w * 0.38, y + h * 0.72), QPointF(x + w * 0.28, y + h * 0.92))
+            p.drawLine(QPointF(x + w * 0.62, y + h * 0.72), QPointF(x + w * 0.72, y + h * 0.92))
+        elif k == "mapa":
+            p.drawEllipse(QRectF(x + w * 0.08, y + h * 0.08, w * 0.84, h * 0.84))
+            p.drawEllipse(QRectF(x + w * 0.24, y + h * 0.24, w * 0.52, h * 0.52))
+            p.drawEllipse(QRectF(x + w * 0.40, y + h * 0.40, w * 0.20, h * 0.20))
+        elif k == "logs":
+            for yy in (0.22, 0.50, 0.78):
+                p.drawLine(QPointF(x + w * 0.16, y + h * yy), QPointF(x + w * 0.84, y + h * yy))
+        elif k == "rapido":
+            p.drawLine(QPointF(x + w * 0.18, y + h * 0.28), QPointF(x + w * 0.42, y + h * 0.50))
+            p.drawLine(QPointF(x + w * 0.42, y + h * 0.50), QPointF(x + w * 0.18, y + h * 0.72))
+            p.drawLine(QPointF(x + w * 0.50, y + h * 0.78), QPointF(x + w * 0.84, y + h * 0.78))
+        elif k == "cfg":
+            cx, cy = x + w * 0.5, y + h * 0.5
+            p.drawEllipse(QRectF(cx - w * 0.18, cy - h * 0.18, w * 0.36, h * 0.36))
+            for i in range(8):
+                ang = i * (math.pi / 4)
+                p.drawLine(
+                    QPointF(cx + math.cos(ang) * w * 0.28, cy + math.sin(ang) * h * 0.28),
+                    QPointF(cx + math.cos(ang) * w * 0.46, cy + math.sin(ang) * h * 0.46),
+                )
+        else:
+            p.drawEllipse(r)
+            p.drawArc(QRectF(x + w * 0.30, y + h * 0.22, w * 0.40, h * 0.36), 30 * 16, 200 * 16)
+            p.drawLine(QPointF(x + w * 0.5, y + h * 0.58), QPointF(x + w * 0.5, y + h * 0.68))
+            p.setBrush(QBrush(self._color))
+            p.setPen(Qt.NoPen)
+            p.drawEllipse(QRectF(x + w * 0.45, y + h * 0.74, w * 0.10, h * 0.10))
+        p.end()
 
 
 class NavButton(QPushButton):
-    """Item da sidebar."""
+    """Item da sidebar com ícone de setor."""
 
-    def __init__(self, text: str, *, active: bool = False, parent: QWidget | None = None) -> None:
-        super().__init__(text, parent)
+    def __init__(
+        self,
+        text: str,
+        *,
+        icon: str = "",
+        icon_key: str = "",
+        active: bool = False,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
         self.setObjectName("navBtn")
         self.setCheckable(True)
         self.setChecked(active)
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(34)
+        self.setMinimumHeight(40)
+        root = QHBoxLayout(self)
+        root.setContentsMargins(12, 7, 12, 7)
+        root.setSpacing(12)
+        key = icon_key or (icon if icon in _NAV_ICON_KEYS else "home")
+        if key not in _NAV_ICON_KEYS:
+            key = "home"
+        self._glyph = NavGlyphIcon(key, size=22)
+        self._lab = QLabel(text)
+        self._lab.setObjectName("navLabel")
+        root.addWidget(self._glyph, 0, Qt.AlignVCenter)
+        root.addWidget(self._lab, 1)
+        for w in (self._glyph, self._lab):
+            w.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.toggled.connect(self._sync_icon_tone)
+        self._sync_icon_tone(self.isChecked())
+
+    def _sync_icon_tone(self, checked: bool) -> None:
+        self._glyph.set_color("#f1f5f9" if checked else "#94a3b8")
 
 
 class ProActionButton(QPushButton):
     """Botão de ação da coluna direita."""
 
-    def __init__(self, title: str, accent: str, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        title: str,
+        accent: str,
+        *,
+        icon: str = "▶",
+        variant: str = "default",
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
-        self.setObjectName("proAction")
+        names = {
+            "primary": "proActionPrimary",
+            "danger": "proActionDanger",
+            "accent": "proActionAccent",
+            "muted": "proActionMuted",
+        }
+        self.setObjectName(names.get(variant, "proAction"))
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(42)
+        self.setMinimumHeight(48)
         root = QHBoxLayout(self)
-        root.setContentsMargins(12, 8, 12, 8)
-        root.setSpacing(10)
-        dot = QLabel("●")
-        dot.setStyleSheet(f"color: {accent}; font-size: 14px; background: transparent;")
+        root.setContentsMargins(14, 10, 14, 10)
+        root.setSpacing(12)
+        ico = QLabel(icon)
+        ico.setObjectName("proActionIcon")
+        ico.setStyleSheet(f"color: {accent}; font-size: 16px; background: transparent; font-weight: 700;")
+        ico.setFixedWidth(22)
         lab = QLabel(title)
         lab.setObjectName("proActionTitle")
-        root.addWidget(dot)
+        root.addWidget(ico)
         root.addWidget(lab, 1)
-        for w in (dot, lab):
+        for w in (ico, lab):
             w.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
 
@@ -1478,6 +1888,7 @@ def build_crt_stylesheet(
     frost_alpha: int | None = None,
     frost_blur: int | None = None,
 ) -> str:
+    theme_id = normalize_crt_theme(theme_id)
     base = CRT_THEMES.get(theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
     t = dict(base)
     frost = bool(t.get("frost"))
@@ -1497,13 +1908,21 @@ def build_crt_stylesheet(
     label_bg = str(t.get("label_bg") or ("rgba(12,16,22,235)" if frost else "transparent"))
     card_bg = str(t.get("card") or t["panel"])
     accent = str(t.get("accent") or t.get("chunk1") or t["text"])
+    nav_hover = _hex_rgba(accent, 0.12)
+    nav_active = _hex_rgba(accent, 0.26)
+    grad0 = str(t.get("grad0") or t["bg"])
+    grad1 = str(t.get("grad1") or t["bg"])
+    grad2 = str(t.get("grad2") or t["bg"])
+    root_bg = (
+        f"qlineargradient(x1:0, y1:0, x2:1, y2:0.55, "
+        f"stop:0 {grad0}, stop:0.38 {grad1}, stop:1 {grad2})"
+    )
     font_stack = f"'{CRT_FONT_FAMILY}', 'Segoe UI', Arial, sans-serif"
     log_font = f"'{CRT_LOG_FONT_FAMILY}', Consolas, 'Courier New', monospace"
-    # No fosco: raiz com véu leve (blur DWM aparece atrás). Sem WA_Translucent no Win11.
-    if frost:
-        root_rule = f"""
+    # Degrade na raiz; filhos transparentes (cards/painéis pintam por cima)
+    root_rule = f"""
 QWidget#crtRoot {{
-    background: {t['bg']};
+    background: {root_bg};
 }}
 QSplitter, QSplitter::handle {{
     background: transparent;
@@ -1520,19 +1939,9 @@ QTabWidget, QTabWidget::pane, QScrollArea {{
     background: transparent;
 }}
 """
-    else:
-        root_rule = f"""
-QWidget {{
-    background: {t['bg']};
-    color: {t['text']};
-    font-family: {font_stack};
-    font-size: 12px;
-    letter-spacing: 0.1px;
-}}
-"""
     return f"""
 {root_rule}
-QFrame#panel, QFrame#side, QFrame#card, QFrame#kpiCard, QFrame#sidebar, QFrame#logCard {{
+QFrame#panel, QFrame#side, QFrame#card, QFrame#kpiCard, QFrame#logCard {{
     background: {t['panel']};
     border: 1px solid {t['line']};
     border-radius: {radius};
@@ -1542,16 +1951,22 @@ QFrame#kpiCard, QFrame#card {{
 }}
 QFrame#logCard {{
     background: {log_bg};
+    border: 1px solid {t['line']};
+    border-radius: 12px;
 }}
 QFrame#sidebar {{
-    background: {t['panel']};
-    border: 1px solid {t['line']};
-    border-radius: {radius};
+    background: transparent;
+    border: none;
+    border-radius: 0;
 }}
 QFrame#sidebarFoot {{
-    background: {card_bg};
+    background: {_hex_rgba(str(t.get('card') or t['panel']), 0.72)};
     border: 1px solid {t['line']};
-    border-radius: 8px;
+    border-radius: 10px;
+}}
+QFrame#brandHeader {{
+    background: transparent;
+    border: none;
 }}
 QLabel#brandTitle {{
     color: {t['text']};
@@ -1560,50 +1975,70 @@ QLabel#brandTitle {{
     letter-spacing: 0.8px;
     background: transparent;
 }}
+QLabel#brandLogo {{
+    background: transparent;
+    border: none;
+}}
 QLabel#brandSub {{
-    color: {t['muted']};
-    font-size: 10px;
+    color: {t['dim']};
+    font-size: 9px;
     font-weight: 600;
-    letter-spacing: 1.2px;
+    letter-spacing: 1.4px;
     background: transparent;
 }}
 QLabel#navGroup {{
     color: {t['muted']};
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 1.4px;
-    padding: 10px 8px 4px;
+    letter-spacing: 1.5px;
+    padding: 12px 8px 4px;
     background: transparent;
 }}
 QPushButton#navBtn {{
     background: transparent;
     color: {t['dim']};
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     text-align: left;
-    padding: 8px 12px;
+    padding: 0;
     font-size: 12px;
     font-weight: 600;
 }}
 QPushButton#navBtn:hover {{
-    background: rgba(59, 130, 246, 0.12);
+    background: {nav_hover};
     color: {t['text']};
 }}
 QPushButton#navBtn:checked {{
-    background: rgba(59, 130, 246, 0.18);
+    background: {nav_active};
     color: {t['text']};
-    border-left: 3px solid {accent};
+}}
+QLabel#navIcon {{
+    color: {t['dim']};
+    font-size: 13px;
+    background: transparent;
+}}
+QPushButton#navBtn:checked QLabel#navIcon,
+QPushButton#navBtn:checked QLabel#navLabel {{
+    color: {t['text']};
+}}
+QLabel#navLabel {{
+    color: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    background: transparent;
 }}
 QLabel#pageTitle {{
     color: {t['text']};
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 800;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.6px;
     background: transparent;
 }}
 QLabel#pageSub {{
     color: {t['dim']};
-    font-size: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
     background: transparent;
 }}
 QLabel#kpiLabel {{
@@ -1614,7 +2049,7 @@ QLabel#kpiLabel {{
 }}
 QLabel#kpiValue {{
     color: {t['text']};
-    font-size: 22px;
+    font-size: 26px;
     font-weight: 800;
     background: transparent;
 }}
@@ -1623,20 +2058,75 @@ QLabel#kpiSub {{
     font-size: 11px;
     background: transparent;
 }}
-QPushButton#proAction {{
+QFrame#kpiCard {{
     background: {card_bg};
     border: 1px solid {t['line']};
-    border-radius: 8px;
+    border-radius: 12px;
+}}
+QPushButton#proAction, QPushButton#proActionMuted {{
+    background: {card_bg};
+    border: 1px solid {t['line']};
+    border-radius: 12px;
     text-align: left;
     padding: 0;
 }}
-QPushButton#proAction:hover {{
+QPushButton#proAction:hover, QPushButton#proActionMuted:hover {{
     background: {t['btn_hover']};
-    border-color: {accent};
+    border-color: #38bdf8;
+}}
+QPushButton#proActionPrimary {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #db2777, stop:0.45 #ec4899, stop:1 #6366f1);
+    border: none;
+    border-radius: 12px;
+    text-align: left;
+    padding: 0;
+}}
+QPushButton#proActionPrimary:hover {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #e11d48, stop:0.45 #f472b6, stop:1 #818cf8);
+}}
+QPushButton#proActionPrimary QLabel#proActionTitle,
+QPushButton#proActionAccent QLabel#proActionTitle {{
+    color: #ffffff;
+    font-weight: 700;
+}}
+QPushButton#proActionDanger {{
+    background: #1c1e26;
+    border: 1px solid rgba(239, 68, 68, 0.45);
+    border-radius: 12px;
+    text-align: left;
+    padding: 0;
+}}
+QPushButton#proActionDanger:hover {{
+    background: rgba(239, 68, 68, 0.12);
+    border-color: #ef4444;
+}}
+QPushButton#proActionDanger QLabel#proActionTitle {{
+    color: #fca5a5;
+    font-weight: 700;
+}}
+QPushButton#proActionAccent {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #be185d, stop:0.5 #db2777, stop:1 #7c3aed);
+    border: none;
+    border-radius: 12px;
+    text-align: left;
+    padding: 0;
+}}
+QPushButton#proActionAccent:hover {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #db2777, stop:0.5 #ec4899, stop:1 #8b5cf6);
+}}
+QPushButton#proActionMuted {{
+    border-color: rgba(56, 189, 248, 0.35);
+}}
+QPushButton#proActionMuted QLabel#proActionTitle {{
+    color: #bae6fd;
 }}
 QLabel#proActionTitle {{
     color: {t['text']};
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     background: transparent;
 }}
@@ -1757,14 +2247,18 @@ QPushButton:disabled {{
     border-color: {t['btn_dis_bd']};
 }}
 QPushButton#primary {{
-    background: {accent};
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #2563eb, stop:0.45 #db2777, stop:1 #ec4899);
     color: #ffffff;
-    border-color: {accent};
+    border: none;
+    border-radius: 10px;
     font-weight: 700;
     text-align: center;
+    padding: 8px 16px;
 }}
 QPushButton#primary:hover {{
-    background: {t['chunk1']};
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #3b82f6, stop:0.45 #ec4899, stop:1 #f472b6);
 }}
 QPushButton#menuBtn {{
     min-width: 72px;
@@ -1908,6 +2402,25 @@ QScrollArea {{
     border: none;
     background: transparent;
 }}
+QScrollBar:vertical {{
+    background: transparent;
+    width: 10px;
+    margin: 2px;
+}}
+QScrollBar::handle:vertical {{
+    background: {t['line']};
+    border-radius: 5px;
+    min-height: 28px;
+}}
+QScrollBar::handle:vertical:hover {{
+    background: {t['dim']};
+}}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0;
+}}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+    background: transparent;
+}}
 QSplitter::handle {{
     background: {t['line']};
     width: 2px;
@@ -1918,7 +2431,8 @@ QSplitter {{
 """
 
 
-# Compat: constantes antigas = tema BINHO (widgets que ainda referem)
+# Compat: constantes antigas = tema padrão (widgets que ainda referem)
+BinhoCubesWidget = AceBrainWidget  # alias legado
 BG = str(CRT_THEMES[DEFAULT_CRT_THEME]["bg"])
 PANEL = str(CRT_THEMES[DEFAULT_CRT_THEME]["panel"])
 LINE = str(CRT_THEMES[DEFAULT_CRT_THEME]["line"])
@@ -1936,7 +2450,8 @@ _FIELD_LABELS: dict[str, str] = {
     "document": "Documento",
     "user": "Usuário",
     "password": "Senha",
-    "unit": "Unidades",
+    "menu_unit": "Unidade do menu (login)",
+    "unit": "Unidades da coleta (50/103)",
     "coleta_option": "Opção de coleta",
     "entrega_option": "Opção de entrega",
     "periodo_modo": "Tipo de período",
@@ -1952,7 +2467,7 @@ _FIELD_LABELS: dict[str, str] = {
     "apps_script_token": "Chave da conexão",
     "google_sheet_id": "Código da planilha",
     "enable_github_publish": "Publicar site automaticamente",
-    "publish_target": "Destino TV (sites|github|local|auto)",
+    "publish_target": "Destino TV",
     "google_sites_url": "URL do Google Sites",
     "github_repo": "Pasta do site",
     "github_branch": "Linha do site",
@@ -1971,10 +2486,94 @@ _FIELD_LABELS: dict[str, str] = {
     "mapa_intervalo": "Tempo · mapa",
     "reciclagem_in_loop": "Reciclagem no automático",
     "reciclagem_intervalo": "Tempo · reciclagem",
-    "dashboard_port": "Porta do dashboard",
+    "cybermap_path": "Pasta do CyberMap",
     "crt_lock_password": "Senha do cadeado (bloquear painel)",
     "headless": "Ocultar navegador",
 }
+
+# Descrição curta de cada campo (aparece sob o controle)
+_FIELD_HELP: dict[str, str] = {
+    "url": "URL de login do SSW (normalmente https://sistema.ssw.inf.br/).",
+    "domain": "Domínio da transportadora no SSW (ex.: bin).",
+    "document": "CPF/CNPJ usado no login do SSW.",
+    "user": "Usuário (login) do operador no SSW.",
+    "password": "Senha do SSW. Fica salva só neste computador.",
+    "menu_unit": (
+        "Sigla única do menu após o login (campo unidade do SSW). "
+        "Ex.: SPO. Não lista várias — só a unidade do operador."
+    ),
+    "unit": (
+        "Siglas usadas nos relatórios 50 e 103. "
+        "Várias: SPO,LEO,RIS (baixa uma tela por unidade e junta). "
+        "Use * ou todas para sem filtro de unidade."
+    ),
+    "coleta_option": "Código da opção SSW de coleta (padrão 50).",
+    "entrega_option": "Código da opção SSW de entrega (padrão 36).",
+    "periodo_modo": (
+        "Diário = período do dia · A partir da sexta = janela sexta→hoje "
+        "(usado em alguns relatórios de distribuição)."
+    ),
+    "auto_baixar_ao_abrir": "Se ligado, inicia downloads ao abrir o fluxo automático.",
+    "loop_intervalo": (
+        "Tempo padrão entre ciclos quando o setor não tem tempo próprio. "
+        "Exemplos: 30s, 5m, 1h, 2d."
+    ),
+    "ciclo_paralelo": (
+        "Se vários setores vencerem o tempo juntos, roda em paralelo "
+        "(um navegador por bloco) em vez de um atrás do outro."
+    ),
+    "modo_local": (
+        "Grava JSON/CSV internos para o dashboard na rede. "
+        "Independente de subir planilha/site (veja sync remoto)."
+    ),
+    "sync_remoto": (
+        "Ligado = pode sincronizar Google Sheets e/ou GitHub Pages. "
+        "Desligado = só operação local (não sobe nuvem)."
+    ),
+    "dashboard_lan": "Permite outros aparelhos na mesma Wi‑Fi abrirem o dashboard.",
+    "dashboard_port": "Porta HTTP do dashboard local (padrão 8787).",
+    "enable_sheets": "Envia dados para a planilha via Apps Script (exige sync remoto).",
+    "apps_script_url": "URL de implantação do Google Apps Script da planilha.",
+    "apps_script_token": "Token/chave combinada com o Apps Script.",
+    "google_sheet_id": "ID da planilha Google (legado / referência).",
+    "enable_github_publish": "Publica o site estático no GitHub Pages (exige sync remoto).",
+    "publish_target": (
+        "Para onde a parede TV aponta: auto, Google Sites, GitHub Pages ou só local."
+    ),
+    "google_sites_url": "Link público do Google Sites embutindo as telas.",
+    "github_repo": "Repositório owner/repo do site (ex.: binhotransportes15/coletas-ace).",
+    "github_branch": "Branch publicada no Pages (normalmente main).",
+    "github_token_env": "Nome da variável de ambiente com o token GitHub (ex.: GH_TOKEN).",
+    "dist_in_loop": "Inclui distribuição (50 · 103 · 36 · 225) no modo automático.",
+    "dist_intervalo": "Intervalo só da distribuição. Vazio = usa o intervalo padrão.",
+    "armazem_in_loop": "Inclui armazém (078 + 177) no modo automático.",
+    "armazem_intervalo": "Intervalo só do armazém. Vazio = padrão.",
+    "pendencia_in_loop": "Inclui pendência (031) no modo automático.",
+    "pendencia_intervalo": "Intervalo só da pendência. Vazio = padrão.",
+    "contratacao_in_loop": "Inclui contratação (073 → 200) no modo automático.",
+    "contratacao_intervalo": "Intervalo só da contratação. Vazio = padrão.",
+    "emissao_in_loop": "Inclui emissão (455) no modo automático.",
+    "emissao_intervalo": "Intervalo só da emissão. Vazio = padrão.",
+    "mapa_in_loop": "Inclui mapa operacional no modo automático.",
+    "mapa_intervalo": "Intervalo só do mapa. Vazio = padrão.",
+    "reciclagem_in_loop": "Inclui reciclagem (019/081) no automático (se ativo).",
+    "reciclagem_intervalo": "Intervalo da reciclagem. Vazio = padrão.",
+    "cybermap_path": "Pasta local do CyberMap / rotas usada pelo mapa operacional.",
+    "crt_lock_password": (
+        "Senha para desbloquear o cadeado do painel CRT. "
+        "Com o painel bloqueado a automação continua rodando. Padrão: ace."
+    ),
+    "headless": "Se ligado, o navegador SSW roda oculto (mais leve).",
+}
+
+
+def _field_label(key: str) -> str:
+    return _FIELD_LABELS.get(key, key.replace("_", " ").capitalize())
+
+
+def _field_help(key: str) -> str:
+    return _FIELD_HELP.get(key, "")
+
 
 # Digitação livre → comando interno
 _FRIENDLY_CMDS: dict[str, str] = {
@@ -2044,10 +2643,6 @@ _FRIENDLY_CMDS: dict[str, str] = {
     "menu": "menu",
     "config": "menu",
 }
-
-
-def _field_label(key: str) -> str:
-    return _FIELD_LABELS.get(key, key.replace("_", " ").capitalize())
 
 
 def _resolve_friendly_cmd(raw: str) -> str:
@@ -2395,13 +2990,14 @@ class AceCrtRapidoWindow(QWidget):
     def __init__(self, owner: "AceCrtConsole", content: QWidget) -> None:
         super().__init__(None)
         self.setObjectName("crtRoot")
-        self.setWindowTitle("BINHO · Comandos rápidos")
+        self.setWindowTitle("ACE · Comandos rápidos")
         self.setWindowFlags(
             Qt.Tool
             | Qt.WindowTitleHint
             | Qt.WindowSystemMenuHint
             | Qt.WindowCloseButtonHint
         )
+        self.setWindowIcon(crt_window_icon(DEFAULT_CRT_THEME))
         self._owner = owner
         self.resize(520, 560)
         self.setMinimumSize(400, 420)
@@ -2432,7 +3028,7 @@ class AceCrtMenuWindow(QWidget):
     def __init__(self, owner: "AceCrtConsole", content: QWidget) -> None:
         super().__init__(None)
         self.setObjectName("crtRoot")
-        self.setWindowTitle("BINHO · Configurações")
+        self.setWindowTitle("ACE · Configurações")
         self.setWindowFlags(
             Qt.Window
             | Qt.WindowTitleHint
@@ -2441,14 +3037,20 @@ class AceCrtMenuWindow(QWidget):
             | Qt.WindowMaximizeButtonHint
             | Qt.WindowCloseButtonHint
         )
+        self.setWindowIcon(crt_window_icon(DEFAULT_CRT_THEME))
         self._owner = owner
-        self.resize(540, 680)
-        self.setMinimumSize(420, 480)
+        # Caixa compacta: cabe na tela; o conteúdo das abas rola para baixo
+        self.resize(560, 520)
+        self.setMinimumSize(420, 360)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(10, 10, 10, 10)
+        lay.setContentsMargins(12, 10, 12, 10)
         lay.setSpacing(6)
-        tip = QLabel("Configurações · mesmo tema do painel · reabra pela sidebar")
+        tip = QLabel(
+            "Configurações · arraste a barra para baixo nas abas · "
+            "reabra pela sidebar"
+        )
         tip.setObjectName("hint")
+        tip.setWordWrap(True)
         lay.addWidget(tip)
         lay.addWidget(content, 1)
 
@@ -2462,7 +3064,7 @@ class AceCrtConsole(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.setObjectName("crtRoot")
-        self.setWindowTitle("BINHO · Gestão")
+        self.setWindowTitle("ACE · Gestão")
         # Chrome nativo Windows: minimizar / maximizar / fechar + redimensionar
         self.setWindowFlags(
             Qt.Window
@@ -2472,6 +3074,7 @@ class AceCrtConsole(QWidget):
             | Qt.WindowMaximizeButtonHint
             | Qt.WindowCloseButtonHint
         )
+        self.setWindowIcon(crt_window_icon(DEFAULT_CRT_THEME))
         self.resize(1280, 760)
         self.setMinimumSize(1024, 640)
         self._theme_id = DEFAULT_CRT_THEME
@@ -2522,7 +3125,7 @@ class AceCrtConsole(QWidget):
         shell.setSpacing(12)
 
         sidebar = self._build_sidebar()
-        sidebar.setFixedWidth(228)
+        sidebar.setFixedWidth(210)
         shell.addWidget(sidebar)
 
         main = self._build_main()
@@ -2531,7 +3134,7 @@ class AceCrtConsole(QWidget):
 
         foot_row = QHBoxLayout()
         foot_row.setContentsMargins(16, 0, 16, 10)
-        self.foot = QLabel("© 2026 Binho Gestão — Sistema de Gestão Operacional")
+        self.foot = QLabel("© 2026 ACE Gestão — Sistema de Gestão Operacional")
         self.foot.setObjectName("foot")
         self.foot_right = QLabel("F11 Tela cheia · ESC Parar · sidebar → Configurações")
         self.foot_right.setObjectName("foot")
@@ -2543,9 +3146,11 @@ class AceCrtConsole(QWidget):
         # Abas ficam na janela Configurações (sidebar)
         tabs = self._build_right()
         self._menu_win = AceCrtMenuWindow(self, tabs)
+        if self._menu_win is not None:
+            self._menu_win.setWindowIcon(crt_window_icon(DEFAULT_CRT_THEME))
 
         # Compat: widgets ocultos usados pelo status/tema antigo
-        self.cubes = BinhoCubesWidget()
+        self.cubes = AceBrainWidget()
         self.cubes.hide()
         self.meter_cpu = SysMeterRow("CPU", "#22c55e")
         self.meter_mem = SysMeterRow("MEM", "#3b82f6")
@@ -2644,29 +3249,30 @@ class AceCrtConsole(QWidget):
         box = QFrame()
         box.setObjectName("sidebar")
         lay = QVBoxLayout(box)
-        lay.setContentsMargins(14, 16, 14, 14)
-        lay.setSpacing(4)
+        lay.setContentsMargins(10, 10, 10, 12)
+        lay.setSpacing(2)
 
-        brand = QLabel("BINHO · GESTÃO")
-        brand.setObjectName("brandTitle")
-        sub = QLabel("PAINEL OPERACIONAL")
-        sub.setObjectName("brandSub")
+        brand = AceBrandHeader()
+        self._brand_header = brand
+        self._brand_logo = brand._logo  # compat
         lay.addWidget(brand)
-        lay.addWidget(sub)
-        lay.addSpacing(12)
+        lay.addSpacing(6)
 
         self._nav_group = QButtonGroup(self)
         self._nav_group.setExclusive(True)
         self._nav_btns: dict[str, NavButton] = {}
 
         def add_nav(key: str, text: str, *, active: bool = False) -> NavButton:
-            btn = NavButton(text, active=active)
+            btn = NavButton(text, icon_key=key, active=active)
             self._nav_btns[key] = btn
             self._nav_group.addButton(btn)
             btn.clicked.connect(lambda _=False, k=key: self._on_nav(k))
             lay.addWidget(btn)
             return btn
 
+        g0 = QLabel("PRINCIPAL")
+        g0.setObjectName("navGroup")
+        lay.addWidget(g0)
         add_nav("home", "Visão Geral", active=True)
         g1 = QLabel("OPERAÇÃO")
         g1.setObjectName("navGroup")
@@ -2707,7 +3313,7 @@ class AceCrtConsole(QWidget):
         self.bar.setFormat("%p%")
         self.bar.setFixedHeight(8)
         self.bar.setTextVisible(False)
-        ver = QLabel("Versão 2.0.0")
+        ver = QLabel(f"Versão {CRT_APP_VERSION}")
         ver.setObjectName("hint")
         fl.addWidget(self.status)
         fl.addWidget(self.detail)
@@ -2732,8 +3338,8 @@ class AceCrtConsole(QWidget):
             return
         if key == "home":
             if hasattr(self, "page_title"):
-                self.page_title.setText("Visão Geral")
-                self.page_sub.setText("Acompanhe em tempo real o status da operação")
+                self.page_title.setText("ACE • GESTÃO")
+                self.page_sub.setText("PAINEL OPERACIONAL · Visão Geral")
             return
         if key in {"dist", "78", "31", "73", "455", "mapa"}:
             cmd_map = {"dist": "50", "78": "78", "31": "31", "73": "73", "455": "455", "mapa": "mapa"}
@@ -2769,9 +3375,9 @@ class AceCrtConsole(QWidget):
         head = QHBoxLayout()
         titles = QVBoxLayout()
         titles.setSpacing(2)
-        self.page_title = QLabel("Visão Geral")
+        self.page_title = QLabel("ACE • GESTÃO")
         self.page_title.setObjectName("pageTitle")
-        self.page_sub = QLabel("Acompanhe em tempo real o status da operação")
+        self.page_sub = QLabel("PAINEL OPERACIONAL · Visão Geral")
         self.page_sub.setObjectName("pageSub")
         titles.addWidget(self.page_title)
         titles.addWidget(self.page_sub)
@@ -2795,7 +3401,7 @@ class AceCrtConsole(QWidget):
         head.addWidget(self.btn_lock)
         lay.addLayout(head)
 
-        # KPIs
+        # KPIs — 4 cards como na referência (Mapa fica em Status dos Setores)
         kpi_row = QHBoxLayout()
         kpi_row.setSpacing(10)
         self._kpi_cards: dict[str, KpiCard] = {}
@@ -2804,9 +3410,8 @@ class AceCrtConsole(QWidget):
             ("78", "Armazém"),
             ("31", "Pendências"),
             ("455", "Emissão"),
-            ("mapa", "Mapa"),
         ):
-            card = KpiCard(sid, title, _SECTOR_ACCENTS.get(sid, "#3b82f6"))
+            card = KpiCard(sid, title, _SECTOR_ACCENTS.get(sid, "#ec4899"))
             self._kpi_cards[sid] = card
             kpi_row.addWidget(card)
         lay.addLayout(kpi_row)
@@ -2836,7 +3441,7 @@ class AceCrtConsole(QWidget):
         for sid, title in (
             ("dist", "Distribuição"),
             ("78", "Armazém"),
-            ("31", "Pendência"),
+            ("31", "Pendências"),
             ("73", "Contratação"),
             ("455", "Emissão"),
             ("mapa", "Mapa"),
@@ -2864,7 +3469,7 @@ class AceCrtConsole(QWidget):
         lay = QVBoxLayout(box)
         lay.setContentsMargins(14, 12, 14, 12)
         lay.setSpacing(8)
-        self.cmd_section = self._section("Log do Sistema")
+        self.cmd_section = self._section("CMD - log")
         lay.addWidget(self.cmd_section)
         # Compat: botão antigo (sidebar → Comandos)
         self.btn_rapido = QPushButton("Comandos")
@@ -2881,7 +3486,8 @@ class AceCrtConsole(QWidget):
         self.prompt.returnPressed.connect(self._submit_prompt)
         self.btn_run = QPushButton("Enviar")
         self.btn_run.setObjectName("primary")
-        self.btn_run.setFixedWidth(88)
+        self.btn_run.setMinimumWidth(100)
+        self.btn_run.setMinimumHeight(36)
         self.btn_run.clicked.connect(self._submit_prompt)
         prompt_row.addWidget(self.prompt, 1)
         prompt_row.addWidget(self.btn_run)
@@ -2901,13 +3507,13 @@ class AceCrtConsole(QWidget):
         cl.setSpacing(8)
         cl.addWidget(self._section("Ações"))
         actions = (
-            ("Iniciar Automação", "#3b82f6", lambda: self._start_automatica_ui()),
-            ("Parar Automação", "#ef4444", lambda: self._stop_all()),
-            ("Forçar Atualização", "#38bdf8", lambda: self.run_command("sync")),
-            ("Comandos SSW…", "#22c55e", lambda: self._toggle_rapido_window()),
+            ("Iniciar Automação", "#ffffff", "▶", "primary", lambda: self._start_automatica_ui()),
+            ("Parar Automação", "#f87171", "■", "danger", lambda: self._stop_all()),
+            ("Forçar Atualização", "#ffffff", "↻", "accent", lambda: self.run_command("sync")),
+            ("Comandos SSW", "#7dd3fc", ">_", "muted", lambda: self._toggle_rapido_window()),
         )
-        for title, color, slot in actions:
-            btn = ProActionButton(title, color)
+        for title, color, icon, variant, slot in actions:
+            btn = ProActionButton(title, color, icon=icon, variant=variant)
             btn.clicked.connect(slot)
             cl.addWidget(btn)
         cl.addStretch(1)
@@ -2921,7 +3527,7 @@ class AceCrtConsole(QWidget):
         self._info_rows: dict[str, QLabel] = {}
         for key, label in (
             ("sessao", "Sessão"),
-            ("units", "Unidades SSW"),
+            ("units", "Unidades (menu / coleta)"),
             ("filiais", "Filiais"),
             ("planilha", "Planilha"),
             ("auto", "Automático"),
@@ -3019,7 +3625,7 @@ class AceCrtConsole(QWidget):
 
     def _lock_password(self) -> str:
         p = self.payload or {}
-        return str(p.get("crt_lock_password") or "binho")
+        return str(p.get("crt_lock_password") or "ace")
 
     def _lock_panel(self) -> None:
         """Trava a UI. Cadeado só aparece se alguém tentar mexer."""
@@ -3211,9 +3817,36 @@ class AceCrtConsole(QWidget):
         if tab is not None:
             self._select_menu_tab(tab)
         self._sync_menu_window_chrome()
+        self._fit_menu_window()
         win.show()
         win.raise_()
         win.activateWindow()
+
+    def _fit_menu_window(self) -> None:
+        """Abre Configurações em caixa compacta; o resto das abas rola dentro."""
+        win = getattr(self, "_menu_win", None)
+        if win is None:
+            return
+        if win.isMaximized():
+            return
+        screen = win.screen() or self.screen() or QApplication.primaryScreen()
+        if screen is None:
+            win.resize(560, 520)
+            return
+        ag = screen.availableGeometry()
+        # Quadrado utilitário: cabe na tela; conteúdo longo usa scroll
+        target_w = int(min(560, max(460, ag.width() - 48)))
+        target_h = int(min(520, max(400, ag.height() - 80)))
+        win.resize(target_w, target_h)
+        frame = win.frameGeometry()
+        try:
+            anchor = self.frameGeometry().center()
+        except Exception:
+            anchor = ag.center()
+        frame.moveCenter(anchor)
+        x = max(ag.left() + 8, min(frame.x(), ag.right() - frame.width() - 8))
+        y = max(ag.top() + 8, min(frame.y(), ag.bottom() - frame.height() - 8))
+        win.move(x, y)
 
     def _select_menu_tab(self, tab: str | int) -> None:
         tabs = getattr(self, "_right_tabs", None)
@@ -3267,8 +3900,8 @@ class AceCrtConsole(QWidget):
 
         wrap = QWidget()
         outer = QVBoxLayout(wrap)
-        outer.setContentsMargins(8, 8, 8, 8)
-        outer.setSpacing(8)
+        outer.setContentsMargins(4, 4, 4, 4)
+        outer.setSpacing(4)
 
         intro = QLabel(
             "Login SSW, publicação, logo das dashboards e tema do painel CRT."
@@ -3279,10 +3912,18 @@ class AceCrtConsole(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setFrameShape(QFrame.NoFrame)
         body = QWidget()
         form = QFormLayout(body)
-        form.setLabelAlignment(Qt.AlignLeft)
-        form.setSpacing(8)
+        form.setLabelAlignment(Qt.AlignLeft | Qt.AlignTop)
+        form.setFormAlignment(Qt.AlignTop)
+        form.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
+        form.setRowWrapPolicy(QFormLayout.WrapLongRows)
+        form.setHorizontalSpacing(18)
+        form.setVerticalSpacing(12)
+        form.setContentsMargins(6, 4, 12, 12)
 
         form.addRow(self._section("Logo das dashboards (opcional)"))
         logo_tip = QLabel(
@@ -3296,8 +3937,8 @@ class AceCrtConsole(QWidget):
 
         self._brand_preview = QLabel()
         self._brand_preview.setAlignment(Qt.AlignCenter)
-        self._brand_preview.setMinimumHeight(100)
-        self._brand_preview.setMaximumHeight(140)
+        self._brand_preview.setMinimumHeight(72)
+        self._brand_preview.setMaximumHeight(96)
         self._brand_preview.setStyleSheet("background:#0f172a;border:1px solid #1e293b;border-radius:8px;")
         form.addRow(self._brand_preview)
 
@@ -3348,9 +3989,15 @@ class AceCrtConsole(QWidget):
         form.addRow(wrap_vis)
 
         groups = {
-            "ssw": ("Acesso ao SSW", "URL, empresa, usuário e senha do sistema."),
+            "ssw": (
+                "Acesso ao SSW",
+                "Login do sistema. Unidade do menu e unidades da coleta são campos separados.",
+            ),
             "auto": ("Atualização geral", "Opções de coleta/entrega e período (diário ou sexta)."),
-            "cloud": ("Planilha e site", "Interruptor sync_remoto + Sheets/Pages. Local é independente."),
+            "cloud": (
+                "Planilha e site",
+                "Sync remoto liga/desliga nuvem. Local (JSON/LAN) é independente.",
+            ),
             "local": ("Modo local / rede", "JSON interno e acesso na Wi‑Fi (detalhes na aba Local)."),
             "armazem": ("Armazém", "Ajustes do setor 078."),
             "pendencia": ("Pendência", "Ajustes do setor 031."),
@@ -3358,7 +4005,7 @@ class AceCrtConsole(QWidget):
             "automacao": ("Automação", "Use a aba Automação para setores e intervalos."),
             "crt": (
                 "Bloqueio do painel",
-                "Senha do cadeado (botão Bloquear). Automação continua mesmo bloqueado. Padrão: binho",
+                "Senha do cadeado (botão Bloquear). Automação continua mesmo bloqueado. Padrão: ace",
             ),
         }
         skip_keys = {
@@ -3397,23 +4044,39 @@ class AceCrtConsole(QWidget):
                 w = QLineEdit()
                 if secret:
                     w.setEchoMode(QLineEdit.Password)
+                if key == "menu_unit":
+                    w.setPlaceholderText("ex.: SPO")
+                elif key == "unit":
+                    w.setPlaceholderText("ex.: SPO,LEO,RIS  ou  *")
             self._fields[key] = w
-            form.addRow(_field_label(key), w)
+            try:
+                w.setMinimumHeight(30)
+            except Exception:
+                pass
+            lab = QLabel(_field_label(key))
+            lab.setWordWrap(True)
+            lab.setMinimumWidth(120)
+            lab.setMaximumWidth(180)
+            form.addRow(lab, self._cfg_value_with_help(key, w))
 
         form.addRow(self._section("Navegador (SSW)"))
-        viz_hint = QLabel(
+        viz_hint = QLabel(_field_help("headless") or (
             "Desmarcado = roda oculto (mais leve). Marcado = você vê o Chrome/Edge abrindo."
-        )
+        ))
         viz_hint.setObjectName("hint")
         viz_hint.setWordWrap(True)
         form.addRow(viz_hint)
         self.chk_viz = QCheckBox("Mostrar navegador ao trabalhar")
+        self.chk_viz.setToolTip(
+            "Inverso de «ocultar navegador»: marcado = você vê a automação no Chrome."
+        )
         form.addRow(self.chk_viz)
 
         form.addRow(self._section("Aparência do CRT"))
         apar_tip = QLabel(
-            "Temas disponíveis: Escuro · Verde BINHO · Azul painel · Verde ops · Claro · Escuro fosco. "
-            "Troque abaixo — a logo das dashboards é independente, acima."
+            "Temas: ACE (padrão) · Azul · Amarelo · Vermelho · Verde — "
+            "cada um troca a cor do cavalo no ícone. "
+            "A logo das dashboards é independente, acima."
         )
         apar_tip.setObjectName("hint")
         apar_tip.setWordWrap(True)
@@ -3423,9 +4086,18 @@ class AceCrtConsole(QWidget):
             self.cmb_theme_cfg.addItem(str(meta["label"]), tid)
         self.cmb_theme_cfg.setMinimumHeight(32)
         self.cmb_theme_cfg.currentIndexChanged.connect(self._on_theme_combo_cfg)
-        form.addRow("Tema do painel", self.cmb_theme_cfg)
+        theme_cell = QWidget()
+        theme_lay = QVBoxLayout(theme_cell)
+        theme_lay.setContentsMargins(0, 0, 0, 0)
+        theme_lay.setSpacing(2)
+        theme_lay.addWidget(self.cmb_theme_cfg)
+        theme_help = QLabel("Só muda o visual do painel CRT; não altera as dashboards TV.")
+        theme_help.setObjectName("hint")
+        theme_help.setWordWrap(True)
+        theme_lay.addWidget(theme_help)
+        form.addRow("Tema do painel", theme_cell)
 
-        frost_hint = QLabel("Só no tema Escuro fosco · Salvar grava os valores")
+        frost_hint = QLabel("Controles de fosco (legado) — não usados nos temas atuais")
         frost_hint.setObjectName("hint")
         form.addRow(frost_hint)
 
@@ -3487,6 +4159,9 @@ class AceCrtConsole(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setFrameShape(QFrame.NoFrame)
         body = QWidget()
         lay = QVBoxLayout(body)
         lay.setSpacing(10)
@@ -3521,9 +4196,19 @@ class AceCrtConsole(QWidget):
         row_fb.addWidget(QLabel("Fallback"))
         row_fb.addWidget(self._fields["loop_intervalo"], 1)
         lay.addLayout(row_fb)
+        fb_help = QLabel(_field_help("loop_intervalo"))
+        fb_help.setObjectName("hint")
+        fb_help.setWordWrap(True)
+        lay.addWidget(fb_help)
 
-        self._fields["ciclo_paralelo"] = QCheckBox("Rodar setores juntos quando vencerem ao mesmo tempo")
+        self._fields["ciclo_paralelo"] = QCheckBox(
+            "Rodar setores juntos quando vencerem ao mesmo tempo"
+        )
         lay.addWidget(self._fields["ciclo_paralelo"])
+        par_help = QLabel(_field_help("ciclo_paralelo"))
+        par_help.setObjectName("hint")
+        par_help.setWordWrap(True)
+        lay.addWidget(par_help)
 
         sectors = (
             ("dist", "Distribuição", "50 · 103 · 36 · 225", "dist_in_loop", "dist_intervalo"),
@@ -3541,22 +4226,28 @@ class AceCrtConsole(QWidget):
             bl.setContentsMargins(10, 8, 10, 8)
             bl.setSpacing(4)
             chk = QCheckBox(title)
-            chk.setToolTip(desc)
+            chk.setToolTip(_field_help(flag_key) or desc)
             self._fields[flag_key] = chk
             bl.addWidget(chk)
-            meta = QLabel(desc)
+            meta = QLabel(f"{desc}\n{_field_help(flag_key)}".strip())
             meta.setObjectName("hint")
+            meta.setWordWrap(True)
             bl.addWidget(meta)
             row = QHBoxLayout()
             row.addWidget(QLabel("A cada"))
             iv = QLineEdit()
             iv.setPlaceholderText("vazio = padrão")
             iv.setMaximumWidth(120)
+            iv.setToolTip(_field_help(iv_key))
             self._fields[iv_key] = iv
             row.addWidget(iv)
             row.addWidget(QLabel("(30s · 5m · 1h · 2d)"))
             row.addStretch(1)
             bl.addLayout(row)
+            iv_help = QLabel(_field_help(iv_key))
+            iv_help.setObjectName("hint")
+            iv_help.setWordWrap(True)
+            bl.addWidget(iv_help)
             lay.addWidget(box)
 
         lay.addWidget(self._section("Controle"))
@@ -3648,7 +4339,17 @@ class AceCrtConsole(QWidget):
         from ace_local_view import LOCAL_SCREEN_ORDER, screen_label
 
         wrap = QWidget()
-        outer = QVBoxLayout(wrap)
+        shell = QVBoxLayout(wrap)
+        shell.setContentsMargins(0, 0, 0, 0)
+        shell.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setFrameShape(QFrame.NoFrame)
+        body = QWidget()
+        outer = QVBoxLayout(body)
         outer.setContentsMargins(10, 10, 10, 10)
         outer.setSpacing(8)
 
@@ -3694,9 +4395,14 @@ class AceCrtConsole(QWidget):
         port_row.addWidget(QLabel("Porta"))
         self.edit_dash_port = QLineEdit(str(self.payload.get("dashboard_port") or 8787))
         self.edit_dash_port.setMaximumWidth(80)
+        self.edit_dash_port.setToolTip(_field_help("dashboard_port"))
         port_row.addWidget(self.edit_dash_port)
         port_row.addStretch(1)
         outer.addLayout(port_row)
+        port_help = QLabel(_field_help("dashboard_port"))
+        port_help.setObjectName("hint")
+        port_help.setWordWrap(True)
+        outer.addWidget(port_help)
         btn_lan = QPushButton("Mostrar links da rede")
         btn_lan.clicked.connect(self._local_show_lan_urls)
         outer.addWidget(btn_lan)
@@ -3745,6 +4451,8 @@ class AceCrtConsole(QWidget):
         self._local_status.setWordWrap(True)
         outer.addWidget(self._local_status)
         outer.addStretch(1)
+        scroll.setWidget(body)
+        shell.addWidget(scroll, 1)
         return wrap
 
     def _local_set_all(self, checked: bool) -> None:
@@ -4205,7 +4913,7 @@ class AceCrtConsole(QWidget):
         path, _ = QFileDialog.getSaveFileName(
             self,
             "Exportar logo",
-            str(_ROOT / "logo-binho-export.png"),
+            str(_ROOT / "logo-ace-export.png"),
             "PNG (*.png);;Todos (*.*)",
         )
         if not path:
@@ -4256,6 +4964,9 @@ class AceCrtConsole(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setFrameShape(QFrame.NoFrame)
         body = QWidget()
         lay = QVBoxLayout(body)
         lay.setContentsMargins(10, 10, 10, 10)
@@ -4312,6 +5023,27 @@ class AceCrtConsole(QWidget):
 
     def _goto_automacao_tab(self) -> None:
         self._show_menu_window("automacao")
+
+    def _cfg_value_with_help(self, key: str, widget: QWidget) -> QWidget:
+        """Campo + descrição curta embaixo (todas as configs)."""
+        cell = QWidget()
+        lay = QVBoxLayout(cell)
+        lay.setContentsMargins(0, 0, 0, 2)
+        lay.setSpacing(4)
+        lay.addWidget(widget)
+        help_txt = _field_help(key)
+        if help_txt:
+            tip = QLabel(help_txt)
+            tip.setObjectName("hint")
+            tip.setWordWrap(True)
+            tip.setMinimumHeight(28)
+            tip.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+            lay.addWidget(tip)
+            try:
+                widget.setToolTip(help_txt)
+            except Exception:
+                pass
+        return cell
 
     def _section(self, text: str) -> QLabel:
         lab = QLabel(text)
@@ -4371,7 +5103,7 @@ class AceCrtConsole(QWidget):
         _ = (cmd_busy, auto_on, rows)
 
     def _load_logo(self) -> None:
-        # Mantido por compatibilidade; painel esquerdo usa BinhoCubesWidget.
+        # Mantido por compatibilidade; painel esquerdo usa AceBrainWidget.
         return
 
     def _refresh_sys_meters(self) -> None:
@@ -4406,9 +5138,7 @@ class AceCrtConsole(QWidget):
             elif isinstance(w, QLineEdit):
                 w.setText("" if val is None else str(val))
         self.chk_viz.setChecked(not bool(self.payload.get("headless", True)))
-        theme = str(self.payload.get("crt_theme") or DEFAULT_CRT_THEME)
-        if theme == "circuitos" or theme not in CRT_THEMES:
-            theme = DEFAULT_CRT_THEME
+        theme = normalize_crt_theme(self.payload.get("crt_theme"))
         self._load_frost_sliders_from_payload()
         self._apply_theme(theme, persist=False)
         self._seed_sector_bars_from_config()
@@ -4518,10 +5248,48 @@ class AceCrtConsole(QWidget):
         tid = str(self.cmb_theme_cfg.currentData() or DEFAULT_CRT_THEME)
         self._apply_theme(tid, persist=True)
 
+    def _refresh_brand_logo(self, theme_id: str | None = None) -> None:
+        """Atualiza cavalo integrado + ícone das janelas conforme o tema."""
+        tid = normalize_crt_theme(theme_id or getattr(self, "_theme_id", DEFAULT_CRT_THEME))
+        meta = CRT_THEMES.get(tid) or CRT_THEMES[DEFAULT_CRT_THEME]
+        icon = crt_window_icon(tid)
+        try:
+            self.setWindowIcon(icon)
+        except Exception:
+            pass
+        for win in (
+            getattr(self, "_menu_win", None),
+            getattr(self, "_rapido_win", None),
+        ):
+            if win is not None:
+                try:
+                    win.setWindowIcon(icon)
+                except Exception:
+                    pass
+        header = getattr(self, "_brand_header", None)
+        if header is not None:
+            try:
+                header.apply_theme(tid, meta)
+                return
+            except Exception:
+                pass
+        # fallback legado
+        lab = getattr(self, "_brand_logo", None)
+        path = resolve_crt_horse_path(tid)
+        if lab is None or not path.is_file():
+            return
+        try:
+            pm = QPixmap(str(path))
+            if pm.isNull():
+                return
+            scaled = pm.scaled(132, 132, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            lab.setPixmap(scaled)
+            lab.setToolTip(f"Tema: {meta.get('label', tid)}")
+        except Exception:
+            pass
+
     def _apply_theme(self, theme_id: str, *, persist: bool = True) -> None:
-        tid = theme_id if theme_id in CRT_THEMES else DEFAULT_CRT_THEME
-        if theme_id == "circuitos":
-            tid = DEFAULT_CRT_THEME
+        tid = normalize_crt_theme(theme_id)
         self._theme_id = tid
         fa, fb = self._frost_alpha_val(), self._frost_blur_val()
         ss = build_crt_stylesheet(tid, frost_alpha=fa, frost_blur=fb)
@@ -4568,6 +5336,7 @@ class AceCrtConsole(QWidget):
         if frost:
             self._schedule_frost_refresh()
         self._sync_frost_controls_enabled()
+        self._refresh_brand_logo(tid)
         for cmb in (getattr(self, "cmb_theme", None), getattr(self, "cmb_theme_cfg", None)):
             if cmb is None:
                 continue
@@ -4911,6 +5680,7 @@ class AceCrtConsole(QWidget):
     def _update_meta(self) -> None:
         p = self.payload or {}
         user = str(p.get("user") or "—")
+        menu_u = str(p.get("menu_unit") or "—").strip() or "—"
         units = str(p.get("unit") or "—").strip() or "—"
         viz = "navegador ligado" if not p.get("headless", True) else "navegador oculto"
         sheets = "planilha ligada" if p.get("enable_sheets") else "planilha desligada"
@@ -4936,8 +5706,8 @@ class AceCrtConsole(QWidget):
 
         lines: list[str] = [
             f"<b>Sessão</b> · {user}",
-            f"Unidades SSW: <b>{units}</b><br>"
-            f"<span style='opacity:0.75'>Filiais em que o login busca os relatórios.</span>",
+            f"Menu: <b>{menu_u}</b> · Coleta 50/103: <b>{units}</b><br>"
+            f"<span style='opacity:0.75'>Menu = unidade após login · Coleta = filiais dos relatórios 50/103.</span>",
             f"{sheets} · TV={dest_txt} · {viz}",
             f"Automático · padrão <b>{fallback}</b> · {modo_txt}",
             "<b>Setores no loop</b>",
@@ -5410,10 +6180,8 @@ class AceCrtConsole(QWidget):
         if hasattr(self, "chk_viz"):
             self.chk_viz.setChecked(not bool(self.payload.get("headless", True)))
         self._load_frost_sliders_from_payload()
-        theme = str(self.payload.get("crt_theme") or DEFAULT_CRT_THEME)
-        if theme == "circuitos" or theme not in CRT_THEMES:
-            theme = DEFAULT_CRT_THEME
-        if theme in CRT_THEMES and theme != getattr(self, "_theme_id", None):
+        theme = normalize_crt_theme(self.payload.get("crt_theme"))
+        if theme != getattr(self, "_theme_id", None):
             self._apply_theme(theme, persist=False)
         self._update_meta()
 
@@ -5512,7 +6280,7 @@ class AceCrtConsole(QWidget):
         t = CRT_THEMES.get(self._theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
         accent = str(t["text"])
         dim = str(t["dim"])
-        warn = WARN if self._theme_id not in {"claro"} else "#b45309"
+        warn = WARN
         color = {
             "ok": accent,
             "err": ERR,
@@ -5639,7 +6407,7 @@ class AceCrtConsole(QWidget):
                     busy = " · loop"
                 if hasattr(self, "foot"):
                     self.foot.setText(
-                        f"© 2026 Binho Gestão — Sistema de Gestão Operacional · {mtime}{busy}"
+                        f"© 2026 ACE Gestão — Sistema de Gestão Operacional · {mtime}{busy}"
                     )
         except Exception:
             pass
@@ -5832,9 +6600,10 @@ def main() -> int:
     except Exception:  # noqa: BLE001
         pass
     app = QApplication(sys.argv)
-    app.setApplicationName("BINHO ACE Gestão CRT")
+    app.setApplicationName("ACE Gestão CRT")
     load_crt_font()
     app.setFont(crt_font(11))
+    app.setWindowIcon(crt_window_icon(DEFAULT_CRT_THEME))
     w = AceCrtConsole()
     w.show()  # modo janela; maximizar/tela cheia pelos botões do cabeçalho
     return app.exec()

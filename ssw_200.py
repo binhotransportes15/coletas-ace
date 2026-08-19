@@ -516,6 +516,8 @@ def _ler_jobs_fila_200(fila) -> list[dict]:
             const seq = (cells[0] || '').replace(/\\D/g, '');
             if (!seq || seq.length < 4) continue;
             const opcao = cells[1] || '';
+            const dataHora = cells[2] || '';
+            const usuario = cells[3] || '';
             let sit = '';
             for (const c of cells) {
               if (/^(conclu[ií]d[oa]|processando|na fila|em fila|erro|abortad)/i.test(c)) {
@@ -548,6 +550,8 @@ def _ler_jobs_fila_200(fila) -> list[dict]:
             jobs.push({
               seq,
               opcao,
+              data_hora: dataHora,
+              usuario,
               situacao: sit,
               mensagem,
               concluido: /conclu/i.test(sit),
@@ -629,6 +633,12 @@ def _baixar_via_fila_200(
     if fila is None or fila.is_closed():
         fila = _abrir_fila_156_200(client, context, page, status)
 
+    login_user = re.sub(
+        r"\s+",
+        "",
+        str(getattr(getattr(client, "credentials", None), "user", "") or "").strip().lower(),
+    )
+
     def _seq_num(j: dict) -> int:
         seq = str(j.get("seq") or "")
         try:
@@ -640,6 +650,10 @@ def _baixar_via_fila_200(
         seq = str(j.get("seq") or "")
         if not seq or not j.get("is200"):
             return False
+        if login_user:
+            got = re.sub(r"\s+", "", str(j.get("usuario") or "").strip().lower())
+            if got and got != login_user:
+                return False
         num = _seq_num(j)
         if floor > 0 and num <= floor:
             return False

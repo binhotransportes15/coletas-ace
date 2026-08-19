@@ -19,6 +19,7 @@ from config import DOWNLOAD_DIR, AceSettings, SswCredentials, ensure_dirs, load_
 from dates import periodo_mes_ate_hoje, to_ssw_ddmmyy
 from ocorrencias_pendencia import OCORR_PENDENCIA_CODES, label_ocorrencia
 from ssw_client import AceSswClient, cleanup_downloads
+from ssw_fila156 import atualizar_fila as _atualizar_fila156, norm_user as _norm_user156
 
 StatusCallback = Callable[[str], None]
 
@@ -364,6 +365,15 @@ def _baixar_tudo_na_mesma_156(
     deadline = time.time() + max(420, 70 * want)
     last_log = 0.0
     all_ready_announced = False
+    login_user = _norm_user156(
+        getattr(getattr(client, "credentials", None), "user", "") or ""
+    )
+
+    def _is_login_job(j: dict[str, Any]) -> bool:
+        if not login_user:
+            return True
+        got = _norm_user156(j.get("usuario"))
+        return (not got) or got == login_user
 
     def _done_count() -> int:
         return len(paths) + len(skipped_codes)
@@ -399,14 +409,20 @@ def _baixar_tudo_na_mesma_156(
         _safe_wait(f, 400)
         return _ler_jobs_fila(f)
 
-    status(f"[31] 156 aberta · baixando assim que aparecer Baixar ({want} job(s))…")
+    status(
+        f"[31] 156 aberta · user={login_user or '?'} · "
+        f"baixando assim que aparecer Baixar ({want} job(s))…"
+    )
 
     while time.time() < deadline and _done_count() < want:
         try:
             _raise_if_stopped(status)
             jobs = _poll()
-            only = [j for j in jobs if j.get("is0495") and str(j.get("seq") or "")]
-            # Jobs desta rodada: por horário OU (fallback) últimas N seqs novas
+            only = [
+                j
+                for j in jobs
+                if j.get("is0495") and str(j.get("seq") or "") and _is_login_job(j)
+            ]            # Jobs desta rodada: por horário OU (fallback) últimas N seqs novas
             round_jobs = _filtrar_jobs_desta_rodada(
                 only, enqueue_t0=enqueue_t0, want=want
             )
@@ -988,6 +1004,8 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
             const seq = (cells[0] || '').replace(/\\D/g, '');
             if (!seq || seq.length < 4) continue;
             const opcao = cells[1] || '';
+            const dataHora = cells[2] || '';
+            const usuario = cells[3] || '';
             // situação: prioriza célula que parece status (não pega 'fila' genérico)
             let sit = '';
             for (const c of cells) {
@@ -1073,6 +1091,8 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
             jobs.push({
               seq,
               opcao,
+              data_hora: dataHora,
+              usuario,
               situacao: sit,
               mensagem,
               quando,
@@ -1102,21 +1122,7 @@ def _job_31_sem_dados(job: dict, *, since: float | None = None, grace_s: float =
 
 
 def _atualizar_fila(fila) -> None:
-    try:
-        fila.evaluate(
-            """() => {
-              if (typeof ajaxEnvia === 'function') {
-                try { ajaxEnvia('', 0); return 'atu'; } catch (e) {}
-                try { ajaxEnvia('ATU', 0); return 'ATU'; } catch (e) {}
-              }
-              const a = document.getElementById('2');
-              if (a) { a.click(); return '2'; }
-              return '';
-            }"""
-        )
-    except Exception:
-        pass
-
+    _atualizar_fila156(fila)
 
 def _snapshot_fila_seqs(client, context, page, status) -> set[str]:
     """LEGADO — não usar no fluxo 31 (abria/fechava 156 cedo demais)."""
@@ -1151,6 +1157,9 @@ def _baixar_todos_da_fila(
     concluido_sem_dow_since: dict[str, float] = {}
     last_log = 0.0
     all_ready_announced = False
+    login_user = _norm_user156(
+        getattr(getattr(client, "credentials", None), "user", "") or ""
+    )
 
     def _done_count() -> int:
         return len(paths) + len(skipped_codes)
@@ -1173,6 +1182,12 @@ def _baixar_todos_da_fila(
         _safe_wait(fila, 1200)
         return _ler_jobs_fila(fila)
 
+    def _is_login_job(j: dict[str, Any]) -> bool:
+        if not login_user:
+            return True
+        got = _norm_user156(j.get("usuario"))
+        return (not got) or got == login_user
+
     def _classify(jobs: list[dict[str, Any]]) -> tuple[list, list, list, list]:
         """Retorna (pool_nosso, prontos, ainda_processando, vazios)."""
         novos = [
@@ -1180,6 +1195,7 @@ def _baixar_todos_da_fila(
             for j in jobs
             if str(j.get("seq") or "")
             and str(j.get("seq") or "") not in known_before
+            and _is_login_job(j)
         ]
         novos.sort(
             key=lambda j: int(re.sub(r"\D", "", str(j.get("seq") or "")) or 0)

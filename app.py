@@ -95,11 +95,17 @@ class LoginDialog(QDialog):
         self.password_edit.setEchoMode(QLineEdit.EchoMode.Password)
         self.unit_edit = QLineEdit(credentials.unit)
         self.unit_edit.setPlaceholderText("SPO,LEO,RIS  ou  *")
+        self.menu_unit_edit = QLineEdit(
+            getattr(credentials, "menu_unit", "")
+            or (credentials.unit.split(",")[0].strip() if credentials.unit else "SPO")
+        )
+        self.menu_unit_edit.setPlaceholderText("ex.: SPO")
         form.addRow("Dominio", self.domain_edit)
         form.addRow("Documento", self.document_edit)
         form.addRow("Usuario", self.user_edit)
         form.addRow("Senha", self.password_edit)
-        form.addRow("Unidades", self.unit_edit)
+        form.addRow("Unidade do menu (login)", self.menu_unit_edit)
+        form.addRow("Unidades da coleta (50/103)", self.unit_edit)
         root.addLayout(form)
 
         buttons = QDialogButtonBox(
@@ -116,6 +122,11 @@ class LoginDialog(QDialog):
         credentials.document = self.document_edit.text().strip() or credentials.document
         credentials.user = self.user_edit.text().strip() or credentials.user
         credentials.password = self.password_edit.text()
+        credentials.menu_unit = (
+            self.menu_unit_edit.text().strip().upper().replace(" ", "")
+            or getattr(credentials, "menu_unit", "")
+            or "SPO"
+        )
         credentials.unit = (
             self.unit_edit.text().strip().upper().replace(" ", "") or credentials.unit
         )

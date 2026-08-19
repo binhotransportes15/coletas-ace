@@ -22,6 +22,24 @@ SSW_081_PATH = "/bin/ssw0052"  # 081 - CTRCs disponíveis para entrega
 DEFAULT_COLETA_OPTION = "50"
 DEFAULT_ENTREGA_OPTION = "36"
 
+_CRT_THEME_IDS = frozenset({"ace", "azul", "amarelo", "vermelho", "verde"})
+_LEGACY_CRT_THEMES = {
+    "gestao": "ace",
+    "binho": "verde",
+    "painel": "azul",
+    "ops": "verde",
+    "claro": "ace",
+    "fosco": "ace",
+    "circuitos": "ace",
+    "escuro": "ace",
+}
+
+
+def _normalize_crt_theme(theme_id: str | None) -> str:
+    tid = str(theme_id or "").strip().lower()
+    tid = _LEGACY_CRT_THEMES.get(tid, tid)
+    return tid if tid in _CRT_THEME_IDS else "ace"
+
 
 @dataclass(slots=True)
 class SswCredentials:
@@ -30,13 +48,15 @@ class SswCredentials:
     document: str = "11491465832"
     user: str = "m.aguir"
     password: str = "114@mig"
-    # Uma ou varias siglas: "SPO" | "SPO,LEO,RIS" | "*" (todas, sem filtro)
+    # Unidade do menu SSW após login (campo f2)
+    menu_unit: str = "SPO"
+    # Unidades da coleta 50/103: "SPO,LEO,RIS" | "*" (sem filtro)
     unit: str = "SPO,LEO,RIS"
 
 
 def parse_coleta_units(raw: str | None) -> list[str]:
     """
-    Interpreta credencial/config `unit`.
+    Interpreta credencial/config `unit` (coleta 50/103).
     - "SPO,LEO,RIS" → ["SPO", "LEO", "RIS"]
     - "*" / "todas" / "all" / "" → []  (sem filtro de unidade no relatorio)
     """
@@ -59,8 +79,14 @@ def parse_coleta_units(raw: str | None) -> list[str]:
     return units
 
 
-def login_unit(raw: str | None) -> str:
-    """Unidade usada no menu apos login (primeira da lista, se houver)."""
+def login_unit(raw: str | None = None, *, menu_unit: str | None = None) -> str:
+    """
+    Unidade do menu pós-login.
+    Prioridade: menu_unit explícito → 1ª sigla de `unit` (coleta) → "".
+    """
+    explicit = str(menu_unit or "").strip().upper()
+    if explicit and explicit not in {"*", "TODAS", "ALL", "TUDO"}:
+        return explicit
     units = parse_coleta_units(raw)
     return units[0] if units else ""
 
@@ -116,13 +142,13 @@ class AceSettings:
     # Porta fixa na LAN (0 = automática). Padrão útil: 8787
     dashboard_port: int = 8787
     headless: bool = True
-    # Tema visual do CRT (gestao | binho | painel | ops | claro | fosco)
-    crt_theme: str = "gestao"
+    # Tema visual do CRT (ace | azul | amarelo | vermelho | verde)
+    crt_theme: str = "ace"
     # Tema fosco: transparência 0–100 (ver fundo) e blur 0–100 (fosco Windows)
     crt_frost_alpha: int = 55
     crt_frost_blur: int = 70
     # Senha para bloquear/desbloquear o painel CRT (UI). Automação continua rodando.
-    crt_lock_password: str = "binho"
+    crt_lock_password: str = "ace"
 
 
 def ensure_dirs() -> None:
@@ -216,8 +242,10 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         dashboard_lan=bool(payload.get("dashboard_lan", defaults.dashboard_lan)),
         dashboard_port=int(payload.get("dashboard_port") or defaults.dashboard_port or 8787),
         headless=bool(payload.get("headless", defaults.headless)),
-        crt_theme=str(payload.get("crt_theme") or defaults.crt_theme).strip()
-        or defaults.crt_theme,
+        crt_theme=_normalize_crt_theme(
+            str(payload.get("crt_theme") or defaults.crt_theme).strip()
+            or defaults.crt_theme
+        ),
         crt_frost_alpha=max(
             0,
             min(100, int(payload.get("crt_frost_alpha", defaults.crt_frost_alpha) or 0)),
@@ -318,6 +346,11 @@ def load_credentials() -> SswCredentials:
             user=str(payload.get("user") or defaults.user),
             password=str(payload.get("password") or defaults.password),
             unit=str(payload.get("unit") or defaults.unit),
+            menu_unit=str(
+                payload.get("menu_unit")
+                or login_unit(payload.get("unit") or defaults.unit)
+                or defaults.menu_unit
+            ),
         )
     except Exception:
         return defaults

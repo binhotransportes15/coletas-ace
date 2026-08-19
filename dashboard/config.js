@@ -13,10 +13,13 @@ window.ACE_CONFIG = {
   scriptUrl:
     "https://script.google.com/macros/s/AKfycbxse6pGIoSJ8CQAZNuRhNsk_xYY-bqY34HtYxAczx3XQz97fjlEIYFISGiGCGHGjUI6/exec",
   /**
-   * true = CSV do Pages/LAN (não depende da planilha).
-   * O Google Sites embute o Pages — com modo_local a planilha parava de atualizar.
+   * preferLocalCsv:
+   *   true  → sempre CSV (LAN / arquivo local)
+   *   false → sempre planilha (Sites/TV)
+   *   omitir → automático: LAN usa CSV; github.io / Sites usa planilha
+   * Com destino TV = Google Sites, NÃO force true — senão a Emissão congela
+   * (Pages não recebe push e a planilha é ignorada).
    */
-  preferLocalCsv: true,
   /** fallback local / Pages se Sheets falhar */
   distribuicaoCsv: {
     coletas: "data/coletas.csv",

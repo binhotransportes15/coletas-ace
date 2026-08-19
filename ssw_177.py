@@ -63,6 +63,7 @@ def _make_client(creds, *, headless: bool, on_status: StatusCallback) -> AceSswC
     client.credentials.user = creds.user
     client.credentials.password = creds.password
     client.credentials.unit = creds.unit
+    client.credentials.menu_unit = getattr(creds, "menu_unit", "") or ""
     return client
 
 

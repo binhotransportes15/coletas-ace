@@ -4096,7 +4096,7 @@
       }
     }
 
-    /* Pendência 031 — wallboard: KPIs · motivos · filial · aging · tabela */
+    /* Pendência 031 — KPIs + torres de ocorrências (padrão coleta) */
     .pen-wrap {
       height: 100vh;
       padding: 10px 12px;
@@ -4108,11 +4108,42 @@
     }
     .pen-dash {
       display: grid;
-      grid-template-rows: auto auto minmax(0, 1.1fr) minmax(0, 0.95fr);
+      grid-template-rows: auto auto minmax(0, 1fr);
       gap: clamp(8px, 1vw, 12px);
       height: 100%;
       min-height: 0;
       overflow: hidden;
+    }
+    .pen-towers-panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      height: 100%;
+      padding: 10px 12px 8px;
+      gap: 6px;
+    }
+    .pen-towers-panel > .col-sub {
+      font-size: clamp(11px, 1.1vw, 13px);
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      padding: 0 2px;
+    }
+    .pen-towers-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+    .pen-towers-wrap .torres.pen-torres {
+      flex: 1;
+      min-height: 0;
+      height: 100%;
+      max-height: none;
+      align-items: flex-end;
+      justify-content: center;
     }
     .pen-filters {
       display: flex;
@@ -4458,9 +4489,9 @@
     }
     @media (max-width: 1100px) {
       .pen-wrap { height: auto; min-height: 100vh; }
-      .pen-dash { grid-template-rows: auto auto auto auto; height: auto; overflow: visible; }
+      .pen-dash { grid-template-rows: auto auto minmax(280px, 1fr); height: auto; overflow: visible; }
       .pen-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .pen-mid { grid-template-columns: 1fr; }
+      .pen-towers-wrap { min-height: 320px; }
     }
 
     /* Emissão 455 — wallboard operacional (performance → status → volume) */
@@ -6577,7 +6608,7 @@
     }
     body.tv-mode .pen-dash {
       display: grid !important;
-      grid-template-rows: auto auto minmax(0, 1.15fr) minmax(0, 0.9fr) !important;
+      grid-template-rows: auto auto minmax(0, 1fr) !important;
       height: 100% !important;
       gap: clamp(8px, 1.1vmin, 14px) !important;
       min-height: 0 !important;
@@ -6589,14 +6620,11 @@
     body.tv-mode .pen-kpi .val {
       font-size: clamp(22px, 2.8vmin, 40px) !important;
     }
-    body.tv-mode .pen-mid {
+    body.tv-mode .pen-towers-panel {
       min-height: 0 !important;
     }
-    body.tv-mode .pen-table-card {
-      min-height: clamp(120px, 18vh, 220px) !important;
-    }
-    body.tv-mode .pen-table {
-      font-size: clamp(12px, 1.4vmin, 15px);
+    body.tv-mode .pen-towers-wrap .torres.pen-torres {
+      height: 100% !important;
     }
     body.tv-mode.tv-no-margins #panel-pendencia,
     body.tv-mode:not(.tv-no-margins) #panel-pendencia {
@@ -9089,62 +9117,30 @@
           </article>
         </div>
 
-        <div class="pen-mid">
-          <section class="pen-card ds-panel" aria-label="Top motivos">
-            <header><h3>Top motivos</h3><span class="meta" id="penOfMeta">ofensores</span></header>
-            <div class="pen-motivos-bars" id="penMotivosBars"></div>
-          </section>
-
-          <section class="pen-card ds-panel" aria-label="Gargalo por unidade responsável">
-            <header><h3>Gargalo por filial</h3><span class="meta" id="penFilialMeta">unid. responsável</span></header>
-            <div class="pen-hbar-list" id="penFilialBars"></div>
-          </section>
-
-          <section class="pen-card ds-panel pen-map-card" aria-label="Pendências por estado">
-            <header><h3>Por estado</h3><span class="meta" id="penMapMeta">unid. responsável</span></header>
-            <div class="pen-br-wrap" id="penBrMap">
-              <div class="pen-leaflet" id="penMapLeaflet" aria-label="Mapa do Brasil"></div>
-              <div class="pen-br-legend">
-                <span>0</span>
-                <i></i>
-                <span id="penMapMaxLab">máx</span>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <section class="pen-table-card ds-panel dash-block" data-block="tabela" aria-label="Tabela operacional">
-          <header>
-            <h3>Tabela operacional de tratativa</h3>
-            <span class="meta" id="penTabelaMeta">—</span>
-          </header>
-          <div class="pen-table-scroll">
-            <table class="pen-table" id="penTable">
-              <thead>
-                <tr>
-                  <th>CTRC</th>
-                  <th>NF</th>
-                  <th>Remetente</th>
-                  <th>Unid. resp.</th>
-                  <th>Ocorrência</th>
-                  <th>Complemento</th>
-                  <th>Data ocorr.</th>
-                  <th>Valor</th>
-                  <th title="Dias desde a data da ocorrência sem solução">Dias c/ ocorr.</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="penTableBody"></tbody>
-            </table>
-            <div class="pen-table-empty" id="penTableEmpty" hidden>Sem pendências abertas</div>
+        <!-- Torres de ocorrências (padrão coleta) · mapa e tabela CTRC ocultos temporariamente -->
+        <section class="pen-towers-panel ds-panel dash-block" data-block="torres" aria-label="Ocorrências">
+          <div class="col-sub">Ocorrências</div>
+          <div class="pen-towers-wrap" id="penTorresWrap">
+            <div class="torres arm-torres pen-torres" id="penTorres"></div>
           </div>
+          <div class="meta" id="penOfMeta" style="padding:0 4px 2px;opacity:0.75">ocorrências</div>
         </section>
 
-        <!-- legado oculto -->
+        <!-- legado oculto (mapa / tabela / barras / pareto) -->
         <div hidden aria-hidden="true">
           <span id="penPeriodo"></span>
           <span id="penAbertas"></span>
-          <div id="penTorresWrap"><div id="penTorres"></div><div id="penPareto"></div></div>
+          <div id="penMotivosBars"></div>
+          <div id="penFilialBars"></div>
+          <span id="penFilialMeta"></span>
+          <div id="penMapLeaflet"></div>
+          <span id="penMapMeta"></span>
+          <span id="penMapMaxLab"></span>
+          <div id="penBrMap"></div>
+          <table id="penTable"><tbody id="penTableBody"></tbody></table>
+          <div id="penTableEmpty"></div>
+          <span id="penTabelaMeta"></span>
+          <div id="penPareto"></div>
           <div id="penErr"></div>
         </div>
       </div>
@@ -9398,7 +9394,7 @@
             tabindex="0"
           />
           <div class="arm-titles">
-            <div class="kicker" id="emiKicker">BINHO · OPERACIONAL · 455</div>
+            <div class="kicker" id="emiKicker">ACE · OPERACIONAL · 455</div>
             <h1 id="emiTitle" class="js-sector-menu" title="Trocar setor" role="button" tabindex="0">EMISSÃO DE CT-e <span class="emi-mes-pill" id="emiMes">—</span></h1>
           </div>
         </div>
@@ -9605,16 +9601,33 @@
       return false;
     }
 
-    /** Na LAN / ?local=1 usa só CSV do PC ACE (não depende da planilha). */
+    /** Na LAN / ?local=1 usa só CSV do PC ACE (não depende da planilha).
+     *  Em github.io / Sites / host público: usa planilha — CSV do Pages congela
+     *  sem push (destino=sites não publica Pages a cada 455).
+     */
     function preferLocalCsv() {
       const cfg = window.ACE_CONFIG || {};
-      if (cfg.preferLocalCsv === true) return true;
-      if (cfg.preferLocalCsv === false) return false;
+      const host = String(location.hostname || '').toLowerCase();
+      const href = String(location.href || '').toLowerCase();
+      const isPublicTv =
+        !isPrivateLanHost(host)
+        && location.protocol !== 'file:'
+        && (
+          host.endsWith('github.io')
+          || host.includes('sites.google')
+          || href.includes('sites.google')
+          || host.includes('googleusercontent')
+        );
       try {
         const q = new URLSearchParams(location.search || '');
         if (q.get('local') === '1' || q.get('csv') === '1') return true;
+        if (q.get('sheets') === '1' || q.get('planilha') === '1') return false;
       } catch (_) { /* ignore */ }
-      return isPrivateLanHost(location.hostname);
+      // TV pública: planilha (mesmo se config.js ainda tiver preferLocalCsv:true antigo)
+      if (isPublicTv) return false;
+      if (cfg.preferLocalCsv === true) return true;
+      if (cfg.preferLocalCsv === false) return false;
+      return isPrivateLanHost(host);
     }
 
     const PREFER_LOCAL_CSV = preferLocalCsv();
@@ -10583,12 +10596,7 @@
           lastAgendaTorreCounts.ok
         );
       }
-      if (lastGoodPenOfens.length && typeof renderPenMotivos === 'function') {
-        renderPenMotivos(lastGoodPenOfens);
-      }
-      if (lastGoodPenAbertas.length && typeof renderPenDashboardParts === 'function') {
-        renderPenDashboardParts(lastGoodPenAbertas, lastGoodPenResumo || {});
-      } else if (lastGoodPenOfens.length && typeof renderPenTorres === 'function') {
+      if (lastGoodPenOfens.length && typeof renderPenTorres === 'function') {
         renderPenTorres(lastGoodPenOfens);
       }
       if (lastGoodCtrDestinos.length && typeof renderCtrTorres === 'function') {
@@ -11217,13 +11225,10 @@
         setChartPane(entH, false);
       }
       const penTorres = document.getElementById('penTorres');
-      const penPareto = document.getElementById('penPareto');
       const penWrap = document.getElementById('penTorresWrap');
-      if (penTorres && penPareto) {
-        const usePareto = CURRENT_SECTOR === 'pendencia';
-        setChartPane(penTorres, !usePareto);
-        setChartPane(penPareto, usePareto);
-        if (penWrap) penWrap.classList.toggle('is-pareto', usePareto);
+      if (penTorres) {
+        setChartPane(penTorres, true);
+        if (penWrap) penWrap.classList.remove('is-pareto');
       }
 
       document.documentElement.style.setProperty('--dash-font', String(ui.fontZoom || 1.32));
@@ -11653,9 +11658,8 @@
         if (!penRefreshTimer) penRefreshTimer = setInterval(refreshPendencia, 15000);
         setTimeout(() => {
           try {
-            if (mapaPenLeaflet) mapaPenLeaflet.invalidateSize();
-            if (lastGoodPenAbertas && typeof renderPenEstadoMap === 'function') {
-              renderPenEstadoMap(lastGoodPenAbertas);
+            if (lastGoodPenOfens.length && typeof renderPenTorres === 'function') {
+              renderPenTorres(lastGoodPenOfens);
             }
           } catch (_) {}
         }, 200);
@@ -13219,20 +13223,28 @@
 
     function renderPenTorres(ofensores) {
       const host = document.getElementById('penTorres');
-      const pareto = document.getElementById('penPareto');
-      const all = ofensores || [];
+      const meta = document.getElementById('penOfMeta');
+      // Só ocorrências (exclui solucionada / cód. 63) — padrão torres da coleta
+      const all = (ofensores || []).filter((o) => {
+        const cod = String(o.codigo || '').trim();
+        const pol = String(o.polaridade || '').toLowerCase();
+        return cod !== '63' && pol !== 'pos';
+      });
       const items = all.slice(0, document.body.classList.contains('tv-mode') ? 6 : 8);
+      if (meta) {
+        meta.textContent = items.length
+          ? `${items.length} ocorrência${items.length === 1 ? '' : 's'}`
+          : 'sem ocorrências';
+      }
+      if (!host) return;
       if (!items.length) {
-        if (host) host.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
-        if (pareto) pareto.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
+        host.innerHTML = '<div class="arm-rank-empty">Sem ocorrências no período</div>';
         return;
       }
-      // % = participação no TODO (não acumulado, nem só entre os visíveis)
       const totalAll = all.reduce((s, o) => s + (Number(o.qtd) || 0), 0) || 1;
       const max = Math.max(...items.map((o) => Number(o.qtd) || 0), 1);
       const skinsNeg = ['t-of', 't-of2', 't-of3', 't-of4', 't-of5', 't-of6', 't-of7'];
       const tv = document.body.classList.contains('tv-mode');
-      let negIdx = 0;
       const pctShare = (o) => {
         const qtd = Number(o.qtd) || 0;
         const raw = String(o.pct ?? '').trim().replace(',', '.');
@@ -13240,41 +13252,15 @@
         if (Number.isFinite(fromCsv) && fromCsv >= 0) return Math.round(fromCsv);
         return Math.round((qtd / totalAll) * 100);
       };
-      if (pareto) {
-        let colorIdx = 0;
-        pareto.innerHTML = items.map((o) => {
-          const qtd = Number(o.qtd) || 0;
-          const pct = pctShare(o);
-          const cod = String(o.codigo || '').trim();
-          const pol = String(o.polaridade || '').toLowerCase();
-          const isPos = pol === 'pos' || cod === '63';
-          const colorCls = penColorClass(o, colorIdx++);
-          const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
-          const lab = esc(tv ? shortPenLabel(nome, 42) : shortPenLabel(nome, 48));
-          const w = Math.max(4, Math.min(100, pct));
-          const codHtml = cod
-            ? `<span class="ds-pareto-cod">${esc(cod)}${isPos ? ' · SLA+' : ''}</span> · `
-            : '';
-          return `<div class="ds-pareto-row ${isPos ? 'is-pos' : ''}" title="${esc(cod ? `${cod} · ${nome}` : nome)} · ${pct}% do total">
-            <div class="ds-pareto-lab">${codHtml}${lab}</div>
-            <div class="ds-pareto-track"><div class="ds-pareto-fill ${colorCls}" style="width:${w}%"></div></div>
-            <div class="ds-pareto-n">${qtd}</div>
-            <div class="ds-pareto-acc">${pct}%</div>
-          </div>`;
-        }).join('');
-      }
-      if (!host) return;
-      negIdx = 0;
+      let negIdx = 0;
       host.innerHTML = items.map((o) => {
         const qtd = Number(o.qtd) || 0;
         const pct = pctShare(o);
-        const pol = String(o.polaridade || '').toLowerCase();
-        const isPos = pol === 'pos' || String(o.codigo || '') === '63';
-        const skin = isPos ? 't-pos' : (skinsNeg[negIdx++] || 't-of6');
+        const skin = skinsNeg[negIdx++] || 't-of6';
         const cod = String(o.codigo || '').trim();
         const nome = String(o.label || o.descricao_codigo || '').trim() || (cod ? `Cód. ${cod}` : '—');
-        const labFull = esc(cod ? `${cod} · ${nome}${isPos ? ' · SLA+' : ''}` : nome);
-        const lab = esc(tv ? nome : shortPenLabel(nome, 24));
+        const labFull = esc(cod ? `${cod} · ${nome}` : nome);
+        const lab = esc(tv ? shortPenLabel(nome, 28) : shortPenLabel(nome, 24));
         const h = alturaTorrePen(qtd, max);
         return `<div class="torre ${skin}" title="${labFull} · ${pct}% do total">
           <div class="pin"><span class="${qtd >= 100 ? 'pin-lg' : ''}">${qtd}</span></div>
@@ -13437,9 +13423,8 @@
           maximumFractionDigits: 1,
         }));
 
-        renderPenMotivos(ofens);
-        renderPenDashboardParts(abertas, resumo);
         renderPenTorres(ofens);
+        // Mapa / tabela CTRC / barras laterais: ocultos temporariamente
         if (remoteVer != null) lastPenDataVersion = remoteVer;
         else if (resumo && resumo.atualizado) lastPenDataVersion = String(resumo.atualizado);
         else {
@@ -13725,10 +13710,25 @@
       return Number.isFinite(n) ? n : 0;
     }
 
+    function emiHourIndex(raw) {
+      if (raw == null || raw === '') return null;
+      if (typeof raw === 'number' && Number.isFinite(raw)) {
+        return ((Math.floor(raw) % 24) + 24) % 24;
+      }
+      const s = String(raw).trim();
+      if (!s) return null;
+      if (/^\d{1,2}$/.test(s)) return ((Number(s) % 24) + 24) % 24;
+      // Sheets às vezes manda "07:00" / "7:00" / "7h"
+      const m = s.match(/^(\d{1,2})(?::\d{2})?/);
+      if (m) return ((Number(m[1]) % 24) + 24) % 24;
+      return null;
+    }
+
     function emiHorasItems(horas) {
       return Array.from({ length: 24 }, (_, h) => {
-        const found = (horas || []).find((x) => Number(x.hora) === h);
-        return { hora: h, qtd: Number(found?.qtd) || 0 };
+        const found = (horas || []).find((x) => emiHourIndex(x?.hora ?? x?.label) === h);
+        const qtd = emiParseNum(found?.qtd);
+        return { hora: h, qtd };
       });
     }
 
@@ -14944,7 +14944,7 @@
       const kick = document.getElementById('emiKicker');
       if (kick) {
         const perLab = formatEmiPeriodo(resumo.periodo || '');
-        kick.textContent = `BINHO · OPERACIONAL · 455 · ${perLab !== '—' ? perLab : 'mês'}`;
+        kick.textContent = `ACE · OPERACIONAL · 455 · ${perLab !== '—' ? perLab : 'mês'}`;
       }
 
       renderEmiChart(horas, metaH);
@@ -15000,6 +15000,26 @@
           if (Array.isArray(rResumo?.rows) && rResumo.rows[0]) resumo = rResumo.rows[0];
           exp = (rExp && rExp.rows) || [];
           horas = (rHoras && rHoras.rows) || [];
+          // Sheets incompleto (CT-e ok, gráfico/volume zerados) → completa com CSV local
+          const ctesSheet = emiParseNum(resumo.ctes);
+          const volSheet = emiParseNum(resumo.peso) + emiParseNum(resumo.volumes) + emiParseNum(resumo.frete);
+          const horasSum = emiHorasItems(horas).reduce((s, x) => s + x.qtd, 0);
+          const incomplete = ctesSheet > 0 && (horasSum <= 0 || !exp.length || volSheet <= 0);
+          if (incomplete) {
+            try {
+              const rCsv = await loadCsvLocal(EMI_CSV.resumo || 'data/emissao/resumo_455.csv');
+              const localResumo = rCsv[0] || {};
+              if (emiParseNum(localResumo.ctes) > 0) {
+                if (volSheet <= 0) resumo = { ...resumo, ...localResumo };
+                if (!exp.length) {
+                  exp = await loadCsvLocal(EMI_CSV.expedidores || 'data/emissao/expedidores_455.csv');
+                }
+                if (horasSum <= 0) {
+                  horas = await loadCsvLocal(EMI_CSV.horas || 'data/emissao/horas_455.csv');
+                }
+              }
+            } catch (_) { /* mantém Sheets */ }
+          }
           if (resumo && Object.keys(resumo).length) lastGoodEmiResumo = { ...resumo };
           if (exp.length) lastGoodEmiExp = exp.slice();
           if (horas.length) lastGoodEmiHoras = horas.slice();
