@@ -57,7 +57,7 @@ def download_report_177(
     allow_local_fallback: bool = True,
 ) -> dict[str, Any]:
     """
-    Fluxo informado:
+    Fluxo:
       menu opção 56 → aba Gerados hoje → linha 177 (MENSAL) → download .sswweb
     """
     status = on_status or (lambda m: None)
@@ -72,6 +72,7 @@ def download_report_177(
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     dest_name = f"conferentes_177_mensal_{ts}.sswweb"
+    path: Path | None = None
 
     from playwright.sync_api import sync_playwright
 
@@ -95,59 +96,75 @@ def download_report_177(
             browser = p.chromium.launch(
                 headless=use_headless, slow_mo=0 if use_headless else 40
             )
-        try:
-            from ace_stop import register_browser
-            register_browser(browser)
-        except Exception:
-            pass
+            try:
+                from ace_stop import register_browser
+
+                register_browser(browser)
+            except Exception:
+                pass
+
             context = browser.new_context(accept_downloads=True)
             page = context.new_page()
             page.set_default_timeout(60000)
-            status("Login SSW (177)...")
-            client._login(page)
-            client._ensure_unit(page)
-            patch = getattr(client, "_patch_blank_popup_fix", None) or getattr(
-                client, "_patch_blank_popup_forms", None
-            )
-            if callable(patch):
-                patch(page)
-
-            status("Abrindo opção 56 (relatórios gerados)...")
-            popup = client._open_menu_option(
-                page,
-                "56",
-                markers=(
-                    "gerados",
-                    "hoje",
-                    "relatorio",
-                    "conferent",
-                    "177",
-                    "mensal",
-                    "paginas",
-                    "periodo",
-                    "volumes",
-                    "056",
-                ),
-            )
+            page.on("dialog", lambda d: d.accept())
+            context.on("page", lambda pg: pg.on("dialog", lambda d: d.accept()))
+            popup = None
             try:
-                popup.on("dialog", lambda d: d.accept())
+                status("Login SSW (177)...")
+                client._login(page)
+                client._ensure_unit(page)
+                patch = getattr(client, "_patch_blank_popup_form", None) or getattr(
+                    client, "_patch_blank_popup_forms", None
+                )
+                if callable(patch):
+                    patch(page)
+
+                status("Abrindo opção 56 (relatórios gerados)...")
+                popup = client._open_menu_option(
+                    page,
+                    "56",
+                    markers=(
+                        "gerados",
+                        "hoje",
+                        "relatorio",
+                        "conferent",
+                        "177",
+                        "mensal",
+                        "paginas",
+                        "periodo",
+                        "volumes",
+                        "056",
+                    ),
+                )
+                try:
+                    popup.on("dialog", lambda d: d.accept())
+                except Exception:
+                    pass
                 _click_gerados_hoje(popup, status)
                 path = _download_177_mensal(popup, client, dest_name, status)
             finally:
                 try:
-                    popup.close()
+                    if popup is not None and not popup.is_closed():
+                        popup.close()
                 except Exception:
                     pass
-                context.close()
+                try:
+                    context.close()
+                except Exception:
+                    pass
                 try:
                     browser.close()
                 except Exception:
                     pass
                 try:
                     from ace_stop import unregister_browser
+
                     unregister_browser(browser)
                 except Exception:
                     pass
+
+        if path is None or not path.exists():
+            raise RuntimeError("177: nenhum arquivo baixado da opção 56")
 
         status(f"177 baixado: {path.name} ({path.stat().st_size} bytes)")
         return {"ok": True, "path": str(path), "source": "ssw"}
@@ -156,12 +173,17 @@ def download_report_177(
         if allow_local_fallback:
             local = _find_local_177()
             if local:
-                # copia para downloads do ACE
                 dest = DOWNLOAD_DIR / dest_name
                 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes(local.read_bytes())
                 status(f"177 usando arquivo local: {local.name}")
-                return {"ok": True, "path": str(dest), "source": "local", "from": str(local)}
+                return {
+                    "ok": True,
+                    "path": str(dest),
+                    "source": "local",
+                    "from": str(local),
+                    "ssw_error": str(err),
+                }
         raise
 
 
