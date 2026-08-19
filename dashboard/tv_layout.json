@@ -1,6 +1,6 @@
 {
-  "version": 28,
-  "updatedAt": "2026-08-17T17:26:06",
+  "version": 30,
+  "updatedAt": "2026-08-19T14:18:44",
   "rows": 2,
   "cols": 3,
   "syncSwap": false,
@@ -25,7 +25,7 @@
       },
       "views": {
         "coleta": {
-          "chart": "towers",
+          "chart": "bars",
           "scale": "large",
           "fontZoom": 1.2,
           "showKpis": true,
@@ -36,7 +36,7 @@
           "blocks": []
         },
         "entrega": {
-          "chart": "towers",
+          "chart": "pizza",
           "scale": "large",
           "fontZoom": 1.2,
           "showKpis": true,
@@ -47,7 +47,7 @@
           "blocks": []
         },
         "agendamento": {
-          "chart": "towers",
+          "chart": "pizza",
           "scale": "large",
           "fontZoom": 1.2,
           "showKpis": true,
@@ -60,7 +60,7 @@
       }
     },
     "armazem": {
-      "showLogo": true,
+      "showLogo": false,
       "margins": "none",
       "ui": {
         "chart": "towers",
@@ -99,7 +99,7 @@
       }
     },
     "contratacao": {
-      "showLogo": true,
+      "showLogo": false,
       "margins": "normal",
       "ui": {
         "chart": "towers",
@@ -115,7 +115,7 @@
       "views": {}
     },
     "pendencia": {
-      "showLogo": true,
+      "showLogo": false,
       "margins": "normal",
       "ui": {
         "chart": "towers",
@@ -131,7 +131,7 @@
       "views": {}
     },
     "mapa": {
-      "showLogo": true,
+      "showLogo": false,
       "margins": "normal",
       "ui": {
         "chart": "towers",
@@ -147,7 +147,7 @@
       "views": {}
     },
     "emissao": {
-      "showLogo": true,
+      "showLogo": false,
       "margins": "normal",
       "ui": {
         "chart": "towers",
@@ -171,7 +171,7 @@
       "sector": "armazem",
       "mode": "rotate",
       "view": "patio",
-      "showLogo": null,
+      "showLogo": false,
       "margins": null
     },
     {
@@ -181,7 +181,7 @@
       "sector": "contratacao",
       "mode": "fixed",
       "view": "coleta",
-      "showLogo": null,
+      "showLogo": false,
       "margins": null
     },
     {
@@ -191,7 +191,7 @@
       "sector": "pendencia",
       "mode": "fixed",
       "view": "coleta",
-      "showLogo": null,
+      "showLogo": false,
       "margins": null
     },
     {
@@ -201,7 +201,7 @@
       "sector": "emissao",
       "mode": "fixed",
       "view": "coleta",
-      "showLogo": null,
+      "showLogo": false,
       "margins": null
     },
     {
@@ -211,7 +211,7 @@
       "sector": "distribuicao",
       "mode": "rotate",
       "view": "coleta",
-      "showLogo": null,
+      "showLogo": false,
       "margins": null
     },
     {
@@ -221,7 +221,7 @@
       "sector": "mapa",
       "mode": "fixed",
       "view": "coleta",
-      "showLogo": null,
+      "showLogo": false,
       "margins": null
     }
   ],
@@ -233,6 +233,6 @@
     "url": "",
     "crtAsset": "brain-circuit.png",
     "themeHint": "",
-    "updatedAt": "2026-08-18T09:40:00"
+    "updatedAt": "2026-08-19T14:18:44"
   }
 }
