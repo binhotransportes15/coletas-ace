@@ -1,19 +1,19 @@
 {
   "setor": "armazem",
-  "updated_at": "2026-08-19T13:05:15",
+  "updated_at": "2026-08-19T13:14:30",
   "resumo_78": {
-    "atualizado": "19/08/2026 13:05:12",
+    "atualizado": "19/08/2026 13:14:25",
     "total_linhas": "20",
     "total_veiculos": "10",
     "peso_total": "152.866",
     "finalizado": "8",
-    "descarregando": "0",
+    "descarregando": "1",
     "atrasado": "0",
     "aguardando": "1",
-    "chegou": "1"
+    "chegou": "0"
   },
   "resumo_177": {
-    "atualizado": "19/08/2026 13:05:15",
+    "atualizado": "19/08/2026 13:14:30",
     "mes": "08/2026",
     "total_conferentes": "13",
     "peso_total": "1584384",
@@ -36,12 +36,12 @@
       "saida": "18/08 19:50",
       "prev_chegada": "19/08 19:49",
       "chegada": "19/08 10:46",
-      "inicio_descarga": "",
+      "inicio_descarga": "19/08 13:05 alejand",
       "final_descarga": "",
-      "status": "chegou",
+      "status": "descarregando",
       "atrasado": "0",
-      "tempo_descarga_min": "",
-      "tempo_descarga": "",
+      "tempo_descarga_min": "9",
+      "tempo_descarga": "9min (andamento)",
       "peso_veiculo": "8.231"
     },
     {
