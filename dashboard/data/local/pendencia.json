@@ -1,36 +1,50 @@
 {
   "setor": "pendencia",
-  "updated_at": "2026-08-19T12:09:04",
+  "updated_at": "2026-08-19T12:19:59",
   "resumo_31": {
     "periodo": "01/08/26 – 19/08/26",
-    "atualizado": "19/08/2026 12:09:03",
-    "total_ctrcs": "26",
-    "total_codigos": "2",
-    "solucionadas": "2",
-    "abertas": "24",
-    "sla_pct": "7,7",
-    "sla_medio_dias": "12,3",
-    "valor_risco": "1.942.419,67",
-    "aging_0_2": "5",
-    "aging_3_5": "2",
-    "aging_6_mais": "17",
-    "topo_codigo": "80",
-    "topo_label": "PENDENCIA EM TRATATIVA",
-    "topo_qtd": "24"
+    "atualizado": "19/08/2026 12:19:59",
+    "total_ctrcs": "371",
+    "total_codigos": "4",
+    "solucionadas": "187",
+    "abertas": "184",
+    "sla_pct": "50,4",
+    "sla_medio_dias": "11,7",
+    "valor_risco": "61.217.404,46",
+    "aging_0_2": "27",
+    "aging_3_5": "14",
+    "aging_6_mais": "143",
+    "topo_codigo": "60",
+    "topo_label": "FALTA COM BUSCA / RECONFERENCIA",
+    "topo_qtd": "96"
   },
   "ofensores": [
     {
       "codigo": "63",
       "label": "PENDENCIA SOLUCIONADA",
-      "qtd": "2",
-      "pct": "7,7",
+      "qtd": "187",
+      "pct": "50,4",
       "polaridade": "pos"
+    },
+    {
+      "codigo": "60",
+      "label": "FALTA COM BUSCA / RECONFERENCIA",
+      "qtd": "96",
+      "pct": "25,9",
+      "polaridade": "neg"
+    },
+    {
+      "codigo": "50",
+      "label": "NOTA FISCAL DE DEVOLUCAO",
+      "qtd": "64",
+      "pct": "17,3",
+      "polaridade": "neg"
     },
     {
       "codigo": "80",
       "label": "PENDENCIA EM TRATATIVA",
       "qtd": "24",
-      "pct": "92,3",
+      "pct": "6,5",
       "polaridade": "neg"
     }
   ]
