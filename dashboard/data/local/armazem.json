@@ -1,8 +1,8 @@
 {
   "setor": "armazem",
-  "updated_at": "2026-08-19T13:42:21",
+  "updated_at": "2026-08-19T13:46:52",
   "resumo_78": {
-    "atualizado": "19/08/2026 13:42:16",
+    "atualizado": "19/08/2026 13:46:48",
     "total_linhas": "20",
     "total_veiculos": "10",
     "peso_total": "152.866",
@@ -13,7 +13,7 @@
     "chegou": "0"
   },
   "resumo_177": {
-    "atualizado": "19/08/2026 13:42:21",
+    "atualizado": "19/08/2026 13:46:52",
     "mes": "08/2026",
     "total_conferentes": "13",
     "peso_total": "1584384",
@@ -40,8 +40,8 @@
       "final_descarga": "",
       "status": "descarregando",
       "atrasado": "0",
-      "tempo_descarga_min": "37",
-      "tempo_descarga": "37min (andamento)",
+      "tempo_descarga_min": "41",
+      "tempo_descarga": "41min (andamento)",
       "peso_veiculo": "8.231"
     },
     {
