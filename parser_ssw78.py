@@ -204,9 +204,10 @@ def parse_table_rows(rows: list[list[str]], *, agora: datetime | None = None) ->
         head = " ".join(cells[:3]).upper()
         if "ORIGEM" in head and "CAVALO" in head:
             continue
-        if len(cells) < 8:
+        # SSW às vezes omite <td> vazios no fim (sem chegada/início/fim) → 7 cols.
+        # Antes exigíamos 8 e esses veículos sumiam do painel.
+        if len(cells) < 5:
             continue
-        # completa até 10 colunas
         while len(cells) < 10:
             cells.append("")
         origem, cavalo, carreta, manifesto, peso = cells[:5]
@@ -214,6 +215,13 @@ def parse_table_rows(rows: list[list[str]], *, agora: datetime | None = None) ->
             continue
         if origem.upper() in {"ORIGEM", "DOMÍNIO", "DOMINIO"}:
             continue
+        # placa típica ABC1D23 / AAA9999 — evita lixo de rodapé
+        if not re.match(r"^[A-Z]{3}\d[A-Z0-9]\d{2}$", cavalo.upper()) and not re.match(
+            r"^[A-Z]{3}\d{4}$", cavalo.upper()
+        ):
+            # ainda aceita formatos raros se manifesto parecer código
+            if not re.match(r"^\d{5,}-\d$", manifesto or ""):
+                continue
         saida, prev, chegada, inicio, final = cells[5:10]
         peso_num = _parse_peso(peso)
         status, atrasado = mapear_status(chegada, prev, inicio, final, agora=now)
@@ -286,12 +294,27 @@ def parse_html_78(html: str, *, agora: datetime | None = None) -> list[Linha78]:
         # ignora rodapé ×
         if len(values) < 5:
             continue
+        while len(values) < 10:
+            values.append("")
         table.append(values[:10])
     return parse_table_rows(table, agora=agora)
 
 
+def _is_placa_78(value: str) -> bool:
+    p = _clean(value).upper()
+    return bool(re.match(r"^[A-Z]{3}\d[A-Z0-9]\d{2}$", p) or re.match(r"^[A-Z]{3}\d{4}$", p))
+
+
+def _is_sigla_78(value: str) -> bool:
+    return bool(re.match(r"^[A-Z]{3}$", _clean(value), flags=re.I))
+
+
 def parse_body_text(text: str, *, agora: datetime | None = None) -> list[Linha78]:
-    """Fallback: transforma o texto Ctrl+A em linhas (blocos separados por linha em branco)."""
+    """
+    Fallback Ctrl+A: o SSW lista um campo por linha (com linhas em branco entre eles).
+    Células vazias (chegada/início/fim) não geram token — agrupamos por início de
+    veículo (sigla + placa) e completamos até 10 colunas.
+    """
     raw = (text or "").replace("\xa0", " ").replace("\u00a0", " ")
     if "Final Descarga" in raw:
         raw = raw.split("Final Descarga", 1)[1]
@@ -301,19 +324,35 @@ def parse_body_text(text: str, *, agora: datetime | None = None) -> list[Linha78
             raw = raw[:i]
             break
 
+    tokens: list[str] = []
+    for line in raw.replace("\t", "\n").splitlines():
+        p = _clean(line)
+        if p and p != "►":
+            tokens.append(p)
+
     rows: list[list[str]] = []
-    # cada veículo/manifesto vem como bloco com campos separados por tab/newline
-    for block in re.split(r"\n\s*\n+", raw.strip()):
-        parts: list[str] = []
-        for line in block.replace("\t", "\n").splitlines():
-            p = _clean(line)
-            if p and p != "►":
-                parts.append(p)
-        if len(parts) >= 5 and re.match(r"^[A-Z]{3}$", parts[0], flags=re.I):
-            # completa colunas vazias no fim (início/fim descarga)
-            while len(parts) < 10:
-                parts.append("")
-            rows.append(parts[:10])
+    i = 0
+    n = len(tokens)
+    while i < n:
+        if not (_is_sigla_78(tokens[i]) and i + 1 < n and _is_placa_78(tokens[i + 1])):
+            i += 1
+            continue
+        row = [tokens[i]]
+        i += 1
+        while i < n and len(row) < 10:
+            # próximo veículo começa com sigla + placa
+            if (
+                len(row) >= 5
+                and _is_sigla_78(tokens[i])
+                and i + 1 < n
+                and _is_placa_78(tokens[i + 1])
+            ):
+                break
+            row.append(tokens[i])
+            i += 1
+        while len(row) < 10:
+            row.append("")
+        rows.append(row[:10])
     return parse_table_rows(rows, agora=agora)
 
 

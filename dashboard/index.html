@@ -8913,7 +8913,7 @@
         <section class="arm-panel dash-block" data-block="tabela">
           <header>
             <h2>Relatório de descarga</h2>
-            <div class="meta" id="armAtualizado">pátio · descarregando · +3h · atualizado —</div>
+            <div class="meta" id="armAtualizado">aguardando · pátio · descarregando · +3h · atualizado —</div>
           </header>
           <div class="arm-table-wrap">
             <table>
@@ -11898,15 +11898,15 @@
       return stCsv || 'aguardando';
     }
 
-    /** Tabela: só pátio + descarregando + descarga >3h. Finalizado só no contador. */
+    /** Tabela ao vivo: pátio, descarregando, aguardando (sem chegada) e atraso de descarga.
+     *  Finalizado só no contador/torre — não polui a fila. */
     function armShowInTabela(v) {
-      // Cinto de segurança: com fim de descarga, fora da fila ao vivo
       if (armStripOperador(v.final_descarga)) return false;
       const st = armStatusEfetivo(v);
-      if (st === 'finalizado' || st === 'aguardando') return false;
-      if (st === 'chegou' || st === 'descarregando') return true;
-      // atrasado por descarga longa (não por previsão de chegada)
-      if (st === 'atrasado' && armStripOperador(v.inicio_descarga)) return true;
+      if (st === 'finalizado') return false;
+      if (st === 'chegou' || st === 'descarregando' || st === 'aguardando') return true;
+      // atrasado: descarga longa OU previsão vencida sem chegada
+      if (st === 'atrasado') return true;
       return false;
     }
 
@@ -12377,7 +12377,7 @@
         else setArmText('kTempoMed', '—');
       }
       setArmText('armAtualizado',
-        `pátio · descarregando · +3h · atualizado ${r.atualizado || '—'}`
+        `aguardando · pátio · descarregando · +3h · atualizado ${r.atualizado || '—'}`
       );
 
       renderArmTorres({
@@ -12418,7 +12418,7 @@
             <td class="mono">${ini ? armFmtMomento(ini) : '—'}</td>
             <td class="mono">${fim ? armFmtMomento(fim) : '—'}</td>
           </tr>`;
-        }).join('') || `<tr><td colspan="10" class="muted">Nenhum veículo no pátio / descarregando agora</td></tr>`;
+        }).join('') || `<tr><td colspan="10" class="muted">Nenhum veículo aguardando / no pátio / descarregando agora</td></tr>`;
       }
 
       lastArmVeicsCache = veics;

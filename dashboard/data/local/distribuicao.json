@@ -1,53 +1,53 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-18T16:53:13",
+  "updated_at": "2026-08-19T10:30:54",
   "resumo_50": {
     "data_cadastro": "PERIODO",
-    "total_coletas": "24",
-    "cadastrada": "15",
-    "comandada": "7",
-    "coletada": "1",
-    "cancelada": "1"
+    "total_coletas": "6",
+    "cadastrada": "4",
+    "comandada": "2",
+    "coletada": "0",
+    "cancelada": "0"
   },
   "resumo_103": {
-    "periodo": "18/08",
-    "total": "40",
-    "parado": "1",
-    "em_rota": "17",
-    "realizada": "22",
-    "cancelada": "0",
+    "periodo": "19/08",
+    "total": "45",
+    "parado": "11",
+    "em_rota": "32",
+    "realizada": "0",
+    "cancelada": "2",
     "outro": "0"
   },
   "resumo_36": {
-    "periodo": "17/08 a 18/08",
-    "total": "102",
-    "realizada": "73",
-    "em_rota": "13",
-    "pendencia": "16",
-    "excluido": "4"
+    "periodo": "18/08 a 19/08",
+    "total": "79",
+    "realizada": "39",
+    "em_rota": "40",
+    "pendencia": "0",
+    "excluido": "17"
   },
   "resumo_225": {
     "periodo": "Agendamento AGOSTO",
-    "total": "102",
-    "em_rota": "4",
-    "parado": "38",
-    "concluido": "60",
+    "total": "103",
+    "em_rota": "25",
+    "parado": "14",
+    "concluido": "64",
     "alerta": "0",
-    "peso_total": "181.843,10",
-    "volumes_total": "239.083,33",
-    "frete_total": "154.158,13",
-    "realizado": "60",
-    "peso_realizado": "142.315,76",
-    "frete_realizado": "111.976,42",
-    "armazem": "38",
-    "peso_armazem": "33.902,26",
-    "frete_armazem": "40.626,58",
-    "amanha": "24",
-    "peso_amanha": "2.244,53",
-    "volumes_amanha": "2.599,56",
-    "frete_amanha": "3.529,25"
+    "peso_total": "181.845,98",
+    "volumes_total": "239.099,05",
+    "frete_total": "154.339,19",
+    "realizado": "64",
+    "peso_realizado": "147.940,84",
+    "frete_realizado": "113.531,55",
+    "armazem": "14",
+    "peso_armazem": "31.657,73",
+    "frete_armazem": "37.097,33",
+    "amanha": "2",
+    "peso_amanha": "1.475,96",
+    "volumes_amanha": "2.933,74",
+    "frete_amanha": "1.967,62"
   },
   "extra": {
-    "report": "225"
+    "report": "36"
   }
 }
