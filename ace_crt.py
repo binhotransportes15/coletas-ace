@@ -399,10 +399,17 @@ _SECTOR_ACCENTS: dict[str, str] = {
     "mapa": "#38bdf8",
 }
 
-_RAINBOW_CHUNK = (
-    "qlineargradient(x1:0,y1:0,x2:1,y2:0,"
-    "stop:0 #ec4899, stop:0.28 #f59e0b, stop:0.55 #22d3ee, stop:0.78 #6366f1, stop:1 #a855f7)"
-)
+def _theme_bar_gradient(meta: dict | None = None, *, c0: str = "", c1: str = "", c2: str = "") -> str:
+    """Gradiente cápsula das barras CRT (mesmo padrão do ONLINE · varia com o tema)."""
+    m = meta or {}
+    a = str(c0 or m.get("chunk0") or m.get("accent") or "#38bdf8")
+    b = str(c1 or m.get("chunk1") or a)
+    c = str(c2 or m.get("chunk2") or b)
+    return (
+        f"qlineargradient(x1:0,y1:0,x2:1,y2:0,"
+        f"stop:0 {a}, stop:0.55 {b}, stop:1 {c})"
+    )
+
 
 CRT_APP_VERSION = "2.0.0"
 
@@ -1048,34 +1055,49 @@ class SysMeterRow(QWidget):
         lay.addWidget(self._bar, 1)
         lay.addWidget(self._val)
         self._accent = accent
-        self._track = "rgba(0, 0, 0, 140)"
-        self._track_border = "rgba(255, 255, 255, 28)"
-        self._apply_chunk(accent)
+        self._theme_grad = accent
+        self._track = "#070b12"
+        self._track_border = "rgba(148, 163, 184, 55)"
+        self._apply_chunk(None)
 
     @property
     def bar_widget(self) -> QProgressBar:
         return self._bar
 
-    def apply_chrome(self, *, height: int = 16, track: str = "rgba(0,0,0,140)", border: str = "rgba(255,255,255,28)") -> None:
+    def apply_chrome(
+        self,
+        *,
+        height: int = 16,
+        track: str = "#070b12",
+        border: str = "rgba(148,163,184,55)",
+        theme_grad: str | None = None,
+    ) -> None:
         self._bar.setFixedHeight(max(12, int(height)))
         self._track = track
         self._track_border = border
-        self._apply_chunk(self._accent)
+        if theme_grad:
+            self._theme_grad = theme_grad
+        self._apply_chunk(None)
 
-    def _apply_chunk(self, accent: str) -> None:
+    def _apply_chunk(self, override: str | None) -> None:
+        fill = override if override else self._theme_grad
+        h = max(12, int(self._bar.height()))
+        rad = max(6, h // 2)
+        crad = max(5, rad - 1)
         self._bar.setStyleSheet(
             f"""
             QProgressBar#sysMeter {{
                 background: {self._track};
                 border: 1px solid {self._track_border};
-                border-radius: 6px;
+                border-radius: {rad}px;
                 text-align: center;
                 color: transparent;
                 font-size: 1px;
             }}
             QProgressBar#sysMeter::chunk {{
-                background: {accent};
-                border-radius: 5px;
+                background: {fill};
+                border-radius: {crad}px;
+                margin: 1px;
             }}
             """
         )
@@ -1084,17 +1106,18 @@ class SysMeterRow(QWidget):
         if pct is None:
             self._bar.setValue(0)
             self._val.setText("—")
-            self._apply_chunk(self._accent)
+            self._apply_chunk(None)
             return
         v = max(0.0, min(100.0, float(pct)))
         self._bar.setValue(int(round(v * 10)))
         self._val.setText(f"{v:.0f}%")
-        color = self._accent
+        # alerta sólido; caso normal = gradiente do tema (estilo ONLINE)
         if v >= crit:
-            color = "#ef4444"
+            self._apply_chunk("#ef4444")
         elif v >= warn:
-            color = "#f59e0b"
-        self._apply_chunk(color)
+            self._apply_chunk("#f59e0b")
+        else:
+            self._apply_chunk(None)
 
 
 def _cmd_badge_meta(kind: str, text: str = "") -> tuple[str, str, str]:
@@ -1635,31 +1658,46 @@ class SectorMeterRow(QWidget):
         self._detail.setTextInteractionFlags(Qt.NoTextInteraction)
         root.addWidget(self._detail)
         self._accent = self._STATE_COLOR["off"]
-        self._track = "#151821"
-        self._track_border = "#3a3f4d"
+        self._theme_grad = _theme_bar_gradient()
+        self._track = "#070b12"
+        self._track_border = "rgba(148, 163, 184, 55)"
         self._apply_chunk(self._accent)
 
     @property
     def bar_widget(self) -> QProgressBar:
         return self._bar
 
-    def apply_chrome(self, *, height: int = 14, track: str = "#151821", border: str = "#3a3f4d") -> None:
+    def apply_chrome(
+        self,
+        *,
+        height: int = 14,
+        track: str = "#070b12",
+        border: str = "rgba(148,163,184,55)",
+        theme_grad: str | None = None,
+    ) -> None:
         self._bar.setFixedHeight(max(12, int(height)))
         self._track = track
         self._track_border = border
+        if theme_grad:
+            self._theme_grad = theme_grad
         self._apply_chunk(self._accent)
 
     def _apply_chunk(self, accent: str) -> None:
         self._accent = accent
-        chunk = _RAINBOW_CHUNK if accent not in {self._STATE_COLOR["off"], self._STATE_COLOR["err"]} else accent
-        if accent == self._STATE_COLOR["err"]:
+        # off/err = sólido; ativo = gradiente do tema (estilo ONLINE)
+        if accent in {self._STATE_COLOR["off"], self._STATE_COLOR["err"]}:
             chunk = accent
+        else:
+            chunk = self._theme_grad
+        h = max(12, int(self._bar.height()))
+        rad = max(6, h // 2)
+        crad = max(5, rad - 1)
         self._bar.setStyleSheet(
             f"""
             QProgressBar#sectorMeter {{
                 background: {self._track};
                 border: 1px solid {self._track_border};
-                border-radius: 7px;
+                border-radius: {rad}px;
                 text-align: center;
                 color: transparent;
                 font-size: 1px;
@@ -1667,7 +1705,7 @@ class SectorMeterRow(QWidget):
             }}
             QProgressBar#sectorMeter::chunk {{
                 background: {chunk};
-                border-radius: 6px;
+                border-radius: {crad}px;
                 margin: 1px;
             }}
             """
@@ -2497,17 +2535,17 @@ QLabel#onlineDot {{
     background: transparent;
 }}
 QProgressBar#footMeter {{
-    background: #151821;
-    border: 1px solid #3a3f4d;
-    border-radius: 6px;
+    background: #070b12;
+    border: 1px solid rgba(148, 163, 184, 55);
+    border-radius: 8px;
     text-align: center;
     color: transparent;
-    min-height: 10px;
+    min-height: 12px;
 }}
 QProgressBar#footMeter::chunk {{
     background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
         stop:0 {t['chunk0']}, stop:0.55 {t['chunk1']}, stop:1 {t['chunk2']});
-    border-radius: 5px;
+    border-radius: 7px;
     margin: 1px;
 }}
 QMenu#dashMenu {{
@@ -2652,7 +2690,7 @@ QLabel#sysMeterVal {{
 QProgressBar {{
     background: {t['prog_bg']};
     border: 1px solid {t['line']};
-    border-radius: 6px;
+    border-radius: 8px;
     text-align: center;
     color: {t['text']};
     height: {"16px" if frost else "12px"};
@@ -2661,7 +2699,8 @@ QProgressBar {{
 QProgressBar::chunk {{
     background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
         stop:0 {t['chunk0']}, stop:0.55 {t['chunk1']}, stop:1 {t['chunk2']});
-    border-radius: 5px;
+    border-radius: 7px;
+    margin: 1px;
 }}
 QPushButton {{
     background: {t['btn_bg']};
@@ -5960,23 +5999,31 @@ class AceCrtConsole(QWidget):
             if bus is not None:
                 bus.hide()
         meter_h = int(meta.get("meter_h") or (18 if frost else 14))
-        track = "rgba(15,23,42,220)" if frost else "#151821"
-        border = "rgba(148,163,184,55)" if frost else "#3a3f4d"
+        track = "rgba(7,11,18,230)" if frost else "#070b12"
+        border = "rgba(148,163,184,55)" if frost else "rgba(148,163,184,55)"
+        theme_grad = _theme_bar_gradient(meta)
         for meter in (
             getattr(self, "meter_cpu", None),
             getattr(self, "meter_mem", None),
             getattr(self, "meter_gpu", None),
         ):
             if meter is not None:
-                meter.apply_chrome(height=meter_h, track=track, border=border)
+                meter.apply_chrome(
+                    height=meter_h, track=track, border=border, theme_grad=theme_grad
+                )
         for meter in (getattr(self, "_sector_meters", {}) or {}).values():
             try:
-                meter.apply_chrome(height=max(12, meter_h), track=track, border=border)
+                meter.apply_chrome(
+                    height=max(12, meter_h),
+                    track=track,
+                    border=border,
+                    theme_grad=theme_grad,
+                )
             except Exception:
                 pass
         if hasattr(self, "bar"):
             self.bar.setTextVisible(False)
-            self.bar.setFixedHeight(12)
+            self.bar.setFixedHeight(max(12, meter_h - 2))
         self._harden_frost_widgets(frost)
         fp = frost_params(fa, fb) if frost else None
         tint = int(fp["tint"]) if fp else int(meta.get("acrylic_tint") or 0x401A1A1A)

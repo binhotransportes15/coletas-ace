@@ -37,6 +37,11 @@
       --crit: var(--can);
       --crit-dark: var(--can-dark);
       --neutral: #94a3b8;
+      /* Barras de progresso (estilo ONLINE do CRT) — variam com data-dash-theme */
+      --rank-bar-a: #1d4ed8;
+      --rank-bar-b: #38bdf8;
+      --rank-bar-c: #67e8f9;
+      --rank-bar-glow: rgba(56, 189, 248, 0.45);
       --ds-header-bg: linear-gradient(180deg, #0a101c, #060910);
       --ds-kpi-bg: linear-gradient(165deg, #0a101c 0%, #05080f 100%);
       --ds-panel-bg: linear-gradient(165deg, #090e18 0%, #05080f 72%);
@@ -54,6 +59,47 @@
       --wall-kpi-pad-y: clamp(12px, 1.5vmin, 18px);
       --wall-kpi-pad-x: clamp(12px, 1.6vmin, 20px);
       font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    /* Temas CRT → cor das barrinhas (azul / amarelo / verde / vermelho) */
+    body[data-dash-theme="azul"],
+    html[data-dash-theme="azul"] {
+      --rank-bar-a: #0369a1;
+      --rank-bar-b: #38bdf8;
+      --rank-bar-c: #7dd3fc;
+      --rank-bar-glow: rgba(56, 189, 248, 0.45);
+    }
+    body[data-dash-theme="amarelo"],
+    html[data-dash-theme="amarelo"] {
+      --rank-bar-a: #a16207;
+      --rank-bar-b: #eab308;
+      --rank-bar-c: #fde047;
+      --rank-bar-glow: rgba(234, 179, 8, 0.45);
+    }
+    body[data-dash-theme="verde"],
+    html[data-dash-theme="verde"],
+    body[data-dash-theme="binho"],
+    html[data-dash-theme="binho"] {
+      --rank-bar-a: #15803d;
+      --rank-bar-b: #22c55e;
+      --rank-bar-c: #86efac;
+      --rank-bar-glow: rgba(34, 197, 94, 0.4);
+    }
+    body[data-dash-theme="vermelho"],
+    html[data-dash-theme="vermelho"] {
+      --rank-bar-a: #b91c1c;
+      --rank-bar-b: #ef4444;
+      --rank-bar-c: #fca5a5;
+      --rank-bar-glow: rgba(239, 68, 68, 0.4);
+    }
+    body[data-dash-theme="painel"],
+    html[data-dash-theme="painel"],
+    body[data-dash-theme="fosco"],
+    html[data-dash-theme="fosco"] {
+      --rank-bar-a: #0369a1;
+      --rank-bar-b: #38bdf8;
+      --rank-bar-c: #7dd3fc;
+      --rank-bar-glow: rgba(56, 189, 248, 0.45);
     }
 
     /* ===== DESIGN SYSTEM BINHO (Etapa 2) ===== */
@@ -7986,11 +8032,161 @@
       min-height: 0;
       flex: 1;
     }
+    .arm-conf-stage {
+      gap: 14px;
+      overflow: auto;
+    }
+    .arm-sec-label {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #7dd3fc;
+      margin: 0 0 10px 2px;
+    }
     .arm-conf-head h2 {
       letter-spacing: 0.04em;
       text-transform: uppercase;
       color: #fbbf24;
     }
+    .arm-kpis-conf .arm-kpi.peso .val,
+    .arm-kpis-conf .arm-kpi.is-warn .val { color: #fbbf24; }
+    .arm-kpis-conf .arm-kpi.finalizado .val,
+    .arm-kpis-conf .arm-kpi.is-ok .val { color: #4ade80; }
+
+    /* —— Pódio top 3 —— */
+    .arm-podium {
+      display: grid;
+      grid-template-columns: 1fr 1.12fr 1fr;
+      gap: 14px;
+      align-items: stretch;
+      margin-bottom: 4px;
+    }
+    .arm-pod-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+      padding: 18px 14px 16px;
+      border-radius: 18px;
+      background: linear-gradient(165deg, rgba(30, 41, 59, 0.95), rgba(10, 16, 28, 0.92));
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+      min-height: 0;
+    }
+    .arm-pod-card.p1 {
+      border-color: rgba(251, 191, 36, 0.65);
+      box-shadow:
+        0 0 0 1px rgba(251, 191, 36, 0.25),
+        0 0 28px rgba(251, 191, 36, 0.22),
+        0 12px 32px rgba(0, 0, 0, 0.35);
+      background: linear-gradient(165deg, rgba(55, 42, 12, 0.55), rgba(12, 16, 28, 0.95));
+      transform: translateY(-6px);
+    }
+    .arm-pod-card.p2 { border-color: rgba(203, 213, 225, 0.35); }
+    .arm-pod-card.p3 { border-color: rgba(251, 146, 60, 0.4); }
+    .arm-pod-medal {
+      width: 48px;
+      height: 52px;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+    }
+    .arm-pod-medal svg { width: 100%; height: 100%; display: block; }
+    .arm-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: linear-gradient(160deg, #334155, #1e293b);
+      border: 3px solid rgba(148, 163, 184, 0.35);
+      box-shadow: inset 0 -8px 16px rgba(0, 0, 0, 0.25);
+    }
+    .arm-pod-card.p1 .arm-avatar { border-color: rgba(251, 191, 36, 0.75); width: 84px; height: 84px; }
+    .arm-pod-card.p2 .arm-avatar { border-color: rgba(226, 232, 240, 0.55); }
+    .arm-pod-card.p3 .arm-avatar { border-color: rgba(251, 146, 60, 0.55); }
+    .arm-avatar svg { width: 70%; height: 70%; display: block; }
+    .arm-pod-name {
+      font-weight: 800;
+      font-size: clamp(14px, 1.35vw, 18px);
+      color: #f8fafc;
+      line-height: 1.2;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .arm-pod-kg {
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(18px, 1.9vw, 26px);
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .arm-pod-card.p1 .arm-pod-kg { color: #fbbf24; }
+    .arm-pod-card.p2 .arm-pod-kg { color: #e2e8f0; }
+    .arm-pod-card.p3 .arm-pod-kg { color: #fdba74; }
+    .arm-pod-vol {
+      font-size: 12px;
+      font-weight: 700;
+      color: #94a3b8;
+      margin-top: -2px;
+    }
+    .arm-pod-track {
+      width: 100%;
+      margin-top: 4px;
+      position: relative;
+      height: 16px;
+      border-radius: 999px;
+      background: #070b12;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+    }
+    .arm-pod-track > i {
+      display: block;
+      height: 100%;
+      width: var(--w, 0%);
+      border-radius: inherit;
+      transition: width 0.45s ease;
+    }
+    .arm-pod-card.p1 .arm-pod-track > i {
+      background: linear-gradient(90deg, #a16207, #fbbf24, #fde68a);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.45);
+    }
+    .arm-pod-card.p2 .arm-pod-track > i {
+      background: linear-gradient(90deg, #64748b, #cbd5e1, #f8fafc);
+      box-shadow: 0 0 10px rgba(226, 232, 240, 0.3);
+    }
+    .arm-pod-card.p3 .arm-pod-track > i {
+      background: linear-gradient(90deg, #9a3412, #ea580c, #fdba74);
+      box-shadow: 0 0 10px rgba(234, 88, 12, 0.35);
+    }
+    .arm-pod-track > b {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 800;
+      color: #f8fafc;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+      pointer-events: none;
+    }
+    .arm-pod-card.p1 .arm-pod-track > b { color: #1a1300; text-shadow: none; }
+    .arm-pod-card.p2 .arm-pod-track > b { color: #0f172a; text-shadow: none; }
+    .arm-pod-tag {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .arm-pod-card.p1 .arm-pod-tag { color: #fcd34d; }
+
+    /* —— Ranking geral (4º+) —— */
+    .arm-rank-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .arm-best-list {
       overflow: auto;
       min-height: 0;
@@ -8001,42 +8197,74 @@
       border: 1px solid rgba(148, 163, 184, 0.14);
       border-radius: 14px;
       background: linear-gradient(180deg, rgba(18, 30, 50, 0.92), rgba(8, 14, 24, 0.88));
-      padding: 4px 0;
+      padding: 0;
     }
+    .arm-best-head,
     .arm-best-row {
       display: grid;
-      grid-template-columns: 58px minmax(0, 1.2fr) minmax(120px, 1.4fr) minmax(110px, 0.85fr);
-      gap: 14px;
+      grid-template-columns: 52px minmax(0, 1.35fr) minmax(140px, 1.5fr) minmax(110px, 0.85fr) minmax(90px, 0.7fr);
+      gap: 12px;
       align-items: center;
-      padding: 12px 18px;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-      min-height: 62px;
+      padding: 10px 16px;
+    }
+    .arm-best-head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: rgba(8, 14, 24, 0.96);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .arm-best-row {
+      border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+      min-height: 56px;
       transition: background 0.15s ease;
     }
+    .arm-best-row:nth-child(even) { background: rgba(148, 163, 184, 0.04); }
     .arm-best-row:last-child { border-bottom: none; }
     .arm-best-row:hover { background: rgba(56, 189, 248, 0.06); }
-    .arm-best-row.r1 { background: linear-gradient(90deg, rgba(251, 191, 36, 0.12), transparent 55%); }
-    .arm-best-row.r2 { background: linear-gradient(90deg, rgba(203, 213, 225, 0.1), transparent 55%); }
-    .arm-best-row.r3 { background: linear-gradient(90deg, rgba(180, 120, 70, 0.12), transparent 55%); }
-    .arm-best-medal {
-      width: 52px;
-      height: 56px;
+    .arm-best-pos,
+    .arm-rank-medal {
+      width: 40px;
+      height: 44px;
       display: grid;
       place-items: center;
+      justify-self: start;
       flex-shrink: 0;
-      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
     }
-    .arm-best-medal svg {
-      width: 48px;
-      height: 52px;
+    .arm-rank-medal svg {
+      width: 36px;
+      height: 40px;
       display: block;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
     }
-    .arm-best-medal .m-num {
-      font-family: "Segoe UI", system-ui, sans-serif;
+    .arm-best-pos {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
       font-weight: 900;
-      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      color: #e2e8f0;
+      background: rgba(51, 65, 85, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.25);
     }
     .arm-best-who {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .arm-best-who .arm-avatar {
+      width: 36px;
+      height: 36px;
+      border-width: 2px;
+      flex-shrink: 0;
+    }
+    .arm-best-who .nm-wrap {
       min-width: 0;
       display: flex;
       flex-direction: column;
@@ -8044,7 +8272,7 @@
     }
     .arm-best-who .nm {
       font-weight: 800;
-      font-size: clamp(14px, 1.45vw, 18px);
+      font-size: clamp(13px, 1.25vw, 16px);
       line-height: 1.15;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -8052,18 +8280,25 @@
       color: #f1f5f9;
     }
     .arm-best-who .un {
-      font-size: 11px;
-      color: var(--muted);
+      display: inline-flex;
+      align-self: start;
+      font-size: 10px;
+      font-weight: 800;
+      color: #94a3b8;
+      background: rgba(51, 65, 85, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 999px;
+      padding: 1px 7px;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
     }
     .arm-best-track {
       position: relative;
       height: 18px;
       border-radius: 999px;
-      background: rgba(30, 41, 59, 0.95);
+      background: #070b12;
       overflow: hidden;
-      border: 1px solid rgba(148, 163, 184, 0.14);
+      border: 1px solid rgba(148, 163, 184, 0.22);
       display: flex;
       align-items: center;
     }
@@ -8072,8 +8307,8 @@
       height: 100%;
       width: var(--w, 0%);
       border-radius: inherit;
-      background: linear-gradient(90deg, #0ea5e9 0%, #38bdf8 55%, #7dd3fc 100%);
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+      background: linear-gradient(90deg, var(--rank-bar-a), var(--rank-bar-b), var(--rank-bar-c));
+      box-shadow: 0 0 12px var(--rank-bar-glow);
       transition: width 0.45s ease;
     }
     .arm-best-track > b {
@@ -8090,37 +8325,22 @@
       pointer-events: none;
       z-index: 1;
     }
-    .arm-best-row.r1 .arm-best-track > i {
-      background: linear-gradient(90deg, #d97706, #fbbf24, #fde68a);
-      box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
-    }
-    .arm-best-row.r1 .arm-best-track > b { color: #1a1300; text-shadow: none; }
-    .arm-best-row.r2 .arm-best-track > i {
-      background: linear-gradient(90deg, #64748b, #cbd5e1, #f1f5f9);
-    }
-    .arm-best-row.r2 .arm-best-track > b { color: #0f172a; text-shadow: none; }
-    .arm-best-row.r3 .arm-best-track > i {
-      background: linear-gradient(90deg, #9a3412, #ea580c, #fdba74);
-    }
     .arm-best-val {
       text-align: right;
       font-weight: 900;
       font-variant-numeric: tabular-nums;
-      font-size: clamp(16px, 1.7vw, 22px);
+      font-size: clamp(14px, 1.4vw, 18px);
       color: #e2e8f0;
       letter-spacing: -0.02em;
       line-height: 1.1;
     }
-    .arm-best-val .arm-best-vol {
-      display: block;
-      font-size: 0.62em;
-      font-weight: 700;
+    .arm-best-vol {
+      text-align: right;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(13px, 1.25vw, 16px);
       color: #94a3b8;
-      letter-spacing: 0;
-      margin-top: 2px;
     }
-    .arm-best-row.r1 .arm-best-val { color: #fde68a; }
-    .arm-best-row.r1 .arm-best-val .arm-best-vol { color: #fcd34d; }
     .arm-rank-empty {
       padding: 28px 16px;
       color: var(--muted);
@@ -8130,44 +8350,49 @@
     body.tv-mode #viewArmConferentes .arm-rank-body {
       padding: clamp(10px, 1.2vmin, 18px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-best-row {
-      grid-template-columns: 72px minmax(0, 1.2fr) minmax(160px, 1.5fr) minmax(130px, 0.9fr) !important;
-      padding: clamp(14px, 1.5vmin, 20px) clamp(18px, 2vmin, 28px) !important;
-      gap: clamp(12px, 1.4vmin, 18px) !important;
-      min-height: clamp(68px, 7vmin, 88px) !important;
+    body.tv-mode #viewArmConferentes .arm-pod-card {
+      padding: clamp(16px, 1.8vmin, 24px) clamp(12px, 1.4vmin, 18px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-best-medal {
-      width: 64px !important;
-      height: 68px !important;
+    body.tv-mode #viewArmConferentes .arm-pod-name {
+      font-size: clamp(16px, 2vmin, 24px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-best-medal svg {
-      width: 60px !important;
-      height: 64px !important;
+    body.tv-mode #viewArmConferentes .arm-pod-kg {
+      font-size: clamp(22px, 2.6vmin, 34px) !important;
+    }
+    body.tv-mode #viewArmConferentes .arm-best-row,
+    body.tv-mode #viewArmConferentes .arm-best-head {
+      padding: clamp(12px, 1.3vmin, 18px) clamp(16px, 1.8vmin, 24px) !important;
+      min-height: clamp(56px, 6vmin, 72px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-best-who .nm {
-      font-size: clamp(17px, 2vmin, 26px) !important;
+      font-size: clamp(15px, 1.8vmin, 22px) !important;
     }
     body.tv-mode #viewArmConferentes .arm-best-track {
-      height: clamp(20px, 2.2vmin, 28px) !important;
+      height: clamp(22px, 2.4vmin, 30px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-best-track > b {
-      font-size: clamp(12px, 1.5vmin, 16px) !important;
+    body.tv-mode #viewArmConferentes .arm-best-val,
+    body.tv-mode #viewArmConferentes .arm-best-vol {
+      font-size: clamp(16px, 2vmin, 24px) !important;
     }
-    body.tv-mode #viewArmConferentes .arm-best-val {
-      font-size: clamp(20px, 2.4vmin, 30px) !important;
-    }
-    @media (max-width: 900px) {
+    @media (max-width: 980px) {
+      .arm-podium {
+        grid-template-columns: 1fr;
+      }
+      .arm-pod-card.p1 { transform: none; order: -1; }
+      .arm-best-head { display: none; }
       .arm-best-row {
-        grid-template-columns: 48px minmax(0, 1fr) minmax(90px, 0.9fr);
+        grid-template-columns: 44px minmax(0, 1fr) minmax(90px, 0.85fr);
         grid-template-areas:
-          "medal who val"
-          "medal track track";
+          "pos who val"
+          "pos track vol";
         row-gap: 8px;
       }
-      .arm-best-medal { grid-area: medal; }
+      .arm-best-pos,
+      .arm-rank-medal { grid-area: pos; }
       .arm-best-who { grid-area: who; }
       .arm-best-track { grid-area: track; }
       .arm-best-val { grid-area: val; align-self: end; }
+      .arm-best-vol { grid-area: vol; align-self: start; }
     }
     .arm-panel {
       background: var(--ds-panel-bg, var(--panel));
@@ -8958,18 +9183,24 @@
         <div class="arm-layout" id="armLayoutConferentes">
         <div class="arm-kpis arm-kpis-conf dash-block ds-kpi-row" data-block="kpis">
           <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Conferentes</div><div class="val" id="kConfN">0</div></div>
-          <div class="arm-kpi peso ds-kpi is-neutral"><div class="lbl">Peso total</div><div class="val" id="kConfPeso">0</div></div>
-          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Volumes</div><div class="val" id="kConfVol">0</div></div>
-          <div class="arm-kpi lider ds-kpi is-ok"><div class="lbl">Líder</div><div class="val" id="kConfLeader">—</div></div>
-          <div class="arm-kpi finalizado ds-kpi is-run"><div class="lbl">Mês</div><div class="val" id="kConfMes">—</div></div>
+          <div class="arm-kpi peso ds-kpi is-warn"><div class="lbl">Peso total</div><div class="val" id="kConfPeso">0</div></div>
+          <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Volume total</div><div class="val" id="kConfVol">0</div></div>
+          <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Mês vigente</div><div class="val" id="kConfMes">—</div></div>
         </div>
         <section class="arm-hero-card arm-conf-card dash-block" data-block="chart">
           <header class="arm-conf-head">
             <h2>Melhores da BINHO</h2>
             <div class="meta" id="armRankMeta">peso lido no mês</div>
           </header>
-          <div class="arm-rank-body arm-rank-body-full">
-            <div class="arm-best-list" id="armRankRest" aria-label="Ranking conferentes"></div>
+          <div class="arm-rank-body arm-rank-body-full arm-conf-stage">
+            <div class="arm-podium-wrap">
+              <div class="arm-sec-label">Podium</div>
+              <div class="arm-podium" id="armPodium" aria-label="Pódio top 3"></div>
+            </div>
+            <div class="arm-rank-wrap">
+              <div class="arm-sec-label">Ranking geral</div>
+              <div class="arm-best-list" id="armRankRest" aria-label="Ranking conferentes"></div>
+            </div>
           </div>
         </section>
         </div>
@@ -11022,6 +11253,7 @@
       }
       const hint = String((b && b.themeHint) || '').toLowerCase();
       document.body.classList.toggle('theme-circuitos', hint === 'circuitos' || hint === 'circuit');
+      applyDashTheme(hint || undefined);
       if (hidden) return;
       const src = resolveBrandSrc(b);
       if (!src) return;
@@ -11030,6 +11262,29 @@
         img.setAttribute('src', src);
         img.setAttribute('alt', 'BINHO Transportes');
       });
+    }
+
+    /** Cor das barrinhas de progresso = tema CRT (azul/amarelo/verde/vermelho). */
+    function applyDashTheme(hint) {
+      const map = {
+        azul: 'azul', blue: 'azul', painel: 'azul', fosco: 'azul', ace: 'azul',
+        amarelo: 'amarelo', yellow: 'amarelo', gold: 'amarelo',
+        verde: 'verde', green: 'verde', binho: 'verde', ops: 'verde',
+        vermelho: 'vermelho', red: 'vermelho', rosa: 'vermelho',
+      };
+      let tid = '';
+      try {
+        const q = new URLSearchParams(location.search || '');
+        tid = String(q.get('theme') || q.get('tema') || '').trim().toLowerCase();
+      } catch (_) { /* ignore */ }
+      if (!tid && hint) tid = String(hint).trim().toLowerCase();
+      if (!tid) {
+        try { tid = String(localStorage.getItem('ace_dash_theme') || '').trim().toLowerCase(); } catch (_) { /* ignore */ }
+      }
+      const resolved = map[tid] || 'azul';
+      document.documentElement.setAttribute('data-dash-theme', resolved);
+      document.body.setAttribute('data-dash-theme', resolved);
+      try { localStorage.setItem('ace_dash_theme', resolved); } catch (_) { /* ignore */ }
     }
 
     function isEmbeddedFrame() {
@@ -12474,19 +12729,125 @@
       });
     }
 
+    /** Nomes femininos comuns (1º nome) — avatar mulher/homem no ranking. */
+    const ARM_NOMES_FEM = new Set([
+      'aliny', 'amanda', 'ana', 'andrea', 'andreia', 'adriana', 'beatriz', 'bruna',
+      'camila', 'carla', 'carolina', 'claudia', 'cristina', 'daniela', 'debora',
+      'elaine', 'eliane', 'fabiana', 'fanys', 'fernanda', 'flavia', 'gabriela',
+      'helena', 'isabela', 'isabel', 'jessica', 'julia', 'juliana', 'karina',
+      'katia', 'larissa', 'leticia', 'lidiane', 'luana', 'lucia', 'luciana',
+      'marcela', 'marcia', 'maria', 'mariana', 'monica', 'natalia', 'paula',
+      'patricia', 'priscila', 'raquel', 'regina', 'renata', 'rita', 'rosa',
+      'rosangela', 'sandra', 'simone', 'solange', 'sonia', 'suelen', 'suzana',
+      'talita', 'tatiane', 'thais', 'valeria', 'vanessa', 'veronica', 'viviane',
+      'yasmim', 'yasmin', 'bianca', 'eduarda', 'giovana', 'larissa', 'lorena',
+      'michele', 'michelle', 'natalia', 'nicole', 'pamela', 'rafaela', 'sabrina',
+      'silvia', 'tatiana', 'vitoria',
+    ]);
+
+    function armConfPrimeiroNome(raw) {
+      const s = String(raw || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+      if (!s) return '';
+      // "m.silva" / login → ignora; usa só se parecer nome
+      if (/^[a-z]\.[a-z]+$/i.test(s) || (!/\s/.test(s) && s.includes('.'))) return '';
+      const parts = s.split(/[\s._-]+/).filter(Boolean);
+      return (parts[0] || '').toLowerCase();
+    }
+
+    function armConfIsFeminino(displayName, login) {
+      const first = armConfPrimeiroNome(displayName)
+        || armConfPrimeiroNome(String(displayName || '').replace(/\./g, ' '));
+      if (first && ARM_NOMES_FEM.has(first)) return true;
+      // login tipo "aliny" / "b.leme" → tenta token útil
+      const log = String(login || '').trim().toLowerCase();
+      if (log) {
+        const tok = log.includes('.') ? log.split('.').pop() : log;
+        if (ARM_NOMES_FEM.has(tok)) return true;
+        if (ARM_NOMES_FEM.has(log)) return true;
+      }
+      return false;
+    }
+
+    function armConfPrettyName(r) {
+      const nome = String(r.nome || '').trim();
+      if (nome) {
+        return nome
+          .toLowerCase()
+          .split(/\s+/)
+          .map((w) => (w.length <= 2 && !/^(da|de|do|das|dos)$/i.test(w)
+            ? w.toUpperCase()
+            : w.charAt(0).toUpperCase() + w.slice(1)))
+          .join(' ');
+      }
+      const conf = String(r.conferente || '').trim();
+      if (conf && !/^[a-z]\.[a-z]/i.test(conf) && !conf.includes('.')) return conf;
+      const login = String(r.login || conf || '').trim();
+      if (!login) return '—';
+      // m.silva → M. Silva
+      if (/^[a-z0-9]+\.[a-z0-9]+$/i.test(login)) {
+        return login.split('.').map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join('. ');
+      }
+      return login;
+    }
+
+    /** Nome curto pro pódio (ex.: M. Silva · Alejandro Brandão). */
+    function armConfShortName(r) {
+      const conf = String(r.conferente || '').trim();
+      if (conf && !/^[a-z0-9]+\.[a-z0-9]+$/i.test(conf)) return conf;
+      const full = armConfPrettyName(r);
+      if (!full || full === '—') return full;
+      const parts = full.split(/\s+/).filter(Boolean);
+      if (parts.length <= 2) return full;
+      // "Gerson Malinoski da Silva Lula" → "Gerson Lula"
+      const skip = new Set(['da', 'de', 'do', 'das', 'dos', 'e']);
+      const first = parts[0];
+      const last = [...parts].reverse().find((p) => !skip.has(p.toLowerCase())) || parts[parts.length - 1];
+      return first === last ? first : `${first} ${last}`;
+    }
+
+    function armAvatarSvg(feminino) {
+      if (feminino) {
+        return `<span class="arm-avatar" title="Avatar feminino" aria-hidden="true">
+          <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="32" r="32" fill="#475569"/>
+            <ellipse cx="32" cy="24" rx="11" ry="12" fill="#e2e8f0"/>
+            <path d="M14 22c2-10 10-16 18-16s16 6 18 16c-3-5-9-8-18-8s-15 3-18 8z" fill="#cbd5e1"/>
+            <path d="M12 58c3-14 12-22 20-22s17 8 20 22" fill="#e2e8f0"/>
+          </svg>
+        </span>`;
+      }
+      return `<span class="arm-avatar" title="Avatar masculino" aria-hidden="true">
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="32" cy="32" r="32" fill="#475569"/>
+          <circle cx="32" cy="24" r="12" fill="#e2e8f0"/>
+          <path d="M10 58c4-14 13-22 22-22s18 8 22 22" fill="#e2e8f0"/>
+        </svg>
+      </span>`;
+    }
+
     function renderArmRanking(rows, resumo) {
+      const podiumEl = document.getElementById('armPodium');
       const rest = document.getElementById('armRankRest');
       const meta = document.getElementById('armRankMeta');
       const ranked = (rows || [])
-        .map((r) => ({
-          rank: Number(r.rank) || 0,
-          nome: String(r.nome || r.conferente || r.login || '').trim() || '—',
-          login: String(r.login || '').trim(),
-          unidade: String(r.unidade || '').trim(),
-          kg: String(r.peso_lidos_fmt || r.peso_lidos || '0').replace(/\s*kg$/i, ''),
-          vol: String(r.vol_lidos_fmt || r.vol_lidos || '0'),
-          peso: Number(r.peso_lidos) || 0,
-        }))
+        .map((r) => {
+          const nome = armConfPrettyName(r);
+          const login = String(r.login || '').trim();
+          return {
+            rank: Number(r.rank) || 0,
+            nome,
+            curto: armConfShortName(r),
+            login,
+            unidade: String(r.unidade || '').trim() || 'SPO',
+            kg: String(r.peso_lidos_fmt || r.peso_lidos || '0').replace(/\s*kg$/i, ''),
+            vol: String(r.vol_lidos_fmt || r.vol_lidos || '0'),
+            peso: Number(r.peso_lidos) || 0,
+            feminino: armConfIsFeminino(nome, login) || armConfIsFeminino(String(r.nome || r.conferente || ''), login),
+          };
+        })
         .filter((r) => r.peso > 0)
         .sort((a, b) => (b.peso - a.peso) || (a.rank - b.rank));
 
@@ -12494,15 +12855,19 @@
         || Number((resumo && (resumo.peso_total || resumo.peso)) || 0);
       const topPeso = ranked[0] ? ranked[0].peso : 0;
       const sharePct = (peso) => (totalPeso > 0 ? Math.round((peso / totalPeso) * 1000) / 10 : 0);
-      const barVsLeader = (peso) => (topPeso > 0 ? Math.max(6, Math.round((peso / topPeso) * 100)) : 0);
+      const barVsLeader = (peso) => (topPeso > 0 ? Math.max(8, Math.round((peso / topPeso) * 100)) : 0);
       const fmtShare = (p) => `${String(p).replace('.', ',')}%`;
+      const fmtVol = (v) => {
+        const n = Number(String(v).replace(/\./g, '').replace(',', '.'));
+        if (Number.isFinite(n) && n) return n.toLocaleString('pt-BR');
+        return String(v || '0');
+      };
       const esc = (s) => String(s || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 
-      /** Medalha SVG — ouro / prata / bronze / demais */
       const armMedalSvg = (place) => {
         const n = Math.max(1, Math.min(99, Number(place) || 1));
         let c1 = '#94a3b8';
@@ -12526,10 +12891,11 @@
           glow = 'rgba(234,88,12,0.4)';
         }
         const fs = n >= 10 ? 12 : 15;
-        return `<span class="arm-best-medal" aria-label="${n}º lugar" title="${n}º lugar">
+        const uid = `mshine${n}_${Math.random().toString(36).slice(2, 7)}`;
+        return `<span class="arm-pod-medal" aria-label="${n}º lugar" title="${n}º lugar">
           <svg viewBox="0 0 64 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>
-              <radialGradient id="mshine${n}" cx="35%" cy="30%" r="65%">
+              <radialGradient id="${uid}" cx="35%" cy="30%" r="65%">
                 <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
                 <stop offset="45%" stop-color="${c1}" stop-opacity="1"/>
                 <stop offset="100%" stop-color="${c2}" stop-opacity="1"/>
@@ -12539,10 +12905,9 @@
             <path d="M44 2 L32 22 L48 22 Z" fill="${ribbonR}"/>
             <ellipse cx="32" cy="64" rx="14" ry="3.5" fill="${glow}"/>
             <circle cx="32" cy="42" r="22" fill="${c2}"/>
-            <circle cx="32" cy="42" r="18.5" fill="url(#mshine${n})"/>
+            <circle cx="32" cy="42" r="18.5" fill="url(#${uid})"/>
             <circle cx="32" cy="42" r="14.5" fill="none" stroke="${c3}" stroke-width="2" opacity="0.95"/>
-            <circle cx="32" cy="42" r="11" fill="none" stroke="${c2}" stroke-width="1.2" opacity="0.5"/>
-            <text class="m-num" x="32" y="47.5" text-anchor="middle" fill="${ink}"
+            <text x="32" y="47.5" text-anchor="middle" fill="${ink}"
               font-size="${fs}" font-weight="900" font-family="Segoe UI, system-ui, sans-serif">${n}</text>
           </svg>
         </span>`;
@@ -12561,45 +12926,89 @@
           atualizado ? `atualizado ${atualizado}` : '',
         ].filter(Boolean).join(' · ');
       }
-      if (!rest) return;
+
+      const clearKpis = () => {
+        ['kConfN', 'kConfPeso', 'kConfVol', 'kConfMes'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (id === 'kConfN') el.textContent = '0';
+          else if (id === 'kConfPeso') el.textContent = '0 kg';
+          else if (id === 'kConfVol') el.textContent = '0 vol';
+          else el.textContent = '—';
+        });
+      };
 
       if (!ranked.length) {
-        rest.innerHTML = `<div class="arm-rank-empty">Aguardando leitura 177…</div>`;
-        ['kConfN', 'kConfPeso', 'kConfVol', 'kConfLeader', 'kConfMes'].forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) {
-            if (id === 'kConfN') el.textContent = '0';
-            else if (id === 'kConfPeso') el.textContent = '0 kg';
-            else if (id === 'kConfVol') el.textContent = '0';
-            else el.textContent = '—';
-          }
-        });
+        if (podiumEl) podiumEl.innerHTML = '';
+        if (rest) rest.innerHTML = `<div class="arm-rank-empty">Aguardando leitura 177…</div>`;
+        clearKpis();
         return;
       }
 
-      rest.innerHTML = ranked.map((r, i) => {
-        const n = r.rank || (i + 1);
-        const place = Math.min(n, 99);
-        const cls = place <= 3 ? ` r${place}` : '';
+      const podHtml = (r, place) => {
+        if (!r) {
+          return `<div class="arm-pod-card p${place} is-empty"><div class="arm-rank-empty">—</div></div>`;
+        }
         const pct = sharePct(r.peso);
         const w = barVsLeader(r.peso);
-        return `<div class="arm-best-row${cls}">
+        const tag = place === 1 ? 'Primário' : (place === 2 ? 'Vice' : '3º lugar');
+        const label = r.curto || r.nome;
+        return `<div class="arm-pod-card p${place}">
           ${armMedalSvg(place)}
-          <div class="arm-best-who">
-            <span class="nm" title="${esc(r.login || r.nome)}">${esc(r.nome)}</span>
-            <span class="un">${esc(r.unidade || 'SPO')}</span>
+          ${armAvatarSvg(r.feminino)}
+          <div class="arm-pod-name" title="${esc(r.nome)}">${esc(label)}</div>
+          <div class="arm-pod-kg">${esc(r.kg)} kg</div>
+          <div class="arm-pod-vol">${esc(fmtVol(r.vol))} vol</div>
+          <div class="arm-pod-track" title="${fmtShare(pct)} do total">
+            <i style="--w:${w}%"></i><b>${fmtShare(pct)}</b>
           </div>
-          <span class="arm-best-track" title="${fmtShare(pct)} do total · ${w}% do líder"><i style="--w:${w}%"></i><b>${fmtShare(pct)}</b></span>
-          <div class="arm-best-val">${esc(r.kg)} kg<span class="arm-best-vol">${esc(
-            Number(r.vol) ? Number(r.vol).toLocaleString('pt-BR') : r.vol
-          )} vol</span></div>
+          <div class="arm-pod-tag">${tag}</div>
         </div>`;
-      }).join('');
+      };
+
+      // Ordem visual clássica: 2º | 1º | 3º
+      if (podiumEl) {
+        podiumEl.innerHTML = [
+          podHtml(ranked[1], 2),
+          podHtml(ranked[0], 1),
+          podHtml(ranked[2], 3),
+        ].join('');
+      }
+
+      const restRows = ranked.slice(3);
+      if (rest) {
+        if (!restRows.length) {
+          rest.innerHTML = `<div class="arm-rank-empty">Só o pódio por enquanto</div>`;
+        } else {
+          const head = `<div class="arm-best-head" aria-hidden="true">
+            <span>Pos</span><span>Conferente</span><span>Participação</span><span>Peso</span><span>Volume</span>
+          </div>`;
+          rest.innerHTML = head + restRows.map((r, i) => {
+            const n = r.rank || (i + 4);
+            const pct = sharePct(r.peso);
+            const w = barVsLeader(r.peso);
+            return `<div class="arm-best-row">
+              <span class="arm-rank-medal">${armMedalSvg(n)}</span>
+              <div class="arm-best-who">
+                ${armAvatarSvg(r.feminino)}
+                <div class="nm-wrap">
+                  <span class="nm" title="${esc(r.login || r.nome)}">${esc(r.nome)}</span>
+                  <span class="un">${esc(r.unidade)}</span>
+                </div>
+              </div>
+              <span class="arm-best-track" title="${fmtShare(pct)} do total · ${w}% do líder">
+                <i style="--w:${w}%"></i><b>${fmtShare(pct)}</b>
+              </span>
+              <div class="arm-best-val">${esc(r.kg)} kg</div>
+              <div class="arm-best-vol">${esc(fmtVol(r.vol))}</div>
+            </div>`;
+          }).join('');
+        }
+      }
 
       const kn = document.getElementById('kConfN');
       const kp = document.getElementById('kConfPeso');
       const kv = document.getElementById('kConfVol');
-      const kl = document.getElementById('kConfLeader');
       const km = document.getElementById('kConfMes');
       if (kn) kn.textContent = String(ranked.length);
       if (kp) {
@@ -12609,13 +13018,12 @@
       }
       if (kv) {
         const v = (resumo && (resumo.vol_total_fmt || resumo.vol_total)) || '';
-        if (v) kv.textContent = String(v);
+        if (v) kv.textContent = `${v}${String(v).toLowerCase().includes('vol') ? '' : ' vol'}`;
         else {
           const sumVol = (rows || []).reduce((s, r) => s + (Number(r.vol_lidos) || 0), 0);
-          kv.textContent = sumVol ? sumVol.toLocaleString('pt-BR') : '0';
+          kv.textContent = sumVol ? `${sumVol.toLocaleString('pt-BR')} vol` : '0 vol';
         }
       }
-      if (kl) kl.textContent = ranked[0] ? ranked[0].nome.split(/\s+/)[0] : '—';
       if (km) km.textContent = String((resumo && (resumo.periodo || resumo.mes || resumo.atualizado)) || mes || 'mês');
     }
 
@@ -17721,6 +18129,7 @@
       }
     }
     if (!tvLayoutPollTimer) tvLayoutPollTimer = setInterval(pollTvLayout, 20000);
+    applyDashTheme();
     pollTvLayout();
 
     tickClock();

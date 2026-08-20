@@ -1,30 +1,30 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-20T08:27:26",
+  "updated_at": "2026-08-20T10:27:34",
   "resumo_50": {
     "data_cadastro": "PERIODO",
-    "total_coletas": "2",
-    "cadastrada": "1",
-    "comandada": "1",
+    "total_coletas": "10",
+    "cadastrada": "4",
+    "comandada": "5",
     "coletada": "0",
-    "cancelada": "0"
+    "cancelada": "1"
   },
   "resumo_103": {
     "periodo": "20/08",
-    "total": "42",
-    "parado": "23",
-    "em_rota": "16",
-    "realizada": "1",
-    "cancelada": "2",
+    "total": "48",
+    "parado": "11",
+    "em_rota": "27",
+    "realizada": "3",
+    "cancelada": "7",
     "outro": "0"
   },
   "resumo_36": {
     "periodo": "19/08 a 20/08",
-    "total": "75",
-    "realizada": "37",
-    "em_rota": "38",
+    "total": "95",
+    "realizada": "38",
+    "em_rota": "57",
     "pendencia": "0",
-    "excluido": "10"
+    "excluido": "9"
   },
   "resumo_225": {
     "periodo": "Agendamento AGOSTO",
