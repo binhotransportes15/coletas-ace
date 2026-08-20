@@ -12235,68 +12235,76 @@
       return `<span class="arm-badge st-${s}">${label}</span>`;
     }
 
+    /** Manifesto encerrado (fim de descarga ou status finalizado). */
+    function armRowFinalizado(r) {
+      if (armStripOperador(r.final_descarga)) return true;
+      return String(r.status || '').toLowerCase() === 'finalizado';
+    }
+
+    /**
+     * Agrega manifestos do mesmo cavalo|carreta.
+     * Se ainda há manifesto aberto, status/momentos vêm só dos abertos —
+     * manifesto já finalizado NÃO “contamina” chegada/pátio (ex.: 007332 chegou
+     * enquanto 007331 já finalizou no mesmo veículo).
+     */
     function aggVeiculosArm(rows) {
-      const map = new Map();
-      for (const r of rows) {
+      const groups = new Map();
+      for (const r of rows || []) {
         const key = `${r.cavalo}|${r.carreta}`;
-        let slot = map.get(key);
-        if (!slot) {
-          const sigRaw = String(r.origem_sigla || '').trim().toUpperCase();
-          const siglaOk = sigRaw && sigRaw.length <= 4 ? sigRaw : '';
-          slot = {
-            origem: labelOrigemArm(siglaOk || r.origem || r.origem_sigla),
-            origem_sigla: siglaOk || String(r.origem_sigla || '').trim().toUpperCase(),
-            cavalo: r.cavalo,
-            carreta: r.carreta,
-            peso_veiculo: r.peso_veiculo || r.peso,
-            chegada: r.chegada,
-            prev_chegada: r.prev_chegada,
-            status: r.status,
-            tempo_descarga: r.tempo_descarga,
-            tempo_descarga_min: r.tempo_descarga_min || '',
-            inicio_descarga: r.inicio_descarga || '',
-            final_descarga: r.final_descarga || '',
-          };
-          map.set(key, slot);
-        }
-        if ((r.peso_veiculo || '').length) slot.peso_veiculo = r.peso_veiculo;
-        if ((r.tempo_descarga_min || '').length) {
-          const a = Number(slot.tempo_descarga_min) || 0;
-          const b = Number(r.tempo_descarga_min) || 0;
-          if (b >= a) slot.tempo_descarga_min = r.tempo_descarga_min;
-        }
-        // Qualquer manifesto com chegada/início/fim deve subir para o veículo
-        if ((r.chegada || '').trim() && !(slot.chegada || '').trim()) {
-          slot.chegada = r.chegada;
-        }
-        if ((r.inicio_descarga || '').trim() && !(slot.inicio_descarga || '').trim()) {
-          slot.inicio_descarga = r.inicio_descarga;
-        }
-        if ((r.final_descarga || '').trim() && !(slot.final_descarga || '').trim()) {
-          slot.final_descarga = r.final_descarga;
-        }
-        const a = ARM_STATUS_RANK[slot.status] ?? 9;
-        const b = ARM_STATUS_RANK[r.status] ?? 9;
-        if (b < a) {
-          slot.status = r.status;
-          slot.chegada = r.chegada || slot.chegada;
-          slot.prev_chegada = r.prev_chegada || slot.prev_chegada;
-          slot.tempo_descarga = r.tempo_descarga || slot.tempo_descarga;
-          slot.inicio_descarga = r.inicio_descarga || slot.inicio_descarga;
-          slot.final_descarga = r.final_descarga || slot.final_descarga;
-          const sigRaw = String(r.origem_sigla || '').trim().toUpperCase();
-          if (sigRaw && sigRaw.length <= 4) slot.origem_sigla = sigRaw;
-          slot.origem = labelOrigemArm(slot.origem_sigla || r.origem || r.origem_sigla) || slot.origem;
-        } else if (b === a && (r.tempo_descarga || '').length > (slot.tempo_descarga || '').length) {
-          slot.tempo_descarga = r.tempo_descarga;
-          slot.inicio_descarga = r.inicio_descarga || slot.inicio_descarga;
-          slot.final_descarga = r.final_descarga || slot.final_descarga;
-          slot.chegada = r.chegada || slot.chegada;
-        }
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(r);
       }
-      const out = [...map.values()];
-      for (const slot of out) {
+      const out = [];
+      for (const list of groups.values()) {
+        const open = list.filter((r) => !armRowFinalizado(r));
+        const pool = open.length ? open : list;
+        let best = pool[0];
+        for (const r of pool) {
+          const a = ARM_STATUS_RANK[best.status] ?? 9;
+          const b = ARM_STATUS_RANK[r.status] ?? 9;
+          if (b < a) best = r;
+          else if (b === a && (r.tempo_descarga || '').length > (best.tempo_descarga || '').length) {
+            best = r;
+          }
+        }
+        const sigRaw = String(best.origem_sigla || '').trim().toUpperCase();
+        const siglaOk = sigRaw && sigRaw.length <= 4 ? sigRaw : '';
+        let pesoVeic = '';
+        let tempoMin = '';
+        for (const r of list) {
+          if ((r.peso_veiculo || '').length) pesoVeic = r.peso_veiculo;
+          if ((r.tempo_descarga_min || '').length) {
+            const a = Number(tempoMin) || 0;
+            const b = Number(r.tempo_descarga_min) || 0;
+            if (b >= a) tempoMin = r.tempo_descarga_min;
+          }
+        }
+        // Entre abertos: sobe chegada se algum manifesto já chegou (sem pegar fim de outro)
+        let chegada = best.chegada || '';
+        let prev = best.prev_chegada || '';
+        if (open.length) {
+          for (const r of open) {
+            if ((r.chegada || '').trim() && !(chegada || '').trim()) chegada = r.chegada;
+            if ((r.prev_chegada || '').trim() && !(prev || '').trim()) prev = r.prev_chegada;
+          }
+        }
+        const slot = {
+          origem: labelOrigemArm(siglaOk || best.origem || best.origem_sigla),
+          origem_sigla: siglaOk || String(best.origem_sigla || '').trim().toUpperCase(),
+          cavalo: best.cavalo,
+          carreta: best.carreta,
+          peso_veiculo: pesoVeic || best.peso_veiculo || best.peso,
+          chegada,
+          prev_chegada: prev,
+          status: best.status,
+          tempo_descarga: best.tempo_descarga || '',
+          tempo_descarga_min: open.length ? (best.tempo_descarga_min || '') : tempoMin,
+          // Momentos só do manifesto prioritário do pool (aberto, se houver)
+          inicio_descarga: best.inicio_descarga || '',
+          final_descarga: open.length ? '' : (best.final_descarga || ''),
+        };
         slot.status = armStatusEfetivo(slot);
+        out.push(slot);
       }
       return out.sort((x, y) => {
         const d = (ARM_STATUS_RANK[x.status] ?? 9) - (ARM_STATUS_RANK[y.status] ?? 9);

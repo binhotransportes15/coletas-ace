@@ -45,6 +45,14 @@ def _noop(_: str) -> None:
     return None
 
 
+def _safe_accept_dialog(dialog) -> None:
+    """Aceita alert sem explodir se outro handler já tratou."""
+    try:
+        dialog.accept()
+    except Exception:
+        pass
+
+
 def safe_wait(page, ms: int) -> None:
     try:
         if page is None or (hasattr(page, "is_closed") and page.is_closed()):
@@ -89,7 +97,7 @@ def abrir_fila(
             )
         fila = pi.value
         try:
-            fila.on("dialog", lambda d: d.accept())
+            fila.on("dialog", lambda d: _safe_accept_dialog(d))
         except Exception:
             pass
         st(f"[{tag}] fila via ajax")
@@ -124,7 +132,7 @@ def abrir_fila(
                         raise RuntimeError("sem Ver fila")
                 fila = pi.value
                 try:
-                    fila.on("dialog", lambda d: d.accept())
+                    fila.on("dialog", lambda d: _safe_accept_dialog(d))
                 except Exception:
                     pass
                 st(f"[{tag}] fila via Ver fila")
@@ -137,7 +145,7 @@ def abrir_fila(
     try:
         fila = context.new_page()
         try:
-            fila.on("dialog", lambda d: d.accept())
+            fila.on("dialog", lambda d: _safe_accept_dialog(d))
         except Exception:
             pass
         fila.goto(SSW_FILA_URL, wait_until="domcontentloaded", timeout=30000)
@@ -283,18 +291,25 @@ def ler_jobs(fila) -> list[dict[str, Any]]:
               const href = String(a.getAttribute('href') || '');
               return { text, onclick, href, blob: (onclick + ' ' + text + ' ' + href).toLowerCase() };
             });
-            // Nunca trate «NÃO SELECIONOU…» como Baixar
+            // Enquanto processa, o SSW mostra «Interromper» no lugar do Baixar — esperar
+            const hasInterromper = links.some(x =>
+              /interrom|cancelar\\s*gera|parar\\s*gera|abortar/i.test(x.text)
+              || /interrom/i.test(x.blob)
+            ) || cells.some(c => /^(interrom|cancelar\\s*gera)/i.test(c || ''));
+            // Nunca trate «NÃO SELECIONOU…» nem «Interromper» como Baixar
             const dows = links.filter(x => {
+              if (/interrom|cancelar\\s*gera|parar\\s*gera|abortar/i.test(x.text)) return false;
               if (/selecionou|sem\\s+ctrc|demonstrativ/i.test(x.text)) return false;
               if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(x.text)
                   && !/\\b(dow|baixar)\\b/i.test(x.text)) return false;
               if (/^(dow|baixar)$/i.test(x.text) || /\\b(dow|baixar)\\b/i.test(x.text)) return true;
-              return /\\bdow\\b|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob);
+              return /\\bdow\\b|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob)
+                && !/interrom/i.test(x.blob);
             });
             if (!dows.length && !semDados) {
               for (const td of tds) {
                 const t = norm(td.innerText || '');
-                if (/selecionou|sem\\s+ctrc|demonstrativ/i.test(t)) continue;
+                if (/interrom|selecionou|sem\\s+ctrc|demonstrativ/i.test(t)) continue;
                 if (/^(dow|baixar)$/i.test(t) || (t.length <= 10 && /\\b(dow|baixar)\\b/i.test(t))) {
                   dows.push({ text: t, onclick: '', href: '', blob: 'dow baixar' });
                   break;
@@ -304,9 +319,14 @@ def ler_jobs(fila) -> list[dict[str, Any]]:
 
             const sitLow = (sit || '').toLowerCase();
             const concluido = /conclu/.test(sitLow) && !/n[aã]o\\s*conclu|inconclu/.test(sitLow);
-            const erro = /erro|abort/.test(sitLow);
+            const erro = /erro|abort/.test(sitLow) && !/interrom/i.test(sitLow);
+            const hasDow = !semDados && dows.length > 0;
+            // «Interromper» no lugar do Baixar = ainda gerando — continua Atualizar
+            const aindaGerando = Boolean(hasInterromper && !hasDow);
             const processando = !concluido && !erro && !semDados && (
-              /processando|na\\s*fila|em\\s*fila|aguard|gerando/.test(sitLow) || dows.length === 0
+              aindaGerando
+              || /processando|na\\s*fila|em\\s*fila|aguard|gerando/.test(sitLow)
+              || !hasDow
             );
 
             jobs.push({
@@ -324,7 +344,8 @@ def ler_jobs(fila) -> list[dict[str, Any]]:
               processando,
               erro,
               semDados,
-              hasDow: !semDados && dows.length > 0,
+              hasInterromper: aindaGerando,
+              hasDow,
               dows: semDados ? [] : dows,
               cells,
             });
@@ -396,7 +417,10 @@ def pick_tracked_seq(
     option_res: list[re.Pattern[str]],
     enqueue_t0: float | None = None,
 ) -> str | None:
-    """Escolhe a sequência do nosso job (prioriza processando, depois mais nova)."""
+    """Escolhe a sequência do nosso job (prioriza processando, depois mais nova).
+
+    Com enqueue_t0: NÃO cai em job antigo da mesma opção (isso zerava/sujava a Emissão).
+    """
     cand = [
         j
         for j in jobs
@@ -408,19 +432,6 @@ def pick_tracked_seq(
             enqueue_t0=enqueue_t0,
         )
     ]
-    if not cand:
-        # fallback: mesmo usuário + opção, sem filtro de horário
-        cand = [
-            j
-            for j in jobs
-            if job_is_ours(
-                j,
-                login_user=login_user,
-                option_res=option_res,
-                tracked_seq=None,
-                enqueue_t0=None,
-            )
-        ]
     if not cand:
         return None
 
@@ -462,6 +473,20 @@ def job_sem_dados(job: dict[str, Any]) -> bool:
         if msg and _EMPTY_RE.search(msg):
             return True
     return False
+
+
+def job_pronto_baixar(job: dict[str, Any]) -> bool:
+    """True só quando o link real «Baixar»/DOW está na linha.
+
+    Se ainda aparece «Interromper», continua esperando — não clicar.
+    """
+    if not job or job_sem_dados(job):
+        return False
+    if job.get("hasInterromper") and not job.get("hasDow"):
+        return False
+    if job.get("processando") and not job.get("hasDow"):
+        return False
+    return bool(job.get("hasDow"))
 
 
 def aguardar_baixar(
@@ -559,10 +584,14 @@ def aguardar_baixar(
                     )
                 else:
                     j0 = nossos[0]
+                    fase = (
+                        "Interromper→aguardando Baixar"
+                        if j0.get("hasInterromper") and not j0.get("hasDow")
+                        else ("Baixar" if j0.get("hasDow") else "gerando")
+                    )
                     st(
                         f"[{tag}] Atualizar · seq={j0.get('seq')} · "
-                        f"{j0.get('situacao') or '?'} · "
-                        f"baixar={'sim' if j0.get('hasDow') else 'não'} · "
+                        f"{j0.get('situacao') or '?'} · {fase} · "
                         f"{(j0.get('opcao') or '')[:40]}"
                     )
 
@@ -589,16 +618,13 @@ def aguardar_baixar(
                     f"sem base · seq={tracked} · {msg[:100]}"
                 )
 
-            if job.get("hasDow") and not job_sem_dados(job):
-                # Baixar já na tela — não espera "Concluído" explícito
-                st(
-                    f"[{tag}] Baixar pronto · seq={tracked} · "
-                    f"{job.get('usuario')} · {job.get('data_hora')} · "
-                    f"{(job.get('opcao') or '')[:42]}"
-                )
-                return fila, job
+            # Ainda «Interromper» → não clica; espera o Baixar aparecer
+            if job.get("hasInterromper") and not job.get("hasDow"):
+                concluido_sem_dow_since = None
+                safe_wait(fila, 900)
+                continue
 
-            if job.get("concluido") and job.get("hasDow"):
+            if job_pronto_baixar(job):
                 st(
                     f"[{tag}] Baixar pronto · seq={tracked} · "
                     f"{job.get('usuario')} · {job.get('data_hora')} · "
@@ -632,58 +658,78 @@ def aguardar_baixar(
 
 
 def find_baixar_meta(fila, seq: str) -> dict[str, Any]:
-    """Localiza o controle Baixar/DOW da sequência (para clique)."""
+    """Localiza o controle Baixar/DOW da sequência (para clique).
+
+    Se a linha ainda mostra «Interromper», retorna ainda_processando —
+    nunca tratar Interromper como Baixar.
+    """
     return fila.evaluate(
         """({ seq }) => {
           const norm = (s) => (s || '').replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
           const want = String(seq || '').replace(/\\D/g, '');
           if (!want) return { ok: false, why: 'seq_vazia' };
           for (const tr of document.querySelectorAll('tr')) {
-            const cells = Array.from(tr.querySelectorAll('td')).map(td => norm(td.innerText));
+            const tds = Array.from(tr.querySelectorAll('td'));
+            const cells = tds.map(td => norm(td.innerText));
             const s = (cells[0] || '').replace(/\\D/g, '');
             if (s !== want) continue;
             const sit = cells.find(c => /conclu|process|fila|erro|abort/i.test(c)) || '';
-            if (sit && /processando|na\\s*fila|em\\s*fila/i.test(sit) && !/conclu/i.test(sit)) {
-              return { ok: false, why: 'ainda_processando' };
-            }
             const links = Array.from(tr.querySelectorAll(
               'a[onclick], a[href], img[onclick], input[onclick], button[onclick]'
             ));
+            const hasInterromper = links.some(a => {
+              const text = norm(a.textContent || a.alt || a.title || a.value || '');
+              const blob = (String(a.getAttribute('onclick') || '') + ' ' + text).toLowerCase();
+              return /interrom|cancelar\\s*gera|parar\\s*gera/i.test(text) || /interrom/i.test(blob);
+            }) || cells.some(c => /^(interrom|cancelar\\s*gera)/i.test(c || ''));
+
             const scored = [];
             for (const a of links) {
               const text = norm(a.textContent || a.alt || a.title || a.value || '');
               const onclick = String(a.getAttribute('onclick') || '');
               const href = String(a.getAttribute('href') || '');
               const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
+              if (/interrom|cancelar\\s*gera|parar\\s*gera|abortar/i.test(text)) continue;
               if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(text)
                   && !/\\b(dow|baixar)\\b/i.test(text)) continue;
               let score = 0;
               if (/^(dow|baixar)$/i.test(text)) score += 50;
               if (/\\b(dow|baixar)\\b/i.test(text)) score += 20;
-              if (/\\bdow\\b|baixar|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|arquivo/.test(blob)) score += 15;
-              if (onclick) score += 10;
+              if (/\\bdow\\b|baixar|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|arquivo/.test(blob)
+                  && !/interrom/i.test(blob)) score += 15;
+              if (onclick && /\\bdow\\b|baixar/i.test(onclick)) score += 10;
+              else if (onclick && !/interrom/i.test(onclick)) score += 4;
               if (href && href !== '#' && !/^javascript:/i.test(href)) score += 8;
               if (score > 0) scored.push({
                 text, onclick, href, score, tag: (a.tagName || '').toLowerCase()
               });
             }
             scored.sort((x, y) => y.score - x.score);
-            if (scored.length) {
+            const hasDow = scored.length > 0;
+
+            if ((sit && /processando|na\\s*fila|em\\s*fila/i.test(sit) && !/conclu/i.test(sit))
+                || (hasInterromper && !hasDow)) {
+              return { ok: false, why: 'ainda_processando', interromper: !!hasInterromper };
+            }
+            if (hasDow) {
               return { ok: true, why: 'link', best: scored[0], n: scored.length };
             }
-            for (const td of Array.from(tr.querySelectorAll('td'))) {
+            for (const td of tds) {
               const t = norm(td.innerText || '');
+              if (/interrom/i.test(t)) continue;
               if (!(/^(dow|baixar)$/i.test(t) || (t.length <= 10 && /\\b(dow|baixar)\\b/i.test(t)))) continue;
               const child = td.querySelector(
                 'a[onclick], a[href], img[onclick], input[onclick], button[onclick]'
               );
               if (child) {
+                const oc = String(child.getAttribute('onclick') || '');
+                if (/interrom/i.test(oc)) continue;
                 return {
                   ok: true,
                   why: 'td-child',
                   best: {
                     text: t,
-                    onclick: String(child.getAttribute('onclick') || ''),
+                    onclick: oc,
                     href: String(child.getAttribute('href') || ''),
                     score: 40,
                     tag: (child.tagName || '').toLowerCase(),
@@ -698,9 +744,51 @@ def find_baixar_meta(fila, seq: str) -> dict[str, Any]:
                 n: 1,
               };
             }
+            if (hasInterromper) {
+              return { ok: false, why: 'ainda_processando', interromper: true };
+            }
             return { ok: false, why: 'sem_dow_real', cells: cells.slice(0, 8) };
           }
           return { ok: false, why: 'seq_sumiu' };
         }""",
         {"seq": str(seq or "")},
     )
+
+
+def esperar_meta_baixar(
+    fila,
+    seq: str,
+    status: StatusCallback | None = None,
+    *,
+    tag: str = "156",
+    timeout_s: float = 180.0,
+) -> dict[str, Any]:
+    """Atualiza a fila até «Baixar» real (não Interromper) da seq."""
+    st = status or _noop
+    deadline = time.time() + float(timeout_s)
+    last_log = 0.0
+    last: dict[str, Any] = {"ok": False, "why": "inicio"}
+    while time.time() < deadline:
+        try:
+            atualizar_fila(fila)
+            safe_wait(fila, 800)
+            last = find_baixar_meta(fila, seq) or {}
+            if last.get("ok"):
+                return last
+            why = str(last.get("why") or "")
+            now = time.time()
+            if now - last_log >= 4:
+                last_log = now
+                extra = " · Interromper" if last.get("interromper") else ""
+                st(f"[{tag}] aguardando Baixar · seq={seq} · {why}{extra}")
+            if why in {"ainda_processando", "sem_dow_real"}:
+                safe_wait(fila, 900)
+                continue
+            if why == "seq_sumiu":
+                safe_wait(fila, 1200)
+                continue
+            safe_wait(fila, 1000)
+        except Exception as err:
+            st(f"[{tag}] esperar Baixar: {err}")
+            time.sleep(1.2)
+    return last if isinstance(last, dict) else {"ok": False, "why": "timeout"}

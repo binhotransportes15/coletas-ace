@@ -22,7 +22,9 @@ from ssw_fila156 import (
     FilaSemDados,
     aguardar_baixar,
     atualizar_fila as _atualizar_fila156,
+    esperar_meta_baixar,
     find_baixar_meta,
+    job_pronto_baixar,
     ler_jobs as _ler_jobs156,
     abrir_fila as _abrir_fila156,
     safe_wait as _safe_wait156,
@@ -318,6 +320,32 @@ def download_reports_455(
     }
 
 
+def _fill_id(popup, fid: str, value: str, *, tab: bool = False) -> None:
+    """Preenche campo SSW como os outros módulos (fill + Tab) — .value JS sozinho falha no 455."""
+    loc = popup.locator(f'[id="{fid}"]')
+    loc.wait_for(state="visible", timeout=15000)
+    loc.fill(str(value if value is not None else ""))
+    if tab:
+        try:
+            loc.press("Tab")
+        except Exception:
+            pass
+
+
+def _read_455_form(popup) -> dict[str, str]:
+    return popup.evaluate(
+        """() => {
+          const g = (id) => ((document.getElementById(id) || {}).value || '');
+          return {
+            un: g('2'), tipo: g('3'),
+            emiIni: g('9'), emiFim: g('10'),
+            autIni: g('11'), autFim: g('12'),
+            liq: g('21'), arq: g('35'), compl: g('37'),
+          };
+        }"""
+    )
+
+
 def _preencher_455(
     popup,
     *,
@@ -334,80 +362,78 @@ def _preencher_455(
     except Exception as err:
         raise RuntimeError(f"455: formulário não pronto: {err}") from err
 
-    filled = popup.evaluate(
-        """({ ini, fim, unidade, tipo, arquivo }) => {
-          const set = (id, val) => {
-            const el = document.getElementById(id);
-            if (!el) return false;
-            el.focus();
-            el.value = String(val == null ? '' : val);
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-            el.dispatchEvent(new Event('change', { bubbles: true }));
-            el.dispatchEvent(new Event('blur', { bubbles: true }));
-            return true;
-          };
-          // Regras ACE: SPO · E-expedidora · emissão (nunca autorização) · Excel
-          return {
-            unidade: set('2', unidade || 'SPO'),
-            tipo: set('3', tipo || 'E'),
-            emiIni: set('9', ini),
-            emiFim: set('10', fim),
-            // limpa autorização / outros períodos para não misturar filtro
-            autIni: set('11', ''),
-            autFim: set('12', ''),
-            prevIni: set('13', ''),
-            prevFim: set('14', ''),
-            entIni: set('15', ''),
-            entFim: set('16', ''),
-            frete: set('19', 'T'),
-            liq: set('21', 'X'),
-            entrega: set('22', 'T'),
-            arquivo: set('35', arquivo || 'E'),
-            compl: set('37', 'N'),
-            // confirma valores lidos (debug CRT)
-            read: {
-              un: (document.getElementById('2') || {}).value || '',
-              tipo: (document.getElementById('3') || {}).value || '',
-              emiIni: (document.getElementById('9') || {}).value || '',
-              emiFim: (document.getElementById('10') || {}).value || '',
-              autIni: (document.getElementById('11') || {}).value || '',
-              autFim: (document.getElementById('12') || {}).value || '',
-              arq: (document.getElementById('35') || {}).value || '',
-            },
-          };
-        }""",
-        {
-            "ini": ini,
-            "fim": fim,
-            "unidade": unidade or "SPO",
-            "tipo": tipo or "E",
-            "arquivo": "E",
-        },
-    )
-    status(f"[455] form {filled}")
-    read = (filled or {}).get("read") or {}
+    uni = (unidade or "SPO").strip().upper()[:3] or "SPO"
+    tip = (tipo or "E").strip().upper()[:1] or "E"
+    arq = "E"
+
+    # Unidade / tipo
+    _fill_id(popup, "2", uni, tab=True)
+    _fill_id(popup, "3", tip, tab=True)
+
+    # Período de EMISSÃO (obrigatório) — fill+Tab como 031/client
+    _fill_id(popup, "9", ini, tab=True)
+    _fill_id(popup, "10", fim, tab=True)
+
+    # Limpa outros períodos (autorização/previsão/entrega) para o filtro não misturar
+    for fid in ("11", "12", "13", "14", "15", "16"):
+        try:
+            _fill_id(popup, fid, "", tab=False)
+        except Exception:
+            pass
+
+    _fill_id(popup, "19", "T")  # tipo frete: todos
+    # T = todos exceto cancelados/anulados/substituídos (X devolve lixo histórico)
+    _fill_id(popup, "21", "T")
+    _fill_id(popup, "22", "T")  # entrega: todos
+    _fill_id(popup, "35", arq, tab=True)
+    try:
+        _fill_id(popup, "37", "N")  # sem dados complementares
+    except Exception:
+        pass
+
+    # 2ª passada: datas de emissão (SSW às vezes apaga ao mexer em liquidação/arquivo)
+    _fill_id(popup, "9", ini, tab=True)
+    _fill_id(popup, "10", fim, tab=True)
+    for fid in ("11", "12"):
+        try:
+            _fill_id(popup, fid, "")
+        except Exception:
+            pass
+
+    _safe_wait(popup, 250)
+    read = _read_455_form(popup)
+    status(f"[455] form {read}")
+
+    if str(read.get("emiIni") or "").strip() != str(ini).strip() or str(
+        read.get("emiFim") or ""
+    ).strip() != str(fim).strip():
+        status("[455] datas emissão divergentes — reforçando…")
+        _fill_id(popup, "9", ini, tab=True)
+        _fill_id(popup, "10", fim, tab=True)
+        read = _read_455_form(popup)
+        status(f"[455] form(retry) {read}")
+
     if str(read.get("autIni") or "").strip() or str(read.get("autFim") or "").strip():
-        # força limpar autorização de novo (SSW às vezes recoloca)
-        popup.evaluate(
-            """() => {
-              for (const id of ['11', '12']) {
-                const el = document.getElementById(id);
-                if (!el) continue;
-                el.value = '';
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-              }
-            }"""
-        )
+        for fid in ("11", "12"):
+            try:
+                _fill_id(popup, fid, "")
+            except Exception:
+                pass
         status("[455] autorização limpa (2ª passada)")
+
     if str(read.get("arq") or "").upper() != "E":
-        popup.evaluate(
-            """() => {
-              const el = document.getElementById('35');
-              if (el) { el.value = 'E'; el.dispatchEvent(new Event('change', { bubbles: true })); }
-            }"""
-        )
+        _fill_id(popup, "35", "E", tab=True)
         status("[455] arquivo forçado E")
-    _safe_wait(popup, 300)
+
+    read = _read_455_form(popup)
+    if str(read.get("emiIni") or "").strip() != str(ini).strip() or str(
+        read.get("emiFim") or ""
+    ).strip() != str(fim).strip():
+        raise RuntimeError(
+            f"455: período emissão não gravou no form "
+            f"(lido={read.get('emiIni')}-{read.get('emiFim')} esperado={ini}-{fim})"
+        )
+    _safe_wait(popup, 200)
 
 
 def _gerar_download_455(client, context, page, popup, dest_name: str, status) -> Path:
@@ -518,7 +544,7 @@ def _baixar_via_fila_455(
             try:
                 jobs = _ler_jobs_455(fila)
                 hit = next((j for j in jobs if str(j.get("seq")) == seq), None)
-                if hit and hit.get("hasDow"):
+                if hit and job_pronto_baixar(hit):
                     job = hit
             except Exception:
                 pass
@@ -543,9 +569,14 @@ def _clicar_dow_455(client, context, fila, job: dict, dest_name: str, status) ->
     meta = find_baixar_meta(fila, seq)
     if not meta or not meta.get("ok"):
         why = (meta or {}).get("why") or "desconhecido"
-        if why == "ainda_processando":
-            raise RuntimeError("455: seq ainda processando — não clicou Baixar")
-        raise RuntimeError(f"455: Baixar da seq={seq} não encontrado ({why})")
+        if why == "ainda_processando" or (meta or {}).get("interromper"):
+            status(f"[455] ainda Interromper/gerando · seq={seq} — esperando Baixar…")
+            meta = esperar_meta_baixar(fila, seq, status, tag="455", timeout_s=180.0)
+        if not meta or not meta.get("ok"):
+            why = (meta or {}).get("why") or "desconhecido"
+            if why == "ainda_processando":
+                raise RuntimeError("455: seq ainda processando — não clicou Baixar")
+            raise RuntimeError(f"455: Baixar da seq={seq} não encontrado ({why})")
 
     best = meta.get("best") or {}
     status(

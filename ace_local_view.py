@@ -154,11 +154,21 @@ def screen_hash(screen_id: str) -> str:
 class LocalScreenWindow(QMainWindow):  # type: ignore[misc]
     """Janela interna com o dashboard da tela escolhida."""
 
-    def __init__(self, screen_id: str, *, port: int, parent: Any = None) -> None:
+    def __init__(
+        self,
+        screen_id: str,
+        *,
+        port: int,
+        parent: Any = None,
+        fullscreen: bool = False,
+        start_url: str | None = None,
+        title: str | None = None,
+    ) -> None:
         super().__init__(parent)
         self.screen_id = screen_id
         self._port = port
-        label = screen_label(screen_id)
+        self._fullscreen = bool(fullscreen)
+        label = title or screen_label(screen_id)
         self.setWindowTitle(f"ACE Local · {label}")
         self.resize(1280, 800)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
@@ -170,20 +180,25 @@ class LocalScreenWindow(QMainWindow):  # type: ignore[misc]
         lay.setSpacing(0)
 
         bar = QWidget()
+        self._chrome = bar
         bar_lay = QHBoxLayout(bar)
         bar_lay.setContentsMargins(8, 6, 8, 6)
-        title = QLabel(f"LOCAL · {label}")
-        title.setStyleSheet("font-weight: 600;")
-        bar_lay.addWidget(title, 1)
+        title_lab = QLabel(f"LOCAL · {label}")
+        title_lab.setStyleSheet("font-weight: 600;")
+        bar_lay.addWidget(title_lab, 1)
         btn_reload = QPushButton("Recarregar")
         btn_reload.clicked.connect(self.reload)
         btn_browser = QPushButton("No navegador")
         btn_browser.clicked.connect(self.open_in_browser)
+        btn_fs = QPushButton("Tela cheia")
+        btn_fs.setToolTip("F11 · Esc para sair")
+        btn_fs.clicked.connect(self.toggle_fullscreen)
         bar_lay.addWidget(btn_reload)
         bar_lay.addWidget(btn_browser)
+        bar_lay.addWidget(btn_fs)
         lay.addWidget(bar)
 
-        url = dashboard_screen_url(screen_hash(screen_id), port=port)
+        self._url = start_url or dashboard_screen_url(screen_hash(screen_id), port=port)
         if _HAS_WEBENGINE and QWebEngineView is not None:
             self.view = QWebEngineView()
             try:
@@ -192,28 +207,116 @@ class LocalScreenWindow(QMainWindow):  # type: ignore[misc]
                 settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
             except Exception:  # noqa: BLE001
                 pass
-            self.view.setUrl(QUrl(url))
+            self.view.setUrl(QUrl(self._url))
             lay.addWidget(self.view, 1)
         else:
             self.view = None
             tip = QLabel(
                 "WebEngine indisponível — use “No navegador”.\n"
-                f"{url}"
+                f"{self._url}"
             )
             tip.setWordWrap(True)
             tip.setAlignment(Qt.AlignCenter)
             lay.addWidget(tip, 1)
-            webbrowser.open(url)
+            webbrowser.open(self._url)
+
+        if self._fullscreen:
+            self._enter_fullscreen()
 
     def reload(self) -> None:
-        url = dashboard_screen_url(screen_hash(self.screen_id), port=self._port)
         if self.view is not None:
-            self.view.setUrl(QUrl(url))
+            self.view.setUrl(QUrl(self._url))
         else:
-            webbrowser.open(url)
+            webbrowser.open(self._url)
 
     def open_in_browser(self) -> None:
-        webbrowser.open(dashboard_screen_url(screen_hash(self.screen_id), port=self._port))
+        webbrowser.open(self._url)
+
+    def toggle_fullscreen(self) -> None:
+        if self.isFullScreen():
+            self._exit_fullscreen()
+        else:
+            self._enter_fullscreen()
+
+    def _enter_fullscreen(self) -> None:
+        self._fullscreen = True
+        if getattr(self, "_chrome", None) is not None:
+            self._chrome.hide()
+        self.showFullScreen()
+
+    def _exit_fullscreen(self) -> None:
+        self._fullscreen = False
+        if getattr(self, "_chrome", None) is not None:
+            self._chrome.show()
+        self.showNormal()
+        self.resize(1280, 800)
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        key = event.key()
+        if key == Qt.Key_F11:
+            self.toggle_fullscreen()
+            return
+        if key == Qt.Key_Escape and self.isFullScreen():
+            self._exit_fullscreen()
+            return
+        super().keyPressEvent(event)
+
+
+def gestao_url(*, port: int | None = None, setor: str | None = None) -> str:
+    """URL da tela Gestão (gestao.html) no servidor local."""
+    from dashboard_server import dashboard_base_url, ensure_dashboard_server
+
+    p = int(port or ensure_dashboard_server())
+    base = dashboard_base_url(p, for_lan=False)
+    q = f"?setor={setor}" if setor else ""
+    return f"{base}/gestao.html{q}"
+
+
+def open_gestao(
+    *,
+    parent: Any = None,
+    setor: str | None = None,
+    refresh: bool = True,
+    prefer_embed: bool = True,
+    on_status: StatusCallback | None = None,
+) -> dict[str, Any]:
+    """Abre a Gestão (tabelas/ops) dentro do programa."""
+    status = on_status or (lambda _m: None)
+    if refresh:
+        refresh_local_data(on_status=status)
+    port = ensure_dashboard_server()
+    url = gestao_url(port=port, setor=setor)
+    status(f"Gestão: {url}")
+
+    app = None
+    try:
+        from PySide6.QtWidgets import QApplication
+
+        app = QApplication.instance()
+    except Exception:  # noqa: BLE001
+        app = None
+
+    use_embed = bool(prefer_embed and app is not None and _HAS_WEBENGINE)
+    if use_embed:
+        win = LocalScreenWindow(
+            "gestao",
+            port=port,
+            parent=parent,
+            fullscreen=False,
+            start_url=url,
+            title="Gestão",
+        )
+        win.show()
+        win.raise_()
+        _open_windows.append(win)
+        try:
+            win.destroyed.connect(lambda *_a, w=win: _forget_window(w))
+        except Exception:  # noqa: BLE001
+            pass
+    else:
+        webbrowser.open_new(url)
+
+    return {"ok": True, "port": port, "url": url, "embed": use_embed}
 
 
 def open_local_screens(
@@ -222,11 +325,13 @@ def open_local_screens(
     parent: Any = None,
     refresh: bool = True,
     prefer_embed: bool = True,
+    fullscreen: bool = False,
     on_status: StatusCallback | None = None,
 ) -> dict[str, Any]:
     """
     Abre uma ou várias telas locais.
     prefer_embed=True e QApplication ativa → janelas Qt; senão → navegador.
+    fullscreen=True → abre em tela cheia (modo TV).
     """
     status = on_status or (lambda _m: None)
     ids = parse_screen_ids(list(screen_ids) if screen_ids is not None else None)
@@ -264,8 +369,14 @@ def open_local_screens(
         url = dashboard_screen_url(screen_hash(sid), port=port)
         urls.append(url)
         if use_embed:
-            win = LocalScreenWindow(sid, port=port, parent=parent)
-            win.show()
+            win = LocalScreenWindow(
+                sid,
+                port=port,
+                parent=parent,
+                fullscreen=bool(fullscreen),
+            )
+            if not fullscreen:
+                win.show()
             win.raise_()
             _open_windows.append(win)
             try:
@@ -283,6 +394,7 @@ def open_local_screens(
         "screens": opened,
         "urls": urls,
         "embed": use_embed,
+        "fullscreen": bool(fullscreen),
     }
 
 

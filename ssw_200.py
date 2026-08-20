@@ -535,8 +535,10 @@ def _ler_jobs_fila_200(fila) -> list[dict]:
               return { text, onclick, href, blob };
             });
             const dows = links.filter(x => {
+              if (/interrom|cancelar\\s*gera|parar\\s*gera/i.test(x.text)) return false;
               if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(x.text)) return false;
-              return /\\bdow\\b|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob);
+              return /\\bdow\\b|download\\(|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob)
+                && !/interrom/i.test(x.blob);
             });
             let mensagem = '';
             for (let i = cells.length - 1; i >= 0; i--) {
@@ -547,6 +549,8 @@ def _ler_jobs_fila_200(fila) -> list[dict]:
               if (c.length >= 8) { mensagem = c; break; }
             }
             const blobAll = (opcao + ' ' + cells.join(' ') + ' ' + links.map(l => l.blob).join(' ')).toLowerCase();
+            const hasInterromper = links.some(x => /interrom|cancelar\\s*gera/i.test(x.text));
+            const hasDow = dows.length > 0 && !hasInterromper;
             jobs.push({
               seq,
               opcao,
@@ -555,9 +559,12 @@ def _ler_jobs_fila_200(fila) -> list[dict]:
               situacao: sit,
               mensagem,
               concluido: /conclu/i.test(sit),
+              processando: Boolean(hasInterromper && !hasDow)
+                || /processando|na\\s*fila|em\\s*fila/i.test(sit),
               is200: /200|0644|manifesto|ssw0?644/i.test(blobAll),
-              hasDow: dows.length > 0,
-              dows,
+              hasInterromper: Boolean(hasInterromper && !hasDow),
+              hasDow,
+              dows: hasDow ? dows : [],
             });
           }
           return jobs;

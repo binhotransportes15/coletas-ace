@@ -195,8 +195,8 @@ def _norm_header(h: Any) -> str:
     return re.sub(r"[^a-z0-9]+", " ", t).strip()
 
 
-def _map_headers(headers: list[Any]) -> dict[str, int]:
-    """Mapeia nomes canônicos → índice 0-based + letras fixas das métricas."""
+def _map_headers(headers: list[Any], *, apply_fixed: bool = True) -> dict[str, int]:
+    """Mapeia nomes canônicos → índice 0-based (+ letras fixas só no Excel largo)."""
     norms = [_norm_header(h) for h in headers]
     out: dict[str, int] = {}
 
@@ -211,47 +211,69 @@ def _map_headers(headers: list[Any]) -> dict[str, int]:
                     return
 
     pick(("ctrc",), "serie numero", "serie/numero", "nr cte", "n cte", "ctrc", "conhecimento", "cte")
-    pick(("data_emissao",), "data de emissao", "data emissao", "dt emissao")
+    # CSV slim: coluna "EMISS" (não confundir com "unidade emissora")
+    for i, n in enumerate(norms):
+        if n == "emiss" or n.startswith("emiss ") or "data de emissao" in n or n == "data emissao" or n == "dt emissao":
+            out.setdefault("data_emissao", i)
+            break
     pick(("hora",), "hora de emissao", "hora emissao", "hr emissao")
     pick(("data_autorizacao",), "data de autorizacao", "data autorizacao", "dt autoriz")
     pick(("hora_autorizacao",), "hora de autorizacao", "hora autorizacao", "hr autoriz", "hora autoriz")
-    pick(("unidade",), "unidade emissora", "unidade", "filial", "sigla")
+    pick(("unidade",), "unidade emissora", "unidade cobranca", "unidade responsavel", "unidade", "filial", "sigla")
     pick(("liquidacao",), "liquidacao", "liq ")
-    # headers de métricas (se existirem, reforçam; letras fixas sobrescrevem abaixo)
     pick(("peso",), "peso real", "peso total", "peso kg", "peso")
+    # cubagem real; "peso cubado" no slim NÃO é m³ — só usa se não houver cubagem
     pick(("cubagem",), "cubagem", "m3", "metro cub")
+    if "cubagem" not in out:
+        for i, n in enumerate(norms):
+            if "peso cubado" in n:
+                # slim: sem m³ — deixa 0 (não mapear peso cubado como cubagem)
+                break
     pick(("volumes",), "quantidade de volume", "qtde volume", "qtd volume", "volumes", "volume")
-    pick(("valor_mercadoria",), "valor da mercadoria", "valor mercadoria", "vl mercadoria")
-    pick(("frete",), "valor do frete", "valor frete", "frete total", "vl frete", "frete")
+    pick(("valor_mercadoria",), "valor da mercadoria", "valor mercadoria", "vl mercadoria", "valmercad")
+    pick(("frete",), "valor do frete", "valor frete", "frete total", "vl frete", "valfrete", "frete")
     pick(("cancelado",), "cancelado", "anulado", "tipo de baixa")
-    pick(("expedidor",), "login", "usuario", "usuário", "expedidor")
+    pick(("expedidor",), "login", "usuario", "usuário", "expedidor", "conferente")
 
-    # Letras fixas do Excel 455 — fonte da verdade das métricas / horários
-    out["data_emissao"] = _col_letter_to_idx(COL_FIXED_455["data_emissao"])
-    out["hora"] = _col_letter_to_idx(COL_FIXED_455["hora"])
-    out["data_autorizacao"] = _col_letter_to_idx(COL_FIXED_455["data_autorizacao"])
-    out["hora_autorizacao"] = _col_letter_to_idx(COL_FIXED_455["hora_autorizacao"])
-    out["expedidor"] = _col_letter_to_idx(COL_FIXED_455["login"])
-    out["peso"] = _col_letter_to_idx(COL_FIXED_455["peso"])
-    out["cubagem"] = _col_letter_to_idx(COL_FIXED_455["cubagem"])
-    out["volumes"] = _col_letter_to_idx(COL_FIXED_455["volumes"])
-    out["cancelado"] = _col_letter_to_idx(COL_FIXED_455["cancelado"])
-    out["valor_mercadoria"] = _col_letter_to_idx(COL_FIXED_455["valor_mercadoria"])
-    out["frete"] = _col_letter_to_idx(COL_FIXED_455["frete"])
+    # Letras fixas só quando a linha tem largura de Excel completo (≥ coluna BQ)
+    min_wide = _col_letter_to_idx(COL_FIXED_455["frete"]) + 1
+    if apply_fixed and len(headers) >= min_wide:
+        out["data_emissao"] = _col_letter_to_idx(COL_FIXED_455["data_emissao"])
+        out["hora"] = _col_letter_to_idx(COL_FIXED_455["hora"])
+        out["data_autorizacao"] = _col_letter_to_idx(COL_FIXED_455["data_autorizacao"])
+        out["hora_autorizacao"] = _col_letter_to_idx(COL_FIXED_455["hora_autorizacao"])
+        out["expedidor"] = _col_letter_to_idx(COL_FIXED_455["login"])
+        out["peso"] = _col_letter_to_idx(COL_FIXED_455["peso"])
+        out["cubagem"] = _col_letter_to_idx(COL_FIXED_455["cubagem"])
+        out["volumes"] = _col_letter_to_idx(COL_FIXED_455["volumes"])
+        out["cancelado"] = _col_letter_to_idx(COL_FIXED_455["cancelado"])
+        out["valor_mercadoria"] = _col_letter_to_idx(COL_FIXED_455["valor_mercadoria"])
+        out["frete"] = _col_letter_to_idx(COL_FIXED_455["frete"])
     return out
 
 
-def _is_junk_row(rec: dict[str, Any]) -> bool:
+def _is_slim_headers(headers: list[Any]) -> bool:
+    """CSV reduzido do 455 (CTRC;EMISS;…;VALFRETE) — sem colunas G/H/K/BQ."""
+    norms = " | ".join(_norm_header(h) for h in headers)
+    if "valfrete" in norms or re.search(r"\bemiss\b", norms):
+        return True
+    return len(headers) < _col_letter_to_idx(COL_FIXED_455["frete"]) + 1
+
+
+def _is_junk_row(rec: dict[str, Any], *, require_login: bool = True) -> bool:
     """Descarta cabeçalho residual / linhas sem movimento."""
     login = str(rec.get("expedidor") or "").strip().lower()
     ctrc = str(rec.get("ctrc") or "").strip().lower()
-    if login in {"", "login", "usuario", "usuário", "expedidor"}:
+    if require_login and login in {"", "login", "usuario", "usuário", "expedidor", "conferente"}:
         return True
     if any(x in ctrc for x in ("serie", "ct-e", "ctrc", "conhecimento", "numero")):
         return True
     if ctrc in {"0", "0.0", "-"}:
-        # só aceita se tiver frete/peso real
         if float(rec.get("peso") or 0) <= 0 and float(rec.get("frete") or 0) <= 0:
+            return True
+    # CSV slim: login às vezes vem como valor monetário por mapeamento errado antigo
+    if login and re.fullmatch(r"[\d.,]+", login.replace(" ", "")):
+        if float(rec.get("frete") or 0) <= 0 and float(rec.get("peso") or 0) <= 0:
             return True
     return False
 
@@ -385,21 +407,48 @@ def _display_expedidor(nome: str) -> str:
     return t.title() if t else "—"
 
 
-def _login_from_row(row: tuple[Any, ...] | list[Any], colmap: dict[str, int]) -> str:
-    """Sempre coluna K (login)."""
-    idx_k = _col_letter_to_idx(COL_FIXED_455["login"])
-    if idx_k < len(row):
-        login_k = _clean(row[idx_k])
-        if login_k:
-            return login_k
+def _login_from_row(
+    row: tuple[Any, ...] | list[Any],
+    colmap: dict[str, int],
+    *,
+    slim: bool = False,
+) -> str:
+    """Excel largo: coluna K. CSV slim: header login/conferente."""
+    if not slim:
+        idx_k = _col_letter_to_idx(COL_FIXED_455["login"])
+        if idx_k < len(row):
+            login_k = _clean(row[idx_k])
+            if login_k:
+                return login_k
     idx_h = colmap.get("expedidor")
     if idx_h is not None and idx_h < len(row):
         return _clean(row[idx_h])
     return ""
 
 
-def _metrics_from_row(row: tuple[Any, ...] | list[Any]) -> dict[str, Any]:
-    """Lê métricas pelas letras fixas do Excel 455."""
+def _metrics_from_row(
+    row: tuple[Any, ...] | list[Any],
+    colmap: dict[str, int] | None = None,
+    *,
+    slim: bool = False,
+) -> dict[str, Any]:
+    """Lê métricas pelas letras fixas (Excel) ou pelo mapa de headers (CSV slim)."""
+    if slim and colmap is not None:
+
+        def g(key: str) -> Any:
+            idx = colmap.get(key)
+            if idx is None or idx >= len(row):
+                return ""
+            return row[idx]
+
+        return {
+            "frete": _num(g("frete")),
+            "valor_mercadoria": _num(g("valor_mercadoria")),
+            "peso": _num(g("peso")),
+            "volumes": _num(g("volumes")),
+            "cubagem": _num(g("cubagem")),
+            "cancelado": _clean(g("cancelado")),
+        }
     return {
         "frete": _num(_cell_by_letter(row, COL_FIXED_455["frete"])),
         "valor_mercadoria": _num(_cell_by_letter(row, COL_FIXED_455["valor_mercadoria"])),
@@ -468,8 +517,8 @@ def parse_excel_455(path: Path | str) -> list[dict[str, Any]]:
             if "CTRC" in up and len(ctrc) < 8:
                 continue
 
-            login = _login_from_row(row, colmap)
-            metrics = _metrics_from_row(row)
+            login = _login_from_row(row, colmap, slim=False)
+            metrics = _metrics_from_row(row, colmap, slim=False)
             rec = {
                 "ctrc": ctrc,
                 "data_emissao": _clean(cell("data_emissao")),
@@ -488,7 +537,7 @@ def parse_excel_455(path: Path | str) -> list[dict[str, Any]]:
             }
             _enrich_row_times(rec, row, colmap)
             rec["_cancelado"] = _is_cancelado(rec)
-            if _is_junk_row(rec):
+            if _is_junk_row(rec, require_login=True):
                 continue
             out.append(rec)
         return out
@@ -518,11 +567,24 @@ def _parse_text_455(path: Path) -> list[dict[str, Any]]:
     header_idx = 0
     for i, row in enumerate(rows[:12]):
         joined = " ".join(_norm_header(c) for c in row if c is not None)
-        if "hora de emissao" in joined or "serie numero" in joined:
+        if (
+            "hora de emissao" in joined
+            or "serie numero" in joined
+            or joined.startswith("ctrc ")
+            or joined == "ctrc"
+            or " valfrete" in f" {joined}"
+            or joined.startswith("ctrc;")
+        ):
             header_idx = i
             break
+        # slim: primeira linha já é CTRC;EMISS;...
+        if i == 0 and any(_norm_header(c) in {"ctrc", "emiss", "valfrete"} for c in row):
+            header_idx = 0
+            break
 
-    colmap = _map_headers(rows[header_idx])
+    header = rows[header_idx]
+    slim = _is_slim_headers(header)
+    colmap = _map_headers(header, apply_fixed=not slim)
     out: list[dict[str, Any]] = []
     for row in rows[header_idx + 1 :]:
         if not row:
@@ -536,26 +598,25 @@ def _parse_text_455(path: Path) -> list[dict[str, Any]]:
 
         ctrc = _clean(cell("ctrc"))
         if not ctrc:
-            # SSW text: coluna B = Serie/Numero CTRC (índice 1)
-            if len(row) > 1:
+            # SSW text: coluna B = Serie/Numero CTRC (índice 1) no Excel largo
+            if not slim and len(row) > 1:
                 ctrc = _clean(row[1])
+            elif slim and row:
+                ctrc = _clean(row[0])
         if not ctrc:
             continue
         up = ctrc.upper()
         if "CTRC" in up and len(ctrc) < 8:
             continue
-        if ctrc in {"1", "2", "0"} and len(row) > 2 and _clean(row[1]):
-            # evita pegar marcador de linha
-            pass
-        login = _login_from_row(row, colmap)
-        metrics = _metrics_from_row(row)
+        login = _login_from_row(row, colmap, slim=slim)
+        metrics = _metrics_from_row(row, colmap, slim=slim)
         rec = {
             "ctrc": ctrc,
             "data_emissao": _clean(cell("data_emissao")),
             "hora_emissao": "",
             "data_autorizacao": "",
             "hora_autorizacao": "",
-            "expedidor": login,  # coluna K · login
+            "expedidor": login,
             "frete": metrics["frete"],
             "valor_mercadoria": metrics["valor_mercadoria"],
             "peso": metrics["peso"],
@@ -567,10 +628,87 @@ def _parse_text_455(path: Path) -> list[dict[str, Any]]:
         }
         _enrich_row_times(rec, row, colmap)
         rec["_cancelado"] = _is_cancelado(rec)
-        if _is_junk_row(rec):
+        # slim costuma não ter login — conta o CTRC mesmo assim
+        if _is_junk_row(rec, require_login=not slim):
             continue
         out.append(rec)
     return out
+
+
+def _parse_br_date(value: Any) -> datetime | None:
+    text = _clean(value)
+    if not text:
+        return None
+    for fmt in ("%d/%m/%Y", "%d/%m/%y", "%d-%m-%Y", "%d-%m-%y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(text[:10], fmt)
+        except Exception:
+            continue
+    digits = re.sub(r"\D", "", text)
+    if len(digits) == 8:
+        try:
+            return datetime.strptime(digits, "%d%m%Y")
+        except Exception:
+            pass
+    if len(digits) == 6:
+        try:
+            return datetime.strptime(digits, "%d%m%y")
+        except Exception:
+            pass
+    return None
+
+
+def _period_bounds(periodo: str) -> tuple[datetime | None, datetime | None]:
+    """Interpreta periodo_fmt do download ('19/08', '1908', '190826-190826')."""
+    raw = (periodo or "").strip()
+    if not raw:
+        return None, None
+    parts = re.split(r"\s*[–\-aA]\s*", raw)
+    parts = [p.strip() for p in parts if p.strip()]
+    if not parts:
+        return None, None
+
+    def one(p: str) -> datetime | None:
+        d = _parse_br_date(p)
+        if d:
+            return d
+        dig = re.sub(r"\D", "", p)
+        now = datetime.now()
+        if len(dig) == 4:  # DDMM
+            try:
+                return datetime.strptime(dig + now.strftime("%Y"), "%d%m%Y")
+            except Exception:
+                return None
+        if len(dig) == 6:
+            try:
+                return datetime.strptime(dig, "%d%m%y")
+            except Exception:
+                return None
+        if len(dig) == 8:
+            try:
+                return datetime.strptime(dig, "%d%m%Y")
+            except Exception:
+                return None
+        return None
+
+    d0 = one(parts[0])
+    d1 = one(parts[-1]) if len(parts) > 1 else d0
+    return d0, d1
+
+
+def _row_in_period(rec: dict[str, Any], d0: datetime | None, d1: datetime | None) -> bool:
+    if d0 is None and d1 is None:
+        return True
+    dt = _parse_br_date(rec.get("data_emissao"))
+    if dt is None:
+        # Com período definido, linha sem data de emissão não entra (evita lixo do CSV slim)
+        return False
+    day = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    if d0 is not None and day < d0.replace(hour=0, minute=0, second=0, microsecond=0):
+        return False
+    if d1 is not None and day > d1.replace(hour=0, minute=0, second=0, microsecond=0):
+        return False
+    return True
 
 
 def analyze_reports_455(
@@ -590,6 +728,13 @@ def analyze_reports_455(
     for p in paths:
         status(f"[455] parse {p.name}")
         rows.extend(parse_excel_455(p))
+
+    d0, d1 = _period_bounds(periodo)
+    if d0 or d1:
+        before = len(rows)
+        rows = [r for r in rows if _row_in_period(r, d0, d1)]
+        if before and len(rows) < before:
+            status(f"[455] filtro período {periodo}: {before} → {len(rows)} CTRCs")
 
     # KPIs
     ctes = len(rows)

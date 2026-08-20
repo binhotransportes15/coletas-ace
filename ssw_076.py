@@ -20,6 +20,8 @@ from ssw_fila156 import (
     FilaSemDados,
     aguardar_baixar,
     atualizar_fila as _atualizar_fila156,
+    esperar_meta_baixar,
+    find_baixar_meta,
     ler_jobs as _ler_jobs156,
     abrir_fila as _abrir_fila156,
 )
@@ -571,6 +573,18 @@ def _clicar_dow_76(client, context, fila, job: dict, dest_name: str, status, key
     _atualizar_fila_76(fila)
     _safe_wait(fila, 300)
 
+    meta = find_baixar_meta(fila, seq)
+    if not meta or not meta.get("ok"):
+        why = (meta or {}).get("why") or ""
+        if why == "ainda_processando" or (meta or {}).get("interromper"):
+            status(f"[76/{key}] ainda Interromper/gerando · seq={seq} — esperando Baixar…")
+            meta = esperar_meta_baixar(fila, seq, status, tag=f"76/{key}", timeout_s=180.0)
+        if not meta or not meta.get("ok"):
+            raise RuntimeError(
+                f"76/{key}: Baixar da seq={seq} não encontrado "
+                f"({(meta or {}).get('why') or 'desconhecido'})"
+            )
+
     def _trigger() -> str:
         return str(
             fila.evaluate(
@@ -591,12 +605,14 @@ def _clicar_dow_76(client, context, fila, job: dict, dest_name: str, status, key
                       const onclick = String(a.getAttribute('onclick') || '');
                       const href = String(a.getAttribute('href') || '');
                       const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
+                      if (/interrom|cancelar\\s*gera|parar\\s*gera/i.test(text)) continue;
                       if (/imprimir|correio|atualizar|voltar|fechar|sair/i.test(text)
                           && !/\\b(dow|baixar)\\b/i.test(text)) continue;
                       let score = 0;
                       if (/^(dow|baixar)$/i.test(text)) score += 50;
                       if (/\\b(dow|baixar)\\b/i.test(text)) score += 20;
-                      if (/\\bdow\\b|baixar|download\\(|\\.xlsx|\\.csv|\\.sswweb|arquivo/.test(blob)) score += 15;
+                      if (/\\bdow\\b|baixar|download\\(|\\.xlsx|\\.csv|\\.sswweb|arquivo/.test(blob)
+                          && !/interrom/i.test(blob)) score += 15;
                       if (score > 0) pick.push({ a, score, onclick });
                     }
                     pick.sort((x, y) => y.score - x.score);

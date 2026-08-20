@@ -1561,11 +1561,15 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
               return { text, onclick, href, blob };
             });
             const dows = links.filter(x => {
+              if (/interrom|cancelar\\s*gera|parar\\s*gera/i.test(x.text)) return false;
               if (/imprimir|correio|e-mails|emails|retaguarda|voltar|fechar|sair|atualizar/i.test(x.text)) return false;
-              return /\\bdow\\b|download\\(|ssw0332|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob)
-                || (/0332|073/.test(x.blob) && /dow|href=|http/.test(x.blob));
+              return (/\\bdow\\b|download\\(|ssw0332|\\.xlsx|\\.xls|\\.csv|\\.sswweb|baixar|arquivo/.test(x.blob)
+                || (/0332|073/.test(x.blob) && /dow|href=|http/.test(x.blob)))
+                && !/interrom/i.test(x.blob);
             });
             const blobAll = (opcao + ' ' + cells.join(' ') + ' ' + links.map(l => l.blob).join(' ')).toLowerCase();
+            const hasInterromper = links.some(x => /interrom|cancelar\\s*gera/i.test(x.text));
+            const hasDow = dows.length > 0 && !hasInterromper;
             jobs.push({
               seq,
               opcao,
@@ -1573,9 +1577,12 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
               usuario,
               situacao: sit,
               concluido: /conclu/i.test(sit),
+              processando: Boolean(hasInterromper && !hasDow)
+                || /processando|na\\s*fila|em\\s*fila/i.test(sit),
               is0332: /0332|073\\s*-|ctrb|consulta de ctrb/i.test(blobAll),
-              hasDow: dows.length > 0,
-              dows,
+              hasInterromper: Boolean(hasInterromper && !hasDow),
+              hasDow,
+              dows: hasDow ? dows : [],
             });
           }
           if (!jobs.length) {
@@ -1585,7 +1592,7 @@ def _ler_jobs_fila(fila) -> list[dict[str, Any]]:
               const onclick = String(a.getAttribute('onclick') || '');
               const href = String(a.getAttribute('href') || '');
               const blob = (onclick + ' ' + text + ' ' + href).toLowerCase();
-              if (/imprimir|correio|atualizar/i.test(text)) return;
+              if (/imprimir|correio|atualizar|interrom/i.test(text)) return;
               if (!(/\\bdow\\b|download\\(|ssw0332|\\.xlsx|\\.sswweb|baixar/.test(blob))) return;
               jobs.push({
                 seq: 'L' + i,

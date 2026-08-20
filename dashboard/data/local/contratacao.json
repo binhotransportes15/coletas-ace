@@ -1,37 +1,50 @@
 {
   "setor": "contratacao",
-  "updated_at": "2026-08-19T16:26:03",
+  "updated_at": "2026-08-20T08:27:45",
   "resumo_073": {
-    "periodo": "1908 – 1908",
-    "atualizado": "19/08/2026 14:28:40",
+    "periodo": "2008 – 2008",
+    "atualizado": "20/08/2026 08:27:44",
     "unidade": "SPO",
-    "total_veiculos": "1",
-    "total_ctrbs": "1",
-    "custo": "7500.0",
-    "custo_fmt": "7.500,00",
+    "total_veiculos": "2",
+    "total_ctrbs": "2",
+    "custo": "16519.73",
+    "custo_fmt": "16.519,73",
     "frete": "0.0",
     "frete_fmt": "0,00",
     "peso": "0.0",
     "peso_fmt": "0",
     "agregado": "0",
     "frota": "0",
-    "contratados": "1",
-    "terceiro": "1"
+    "contratados": "2",
+    "terceiro": "2"
   },
   "veiculos_amostra": [
     {
-      "placa": "SYL7G68",
+      "placa": "HMV9H97",
       "carreta": "",
       "propriedade": "CARRETEIRO",
       "grupo": "contratados",
       "qtd_ctrb": "1",
-      "custo": "7500.0",
+      "custo": "8519.73",
       "custo_av": "0.0",
-      "valor_pagar": "7500.0",
+      "valor_pagar": "8519.73",
       "peso": "0.0",
       "frete": "0.0",
-      "ctrbs": "SPO 023647-1"
+      "ctrbs": "SPO 023661-6"
+    },
+    {
+      "placa": "BDU7B51",
+      "carreta": "",
+      "propriedade": "CARRETEIRO",
+      "grupo": "contratados",
+      "qtd_ctrb": "1",
+      "custo": "8000.0",
+      "custo_av": "0.0",
+      "valor_pagar": "8000.0",
+      "peso": "0.0",
+      "frete": "0.0",
+      "ctrbs": "SPO 023660-8"
     }
   ],
-  "veiculos_total": 1
+  "veiculos_total": 2
 }

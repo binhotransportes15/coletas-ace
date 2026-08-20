@@ -21,11 +21,12 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QEvent, QThread, QTimer, Signal, QPointF, QRectF
+from PySide6.QtCore import Qt, QEvent, QThread, QTimer, Signal, QPointF, QRectF, QSize, QRect
 from PySide6.QtGui import (
     QColor,
     QFont,
     QFontDatabase,
+    QFontMetrics,
     QIcon,
     QPainter,
     QPalette,
@@ -61,6 +62,9 @@ from PySide6.QtWidgets import (
     QSlider,
     QSplitter,
     QStackedWidget,
+    QStyledItemDelegate,
+    QStyle,
+    QStyleOptionViewItem,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
@@ -301,6 +305,43 @@ CRT_THEMES: dict[str, dict[str, object]] = {
         "radius": "10px",
         "pro": True,
     },
+    "fosco": {
+        "label": "Preto / transparente",
+        "horse": "azul",
+        "bg": "transparent",
+        "grad0": "rgba(10, 14, 20, 40)",
+        "grad1": "rgba(10, 14, 20, 25)",
+        "grad2": "rgba(10, 14, 20, 15)",
+        "panel": "rgba(14, 18, 24, 160)",
+        "card": "rgba(18, 24, 34, 180)",
+        "line": "rgba(180, 190, 205, 55)",
+        "text": "#f4f7fb",
+        "dim": "#a8b4c4",
+        "muted": "#7a8798",
+        "input_bg": "rgba(8, 12, 18, 230)",
+        "input_text": "#eef3f8",
+        "btn_bg": "rgba(22, 28, 38, 180)",
+        "btn_hover": "rgba(42, 56, 76, 210)",
+        "btn_press": "rgba(58, 78, 104, 230)",
+        "btn_dis_bd": "rgba(50, 58, 70, 90)",
+        "sel": "rgba(56, 120, 160, 140)",
+        "prog_bg": "rgba(6, 10, 16, 200)",
+        "chunk0": "#38bdf8",
+        "chunk1": "#7dd3fc",
+        "chunk2": "#bae6fd",
+        "accent": "#38bdf8",
+        "ok": "#22c55e",
+        "warn": "#f59e0b",
+        "err": "#ef4444",
+        "label_bg": "rgba(12, 16, 22, 235)",
+        "log_bg": "#0a0e14",
+        "scan": False,
+        "frost": True,
+        "acrylic_tint": 0x381A1A1A,
+        "meter_h": 18,
+        "radius": "10px",
+        "pro": True,
+    },
 }
 
 # IDs antigos → novos (config salva / payloads legados)
@@ -310,9 +351,10 @@ _LEGACY_CRT_THEMES: dict[str, str] = {
     "painel": "azul",
     "ops": "verde",
     "claro": "ace",
-    "fosco": "ace",
     "circuitos": "ace",
-    "escuro": "ace",
+    "escuro": "fosco",
+    "preto": "fosco",
+    "transparente": "fosco",
 }
 
 DEFAULT_CRT_THEME = "ace"
@@ -1055,8 +1097,112 @@ class SysMeterRow(QWidget):
         self._apply_chunk(color)
 
 
+def _cmd_badge_meta(kind: str, text: str = "") -> tuple[str, str, str]:
+    """(rótulo, cor, ícone) para o pill do CMD."""
+    k = str(kind or "info").lower().strip()
+    blob = str(text or "").lower()
+    if k in {"ok"}:
+        return ("OK", "#22c55e", "✓")
+    if k in {"err", "erro"}:
+        return ("ERR", "#ef4444", "✕")
+    if k in {"config", "cfg"}:
+        return ("CFG", "#f59e0b", "⚙")
+    if k in {"cmd"}:
+        return ("CMD", "#a78bfa", "›")
+    if k in {"work"}:
+        return ("…", "#fbbf24", "●")
+    if k in {"out"}:
+        return ("OUT", "#94a3b8", "›")
+    # sistema / info — especializa pelo conteúdo
+    if "mapa" in blob:
+        return ("SYS Mapa", "#38bdf8", "◎")
+    if "dashboard" in blob or "lan " in blob or "dash" in blob:
+        return ("SYS Dash", "#14b8a6", "▦")
+    if "json" in blob:
+        return ("SYS JSON", "#ec4899", "{}")
+    if "local" in blob:
+        return ("SYS Local", "#a855f7", "⚙")
+    if k in {"sistema", "sys"}:
+        return ("SYS", "#ec4899", "⚙")
+    return ("INFO", "#64748b", "·")
+
+
+class AceCmdLogDelegate(QStyledItemDelegate):
+    """Pinta [hora] + pill colorido + mensagem."""
+
+    ROLE_ENTRY = Qt.UserRole + 31
+
+    def sizeHint(self, option: QStyleOptionViewItem, index) -> QSize:  # noqa: N802
+        base = super().sizeHint(option, index)
+        return QSize(base.width(), max(28, base.height() + 8))
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
+        entry = index.data(self.ROLE_ENTRY)
+        if not isinstance(entry, dict):
+            super().paint(painter, option, index)
+            return
+
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        rect = option.rect.adjusted(6, 2, -6, -2)
+        bg = QColor("#0a0e14")
+        if option.state & QStyle.State_Selected:
+            bg = QColor("#121826")
+        painter.fillRect(option.rect, bg)
+
+        stamp = str(entry.get("stamp") or "")
+        kind = str(entry.get("kind") or "info")
+        msg = str(entry.get("text") or "")
+        label, color, icon = _cmd_badge_meta(kind, msg)
+
+        mono = QFont(CRT_LOG_FONT_FAMILY or "Consolas", 10)
+        mono.setStyleHint(QFont.Monospace)
+        ui = QFont(CRT_FONT_FAMILY, 9)
+        ui.setWeight(QFont.Weight.DemiBold)
+
+        x = rect.left()
+        y = rect.top()
+        h = rect.height()
+
+        # Timestamp
+        painter.setFont(mono)
+        painter.setPen(QColor("#64748b"))
+        stamp_txt = f"[{stamp}]" if stamp else ""
+        fm = QFontMetrics(mono)
+        stamp_w = fm.horizontalAdvance(stamp_txt) + 8
+        painter.drawText(QRect(x, y, stamp_w, h), Qt.AlignVCenter | Qt.AlignLeft, stamp_txt)
+        x += stamp_w + 4
+
+        # Badge pill
+        painter.setFont(ui)
+        badge_txt = f"{icon}  {label}"
+        bfm = QFontMetrics(ui)
+        bw = bfm.horizontalAdvance(badge_txt) + 16
+        bh = min(22, h - 4)
+        by = y + (h - bh) // 2
+        badge = QRectF(x, by, bw, bh)
+        fill = QColor(color)
+        fill.setAlpha(38)
+        painter.setBrush(QBrush(fill))
+        pen_c = QColor(color)
+        pen_c.setAlpha(160)
+        painter.setPen(QPen(pen_c, 1.0))
+        painter.drawRoundedRect(badge, 8, 8)
+        painter.setPen(QColor(color))
+        painter.drawText(badge.toRect(), Qt.AlignCenter, badge_txt)
+        x += int(bw) + 10
+
+        # Mensagem
+        painter.setFont(mono)
+        painter.setPen(QColor("#e8eef6"))
+        msg_rect = QRect(x, y, max(20, rect.right() - x), h)
+        elided = QFontMetrics(mono).elidedText(msg, Qt.ElideRight, msg_rect.width())
+        painter.drawText(msg_rect, Qt.AlignVCenter | Qt.AlignLeft, elided)
+        painter.restore()
+
+
 class AceCmdLog(QListWidget):
-    """Log CMD opaco — QListWidget não fantasma como QTextEdit/QPlainTextEdit no fosco/F11."""
+    """CMD avançado — badges, filtro e fundo opaco (sem fantasma no fosco/F11)."""
 
     MAX_LINES = 400
 
@@ -1064,22 +1210,24 @@ class AceCmdLog(QListWidget):
         super().__init__(parent)
         self.setObjectName("crtLog")
         self.setMinimumHeight(160)
-        self.setWordWrap(True)
+        self.setWordWrap(False)
         self.setUniformItemSizes(False)
         self.setSelectionMode(QListWidget.NoSelection)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.setSpacing(0)
+        self.setSpacing(1)
         self._bg = QColor("#0a0e14")
-        # Fundo sempre sólido (pai pode ser translúcido no tema fosco)
+        self._filter_text = ""
+        self._filter_level = "todos"
+        self._all_entries: list[dict] = []
+        self.setItemDelegate(AceCmdLogDelegate(self))
         self.setAttribute(Qt.WA_OpaquePaintEvent, True)
         self.setAutoFillBackground(True)
         self.setAttribute(Qt.WA_TranslucentBackground, False)
         self.viewport().setAttribute(Qt.WA_OpaquePaintEvent, True)
         self.viewport().setAutoFillBackground(True)
         self.viewport().setAttribute(Qt.WA_TranslucentBackground, False)
-        # Garante fill do fundo em todo Paint (evita texto fantasma no DWM/acrylic)
         self.viewport().installEventFilter(self)
 
     def eventFilter(self, obj, event) -> bool:  # noqa: N802
@@ -1110,27 +1258,108 @@ class AceCmdLog(QListWidget):
         self.setStyleSheet(
             "QListWidget#crtLog, QListWidget#crtLog::viewport {"
             f" background-color: {bg}; color: {fg};"
-            f" border: 1px solid {border}; border-radius: 8px;"
-            " outline: none; padding: 4px;"
+            " border: none; border-radius: 8px;"
+            " outline: none; padding: 4px 2px;"
             f" font-family: '{CRT_LOG_FONT_FAMILY}', Consolas, monospace; font-size: 11px;"
             "}"
             "QListWidget#crtLog::item {"
-            f" background: {bg}; color: {fg}; padding: 1px 4px;"
+            f" background: {bg}; color: {fg}; padding: 0;"
             " border: none;"
             "}"
             "QListWidget#crtLog::item:selected { background: transparent; }"
         )
 
-    def append_line(self, text: str, color: str) -> None:
-        item = QListWidgetItem(text)
-        item.setForeground(QColor(color))
-        item.setFlags(Qt.ItemIsEnabled)
-        self.addItem(item)
-        while self.count() > self.MAX_LINES:
-            taken = self.takeItem(0)
-            del taken
+    def set_filters(self, *, text: str = "", level: str = "todos") -> None:
+        self._filter_text = str(text or "").strip().lower()
+        self._filter_level = str(level or "todos").strip().lower() or "todos"
+        self._rebuild_visible()
+
+    def clear_entries(self) -> None:
+        self._all_entries.clear()
+        self.clear()
+
+    def visible_count(self) -> int:
+        return self.count()
+
+    def total_count(self) -> int:
+        return len(self._all_entries)
+
+    def active_filter_labels(self) -> str:
+        parts: list[str] = []
+        if self._filter_level and self._filter_level != "todos":
+            parts.append(self._filter_level.upper())
+        if self._filter_text:
+            parts.append(f'"{self._filter_text}"')
+        return ", ".join(parts) if parts else "nenhum"
+
+    def _entry_matches(self, entry: dict) -> bool:
+        kind = str(entry.get("kind") or "").lower()
+        text = str(entry.get("text") or "").lower()
+        label = _cmd_badge_meta(kind, text)[0].lower()
+        lvl = self._filter_level
+        if lvl and lvl != "todos":
+            if lvl == "sys":
+                if not (kind in {"sistema", "info", "sys"} or label.startswith("sys")):
+                    return False
+            elif lvl == "ok" and kind != "ok":
+                return False
+            elif lvl == "cfg" and kind not in {"config", "cfg"}:
+                return False
+            elif lvl == "err" and kind not in {"err", "erro"}:
+                return False
+            elif lvl == "cmd" and kind != "cmd":
+                return False
+            elif lvl == "mapa" and "mapa" not in text and "mapa" not in label:
+                return False
+            elif lvl == "dash" and "dash" not in text and "dashboard" not in text and "dash" not in label:
+                return False
+        if self._filter_text:
+            blob = f"{kind} {label} {text}"
+            if self._filter_text not in blob:
+                return False
+        return True
+
+    def _rebuild_visible(self) -> None:
+        self.clear()
+        for entry in self._all_entries:
+            if self._entry_matches(entry):
+                self._add_visible_item(entry)
         self.scrollToBottom()
         self.viewport().update()
+
+    def _add_visible_item(self, entry: dict) -> None:
+        item = QListWidgetItem()
+        item.setData(AceCmdLogDelegate.ROLE_ENTRY, entry)
+        item.setFlags(Qt.ItemIsEnabled)
+        # texto fallback (acessibilidade / cópia)
+        stamp = entry.get("stamp") or ""
+        kind = entry.get("kind") or ""
+        label = _cmd_badge_meta(str(kind), str(entry.get("text") or ""))[0]
+        item.setText(f"[{stamp}] {label} {entry.get('text') or ''}")
+        self.addItem(item)
+
+    def append_entry(self, entry: dict) -> None:
+        self._all_entries.append(dict(entry))
+        while len(self._all_entries) > self.MAX_LINES:
+            self._all_entries.pop(0)
+        if self._entry_matches(entry):
+            self._add_visible_item(entry)
+            while self.count() > self.MAX_LINES:
+                taken = self.takeItem(0)
+                del taken
+            self.scrollToBottom()
+            self.viewport().update()
+
+    def append_line(self, text: str, color: str) -> None:
+        """Compat: linha plana → entry genérica."""
+        self.append_entry(
+            {
+                "stamp": datetime.now().strftime("%H:%M:%S"),
+                "kind": "info",
+                "text": text,
+                "color": color,
+            }
+        )
 
     def _nudge_expose(self) -> None:
         """Força expose/backing-store (DWM só atualiza o log após resize/F11 sem isso)."""
@@ -1145,7 +1374,6 @@ class AceCmdLog(QListWidget):
         except Exception:
             pass
         try:
-            # Scroll 0px ainda invalida a região visível no Windows
             vp.scroll(0, 0)
         except Exception:
             pass
@@ -1160,7 +1388,7 @@ class AceCmdLog(QListWidget):
     def clear_lines(self) -> None:
         self.setUpdatesEnabled(False)
         try:
-            self.clear()
+            self.clear_entries()
         finally:
             self.setUpdatesEnabled(True)
         self._nudge_expose()
@@ -1707,44 +1935,101 @@ class NavButton(QPushButton):
 
 
 class ProActionButton(QPushButton):
-    """Botão de ação da coluna direita."""
+    """Botão de ação — cartão escuro profissional (acento só no ícone e na barra)."""
+
+    _VARIANT_ACCENT = {
+        "primary": "#ec4899",
+        "danger": "#fb7185",
+        "accent": "#c084fc",
+        "dashboard": "#22d3ee",
+        "gestao": "#fbbf24",
+        "muted": "#38bdf8",
+        "default": "#94a3b8",
+    }
 
     def __init__(
         self,
         title: str,
-        accent: str,
+        accent: str = "",
         *,
         icon: str = "▶",
         variant: str = "default",
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        names = {
-            "primary": "proActionPrimary",
-            "danger": "proActionDanger",
-            "accent": "proActionAccent",
-            "muted": "proActionMuted",
-            "dashboard": "proActionDashboard",
-        }
-        self.setObjectName(names.get(variant, "proAction"))
+        self._variant = variant
+        self._accent = str(accent or self._VARIANT_ACCENT.get(variant, "#94a3b8"))
+        self.setObjectName("proAction")
+        self.setProperty("variant", variant)
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(52)
+        self.setMinimumHeight(48)
+        self.setAttribute(Qt.WA_Hover, True)
+        self.setAutoFillBackground(False)
         root = QHBoxLayout(self)
-        root.setContentsMargins(16, 12, 16, 12)
+        root.setContentsMargins(18, 12, 16, 12)
         root.setSpacing(14)
         ico = QLabel(icon)
         ico.setObjectName("proActionIcon")
         ico.setAlignment(Qt.AlignCenter)
-        ico.setStyleSheet(
-            f"color: {accent}; font-size: 18px; background: transparent; font-weight: 800;"
-        )
-        ico.setFixedWidth(28)
+        ico.setFixedWidth(22)
         lab = QLabel(title)
         lab.setObjectName("proActionTitle")
+        self._ico = ico
+        self._lab = lab
+        self._apply_accent_labels()
         root.addWidget(ico)
         root.addWidget(lab, 1)
         for w in (ico, lab):
             w.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+
+    def _apply_accent_labels(self) -> None:
+        c = self._accent
+        self._ico.setStyleSheet(
+            f"color: {c}; font-size: 15px; background: transparent; font-weight: 700;"
+        )
+        # Título neutro — acento só no ícone (leitura mais profissional)
+        self._lab.setStyleSheet(
+            "color: #e8eef6; font-size: 13px; font-weight: 600; letter-spacing: 0.2px; "
+            "background: transparent;"
+        )
+
+    def enterEvent(self, event) -> None:  # noqa: N802
+        super().enterEvent(event)
+        self.update()
+
+    def leaveEvent(self, event) -> None:  # noqa: N802
+        super().leaveEvent(event)
+        self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+        r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        hover = self.underMouse()
+        accent = QColor(self._accent)
+
+        # Fundo navy (padrão Sistema / Log)
+        fill = QColor(14, 20, 32, 245 if hover else 220)
+        p.setBrush(QBrush(fill))
+        border = QColor(148, 163, 184)
+        border.setAlpha(70 if hover else 38)
+        p.setPen(QPen(border, 1.0))
+        p.drawRoundedRect(r, 10, 10)
+
+        # Barra esquerda discreta
+        bar = QColor(accent)
+        bar.setAlpha(230 if hover else 160)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(bar))
+        p.drawRoundedRect(QRectF(r.x() + 1.5, r.y() + 10, 3.0, r.height() - 20), 1.5, 1.5)
+
+        # Hover: véu leve do acento (sem neon)
+        if hover:
+            veil = QColor(accent)
+            veil.setAlpha(18)
+            p.setBrush(QBrush(veil))
+            p.drawRoundedRect(r, 10, 10)
+        p.end()
 
 
 def _windows_build() -> int:
@@ -1959,8 +2244,97 @@ QFrame#kpiCard, QFrame#card {{
 }}
 QFrame#logCard {{
     background: {log_bg};
-    border: 1px solid {t['line']};
+    border: 1px solid {_hex_rgba(str(t.get('line') or '#1e293b'), 0.9)};
     border-radius: 12px;
+}}
+QFrame#sysCard, QFrame#actionsCard {{
+    background: {_hex_rgba('#0b1622', 0.94 if frost else 1.0)};
+    border: 1px solid {_hex_rgba(str(t.get('line') or '#1e293b'), 0.8)};
+    border-radius: 12px;
+}}
+QLabel#sysTitle, QLabel#logTitle, QLabel#actionsTitle {{
+    color: {t['text']};
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.15px;
+    background: transparent;
+    padding: 0 0 4px 0;
+}}
+QLabel#logHint {{
+    color: {t['dim']};
+    font-size: 11px;
+    font-weight: 500;
+    background: transparent;
+}}
+QLineEdit#cmdFilter, QComboBox#cmdLevel {{
+    background: {_hex_rgba('#0e1520', 0.95)};
+    color: {t['text']};
+    border: 1px solid {_hex_rgba(str(t.get('line') or '#1e293b'), 0.9)};
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 18px;
+}}
+QComboBox#cmdLevel::drop-down {{
+    border: none;
+    width: 22px;
+}}
+QComboBox#cmdLevel QAbstractItemView {{
+    background: #0e1520;
+    color: {t['text']};
+    border: 1px solid {t['line']};
+    selection-background-color: rgba(236, 72, 153, 0.25);
+    outline: none;
+    padding: 4px;
+}}
+QLabel#cmdMeta {{
+    color: {t['dim']};
+    font-size: 11px;
+    font-weight: 500;
+    background: transparent;
+    padding: 0 2px 2px 2px;
+}}
+QFrame#cmdPromptWrap {{
+    background: {_hex_rgba('#0e1520', 0.98)};
+    border: 1px solid {_hex_rgba(str(t.get('line') or '#1e293b'), 0.9)};
+    border-radius: 12px;
+    min-height: 38px;
+}}
+QLabel#cmdPromptIco {{
+    color: #ec4899;
+    font-size: 13px;
+    font-weight: 800;
+    font-family: Consolas, '{CRT_LOG_FONT_FAMILY}', monospace;
+    background: transparent;
+}}
+QLineEdit#cmdPrompt {{
+    background: transparent;
+    border: none;
+    color: {t['text']};
+    font-size: 12px;
+    padding: 8px 4px;
+}}
+QLineEdit#cmdPrompt:focus {{
+    border: none;
+}}
+QPushButton#cmdSend {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #ec4899, stop:0.55 #a855f7, stop:1 #6366f1);
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 12px;
+    text-align: center;
+    padding: 8px 16px;
+}}
+QPushButton#cmdSend:hover {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #f472b6, stop:0.55 #c084fc, stop:1 #818cf8);
+}}
+QPushButton#cmdSend:pressed {{
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #db2777, stop:1 #7c3aed);
 }}
 QFrame#sidebar {{
     background: transparent;
@@ -2071,88 +2445,20 @@ QFrame#kpiCard {{
     border: 1px solid {t['line']};
     border-radius: 12px;
 }}
-QPushButton#proAction, QPushButton#proActionMuted {{
-    background: {card_bg};
-    border: 1px solid {t['line']};
-    border-radius: 14px;
+QPushButton#proAction {{
+    background: transparent;
+    border: none;
+    border-radius: 10px;
     text-align: left;
     padding: 0;
 }}
-QPushButton#proAction:hover, QPushButton#proActionMuted:hover {{
-    background: {t['btn_hover']};
-    border-color: #38bdf8;
-}}
-QPushButton#proActionPrimary {{
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 #db2777, stop:0.45 #ec4899, stop:1 #6366f1);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 14px;
-    text-align: left;
-    padding: 0;
-}}
-QPushButton#proActionPrimary:hover {{
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 #e11d48, stop:0.45 #f472b6, stop:1 #818cf8);
-}}
-QPushButton#proActionPrimary QLabel#proActionTitle,
-QPushButton#proActionAccent QLabel#proActionTitle,
-QPushButton#proActionDashboard QLabel#proActionTitle {{
-    color: #ffffff;
-    font-weight: 700;
-}}
-QPushButton#proActionDanger {{
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.55);
-    border-radius: 14px;
-    text-align: left;
-    padding: 0;
-}}
-QPushButton#proActionDanger:hover {{
-    background: rgba(239, 68, 68, 0.18);
-    border-color: #ef4444;
-}}
-QPushButton#proActionDanger QLabel#proActionTitle {{
-    color: #fca5a5;
-    font-weight: 700;
-}}
-QPushButton#proActionAccent {{
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 #be185d, stop:0.5 #db2777, stop:1 #7c3aed);
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 14px;
-    text-align: left;
-    padding: 0;
-}}
-QPushButton#proActionAccent:hover {{
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 #db2777, stop:0.5 #ec4899, stop:1 #8b5cf6);
-}}
-QPushButton#proActionDashboard {{
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 #0e7490, stop:0.5 #0891b2, stop:1 #2563eb);
-    border: 1px solid rgba(165, 243, 252, 0.25);
-    border-radius: 14px;
-    text-align: left;
-    padding: 0;
-}}
-QPushButton#proActionDashboard:hover {{
-    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-        stop:0 #155e75, stop:0.5 #06b6d4, stop:1 #3b82f6);
-}}
-QPushButton#proActionMuted {{
-    border-color: rgba(56, 189, 248, 0.45);
-    background: rgba(56, 189, 248, 0.06);
-}}
-QPushButton#proActionMuted:hover {{
-    background: rgba(56, 189, 248, 0.14);
-}}
-QPushButton#proActionMuted QLabel#proActionTitle {{
-    color: #bae6fd;
+QPushButton#proAction:hover {{
+    background: transparent;
 }}
 QLabel#proActionTitle {{
     color: {t['text']};
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.2px;
     background: transparent;
 }}
@@ -2160,10 +2466,11 @@ QLabel#proActionIcon {{
     background: transparent;
 }}
 QLabel#sysBlurb {{
-    color: {t['dim']};
-    font-size: 12px;
-    line-height: 1.35;
+    color: {_hex_rgba(str(t.get('text') or '#e8eef6'), 0.82)};
+    font-size: 13px;
+    font-weight: 500;
     background: transparent;
+    padding: 4px 2px 2px 2px;
 }}
 QLabel#footVersion {{
     color: {t['muted']};
@@ -2222,6 +2529,60 @@ QMenu#dashMenu::separator {{
     height: 1px;
     background: {t['line']};
     margin: 4px 8px;
+}}
+QWidget#cfgWin {{
+    background: {root_bg};
+}}
+QFrame#cfgHead {{
+    background: {_hex_rgba(str(t.get('card') or t['panel']), 0.82)};
+    border: 1px solid {t['line']};
+    border-radius: 14px;
+}}
+QLabel#cfgTitle {{
+    color: {t['text']};
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    background: transparent;
+}}
+QLabel#cfgSub {{
+    color: {t['dim']};
+    font-size: 11px;
+    background: transparent;
+}}
+QFrame#cfgBody {{
+    background: {_hex_rgba(str(t.get('card') or t['panel']), 0.55)};
+    border: 1px solid {t['line']};
+    border-radius: 14px;
+}}
+QTabWidget#cfgTabs::pane {{
+    border: none;
+    background: transparent;
+    top: 0;
+    margin-top: 6px;
+}}
+QTabWidget#cfgTabs QTabBar::tab {{
+    background: {_hex_rgba(str(t.get('input_bg') or '#0e1016'), 0.9)};
+    color: {t['dim']};
+    border: 1px solid {t['line']};
+    border-radius: 10px;
+    padding: 8px 14px;
+    margin-right: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 72px;
+}}
+QTabWidget#cfgTabs QTabBar::tab:hover {{
+    color: {t['text']};
+    border-color: {_hex_rgba(accent, 0.55)};
+}}
+QTabWidget#cfgTabs QTabBar::tab:selected {{
+    color: #ffffff;
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 {_hex_rgba(str(t.get('chunk0') or accent), 0.85)},
+        stop:1 {_hex_rgba(str(t.get('chunk1') or accent), 0.75)});
+    border: 1px solid {_hex_rgba(accent, 0.45)};
+    font-weight: 700;
 }}
 QLabel#title {{
     color: {t['text']};
@@ -2415,16 +2776,17 @@ QTextEdit {{
 QListWidget#crtLog, QListWidget#crtLog::viewport {{
     background-color: {log_bg};
     color: {t['text']};
-    border: 1px solid {t['line']};
+    border: none;
     border-radius: 8px;
     font-family: {log_font};
     font-size: 11px;
     outline: none;
+    padding: 6px 4px;
 }}
 QListWidget#crtLog::item {{
     background: {log_bg};
     color: {t['text']};
-    padding: 1px 4px;
+    padding: 3px 8px;
     border: none;
 }}
 QAbstractScrollArea::viewport {{
@@ -3103,7 +3465,7 @@ class AceCrtMenuWindow(QWidget):
 
     def __init__(self, owner: "AceCrtConsole", content: QWidget) -> None:
         super().__init__(None)
-        self.setObjectName("crtRoot")
+        self.setObjectName("cfgWin")
         self.setWindowTitle("ACE · Configurações")
         self.setWindowFlags(
             Qt.Window
@@ -3115,20 +3477,32 @@ class AceCrtMenuWindow(QWidget):
         )
         self.setWindowIcon(crt_window_icon(DEFAULT_CRT_THEME))
         self._owner = owner
-        # Caixa compacta: cabe na tela; o conteúdo das abas rola para baixo
-        self.resize(560, 520)
-        self.setMinimumSize(420, 360)
+        self.resize(640, 580)
+        self.setMinimumSize(480, 420)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(12, 10, 12, 10)
-        lay.setSpacing(6)
-        tip = QLabel(
-            "Configurações · arraste a barra para baixo nas abas · "
-            "reabra pela sidebar"
-        )
-        tip.setObjectName("hint")
-        tip.setWordWrap(True)
-        lay.addWidget(tip)
-        lay.addWidget(content, 1)
+        lay.setContentsMargins(14, 12, 14, 12)
+        lay.setSpacing(10)
+
+        head = QFrame()
+        head.setObjectName("cfgHead")
+        hl = QVBoxLayout(head)
+        hl.setContentsMargins(16, 12, 16, 12)
+        hl.setSpacing(3)
+        title = QLabel("Configurações")
+        title.setObjectName("cfgTitle")
+        sub = QLabel("Login · automação · local · TV · gestão administrativa")
+        sub.setObjectName("cfgSub")
+        hl.addWidget(title)
+        hl.addWidget(sub)
+        lay.addWidget(head)
+
+        body = QFrame()
+        body.setObjectName("cfgBody")
+        bl = QVBoxLayout(body)
+        bl.setContentsMargins(12, 10, 12, 12)
+        bl.setSpacing(0)
+        bl.addWidget(content, 1)
+        lay.addWidget(body, 1)
 
     def closeEvent(self, event) -> None:  # noqa: N802
         # Esconde em vez de destruir (widgets/campos continuam vivos)
@@ -3206,6 +3580,7 @@ class AceCrtConsole(QWidget):
         shell.addWidget(sidebar)
 
         main = self._build_main()
+        self._main_panel = main
         shell.addWidget(main, 1)
         root.addLayout(shell, 1)
 
@@ -3220,7 +3595,7 @@ class AceCrtConsole(QWidget):
         foot_row.addWidget(self.foot_right, 1)
         root.addLayout(foot_row)
 
-        # Cavalo flutuante: tamanho e canto superior esquerdo travados
+        # Cavalo flutuante atrás do texto (sidebar + título)
         self._brand_header = AceBrandHeader(self)
         self._brand_logo = self._brand_header._logo
         self._place_brand_logo()
@@ -3547,10 +3922,39 @@ class AceCrtConsole(QWidget):
         box.setAttribute(Qt.WA_TranslucentBackground, False)
         box.setAttribute(Qt.WA_StyledBackground, True)
         lay = QVBoxLayout(box)
-        lay.setContentsMargins(14, 12, 14, 12)
+        lay.setContentsMargins(16, 14, 16, 12)
         lay.setSpacing(8)
-        self.cmd_section = self._section("CMD - log")
-        lay.addWidget(self.cmd_section)
+
+        title = QLabel("CMD")
+        title.setObjectName("logTitle")
+        self.cmd_section = title
+        lay.addWidget(title)
+
+        # Barra de filtros
+        filt = QHBoxLayout()
+        filt.setSpacing(8)
+        self.log_filter = QLineEdit()
+        self.log_filter.setObjectName("cmdFilter")
+        self.log_filter.setPlaceholderText("Filtrar logs…")
+        self.log_filter.setClearButtonEnabled(True)
+        self.log_filter.textChanged.connect(self._on_cmd_filter_changed)
+        self.log_level = QComboBox()
+        self.log_level.setObjectName("cmdLevel")
+        self.log_level.setMinimumWidth(150)
+        self.log_level.addItem("Filtrar por nível…", "todos")
+        self.log_level.addItem("[SYS]", "sys")
+        self.log_level.addItem("[OK]", "ok")
+        self.log_level.addItem("[CFG]", "cfg")
+        self.log_level.addItem("[ERR]", "err")
+        self.log_level.addItem("[CMD]", "cmd")
+        self.log_level.addItem("[MAPA]", "mapa")
+        self.log_level.addItem("[DASH]", "dash")
+        self.log_level.addItem("[Todos]", "todos")
+        self.log_level.currentIndexChanged.connect(self._on_cmd_filter_changed)
+        filt.addWidget(self.log_filter, 1)
+        filt.addWidget(self.log_level, 0)
+        lay.addLayout(filt)
+
         # Compat: botão antigo (sidebar → Comandos)
         self.btn_rapido = QPushButton("Comandos")
         self.btn_rapido.hide()
@@ -3560,20 +3964,59 @@ class AceCrtConsole(QWidget):
         self._setup_opaque_log()
         lay.addWidget(self.log, 1)
 
+        self.log_meta = QLabel("Registros: 0 · Filtros ativos: nenhum")
+        self.log_meta.setObjectName("cmdMeta")
+        lay.addWidget(self.log_meta)
+
         prompt_row = QHBoxLayout()
+        prompt_row.setSpacing(8)
+        prompt_wrap = QFrame()
+        prompt_wrap.setObjectName("cmdPromptWrap")
+        pw = QHBoxLayout(prompt_wrap)
+        pw.setContentsMargins(12, 0, 10, 0)
+        pw.setSpacing(8)
+        prompt_ico = QLabel(">_")
+        prompt_ico.setObjectName("cmdPromptIco")
         self.prompt = QLineEdit()
+        self.prompt.setObjectName("cmdPrompt")
         self.prompt.setPlaceholderText("Comando (ex.: 50, 36, mapa, sync)…")
+        self.prompt.setFrame(False)
         self.prompt.returnPressed.connect(self._submit_prompt)
-        self.btn_run = QPushButton("Enviar")
-        self.btn_run.setObjectName("primary")
-        self.btn_run.setMinimumWidth(100)
-        self.btn_run.setMinimumHeight(36)
+        pw.addWidget(prompt_ico, 0)
+        pw.addWidget(self.prompt, 1)
+        self.btn_run = QPushButton("✈  Enviar")
+        self.btn_run.setObjectName("cmdSend")
+        self.btn_run.setMinimumWidth(110)
+        self.btn_run.setMinimumHeight(38)
         self.btn_run.clicked.connect(self._submit_prompt)
-        prompt_row.addWidget(self.prompt, 1)
+        prompt_row.addWidget(prompt_wrap, 1)
         prompt_row.addWidget(self.btn_run)
         lay.addLayout(prompt_row)
         self._apply_cmd_view(self._cmd_view, announce=False)
+        self._refresh_cmd_meta()
         return box
+
+    def _on_cmd_filter_changed(self, *_args) -> None:
+        if not isinstance(getattr(self, "log", None), AceCmdLog):
+            return
+        text = ""
+        if hasattr(self, "log_filter") and self.log_filter is not None:
+            text = self.log_filter.text()
+        level = "todos"
+        if hasattr(self, "log_level") and self.log_level is not None:
+            level = str(self.log_level.currentData() or "todos")
+        self.log.set_filters(text=text, level=level)
+        self._refresh_cmd_meta()
+
+    def _refresh_cmd_meta(self) -> None:
+        lab = getattr(self, "log_meta", None)
+        log = getattr(self, "log", None)
+        if lab is None or not isinstance(log, AceCmdLog):
+            return
+        lab.setText(
+            f"Registros: {log.visible_count()} / {log.total_count()} · "
+            f"Filtros ativos: {log.active_filter_labels()}"
+        )
 
     def _build_actions_panel(self) -> QWidget:
         wrap = QWidget()
@@ -3582,31 +4025,40 @@ class AceCrtConsole(QWidget):
         lay.setSpacing(10)
 
         cmds = self._card()
+        cmds.setObjectName("actionsCard")
         cl = QVBoxLayout(cmds)
-        cl.setContentsMargins(14, 12, 14, 12)
+        cl.setContentsMargins(16, 14, 16, 14)
         cl.setSpacing(8)
-        cl.addWidget(self._section("Ações"))
+        act_title = QLabel("Ações")
+        act_title.setObjectName("actionsTitle")
+        cl.addWidget(act_title)
         actions = (
-            ("Iniciar Automação", "#ffffff", "▶", "primary", lambda: self._start_automatica_ui()),
-            ("Parar Automação", "#f87171", "■", "danger", lambda: self._stop_all()),
-            ("Forçar Atualização", "#ffffff", "↻", "accent", lambda: self.run_command("sync")),
-            ("Dashboard", "#a5f3fc", "▦", "dashboard", lambda: self._show_dashboard_menu()),
-            ("Comandos SSW", "#7dd3fc", ">_", "muted", lambda: self._toggle_rapido_window()),
+            ("Iniciar Automação", "#ec4899", "▶", "primary", lambda: self._start_automatica_ui()),
+            ("Parar Automação", "#fb7185", "■", "danger", lambda: self._stop_all()),
+            ("Forçar Atualização", "#c084fc", "↻", "accent", lambda: self.run_command("sync")),
+            ("Dashboard", "#22d3ee", "▦", "dashboard", lambda: self._show_dashboard_menu()),
+            ("Gestão", "#fbbf24", "☰", "gestao", lambda: self._open_gestao_ui()),
+            ("Comandos SSW", "#38bdf8", ">_", "muted", lambda: self._toggle_rapido_window()),
         )
         for title, color, icon, variant, slot in actions:
             btn = ProActionButton(title, color, icon=icon, variant=variant)
             btn.clicked.connect(slot)
             if variant == "dashboard":
                 self._btn_dashboard = btn
+            elif variant == "gestao":
+                self._btn_gestao = btn
             cl.addWidget(btn)
         cl.addStretch(1)
-        lay.addWidget(cmds, 1)
+        lay.addWidget(cmds, 3)
 
         info = self._card()
+        info.setObjectName("sysCard")
         il = QVBoxLayout(info)
-        il.setContentsMargins(14, 12, 14, 12)
-        il.setSpacing(8)
-        il.addWidget(self._section("Sistema"))
+        il.setContentsMargins(18, 16, 18, 18)
+        il.setSpacing(10)
+        sys_title = QLabel("Sistema")
+        sys_title.setObjectName("sysTitle")
+        il.addWidget(sys_title)
         self._info_rows: dict[str, QLabel] = {}
         blurb = QLabel(
             "O ACE automatiza a coleta no SSW, atualiza TVs/planilhas e acompanha "
@@ -3616,12 +4068,13 @@ class AceCrtConsole(QWidget):
         blurb.setObjectName("sysBlurb")
         blurb.setWordWrap(True)
         blurb.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        blurb.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         il.addWidget(blurb, 1)
-        lay.addWidget(info, 1)
+        lay.addWidget(info, 2)
         return wrap
 
     def _show_dashboard_menu(self) -> None:
-        """Menu seletor de dashboards (modo local)."""
+        """Menu seletor de dashboards (modo local · janela)."""
         if self._is_ui_locked():
             self._challenge_lock()
             return
@@ -3633,16 +4086,48 @@ class AceCrtConsole(QWidget):
         menu = QMenu(self)
         menu.setObjectName("dashMenu")
         act_all = menu.addAction("Todas as telas")
-        act_all.triggered.connect(lambda: self._open_local_screens(None))
+        act_all.triggered.connect(lambda: self._open_local_screens(None, fullscreen=False))
         menu.addSeparator()
         for sid in LOCAL_SCREEN_ORDER:
             act = menu.addAction(screen_label(sid))
-            act.triggered.connect(lambda _checked=False, s=sid: self._open_local_screens([s]))
+            act.triggered.connect(
+                lambda _checked=False, s=sid: self._open_local_screens([s], fullscreen=False)
+            )
         btn = getattr(self, "_btn_dashboard", None) or self.sender()
         if isinstance(btn, QWidget):
             menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
         else:
             menu.exec()
+
+    def _open_gestao_ui(self) -> None:
+        """Abre Gestão (gestao.html) dentro do programa."""
+        if self._is_ui_locked():
+            self._challenge_lock()
+            return
+        try:
+            from ace_local_view import open_gestao
+
+            try:
+                self._local_ensure_modo()
+            except Exception:
+                pass
+            result = open_gestao(
+                parent=None,
+                refresh=True,
+                prefer_embed=True,
+                on_status=lambda m: self._append_log("sistema", m),
+            )
+            mode = "janela interna" if result.get("embed") else "navegador"
+            msg = f"Gestão OK · {mode}"
+            if hasattr(self, "_local_status") and self._local_status is not None:
+                self._local_status.setText(msg)
+            self._append_log("ok", msg)
+            if hasattr(self, "mode") and self.mode is not None:
+                self.mode.setText("GESTÃO")
+        except Exception as err:  # noqa: BLE001
+            self._append_log("erro", str(err))
+            QMessageBox.warning(self, "Gestão", str(err))
+
     def _start_automatica_ui(self) -> None:
         try:
             iv = ""
@@ -3849,7 +4334,7 @@ class AceCrtConsole(QWidget):
         mode = "log" if str(mode).lower().strip() in {"log", "/log"} else "bars"
         self._cmd_view = mode
         if hasattr(self, "cmd_section"):
-            self.cmd_section.setText("CMD · log" if mode == "log" else "CMD · log (foco barras)")
+            self.cmd_section.setText("CMD")
         try:
             if mode == "log" and hasattr(self, "log"):
                 self.log.setFocus(Qt.OtherFocusReason)
@@ -3882,6 +4367,7 @@ class AceCrtConsole(QWidget):
                 )
     def _build_right(self) -> QWidget:
         tabs = QTabWidget()
+        tabs.setObjectName("cfgTabs")
         tabs.addTab(self._build_config_tab(), "Configuração")
         tabs.addTab(self._build_automacao_tab(), "Automação")
         tabs.addTab(self._build_local_tab(), "Local")
@@ -3931,8 +4417,8 @@ class AceCrtConsole(QWidget):
             return
         ag = screen.availableGeometry()
         # Quadrado utilitário: cabe na tela; conteúdo longo usa scroll
-        target_w = int(min(560, max(460, ag.width() - 48)))
-        target_h = int(min(520, max(400, ag.height() - 80)))
+        target_w = int(min(640, max(500, ag.width() - 48)))
+        target_h = int(min(600, max(440, ag.height() - 80)))
         win.resize(target_w, target_h)
         frame = win.frameGeometry()
         try:
@@ -4170,9 +4656,8 @@ class AceCrtConsole(QWidget):
 
         form.addRow(self._section("Aparência do CRT"))
         apar_tip = QLabel(
-            "Temas: ACE (padrão) · Azul · Amarelo · Vermelho · Verde — "
-            "cada um troca a cor do cavalo no ícone. "
-            "A logo das dashboards é independente, acima."
+            "Escolha a cor do painel (e do cavalo). "
+            "«Preto / transparente» ativa o fosco Windows — use os controles abaixo."
         )
         apar_tip.setObjectName("hint")
         apar_tip.setWordWrap(True)
@@ -4187,22 +4672,28 @@ class AceCrtConsole(QWidget):
         theme_lay.setContentsMargins(0, 0, 0, 0)
         theme_lay.setSpacing(2)
         theme_lay.addWidget(self.cmb_theme_cfg)
-        theme_help = QLabel("Só muda o visual do painel CRT; não altera as dashboards TV.")
+        theme_help = QLabel(
+            "Afeta só o CRT (esta janela). Dashboards / TVs não mudam."
+        )
         theme_help.setObjectName("hint")
         theme_help.setWordWrap(True)
         theme_lay.addWidget(theme_help)
-        form.addRow("Tema do painel", theme_cell)
+        form.addRow("Tema do CRT", theme_cell)
 
-        frost_hint = QLabel("Controles de fosco (legado) — não usados nos temas atuais")
-        frost_hint.setObjectName("hint")
-        form.addRow(frost_hint)
+        self._frost_hint = QLabel(
+            "Fosco: disponível no tema «Preto / transparente» "
+            "(transparência da janela + blur do Windows)."
+        )
+        self._frost_hint.setObjectName("hint")
+        self._frost_hint.setWordWrap(True)
+        form.addRow(self._frost_hint)
 
         self.lbl_frost_alpha = QLabel("55%")
         self.sld_frost_alpha = QSlider(Qt.Horizontal)
         self.sld_frost_alpha.setRange(0, 100)
         self.sld_frost_alpha.setValue(55)
         self.sld_frost_alpha.setToolTip(
-            "Controla a opacidade da janela (0 = sólida · 100 = bem transparente)"
+            "0 = janela quase sólida · 100 = bem transparente"
         )
         self.sld_frost_alpha.valueChanged.connect(self._on_frost_alpha)
         row_a = QHBoxLayout()
@@ -4217,7 +4708,7 @@ class AceCrtConsole(QWidget):
         self.sld_frost_blur.setRange(0, 100)
         self.sld_frost_blur.setValue(70)
         self.sld_frost_blur.setToolTip(
-            "Fosco Windows: 0 = sem blur · 100 = acrylic/mica"
+            "0 = sem fosco · 100 = blur acrylic/mica do Windows"
         )
         self.sld_frost_blur.valueChanged.connect(self._on_frost_blur)
         row_b = QHBoxLayout()
@@ -4770,7 +5261,7 @@ class AceCrtConsole(QWidget):
             ids = list(tokens) if tokens else None
         self._open_local_screens(ids)
 
-    def _open_local_screens(self, ids: list[str] | None) -> None:
+    def _open_local_screens(self, ids: list[str] | None, *, fullscreen: bool = False) -> None:
         try:
             from ace_local_view import open_local_screens, screen_label
 
@@ -4783,16 +5274,18 @@ class AceCrtConsole(QWidget):
                 parent=None,  # janelas independentes (não filhas do CRT)
                 refresh=True,
                 prefer_embed=True,
+                fullscreen=bool(fullscreen),
                 on_status=lambda m: self._append_log("sistema", m),
             )
             labels = ", ".join(screen_label(s) for s in (result.get("screens") or []))
             mode = "janelas internas" if result.get("embed") else "navegador"
-            msg = f"Local OK · {mode} · {labels}"
+            fs = " · tela cheia" if result.get("fullscreen") else ""
+            msg = f"Local OK · {mode}{fs} · {labels}"
             if hasattr(self, "_local_status") and self._local_status is not None:
                 self._local_status.setText(msg)
             self._append_log("ok", msg)
             if hasattr(self, "mode") and self.mode is not None:
-                self.mode.setText("LOCAL")
+                self.mode.setText("TV" if fullscreen else "LOCAL")
         except Exception as err:  # noqa: BLE001
             if hasattr(self, "_local_status") and self._local_status is not None:
                 self._local_status.setText(f"Falha local: {err}")
@@ -4827,6 +5320,12 @@ class AceCrtConsole(QWidget):
         b_open.setMinimumHeight(48)
         b_open.clicked.connect(self._open_tv_editor)
         lay.addWidget(b_open)
+
+        b_dash = QPushButton("Abrir dashboards (no programa)")
+        b_dash.setMinimumHeight(44)
+        b_dash.setToolTip("Mesmo menu do botão Dashboard · use Tela cheia na janela se quiser")
+        b_dash.clicked.connect(self._show_dashboard_menu)
+        lay.addWidget(b_dash)
 
         row = QHBoxLayout()
         b_reload = QPushButton("Recarregar")
@@ -5178,18 +5677,24 @@ class AceCrtConsole(QWidget):
         return
 
     def _place_brand_logo(self) -> None:
-        """Mantém o cavalo no canto superior esquerdo, tamanho fixo."""
+        """Mantém o cavalo no canto — atrás do texto da sidebar/título."""
         header = getattr(self, "_brand_header", None)
         if header is None:
             return
         try:
-            # Quase toca o título à direita (main) e PRINCIPAL embaixo
             x = 6
             y = 4
             header.setFixedSize(AceBrandHeader._BOX, AceBrandHeader._BOX)
             header.move(x, y)
-            header.raise_()
             header.show()
+            # Sempre atrás do conteúdo (texto por cima)
+            header.lower()
+            side = getattr(self, "_sidebar", None)
+            main = getattr(self, "_main_panel", None)
+            if side is not None:
+                side.raise_()
+            if main is not None:
+                main.raise_()
         except Exception:
             pass
 
@@ -5211,15 +5716,19 @@ class AceCrtConsole(QWidget):
             lock.setGeometry(r)
             if lock.is_armed():
                 lock.raise_()
-        # Cavalo fica acima do chrome, abaixo do cadeado se armado
+        # Cavalo permanece atrás do texto; cadeado por cima de tudo se armado
         header = getattr(self, "_brand_header", None)
         if header is not None:
             try:
+                header.lower()
+                side = getattr(self, "_sidebar", None)
+                main = getattr(self, "_main_panel", None)
+                if side is not None:
+                    side.raise_()
+                if main is not None:
+                    main.raise_()
                 if lock is not None and lock.is_armed():
-                    header.lower()
                     lock.raise_()
-                else:
-                    header.raise_()
             except Exception:
                 pass
 
@@ -5325,6 +5834,13 @@ class AceCrtConsole(QWidget):
         ):
             if w is not None:
                 w.setEnabled(on)
+        hint = getattr(self, "_frost_hint", None)
+        if hint is not None:
+            hint.setText(
+                "Fosco ativo — ajuste transparência e blur abaixo."
+                if on
+                else "Fosco: escolha o tema «Preto / transparente» para liberar os controles."
+            )
 
     def _on_frost_alpha(self, value: int) -> None:
         if hasattr(self, "lbl_frost_alpha"):
@@ -5534,6 +6050,12 @@ class AceCrtConsole(QWidget):
                 oname = fr.objectName()
                 if oname == "logCard":
                     # Card do log fica opaco — senão o limpar só “aparece” no resize/F11
+                    fr.setAttribute(Qt.WA_StyledBackground, True)
+                    fr.setAttribute(Qt.WA_OpaquePaintEvent, True)
+                    fr.setAutoFillBackground(True)
+                    fr.setAttribute(Qt.WA_TranslucentBackground, False)
+                    continue
+                if oname in {"sysCard", "actionsCard"}:
                     fr.setAttribute(Qt.WA_StyledBackground, True)
                     fr.setAttribute(Qt.WA_OpaquePaintEvent, True)
                     fr.setAutoFillBackground(True)
@@ -6341,6 +6863,7 @@ class AceCrtConsole(QWidget):
             else:
                 self.log.clear()
             self._setup_opaque_log()
+            self._refresh_cmd_meta()
             self._force_log_repaint()
         except Exception:
             pass
@@ -6381,7 +6904,7 @@ class AceCrtConsole(QWidget):
         )
 
     def _render_log_entry(self, entry: dict, *, from_file: bool = False) -> None:
-        """Linha do CMD: [HH:MM:SS] ███ OK/ERR/…  mensagem"""
+        """Linha do CMD com badge colorido."""
         stamp = str(entry.get("stamp") or datetime.now().strftime("%H:%M:%S"))
         kind = str(entry.get("kind") or "info").lower()
         text = str(entry.get("text") or "")
@@ -6392,32 +6915,6 @@ class AceCrtConsole(QWidget):
         if len(self._log_seen) > 2000:
             self._log_seen = set(list(self._log_seen)[-1000:])
 
-        t = CRT_THEMES.get(self._theme_id) or CRT_THEMES[DEFAULT_CRT_THEME]
-        accent = str(t["text"])
-        dim = str(t["dim"])
-        warn = WARN
-        color = {
-            "ok": accent,
-            "err": ERR,
-            "erro": ERR,
-            "work": warn,
-            "cmd": accent,
-            "out": dim,
-            "config": warn,
-            "sistema": dim,
-            "info": dim,
-        }.get(kind, dim)
-        tag = {
-            "ok": "OK ",
-            "err": "ERR",
-            "erro": "ERR",
-            "work": "…  ",
-            "cmd": "CMD",
-            "out": "OUT",
-            "config": "CFG",
-            "sistema": "SYS",
-            "info": "·  ",
-        }.get(kind, "·  ")
         src = str(entry.get("source") or "")
         prefix = " ⌁" if from_file and src == "cmd" else ""
         plain = " ".join(str(text or "").split())
@@ -6436,12 +6933,20 @@ class AceCrtConsole(QWidget):
                 plain = re.sub(r"\s{2,}", " ", plain).strip()
                 break
 
-        line = f"[{stamp}] ███ {tag} {plain}{prefix}"
+        payload = {
+            "stamp": stamp,
+            "kind": kind,
+            "text": f"{plain}{prefix}",
+            "ts": entry.get("ts"),
+            "source": src,
+        }
         try:
             if isinstance(self.log, AceCmdLog):
-                self.log.append_line(line, color)
+                self.log.append_entry(payload)
+                self._refresh_cmd_meta()
             else:
-                self.log.addItem(QListWidgetItem(line))
+                label = _cmd_badge_meta(kind, plain)[0]
+                self.log.addItem(QListWidgetItem(f"[{stamp}] {label} {plain}{prefix}"))
         except Exception:
             pass
 
