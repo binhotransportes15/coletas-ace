@@ -2082,11 +2082,21 @@
       flex: 1 1 0 !important;
       min-width: 0 !important;
       min-height: 0 !important;
-      padding: clamp(6px, 0.9vmin, 10px) !important;
-      gap: 4px !important;
+      padding: clamp(8px, 1.2vmin, 14px) !important;
+      gap: clamp(6px, 0.9vmin, 12px) !important;
+      justify-content: center !important;
+    }
+    body.tv-mode .agenda-card .ctrc {
+      font-size: clamp(26px, 4.2vmin, 56px) !important;
+      line-height: 1.05 !important;
     }
     body.tv-mode .agenda-card .dest {
       -webkit-line-clamp: 2;
+      font-size: clamp(16px, 2.5vmin, 30px) !important;
+      line-height: 1.2 !important;
+    }
+    body.tv-mode .agenda-card .when {
+      font-size: clamp(18px, 2.8vmin, 34px) !important;
     }
     body.dash-hide-status .agenda-layout:not(.has-blocks) [data-block="chart"] {
       grid-column: 1 / -1;
@@ -2754,7 +2764,16 @@
       overflow: auto;
     }
     .agenda-layout.has-blocks [data-block="amanha"] .agenda-card .ctrc {
-      font-size: clamp(13px, 6cqh, 26px);
+      font-size: clamp(20px, 10cqh, 48px);
+    }
+    body.tv-mode .agenda-layout.has-blocks [data-block="amanha"] .agenda-card .ctrc {
+      font-size: clamp(26px, 12cqh, 56px) !important;
+    }
+    body.tv-mode .agenda-layout.has-blocks [data-block="amanha"] .agenda-card .dest {
+      font-size: clamp(16px, 7cqh, 30px) !important;
+    }
+    body.tv-mode .agenda-layout.has-blocks [data-block="amanha"] .agenda-card .when {
+      font-size: clamp(18px, 8cqh, 34px) !important;
     }
     /* com blocos, scale-large não força fonte fora do bloco */
     .agenda-layout.has-blocks ~ *,
@@ -3430,10 +3449,13 @@
       font-size: clamp(20px, 2.8vmin, 36px);
     }
     body.tv-mode.live-mode .agenda-card .ctrc {
-      font-size: clamp(13px, 1.7vmin, 20px);
+      font-size: clamp(26px, 4.2vmin, 56px);
+    }
+    body.tv-mode.live-mode .agenda-card .dest {
+      font-size: clamp(16px, 2.5vmin, 30px);
     }
     body.tv-mode.live-mode .agenda-card .when {
-      font-size: clamp(12px, 1.5vmin, 17px);
+      font-size: clamp(18px, 2.8vmin, 34px);
     }
     body.tv-mode.live-mode .agenda-pizza .callout-pct { font-size: 32px; }
     body.tv-mode.live-mode .agenda-pizza .callout-lab { font-size: 14px; }
