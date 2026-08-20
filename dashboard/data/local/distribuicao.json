@@ -1,6 +1,6 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-20T15:18:32",
+  "updated_at": "2026-08-20T17:00:21",
   "resumo_50": {
     "data_cadastro": "PERIODO",
     "total_coletas": "20",
@@ -46,8 +46,5 @@
     "peso_amanha": "4.952,07",
     "volumes_amanha": "10.428,24",
     "frete_amanha": "12.133,74"
-  },
-  "extra": {
-    "report": "103"
   }
 }

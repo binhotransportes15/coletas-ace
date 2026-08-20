@@ -646,10 +646,10 @@ def cmd_help() -> str:
             "────────────────────────────────────",
             "EMISSÃO",
             "────────────────────────────────────",
-            "  455           CTEs / frete / picos / expedidores do dia.",
-            "  455 mes       Mesma lógica · mês referente (1→hoje).",
-            "  sync455       Envia só emissão à planilha/site.",
-            "  sync455 mes   Envia emissão do mês (Resumo455Mes…).",
+            "  455           Gera 2 relatórios: dia (hoje) + mês (1→hoje).",
+            "  455 mes       Igual ao 455 (dia + mês).",
+            "  sync455       Envia dia + mês à planilha/site.",
+            "  sync455 mes   Só o mês (Resumo455Mes…).",
             "",
             "────────────────────────────────────",
             "RECICLAGEM",
@@ -1072,37 +1072,64 @@ def run_pipeline_31_cmd(extra: list[str] | None = None) -> str:
 
 
 def run_pipeline_455_cmd(extra: list[str] | None = None) -> str:
-    """`455` / `emissao` — diária. `455 mes` — visão do mês."""
+    """`455` / `emissao` / `455 mes` — gera SEMPRE os 2 relatórios (dia + mês)."""
     from pipeline import run_pipeline_455
 
     extra = extra or []
     extra_l = [str(x).lower() for x in extra]
-    is_mes = any(x in {"mes", "mês", "mensal", "month"} for x in extra_l)
+    # atalhos raros: só um dos dois
+    only_dia = any(x in {"sodia", "sódiaria", "sodiaria", "diario", "diaria", "hoje"} for x in extra_l)
+    only_mes = any(x in {"somes", "sómes", "somês"} for x in extra_l)
     unidade = "SPO"
     for x in extra:
         t = str(x).strip().upper()
         if t in {"SPO", "LEO", "RIS", "GRU"}:
             unidade = t
             break
-    modo = "mes" if is_mes else "diario"
-    print(f"\n=== Pipeline 455 (Emissão · {'mês' if is_mes else 'diária'}) ===")
-    print(
-        f"  unidade={unidade} · tipo=E(expedidora) · arquivo=E · "
-        f"período={'mês referente (1→hoje)' if is_mes else 'emissão hoje'}"
-    )
-    result = run_pipeline_455(
-        on_status=_on_status,
-        headless=_cfg_headless(),
-        unidade=unidade,
-        modo=modo,
-    )
-    resumo = result.get("resumo") or {}
-    return (
-        f"455 {'mês' if is_mes else 'OK'} · CTEs={resumo.get('ctes')} "
-        f"frete={resumo.get('frete_fmt')} "
-        f"dia={resumo.get('dia')} noite={resumo.get('noite')} "
-        f"cancel={resumo.get('cancelados')}"
-    )
+
+    run_dia = not only_mes
+    run_mes = not only_dia
+    # default / `455 mes` / `emissao` → os dois
+    if not only_dia and not only_mes:
+        run_dia = True
+        run_mes = True
+
+    print("\n=== Pipeline 455 (Emissão · dia + mês) ===")
+    print(f"  unidade={unidade} · tipo=E(expedidora) · arquivo=E")
+    resumo_dia: dict = {}
+    resumo_mes: dict = {}
+
+    if run_dia:
+        print("  [1/2] relatório DIÁRIO (emissão hoje)…")
+        result_dia = run_pipeline_455(
+            on_status=_on_status,
+            headless=_cfg_headless(),
+            unidade=unidade,
+            modo="diario",
+        )
+        resumo_dia = result_dia.get("resumo") or {}
+
+    if run_mes:
+        print("  [2/2] relatório MÊS (1 → hoje)…")
+        result_mes = run_pipeline_455(
+            on_status=_on_status,
+            headless=_cfg_headless(),
+            unidade=unidade,
+            modo="mes",
+            clean_downloads=not run_dia,
+        )
+        resumo_mes = result_mes.get("resumo") or {}
+
+    parts = ["455 OK"]
+    if run_dia:
+        parts.append(
+            f"dia CTEs={resumo_dia.get('ctes')} frete={resumo_dia.get('frete_fmt')}"
+        )
+    if run_mes:
+        parts.append(
+            f"mês CTEs={resumo_mes.get('ctes')} frete={resumo_mes.get('frete_fmt')}"
+        )
+    return " · ".join(parts)
 
 
 def run_pipeline_reciclagem_cmd(extra: list[str] | None = None) -> str:
@@ -1345,28 +1372,33 @@ def run_sync_455(extra: list[str] | None = None) -> str:
     from sheets_sync_455 import sync_sheets_455, sync_sheets_455_mes
 
     extra = extra or []
-    is_mes = any(
-        str(x).lower() in {"mes", "mês", "mensal", "month"} for x in extra
-    )
-    if is_mes:
-        print("\n=== Sync Sheets Emissão 455 Mês ===")
+    extra_l = [str(x).lower() for x in extra]
+    only_mes = any(x in {"mes", "mês", "mensal", "month", "somes", "sómes"} for x in extra_l)
+    only_dia = any(x in {"diario", "diaria", "sodia", "sódiaria"} for x in extra_l)
+    run_dia = not only_mes
+    run_mes = not only_dia
+    if not only_dia and not only_mes:
+        run_dia = True
+        run_mes = True
+
+    msgs: list[str] = []
+    if run_dia:
+        print("\n=== Sync Sheets Emissão 455 (dia) ===")
+        r = sync_sheets_455(on_status=_on_status)
+        publish_emissao_local(on_status=_on_status)
+        if r.get("ok"):
+            msgs.append(f"dia OK exp={r.get('expedidores')}")
+        else:
+            msgs.append(f"dia: {r.get('error') or r.get('reason') or r}")
+    if run_mes:
+        print("\n=== Sync Sheets Emissão 455 (mês) ===")
         r = sync_sheets_455_mes(on_status=_on_status)
         publish_emissao_mes_local(on_status=_on_status)
         if r.get("ok"):
-            return (
-                f"sync455 mes OK · expedidores={r.get('expedidores')} "
-                f"dias={r.get('dias')}"
-            )
-        return f"sync455 mes: {r.get('error') or r.get('reason') or r}"
-    print("\n=== Sync Sheets Emissão 455 ===")
-    r = sync_sheets_455(on_status=_on_status)
-    publish_emissao_local(on_status=_on_status)
-    if r.get("ok"):
-        return (
-            f"sync455 OK · expedidores={r.get('expedidores')} "
-            f"horas={r.get('horas')}"
-        )
-    return f"sync455: {r.get('error') or r.get('reason') or r}"
+            msgs.append(f"mês OK exp={r.get('expedidores')} dias={r.get('dias')}")
+        else:
+            msgs.append(f"mês: {r.get('error') or r.get('reason') or r}")
+    return "sync455 · " + " · ".join(msgs)
 
 
 def run_mapa_cmd() -> str:
