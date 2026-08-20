@@ -9920,7 +9920,7 @@
     let lastEmiDataVersion = null;
     let lastEmiDataVersionMes = null;
     let emiRefreshTimer = null;
-    /** Hash #tv/emissao/mes trava a view (segunda tela). */
+    /** Hash #tv/emissao[/view] não trava — auto-swap Diária|Mês. */
     let emiHashViewLocked = false;
     let lastEmiAtualizadoTs = null;
     let lastEmiActiveHours = 0;
@@ -11039,6 +11039,10 @@
         if (isOpsSector(CURRENT_SECTOR)) setView('live');
         else if (CURRENT_SECTOR === 'armazem') applyArmViews();
         else if (CURRENT_SECTOR === 'reciclagem') applyRecViews();
+        else if (CURRENT_SECTOR === 'emissao') {
+          setView('live');
+          applyEmiViews();
+        }
         if (mapaUiView === 'gestao') setMapaUiView('live');
         showTvHint();
         bumpTvIdle();
@@ -11057,7 +11061,7 @@
           await applyTvSlotAfterRoute({ gen, preferCurrentSector: true });
           if (gen !== tvModeGen || !TV_MODE) return;
           if (
-            (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem')
+            (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem' || CURRENT_SECTOR === 'emissao')
             && !(TV_EFFECTIVE && TV_EFFECTIVE.mosaic && !TV_EFFECTIVE.syncSwap && TV_EFFECTIVE.mode === 'fixed')
           ) {
             if (TV_EFFECTIVE && TV_EFFECTIVE.mode !== 'fixed') {
@@ -11626,7 +11630,12 @@
     function startTvSyncClock() {
       stopTvSyncClock();
       if (!TV_MODE || !TV_EFFECTIVE) return;
-      if (TV_EFFECTIVE.sector !== 'distribuicao' && TV_EFFECTIVE.sector !== 'armazem' && TV_EFFECTIVE.sector !== 'reciclagem') return;
+      if (
+        TV_EFFECTIVE.sector !== 'distribuicao'
+        && TV_EFFECTIVE.sector !== 'armazem'
+        && TV_EFFECTIVE.sector !== 'reciclagem'
+        && TV_EFFECTIVE.sector !== 'emissao'
+      ) return;
       if (TV_EFFECTIVE.mode === 'fixed') return;
       if (!TV_EFFECTIVE.syncSwap) return;
       const tick = () => {
@@ -11650,6 +11659,15 @@
           }
           return;
         }
+        if (CURRENT_SECTOR === 'emissao') {
+          const want = EMI_VIEWS[syncedOpsViewIndex(TV_EFFECTIVE.swapMs) % EMI_VIEWS.length];
+          if (want && want !== CURRENT_VIEW) {
+            setEmiView(want, { restart: false, fromSync: true });
+          } else {
+            paintSyncCountdown();
+          }
+          return;
+        }
         if (CURRENT_SECTOR !== 'distribuicao') return;
         const want = OPS_VIEWS[syncedOpsViewIndex(TV_EFFECTIVE.swapMs)];
         if (want && want !== CURRENT_VIEW) {
@@ -11667,8 +11685,12 @@
       if (!tick || !TV_EFFECTIVE || !TV_MODE) return;
       const ms = TV_EFFECTIVE.swapMs || SWAP_MS;
       const left = Math.max(1, Math.ceil((ms - (Date.now() % ms)) / 1000));
-      const views = CURRENT_SECTOR === 'armazem' ? ARM_VIEWS : OPS_VIEWS;
-      const labels = CURRENT_SECTOR === 'armazem' ? ARM_VIEW_LABELS : VIEW_LABELS;
+      const views = CURRENT_SECTOR === 'armazem' ? ARM_VIEWS
+        : (CURRENT_SECTOR === 'emissao' ? EMI_VIEWS
+          : (CURRENT_SECTOR === 'reciclagem' ? REC_VIEWS : OPS_VIEWS));
+      const labels = CURRENT_SECTOR === 'armazem' ? ARM_VIEW_LABELS
+        : (CURRENT_SECTOR === 'emissao' ? EMI_VIEW_LABELS
+          : (CURRENT_SECTOR === 'reciclagem' ? REC_VIEW_LABELS : VIEW_LABELS));
       const i = Math.floor(Date.now() / Math.max(5000, ms)) % views.length;
       const next = views[(i + 1) % views.length];
       const label = labels[next] || next;
@@ -11876,11 +11898,6 @@
         paintSyncCountdown();
         return;
       }
-      if (emiHashViewLocked) {
-        stopSwapLoopKeepScreen();
-        stopTvSyncClock();
-        return;
-      }
       if (TV_MODE && TV_EFFECTIVE && TV_EFFECTIVE.syncSwap && TV_EFFECTIVE.mode !== 'fixed') {
         startTvSyncClock();
         return;
@@ -12077,7 +12094,7 @@
         else stopSwapLoopKeepScreen();
       } else if (CURRENT_SECTOR === 'emissao') {
         applyEmiViews();
-        if (VIEW === 'live' && TV_MODE && !emiHashViewLocked) startSwapLoop();
+        if (VIEW === 'live' && TV_MODE) startSwapLoop();
         else stopSwapLoopKeepScreen();
       } else {
         stopSwapLoop();
@@ -15963,8 +15980,8 @@
         TV_SLOT = slotFromHash || TV_SLOT || readStoredTvSlot();
       }
 
-      // #tv/emissao/mes · #emissao/mes → trava view (segunda tela)
-      emiHashViewLocked = sector === 'emissao' && isEmiView(viewHint);
+      // #tv/emissao[/view] não trava — auto-swap Diária|Mês (igual coleta)
+      emiHashViewLocked = false;
 
       setSector(sector, { syncHash: false, forceTv: tv, view: viewHint });
       if (gestao) {
@@ -15972,7 +15989,7 @@
           isOpsSector(sector) ? 'distribuicao' : sector,
           isOpsSector(sector) ? (rel === '36' ? 'entrega' : (rel === '225' ? 'agendamento' : 'coleta')) : null
         );
-      } else if ((isOpsSector(sector) || sector === 'armazem') && tv) {
+      } else if ((isOpsSector(sector) || sector === 'armazem' || sector === 'emissao') && tv) {
         setView('live');
       }
       if (tv) applyTvSlotAfterRoute();
@@ -16024,10 +16041,8 @@
         sec = normalizeSectorId(eff.sector);
       }
 
-      // #tv/emissao/mes trava a view
-      if (sec === 'emissao' && hp[0] === 'tv' && isEmiView(hp[2])) {
-        emiHashViewLocked = true;
-      } else if (sec !== 'emissao') {
+      // #tv/emissao[/diaria|mes] NÃO trava — gira sozinho como coleta
+      if (sec !== 'emissao') {
         emiHashViewLocked = false;
       }
 
@@ -16053,13 +16068,15 @@
       applyTvChrome();
 
       if (eff.mosaic) {
-        // Parede: pedaço fixo na grade; Dist/Armazém podem girar sync entre as TVs
-        if ((sec === 'distribuicao' || sec === 'armazem') && eff.mode !== 'fixed' && eff.syncSwap) {
-          const views = sec === 'armazem' ? ARM_VIEWS : OPS_VIEWS;
+        // Parede: Dist/Armazém/Emissão podem girar sync entre as TVs
+        if ((sec === 'distribuicao' || sec === 'armazem' || sec === 'emissao') && eff.mode !== 'fixed' && eff.syncSwap) {
+          const views = sec === 'armazem' ? ARM_VIEWS
+            : (sec === 'emissao' ? EMI_VIEWS : OPS_VIEWS);
           const want = views[syncedOpsViewIndex(eff.swapMs) % views.length];
           if (want && want !== CURRENT_VIEW) {
             setSector(sec, { syncHash: false, forceTv: true, view: want });
             if (sec === 'armazem') applyArmViews();
+            else if (sec === 'emissao') applyEmiViews();
             else applyOpsLiveViews();
           }
           startTvSyncClock();
@@ -16070,9 +16087,8 @@
         return;
       }
 
-      // Fora da parede: só gira coleta/entrega/pátio se o setor atual for Dist/Armazém
-      // e o slot do CRT estiver amarrado a esse mesmo setor (ou TV aberta nele).
-      if (sec !== 'distribuicao' && sec !== 'armazem') {
+      // Fora da parede: Dist / Armazém / Emissão giram as views
+      if (sec !== 'distribuicao' && sec !== 'armazem' && sec !== 'emissao') {
         stopSwapLoop();
         stopTvSyncClock();
         return;
@@ -16088,11 +16104,13 @@
       }
 
       if (eff.syncSwap && (eff.mosaic || isSlotHash || sec === normalizeSectorId(eff.sector))) {
-        const views = sec === 'armazem' ? ARM_VIEWS : OPS_VIEWS;
+        const views = sec === 'armazem' ? ARM_VIEWS
+          : (sec === 'emissao' ? EMI_VIEWS : OPS_VIEWS);
         const want = views[syncedOpsViewIndex(eff.swapMs) % views.length];
         if (want && want !== CURRENT_VIEW) {
           setSector(sec, { syncHash: false, forceTv: true, view: want });
           if (sec === 'armazem') applyArmViews();
+          else if (sec === 'emissao') applyEmiViews();
           else applyOpsLiveViews();
         }
         startTvSyncClock();
@@ -17744,7 +17762,6 @@
     function stepSwap(dir) {
       if (ALERTA_LOCK_ON) return;
       if (CURRENT_SECTOR === 'emissao') {
-        if (emiHashViewLocked) return;
         if (TV_EFFECTIVE && TV_EFFECTIVE.sector === 'emissao' && TV_EFFECTIVE.mode === 'fixed') return;
         const views = EMI_VIEWS;
         const n = views.length;
@@ -17802,11 +17819,6 @@
     function restartSwapTimer() {
       if (VIEW !== 'live' || ALERTA_LOCK_ON || !TV_MODE) return;
       if (!isOpsSector(CURRENT_SECTOR) && CURRENT_SECTOR !== 'armazem' && CURRENT_SECTOR !== 'reciclagem' && CURRENT_SECTOR !== 'emissao') return;
-      if (CURRENT_SECTOR === 'emissao' && emiHashViewLocked) {
-        stopSwapLoopKeepScreen();
-        stopTvSyncClock();
-        return;
-      }
       if (TV_EFFECTIVE && TV_EFFECTIVE.mode === 'fixed') {
         stopSwapLoopKeepScreen();
         stopTvSyncClock();
@@ -17881,14 +17893,9 @@
         stopSwapLoopKeepScreen();
         return;
       }
-      if (CURRENT_SECTOR === 'emissao' && emiHashViewLocked) {
-        applyEmiViews();
-        stopSwapLoopKeepScreen();
-        stopTvSyncClock();
-        return;
-      }
       if (CURRENT_SECTOR === 'armazem') applyArmViews();
       else if (CURRENT_SECTOR === 'emissao') applyEmiViews();
+      else if (CURRENT_SECTOR === 'reciclagem') applyRecViews();
       else applyOpsLiveViews();
       applyTvChrome();
       if (TV_EFFECTIVE && TV_EFFECTIVE.mode === 'fixed') {
@@ -17931,8 +17938,10 @@
         renderTabelaGestao();
       } else {
         if (CURRENT_SECTOR === 'armazem') applyArmViews();
+        else if (CURRENT_SECTOR === 'emissao') applyEmiViews();
+        else if (CURRENT_SECTOR === 'reciclagem') applyRecViews();
         else applyOpsLiveViews();
-        if (TV_MODE && (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem')) startSwapLoop();
+        if (TV_MODE && (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem' || CURRENT_SECTOR === 'emissao')) startSwapLoop();
       }
       updateAlertaSemSaidaLock();
     }
@@ -18160,7 +18169,7 @@
           renderPendenciaPops();
         }
         if (lastCountsEnt) renderEntregaAlerts(lastCountsEnt);
-        if (VIEW === 'live' && TV_MODE && !swapTimer && (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem')) startSwapLoop();
+        if (VIEW === 'live' && TV_MODE && !swapTimer && (isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem' || CURRENT_SECTOR === 'emissao')) startSwapLoop();
         if (VIEW === 'gestao') {
           renderFiltrosGestao();
           renderTabelaGestao();
