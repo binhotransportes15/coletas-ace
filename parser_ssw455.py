@@ -727,14 +727,41 @@ def analyze_reports_455(
     rows: list[dict[str, Any]] = []
     for p in paths:
         status(f"[455] parse {p.name}")
-        rows.extend(parse_excel_455(p))
+        try:
+            parsed = parse_excel_455(p)
+        except Exception as err:
+            status(f"[455] parse falhou {p.name}: {err}")
+            # conserva amostra do arquivo para diagnóstico
+            try:
+                dbg = CACHE_DIR / f"debug_455_fail_{p.stem[:40]}.txt"
+                raw = p.read_bytes()[:4000]
+                dbg.write_bytes(raw)
+                status(f"[455] amostra salva em {dbg.name}")
+            except Exception:
+                pass
+            raise
+        status(f"[455] {p.name}: {len(parsed)} linha(s) bruta(s)")
+        if not parsed:
+            try:
+                dbg = CACHE_DIR / "debug_455_empty.txt"
+                sample = p.read_text(encoding="utf-8", errors="replace")[:3000]
+                dbg.write_text(
+                    f"file={p}\nsize={p.stat().st_size}\n---\n{sample}",
+                    encoding="utf-8",
+                )
+                status(f"[455] arquivo sem linhas úteis — amostra em {dbg.name}")
+            except Exception:
+                pass
+        rows.extend(parsed)
 
     d0, d1 = _period_bounds(periodo)
     if d0 or d1:
         before = len(rows)
         rows = [r for r in rows if _row_in_period(r, d0, d1)]
-        if before and len(rows) < before:
+        if before != len(rows):
             status(f"[455] filtro período {periodo}: {before} → {len(rows)} CTRCs")
+        elif before == 0:
+            status(f"[455] filtro período {periodo}: 0 CTRCs (nada para filtrar)")
 
     # KPIs
     ctes = len(rows)
@@ -842,9 +869,13 @@ def analyze_reports_455(
         )
 
     _write_csv(EMISSOES_455_CSV, EMISSAO_FIELDS, detail_rows)
-    _write_csv(RESUMO_455_CSV, RESUMO_FIELDS, [resumo])
-    _write_csv(EXPEDIDORES_455_CSV, EXPEDIDOR_FIELDS, expedidores)
-    _write_csv(HORAS_455_CSV, HORA_FIELDS, horas_rows)
+    # Não zera o cache se veio 0 (evita TV/dashboard perder o último bom)
+    if ctes > 0 or not RESUMO_455_CSV.exists():
+        _write_csv(RESUMO_455_CSV, RESUMO_FIELDS, [resumo])
+        _write_csv(EXPEDIDORES_455_CSV, EXPEDIDOR_FIELDS, expedidores)
+        _write_csv(HORAS_455_CSV, HORA_FIELDS, horas_rows)
+    else:
+        status("[455] 0 CTEs — cache CSV anterior preservado")
     LAST_455_JSON.write_text(
         json.dumps(
             {

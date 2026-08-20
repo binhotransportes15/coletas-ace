@@ -309,6 +309,21 @@ def download_reports_455(
 
     if path is None or not path.exists():
         raise RuntimeError("455: nenhum Excel baixado")
+    size = int(path.stat().st_size)
+    # Só cabeçalho / lixo → trata como sem dados (não zera o painel)
+    if size < 400:
+        status(f"[455] arquivo muito pequeno ({size} bytes) — desconsidera")
+        return {
+            "ok": True,
+            "files": [],
+            "paths": {},
+            "empty": True,
+            "error": f"arquivo vazio/mínimo ({size} bytes)",
+            "period": f"{ini}-{fim}",
+            "periodo_fmt": ini_ddmm if ini_ddmm == fim_ddmm else f"{ini_ddmm} – {fim_ddmm}",
+            "unidade": uni,
+            "download_dir": str(DOWNLOAD_DIR),
+        }
     return {
         "ok": True,
         "files": [str(path)],
@@ -433,6 +448,11 @@ def _preencher_455(
             f"455: período emissão não gravou no form "
             f"(lido={read.get('emiIni')}-{read.get('emiFim')} esperado={ini}-{fim})"
         )
+    if str(read.get("liq") or "").strip().upper() != "T":
+        status(f"[455] liquidação lida={read.get('liq')!r} — forçando T")
+        _fill_id(popup, "21", "T")
+        read = _read_455_form(popup)
+    status(f"[455] form(ok) {read}")
     _safe_wait(popup, 200)
 
 

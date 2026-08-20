@@ -1,19 +1,19 @@
 {
   "setor": "pendencia",
-  "updated_at": "2026-08-20T10:18:24",
+  "updated_at": "2026-08-20T11:03:16",
   "resumo_31": {
     "periodo": "01/08/26 – 20/08/26",
-    "atualizado": "20/08/2026 10:18:24",
+    "atualizado": "20/08/2026 11:03:16",
     "total_ctrcs": "393",
-    "total_codigos": "4",
-    "solucionadas": "198",
-    "abertas": "195",
-    "sla_pct": "50,4",
+    "total_codigos": "5",
+    "solucionadas": "197",
+    "abertas": "196",
+    "sla_pct": "50,1",
     "sla_medio_dias": "12,4",
     "valor_risco": "82.068.064,30",
     "aging_0_2": "18",
     "aging_3_5": "18",
-    "aging_6_mais": "159",
+    "aging_6_mais": "160",
     "topo_codigo": "60",
     "topo_label": "FALTA COM BUSCA / RECONFERENCIA",
     "topo_qtd": "98"
@@ -22,8 +22,8 @@
     {
       "codigo": "63",
       "label": "PENDENCIA SOLUCIONADA",
-      "qtd": "198",
-      "pct": "50,4",
+      "qtd": "197",
+      "pct": "50,1",
       "polaridade": "pos"
     },
     {
@@ -45,6 +45,13 @@
       "label": "PENDENCIA EM TRATATIVA",
       "qtd": "28",
       "pct": "7,1",
+      "polaridade": "neg"
+    },
+    {
+      "codigo": "33",
+      "label": "MERCADORIA AVARIADA",
+      "qtd": "1",
+      "pct": "0,3",
       "polaridade": "neg"
     }
   ]

@@ -1,19 +1,19 @@
 {
   "setor": "armazem",
-  "updated_at": "2026-08-20T10:23:16",
+  "updated_at": "2026-08-20T11:05:28",
   "resumo_78": {
-    "atualizado": "20/08/2026 10:23:12",
+    "atualizado": "20/08/2026 11:05:24",
     "total_linhas": "21",
     "total_veiculos": "9",
     "peso_total": "204.710",
-    "finalizado": "5",
+    "finalizado": "7",
     "descarregando": "0",
     "atrasado": "0",
     "aguardando": "2",
-    "chegou": "2"
+    "chegou": "0"
   },
   "resumo_177": {
-    "atualizado": "20/08/2026 10:23:16",
+    "atualizado": "20/08/2026 11:05:28",
     "mes": "08/2026",
     "total_conferentes": "13",
     "peso_total": "1658393",
@@ -25,44 +25,6 @@
     "topo_vol": "12.574"
   },
   "veiculos_amostra": [
-    {
-      "origem": "RIO DE JANEIRO",
-      "origem_sigla": "DCX",
-      "cavalo": "SVA1H59",
-      "carreta": "AXE8E35",
-      "manifesto": "007332-6",
-      "peso": "6",
-      "peso_num": "6",
-      "saida": "18/08 19:50",
-      "prev_chegada": "19/08 19:49",
-      "chegada": "19/08 10:46",
-      "inicio_descarga": "",
-      "final_descarga": "",
-      "status": "chegou",
-      "atrasado": "0",
-      "tempo_descarga_min": "",
-      "tempo_descarga": "",
-      "peso_veiculo": "8.231"
-    },
-    {
-      "origem": "GOIANIA",
-      "origem_sigla": "GYN",
-      "cavalo": "SWD9J46",
-      "carreta": "IWN1G53",
-      "manifesto": "016157-8",
-      "peso": "2",
-      "peso_num": "2",
-      "saida": "18/08 08:18",
-      "prev_chegada": "20/08 20:00",
-      "chegada": "19/08 14:02",
-      "inicio_descarga": "",
-      "final_descarga": "",
-      "status": "chegou",
-      "atrasado": "0",
-      "tempo_descarga_min": "",
-      "tempo_descarga": "",
-      "peso_veiculo": "22.755"
-    },
     {
       "origem": "GOIANIA",
       "origem_sigla": "GYN",
@@ -387,6 +349,25 @@
       "peso_veiculo": "8.231"
     },
     {
+      "origem": "RIO DE JANEIRO",
+      "origem_sigla": "DCX",
+      "cavalo": "SVA1H59",
+      "carreta": "AXE8E35",
+      "manifesto": "007332-6",
+      "peso": "6",
+      "peso_num": "6",
+      "saida": "18/08 19:50",
+      "prev_chegada": "19/08 19:49",
+      "chegada": "19/08 10:46",
+      "inicio_descarga": "20/08 10:28 domingos",
+      "final_descarga": "20/08 10:28 domingos",
+      "status": "finalizado",
+      "atrasado": "0",
+      "tempo_descarga_min": "0",
+      "tempo_descarga": "0min",
+      "peso_veiculo": "8.231"
+    },
+    {
       "origem": "GOIANIA",
       "origem_sigla": "GYN",
       "cavalo": "SWD9J46",
@@ -422,6 +403,25 @@
       "atrasado": "0",
       "tempo_descarga_min": "42",
       "tempo_descarga": "42min",
+      "peso_veiculo": "22.755"
+    },
+    {
+      "origem": "GOIANIA",
+      "origem_sigla": "GYN",
+      "cavalo": "SWD9J46",
+      "carreta": "IWN1G53",
+      "manifesto": "016157-8",
+      "peso": "2",
+      "peso_num": "2",
+      "saida": "18/08 08:18",
+      "prev_chegada": "20/08 20:00",
+      "chegada": "19/08 14:02",
+      "inicio_descarga": "20/08 10:27 domingos",
+      "final_descarga": "20/08 10:28 domingos",
+      "status": "finalizado",
+      "atrasado": "0",
+      "tempo_descarga_min": "1",
+      "tempo_descarga": "1min",
       "peso_veiculo": "22.755"
     }
   ],

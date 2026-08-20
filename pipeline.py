@@ -1737,6 +1737,18 @@ def run_pipeline_455(
         periodo=str(dl.get("periodo_fmt") or dl.get("period") or ""),
         on_status=emit,
     )
+    ctes = int((analysis.get("resumo") or {}).get("ctes") or 0)
+    if ctes <= 0:
+        # Evita apagar o painel com zeros (arquivo vazio / parse falhou / filtro agressivo)
+        emit("0 CTEs no parse — não publica (mantém último dashboard bom)")
+        return {
+            "ok": True,
+            "empty": True,
+            "download": dl,
+            "analysis": analysis,
+            "publish": {"ok": True, "skipped": True, "reason": "zero_ctes"},
+            "sheets": {"ok": True, "skipped": True, "empty": True},
+        }
     pub = publish_emissao_local(on_status=emit)
     sheets: dict[str, Any] = {"ok": False, "skipped": True}
     from config import sheets_enabled

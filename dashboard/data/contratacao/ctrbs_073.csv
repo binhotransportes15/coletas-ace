@@ -1,3 +1,3 @@
 ﻿ctrb,tipo,operacao,situacao,placa,carreta,propriedade,grupo,custo,custo_av,valor_pagar,total_ctrb,peso,frete,origem,destino,cidade_destino,fonte
-SPO 023660-8,CTRB,TRANSFERENCIA,,BDU7B51,,CARRETEIRO,contratados,8000.0,0.0,8000.0,8000.0,0.0,0.0,,APS,,contratacao_073_TT_20260820_102301.sswweb
-SPO 023661-6,CTRB,TRANSFERENCIA,,HMV9H97,,CARRETEIRO,contratados,8519.73,0.0,8519.73,8519.73,0.0,0.0,,GYN,,contratacao_073_TT_20260820_102301.sswweb
+SPO 023660-8,CTRB,TRANSFERENCIA,,BDU7B51,,CARRETEIRO,contratados,8000.0,0.0,8000.0,8000.0,0.0,0.0,,APS,,contratacao_073_TT_20260820_110508.sswweb
+SPO 023661-6,CTRB,TRANSFERENCIA,,HMV9H97,,CARRETEIRO,contratados,8519.73,0.0,8519.73,8519.73,0.0,0.0,,GYN,,contratacao_073_TT_20260820_110508.sswweb
