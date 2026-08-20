@@ -125,11 +125,16 @@ class AceSettings:
     dist_in_loop: bool = True  # 50+103(+36)+225
     armazem_in_loop: bool = True  # 078
     pendencia_in_loop: bool = True  # 031
-    contratacao_in_loop: bool = True  # 073
+    contratacao_in_loop: bool = False  # Excel agente (073 SSW desativado)
     emissao_in_loop: bool = False  # 455
     reciclagem_in_loop: bool = False  # 019 + 081 (desativado — slot virou Mapa)
     mapa_in_loop: bool = True  # Mapa Operacional · 36 + CyberMap
     cybermap_path: str = r"D:\MapaCustoRegiaoSP"
+    # Agente Contratação (planilha Excel em outro PC)
+    # Nome (ou caminho); o agente sempre resolve na Área de Trabalho do PC
+    ctr_agente_excel: str = "PRODUTIVIDADE CONTRATAÇÃO.xlsx"
+    ctr_agente_dir: str = ""  # pasta da extensão (rede/local); vazio = extensao_contratacao/
+    ctr_agente_intervalo: str = "15m"
     # /automatica: blocos em paralelo (1 browser cada)
     ciclo_paralelo: bool = True
     # Modo local: sempre grava JSON/CSV interno (dashboard LAN). Não controla nuvem.
@@ -236,6 +241,19 @@ def _payload_settings(payload: dict, defaults: AceSettings) -> AceSettings:
         contratacao_in_loop=bool(
             payload.get("contratacao_in_loop", defaults.contratacao_in_loop)
         ),
+        ctr_agente_excel=str(
+            payload.get("ctr_agente_excel")
+            if payload.get("ctr_agente_excel") is not None
+            else defaults.ctr_agente_excel
+        ).strip()
+        or defaults.ctr_agente_excel,
+        ctr_agente_dir=str(payload.get("ctr_agente_dir") or "").strip(),
+        ctr_agente_intervalo=str(
+            payload.get("ctr_agente_intervalo")
+            or defaults.ctr_agente_intervalo
+            or "15m"
+        ).strip()
+        or "15m",
         ciclo_paralelo=bool(payload.get("ciclo_paralelo", defaults.ciclo_paralelo)),
         modo_local=bool(payload.get("modo_local", defaults.modo_local)),
         sync_remoto=_resolve_sync_remoto(payload, defaults),

@@ -1,0 +1,10 @@
+{
+  "excel_path": "PRODUTIVIDADE CONTRATAÇÃO.xlsx",
+  "intervalo": "15m",
+  "sync_sheets": true,
+  "enable_sheets": true,
+  "sync_remoto": true,
+  "apps_script_url": "",
+  "apps_script_token": "",
+  "ace_root": ""
+}

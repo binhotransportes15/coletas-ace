@@ -21,6 +21,10 @@ data/secrets/*
 !data/secrets/.gitkeep
 !data/secrets/README.md
 
+# Agente Contratação (config com token Sheets)
+extensao_contratacao/config_agente.json
+extensao_contratacao/FORCE_RUN
+
 # Dashboard gerado (meta), mas HTML pode versionar
 dashboard/data/meta.json
 

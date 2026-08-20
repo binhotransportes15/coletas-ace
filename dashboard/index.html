@@ -3936,6 +3936,20 @@
     body[data-sector="contratacao"] #ctrTitle { color: #fb923c; }
 
     /* Contratação 073→200 */
+    .ctr-frete-wait {
+      color: #fbbf24;
+      font-weight: 700;
+      font-size: 0.92em;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .ctr-frete-ok {
+      color: #4ade80;
+      font-weight: 600;
+    }
+    tr.ctr-row-wait td {
+      opacity: 0.95;
+    }
     .ctr-wrap {
       height: 100vh;
       padding: 12px 14px;
@@ -9245,8 +9259,8 @@
         </div>
         <section class="arm-hero-card dash-block" data-block="chart">
           <header>
-            <h2>Destinos (unidade)</h2>
-            <div class="meta" id="ctrMeta">base 073 · UNIDADE DESTINO</div>
+            <h2>Custo por base (origem)</h2>
+            <div class="meta" id="ctrMeta">origem Excel → filial</div>
             <div class="meta" id="ctrAtualizado">atualizado —</div>
           </header>
           <div class="ctr-mix" id="ctrMix" aria-label="Mix propriedade"></div>
@@ -9256,7 +9270,7 @@
         </section>
         <section class="arm-panel dash-block" data-block="tabela">
           <header>
-            <h2>Veículos (placa · carreta · CTRB)</h2>
+            <h2>Veículos</h2>
             <div class="meta" id="ctrTabMeta">SPO</div>
           </header>
           <div class="arm-table-wrap">
@@ -9265,9 +9279,7 @@
                 <tr>
                   <th>Placa</th>
                   <th>Carreta</th>
-                  <th>Grupo</th>
-                  <th>CTRBs</th>
-                  <th>Custo</th>
+                  <th>Valor</th>
                   <th>Frete</th>
                 </tr>
               </thead>
@@ -14046,6 +14058,24 @@
       return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    function ctrHasFrete(v) {
+      const n = Number(String(v?.frete ?? '').replace(/\./g, '').replace(',', '.')) || Number(v?.frete) || 0;
+      return Number.isFinite(n) && n > 0;
+    }
+
+    function fmtCtrFreteCell(v) {
+      if (ctrHasFrete(v)) {
+        return `<span class="ctr-frete-ok">R$ ${esc(fmtCtrMoney(v.frete))}</span>`;
+      }
+      return `<span class="ctr-frete-wait">AGUARDANDO FRETE</span>`;
+    }
+
+    function fmtCtrCarreta(v) {
+      const c = String(v?.carreta || '').trim();
+      if (!c || c === '-' || c === '—' || c.toUpperCase() === 'N/A') return '—';
+      return c;
+    }
+
     function fmtCtrPeso(v) {
       const n = Number(String(v ?? '').replace(/\./g, '').replace(',', '.')) || Number(v) || 0;
       if (!Number.isFinite(n)) return String(v || '0');
@@ -14085,20 +14115,21 @@
           : lastGoodCtrDestinos
       ).slice(0, 10);
       if (!items.length) {
-        host.innerHTML = '<div class="arm-rank-empty">Sem destinos — rode `73`</div>';
+        host.innerHTML = '<div class="arm-rank-empty">Sem bases — rode o agente Excel / `73`</div>';
         return;
       }
-      const max = Math.max(...items.map((d) => Number(d.qtd) || 0), 1);
-      const total = items.reduce((s, d) => s + (Number(d.qtd) || 0), 0) || 1;
+      const max = Math.max(...items.map((d) => Number(d.custo) || Number(d.qtd) || 0), 1);
+      const totalCusto = items.reduce((s, d) => s + (Number(d.custo) || 0), 0) || 1;
       host.innerHTML = items.map((d, i) => {
         const qtd = Number(d.qtd) || 0;
-        const pct = Math.round((qtd / total) * 100);
+        const custo = Number(d.custo) || 0;
+        const pct = Math.round((custo / totalCusto) * 100);
         const skin = 't-d' + (i % 8);
         const lab = esc(String(d.destino || '—').trim() || '—');
         const tip = esc(
-          `${d.destino || '—'} · ${qtd} CTRB · custo R$ ${fmtCtrMoney(d.custo)} · frete R$ ${fmtCtrMoney(d.frete)}`
+          `${d.destino || '—'} · ${qtd} veículo(s) · custo R$ ${fmtCtrMoney(custo)} · frete R$ ${fmtCtrMoney(d.frete)}`
         );
-        const h = alturaTorreCtr(qtd, max);
+        const h = alturaTorreCtr(custo, max);
         return `<div class="torre ${skin}" title="${tip}">
           <div class="pin"><span class="${qtd >= 100 ? 'pin-lg' : ''}">${qtd}</span></div>
           <div class="barra" style="height:${h}px"><strong>${pct}<span class="pct-sign">%</span></strong></div>
@@ -15496,13 +15527,27 @@
         let veics = [];
         let destinos = [];
         try {
-          const rCsv = await loadCsvLocal(CTR_CSV.resumo || 'data/contratacao/resumo_073.csv');
-          resumo = rCsv[0] || {};
-          veics = await loadCsvLocal(CTR_CSV.veiculos || 'data/contratacao/veiculos_073.csv');
-          try {
-            destinos = await loadCsvLocal(CTR_CSV.destinos || 'data/contratacao/destinos_073.csv');
-          } catch (_) {
-            destinos = [];
+          if (!PREFER_LOCAL_CSV && SCRIPT_URL) {
+            try {
+              const [rSum, rVeic, rDest] = await Promise.all([
+                chamarPlanilha('resumo073'),
+                chamarPlanilha('veiculos073'),
+                chamarPlanilha('destinos073'),
+              ]);
+              resumo = (rSum.rows && rSum.rows[0]) || {};
+              veics = rVeic.rows || [];
+              destinos = rDest.rows || [];
+            } catch (_) { /* cai no CSV */ }
+          }
+          if (!Object.keys(resumo).length && !veics.length) {
+            const rCsv = await loadCsvLocal(CTR_CSV.resumo || 'data/contratacao/resumo_073.csv');
+            resumo = rCsv[0] || {};
+            veics = await loadCsvLocal(CTR_CSV.veiculos || 'data/contratacao/veiculos_073.csv');
+            try {
+              destinos = await loadCsvLocal(CTR_CSV.destinos || 'data/contratacao/destinos_073.csv');
+            } catch (_) {
+              destinos = [];
+            }
           }
           if (resumo && Object.keys(resumo).length) lastGoodCtrResumo = { ...resumo };
           if (veics.length) lastGoodCtrVeics = veics.slice();
@@ -15537,8 +15582,8 @@
         if (meta) {
           meta.textContent = [
             resumo.total_ctrbs ? `${resumo.total_ctrbs} CTRB/OS` : '',
-            destinos.length ? `${destinos.length} destinos` : '',
-            '073 · unidade destino',
+            destinos.length ? `${destinos.length} bases` : '',
+            'origem → base',
           ].filter(Boolean).join(' · ');
         }
 
@@ -15556,15 +15601,13 @@
         if (tb) {
           const sorted = veics.slice().sort((a, b) => Number(b.custo || 0) - Number(a.custo || 0));
           tb.innerHTML = sorted.slice(0, 120).map((v) => `
-            <tr>
+            <tr class="${ctrHasFrete(v) ? 'ctr-row-ok' : 'ctr-row-wait'}">
               <td class="mono">${esc(v.placa || '—')}</td>
-              <td class="mono">${esc(v.carreta || '—')}</td>
-              <td>${esc(({'contratados':'CARRETEIRO · TRANSF'}[v.grupo] || v.grupo || v.propriedade || '—'))}</td>
-              <td class="mono right">${esc(v.qtd_ctrb || '0')}</td>
-              <td class="mono right">${esc(fmtCtrMoney(v.custo))}</td>
-              <td class="mono right">${esc(fmtCtrMoney(v.frete))}</td>
+              <td class="mono">${esc(fmtCtrCarreta(v))}</td>
+              <td class="mono right">R$ ${esc(fmtCtrMoney(v.custo))}</td>
+              <td class="mono right">${fmtCtrFreteCell(v)}</td>
             </tr>
-          `).join('') || `<tr><td colspan="6" class="muted">Sem carreteiros (transferência) — rode \`73\` no ACE</td></tr>`;
+          `).join('') || `<tr><td colspan="4" class="muted">Sem dados — rode o agente Excel / \`73\` no ACE</td></tr>`;
         }
         if (stamp) lastCtrDataVersion = stamp;
         else if (resumo.atualizado) lastCtrDataVersion = String(resumo.atualizado);

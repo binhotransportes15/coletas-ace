@@ -1151,18 +1151,50 @@ def run_dual_cycle(
                 emit(f"031 FALHOU: {err}")
 
         if getattr(cfg, "contratacao_in_loop", False):
-            emit("073 / Contratacao (filiais 200)...")
+            emit("Contratação · custo Excel (ontem+hoje) + frete 200…")
             try:
-                result_73 = run_pipeline_contratacao(
-                    credentials=creds,
+                from dates import periodo_ctr_ontem_hoje
+                from extensao_contratacao.pipeline_agente import run_pipeline_contratacao_excel
+                from parser_ssw0644 import analyze_reports_200
+                from publish_dashboard import publish_contratacao_local
+                from sheets_sync_073 import sync_sheets_073
+                from ssw_200 import download_reports_200
+
+                result_73 = run_pipeline_contratacao_excel(
                     settings=cfg,
-                    headless=use_headless,
-                    on_status=lambda m: emit(f"[73] {m}"),
+                    on_status=lambda m: emit(f"[ctr] {m}"),
+                    sync_sheets=False,
                 )
-                emit("073 concluido.")
+                placas = list(result_73.get("placas") or [])
+                if placas:
+                    ini, fim = periodo_ctr_ontem_hoje()
+                    emit(f"CRT 200 frete {ini}->{fim} (ontem+hoje)…")
+                    try:
+                        dl200 = download_reports_200(
+                            period=(ini, fim),
+                            unidade_origem="",
+                            tipo_arquivo="E",
+                            tag="CTR",
+                            credentials=creds,
+                            settings=cfg,
+                            headless=use_headless,
+                            on_status=lambda m: emit(f"[200] {m}"),
+                        )
+                        analyze_reports_200(
+                            dl200.get("files") or [],
+                            placas=placas,
+                            on_status=lambda m: emit(f"[200] {m}"),
+                        )
+                    except Exception as err200:  # noqa: BLE001
+                        emit(f"200 avisou: {err200} (custo Excel mantido)")
+                publish_contratacao_local(on_status=lambda m: emit(f"[ctr] {m}"))
+                sync_sheets_073(
+                    settings=cfg, on_status=lambda m: emit(f"[ctr] {m}"), force=False
+                )
+                emit("Contratação concluida.")
             except Exception as err:  # noqa: BLE001
                 errors["73"] = str(err)
-                emit(f"073 FALHOU: {err}")
+                emit(f"Contratação FALHOU: {err}")
 
         if getattr(cfg, "emissao_in_loop", False):
             emit("455 / Emissao sequencial...")
@@ -1362,13 +1394,42 @@ def run_parallel_cycle(
         )
 
     def _run_73() -> dict[str, Any]:
-        return run_pipeline_contratacao(
-            credentials=creds,
+        from dates import periodo_ctr_ontem_hoje
+        from extensao_contratacao.pipeline_agente import run_pipeline_contratacao_excel
+        from parser_ssw0644 import analyze_reports_200
+        from publish_dashboard import publish_contratacao_local
+        from sheets_sync_073 import sync_sheets_073
+        from ssw_200 import download_reports_200
+
+        result = run_pipeline_contratacao_excel(
             settings=cfg,
-            headless=use_headless,
-            on_status=lambda m: emit(f"[73] {m}"),
-            clean_downloads=False,
+            on_status=lambda m: emit(f"[ctr] {m}"),
+            sync_sheets=False,
         )
+        placas = list(result.get("placas") or [])
+        if placas:
+            ini, fim = periodo_ctr_ontem_hoje()
+            try:
+                dl200 = download_reports_200(
+                    period=(ini, fim),
+                    unidade_origem="",
+                    tipo_arquivo="E",
+                    tag="CTR",
+                    credentials=creds,
+                    settings=cfg,
+                    headless=use_headless,
+                    on_status=lambda m: emit(f"[200] {m}"),
+                )
+                analyze_reports_200(
+                    dl200.get("files") or [],
+                    placas=placas,
+                    on_status=lambda m: emit(f"[200] {m}"),
+                )
+            except Exception as err200:  # noqa: BLE001
+                emit(f"200 avisou: {err200}")
+        publish_contratacao_local(on_status=lambda m: emit(f"[ctr] {m}"))
+        sync_sheets_073(settings=cfg, on_status=lambda m: emit(f"[ctr] {m}"))
+        return result
 
     def _run_455() -> dict[str, Any]:
         return run_pipeline_455(

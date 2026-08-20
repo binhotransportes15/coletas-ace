@@ -539,7 +539,7 @@ _SECTOR_GUIDE: tuple[dict[str, str], ...] = (
         "flag": "contratacao_in_loop",
         "interval": "contratacao_intervalo",
         "reports": "73 → 200",
-        "blurb": "Fretes do dia (073) cruzados com manifesto/filiais 200.",
+        "blurb": "Planilha produtividade + frete SSW 200 (placa cavalo).",
     },
     {
         "id": "455",
@@ -2957,6 +2957,9 @@ _FIELD_LABELS: dict[str, str] = {
     "pendencia_intervalo": "Tempo · pendência",
     "contratacao_in_loop": "Contratação no automático",
     "contratacao_intervalo": "Tempo · contratação",
+    "ctr_agente_excel": "Planilha Contratação (Excel)",
+    "ctr_agente_dir": "Pasta do agente Excel",
+    "ctr_agente_intervalo": "Tempo · agente Excel",
     "emissao_in_loop": "Emissão no automático",
     "emissao_intervalo": "Tempo · emissão",
     "mapa_in_loop": "Mapa no automático",
@@ -3027,8 +3030,11 @@ _FIELD_HELP: dict[str, str] = {
     "armazem_intervalo": "Intervalo só do armazém. Vazio = padrão.",
     "pendencia_in_loop": "Inclui pendência (031) no modo automático.",
     "pendencia_intervalo": "Intervalo só da pendência. Vazio = padrão.",
-    "contratacao_in_loop": "Inclui contratação (073 → 200) no modo automático.",
+    "contratacao_in_loop": "Inclui contratação (Excel → 200) no modo automático.",
     "contratacao_intervalo": "Intervalo só da contratação. Vazio = padrão.",
+    "ctr_agente_excel": "Nome do arquivo na Área de Trabalho (sempre Desktop).",
+    "ctr_agente_dir": "Pasta do agente (outro PC / rede) para ctr agente update",
+    "ctr_agente_intervalo": "Intervalo do agente Excel (ex.: 15m)",
     "emissao_in_loop": "Inclui emissão (455) no modo automático.",
     "emissao_intervalo": "Intervalo só da emissão. Vazio = padrão.",
     "mapa_in_loop": "Inclui mapa operacional no modo automático.",
@@ -4216,7 +4222,7 @@ class AceCrtConsole(QWidget):
                 [
                     ("Pátio / veículos", "78", "Veículos no armazém, KPIs e torres do 078.", "78"),
                     ("Pendências / SLA", "31", "Códigos de pendência e ofensores (inclui SLA).", "31"),
-                    ("Frete 073→200", "73", "Contratação do dia: 073 cruzado com filiais 200.", "73"),
+                    ("Frete Excel→200", "73", "Contratação: planilha produtividade + frete 200.", "73"),
                 ],
             ),
             (
@@ -4622,7 +4628,7 @@ class AceCrtConsole(QWidget):
             "local": ("Modo local / rede", "JSON interno e acesso na Wi‑Fi (detalhes na aba Local)."),
             "armazem": ("Armazém", "Ajustes do setor 078."),
             "pendencia": ("Pendência", "Ajustes do setor 031."),
-            "contratacao": ("Contratação", "Ajustes 073 → 200."),
+            "contratacao": ("Contratação", "Ajustes Excel → 200."),
             "automacao": ("Automação", "Use a aba Automação para setores e intervalos."),
             "crt": (
                 "Bloqueio do painel",
@@ -4840,7 +4846,7 @@ class AceCrtConsole(QWidget):
             ("dist", "Distribuição", "50 · 103 · 36 · 225", "dist_in_loop", "dist_intervalo"),
             ("78", "Armazém", "078 · descarga", "armazem_in_loop", "armazem_intervalo"),
             ("31", "Pendência", "031 · ofensores/SLA", "pendencia_in_loop", "pendencia_intervalo"),
-            ("73", "Contratação", "073 → 200", "contratacao_in_loop", "contratacao_intervalo"),
+            ("73", "Contratação", "Excel → 200", "contratacao_in_loop", "contratacao_intervalo"),
             ("455", "Emissão", "455 · fretes do dia", "emissao_in_loop", "emissao_intervalo"),
             ("mapa", "Mapa Operacional", "36 · rotas na rua", "mapa_in_loop", "mapa_intervalo"),
         )
@@ -4875,6 +4881,42 @@ class AceCrtConsole(QWidget):
             iv_help.setWordWrap(True)
             bl.addWidget(iv_help)
             lay.addWidget(box)
+
+        lay.addWidget(self._section("Agente Contratação (outro PC)"))
+        tip_ctr = QLabel(
+            "Pasta do ACE (ou extensao_contratacao) no PC da planilha — "
+            "rede UNC, ex.: \\\\PC-NOME\\ACE_AnalisadorColetaEntrega. "
+            "Depois use Push para enviar atualizações."
+        )
+        tip_ctr.setObjectName("hint")
+        tip_ctr.setWordWrap(True)
+        lay.addWidget(tip_ctr)
+        self._fields["ctr_agente_dir"] = QLineEdit()
+        self._fields["ctr_agente_dir"].setPlaceholderText(
+            r"\\PC-NOME\ACE_AnalisadorColetaEntrega"
+        )
+        row_dir = QHBoxLayout()
+        row_dir.addWidget(QLabel("Pasta remota"))
+        row_dir.addWidget(self._fields["ctr_agente_dir"], 1)
+        lay.addLayout(row_dir)
+        self._fields["ctr_agente_intervalo"] = QLineEdit()
+        self._fields["ctr_agente_intervalo"].setPlaceholderText("15m")
+        self._fields["ctr_agente_intervalo"].setMaximumWidth(120)
+        row_iv = QHBoxLayout()
+        row_iv.addWidget(QLabel("Intervalo agente"))
+        row_iv.addWidget(self._fields["ctr_agente_intervalo"])
+        row_iv.addStretch(1)
+        lay.addLayout(row_iv)
+        row_push = QHBoxLayout()
+        btn_push_ctr = QPushButton("Push agente → outro PC")
+        btn_push_ctr.setObjectName("primary")
+        btn_push_ctr.setToolTip("Copia o código atual para ctr_agente_dir e força um ciclo")
+        btn_push_ctr.clicked.connect(self._push_agente_ctr)
+        btn_status_ctr = QPushButton("Status agente")
+        btn_status_ctr.clicked.connect(lambda: self.run_command("ctr agente status"))
+        row_push.addWidget(btn_push_ctr)
+        row_push.addWidget(btn_status_ctr)
+        lay.addLayout(row_push)
 
         lay.addWidget(self._section("Controle"))
         row_ctrl = QHBoxLayout()
@@ -4921,6 +4963,11 @@ class AceCrtConsole(QWidget):
             self.auto_status.setText(
                 "Automático ligado · " + (" · ".join(parts) if parts else "nenhum setor")
             )
+
+    def _push_agente_ctr(self) -> None:
+        """Salva ctr_agente_dir e envia o código do agente ao PC remoto."""
+        self._save_config_silent()
+        self.run_command("push ctr")
 
     def _save_config_silent(self) -> bool:
         """Salva config sem popup (usado ao iniciar o automático)."""
@@ -5641,7 +5688,10 @@ class AceCrtConsole(QWidget):
 
         lay.addWidget(self._section("Contratação (avançado)"))
         for label, cmd in (
-            ("Só 073 hoje (sem frete 200)", "73 so73"),
+            ("Só Excel (sem frete 200)", "73 sem200"),
+            ("Push agente → outro PC", "push ctr"),
+            ("Status agente Excel", "ctr agente status"),
+            ("Legado SSW 073", "73 legado"),
         ):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
@@ -5650,7 +5700,8 @@ class AceCrtConsole(QWidget):
         lay.addWidget(self._section("Publicar"))
         for label, cmd in (
             ("Ver situação da publicação", "status"),
-            ("Publicar no site", "push"),
+            ("Publicar site (GitHub)", "push"),
+            ("Push agente Contratação", "push ctr"),
             ("Trazer atualizações", "pull"),
         ):
             b = QPushButton(label)

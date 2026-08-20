@@ -41,6 +41,10 @@ def _clean(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "").replace("\xa0", " ")).strip()
 
 
+def _norm_placa(value: Any) -> str:
+    return re.sub(r"[^A-Z0-9]", "", str(value or "").upper())
+
+
 def parse_ssw0644(path: Path | str, *, placas_ok: set[str] | None = None) -> list[dict[str, Any]]:
     """Lê CSV ssw0644 (linha 0=título, 1=header, 2+=dados)."""
     path = Path(path)
@@ -76,6 +80,8 @@ def parse_ssw0644(path: Path | str, *, placas_ok: set[str] | None = None) -> lis
     if i_placa < 0 or i_frete < 0:
         raise RuntimeError(f"0644: colunas placa/frete nao encontradas em {path.name}")
 
+    placas_norm = {_norm_placa(p) for p in placas_ok} if placas_ok else None
+
     # agrega por placa (vários manifestos)
     agg: dict[str, dict[str, Any]] = {}
     for ln in lines[header_idx + 1 :]:
@@ -85,10 +91,10 @@ def parse_ssw0644(path: Path | str, *, placas_ok: set[str] | None = None) -> lis
         # pula linhas título (tipo 0/1)
         if cols[0].strip() in {"0", "1"} and len(cols) < 5:
             continue
-        placa = _clean(cols[i_placa]).upper() if i_placa < len(cols) else ""
-        if not placa or placa in {"PLACA_CAVALO", "PLACA"}:
+        placa = _norm_placa(cols[i_placa]) if i_placa < len(cols) else ""
+        if not placa or placa in {"PLACACAVALO", "PLACA"}:
             continue
-        if placas_ok is not None and placa not in placas_ok:
+        if placas_norm is not None and placa not in placas_norm:
             continue
         frete = _parse_money(cols[i_frete]) if i_frete < len(cols) else 0.0
         peso = _parse_money(cols[i_peso]) if i_peso >= 0 and i_peso < len(cols) else 0.0
@@ -136,11 +142,12 @@ def merge_frete_200_into_073(
     with VEICULOS_073_CSV.open(encoding="utf-8-sig", newline="") as fh:
         veiculos = list(csv.DictReader(fh))
 
-    by_placa = { (r.get("placa") or "").upper(): r for r in frete_rows if r.get("placa") }
+    by_placa = {_norm_placa(r.get("placa")): r for r in frete_rows if r.get("placa")}
 
+    # frete do 200 só enriquece — nunca zera/altera custo (Excel/dia anterior)
     updated = 0
     for v in veiculos:
-        placa = (v.get("placa") or "").upper()
+        placa = _norm_placa(v.get("placa"))
         extra = by_placa.get(placa)
         if not extra:
             continue
@@ -148,7 +155,7 @@ def merge_frete_200_into_073(
         if frete > 0:
             v["frete"] = f"{frete:.2f}"
             updated += 1
-
+        # custo permanece como estava (dia anterior / Excel)
     _write_csv(VEICULOS_073_CSV, VEICULO_FIELDS, veiculos)
     _write_csv(FRETE_200_CSV, FRETE_FIELDS, frete_rows)
 
@@ -195,7 +202,7 @@ def analyze_reports_200(
 ) -> dict[str, Any]:
     status = on_status or (lambda _m: None)
     path_list = paths if isinstance(paths, (list, tuple)) else [paths]
-    placas_ok = {p.upper() for p in (placas or []) if p} or None
+    placas_ok = {_norm_placa(p) for p in (placas or []) if p} or None
     all_rows: list[dict[str, Any]] = []
     # re-agrega se vários arquivos
     by_placa: dict[str, dict[str, Any]] = defaultdict(

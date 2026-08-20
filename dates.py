@@ -136,6 +136,13 @@ def periodo_36_ontem_hoje(hoje: date | datetime | None = None) -> tuple[str, str
     return to_ddmm(ini), to_ddmm(today)
 
 
+def periodo_ctr_ontem_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
+    """Contratação · frete 200 e janela de custo: ontem → hoje (DDMM, DDMM)."""
+    today = _as_date(hoje)
+    ontem = today - timedelta(days=1)
+    return to_ddmm(ontem), to_ddmm(today)
+
+
 def data_corte_emissao_36(hoje: date | datetime | None = None) -> date:
     """Dia-base do corte 19:00 (sexta na segunda; ontem nos demais)."""
     today = _as_date(hoje)

@@ -20,6 +20,7 @@
  *       | ?action=agendamentos225 | ?action=resumo225 | ?action=alertas225
  *       | ?action=veiculos78 | ?action=resumo78 | ?action=ping
  *       | ?action=resumo31 | ?action=ofensores31 | ?action=pendencias31
+ *       | ?action=resumo073 | ?action=veiculos073 | ?action=destinos073
  *       | ?action=resumo455 | ?action=expedidores455 | ?action=horas455
  * Escrita do ACE (com token): POST JSON action clear/append/replace|replace_many|ping|bump
  * replace_many: várias abas num POST só (ciclo automático rápido)
@@ -35,6 +36,7 @@
  * Abas 078: Veiculos78, Resumo78
  * Abas 177: Conferentes177, Resumo177
  * Abas 031: Pendencias31, Resumo31, Ofensores31
+ * Abas 073: Resumo073, Veiculos073, Destinos073
  * Abas 455: Resumo455, Expedidores455, Horas455
  */
 
@@ -99,6 +101,8 @@ function doGet(e) {
       resumo455: 'Resumo455',
       expedidores455: 'Expedidores455',
       horas455: 'Horas455',
+      resumo073: 'Resumo073',
+      destinos073: 'Destinos073',
     };
     if (cachedActions[action]) {
       return cachedSheetJson_(action, cachedActions[action]);
@@ -251,6 +255,30 @@ function doGet(e) {
         rows: rows31,
         total: rows31.length,
         report: '031',
+      });
+    }
+
+    if (action === 'veiculos073' || action === 'veiculos73' || action === '073' || action === 'ctr') {
+      var rows073 = sheetToObjects_('Veiculos073');
+      return json_({
+        ok: true,
+        version: getDataVersion_(),
+        updated_at: new Date().toISOString(),
+        rows: rows073,
+        total: rows073.length,
+        report: '073',
+      });
+    }
+
+    if (action === 'destinos073' || action === 'destinos73') {
+      var dest073 = sheetToObjects_('Destinos073');
+      return json_({
+        ok: true,
+        version: getDataVersion_(),
+        updated_at: new Date().toISOString(),
+        rows: dest073,
+        total: dest073.length,
+        report: '073',
       });
     }
 

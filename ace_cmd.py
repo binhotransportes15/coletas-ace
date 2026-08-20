@@ -22,6 +22,7 @@ Modo automatico (sem menu):
 from __future__ import annotations
 
 import getpass
+import json
 import os
 import re
 import subprocess
@@ -70,6 +71,9 @@ EDITABLE: dict[str, tuple[str, str, bool]] = {
     "pendencia_intervalo": ("automacao", "str", False),
     "contratacao_in_loop": ("automacao", "bool", False),
     "contratacao_intervalo": ("automacao", "str", False),
+    "ctr_agente_excel": ("automacao", "str", False),
+    "ctr_agente_dir": ("automacao", "str", False),
+    "ctr_agente_intervalo": ("automacao", "str", False),
     "emissao_in_loop": ("automacao", "bool", False),
     "emissao_intervalo": ("automacao", "str", False),
     "reciclagem_in_loop": ("automacao", "bool", False),
@@ -174,7 +178,12 @@ def _save_payload(payload: dict[str, Any]) -> None:
         dist_in_loop=bool(payload.get("dist_in_loop", True)),
         armazem_in_loop=bool(payload.get("armazem_in_loop", True)),
         pendencia_in_loop=bool(payload.get("pendencia_in_loop", True)),
-        contratacao_in_loop=bool(payload.get("contratacao_in_loop", True)),
+        contratacao_in_loop=bool(payload.get("contratacao_in_loop", False)),
+        ctr_agente_excel=str(
+            payload.get("ctr_agente_excel") or "PRODUTIVIDADE CONTRATAÇÃO.xlsx"
+        ),
+        ctr_agente_dir=str(payload.get("ctr_agente_dir") or ""),
+        ctr_agente_intervalo=str(payload.get("ctr_agente_intervalo") or "15m"),
         emissao_in_loop=bool(payload.get("emissao_in_loop", False)),
         reciclagem_in_loop=bool(payload.get("reciclagem_in_loop", False)),
         mapa_in_loop=bool(payload.get("mapa_in_loop", True)),
@@ -784,6 +793,11 @@ def cmd_edit(payload: dict[str, Any], parts: list[str]) -> str:
         "contratacao_loop": "contratacao_in_loop",
         "ctr_loop": "contratacao_in_loop",
         "73_loop": "contratacao_in_loop",
+        "ctr_excel": "ctr_agente_excel",
+        "ctr_agente": "ctr_agente_excel",
+        "ctr_dir": "ctr_agente_dir",
+        "ctr_intervalo": "ctr_agente_intervalo",
+        "ctr_tempo": "ctr_agente_intervalo",
         "emissao_loop": "emissao_in_loop",
         "455_loop": "emissao_in_loop",
         "mapa_loop": "mapa_in_loop",
@@ -1093,11 +1107,77 @@ def run_pipeline_reciclagem_cmd(extra: list[str] | None = None) -> str:
 
 
 def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
-    """`73` / `contratacao` · 073 + 200 por destino (sem 076). `73 so73` só 073."""
+    """`73` · Excel (extensão) + frete 200 no CRT. `73 legado` = SSW 073 antigo."""
     from pipeline import run_pipeline_contratacao
 
     extra = extra or []
-    # 076 desligado por padrão; `com76` reativa se precisar
+    extra_l = [str(x).lower() for x in extra]
+    use_legado = any(
+        x in {"legado", "legacy", "ssw", "073", "tela", "mos"} for x in extra_l
+    )
+    if not use_legado:
+        from dates import periodo_ctr_ontem_hoje
+        from extensao_contratacao.pipeline_agente import run_pipeline_contratacao_excel
+        from parser_ssw0644 import analyze_reports_200
+        from ssw_200 import download_reports_200
+
+        skip_200 = any(x in {"sem200", "skip200", "soexcel", "sóexcel"} for x in extra_l)
+        excel = ""
+        for x in extra:
+            p = Path(x)
+            if p.suffix.lower() in {".xlsx", ".xlsm", ".xls"} and p.exists():
+                excel = str(p)
+                break
+        print("\n=== Pipeline Contratação (custo ontem+hoje · frete 200 ontem+hoje) ===")
+        if excel:
+            print(f"  Excel: {excel}")
+        result = run_pipeline_contratacao_excel(
+            excel_path=excel or None,
+            on_status=_on_status,
+            sync_sheets=True,
+        )
+        placas = list(result.get("placas") or [])
+        if not skip_200 and placas:
+            try:
+                ini, fim = periodo_ctr_ontem_hoje()
+                print(f"  CRT: SSW 200 frete {ini}->{fim} (ontem+hoje)…")
+                dl200 = download_reports_200(
+                    period=(ini, fim),
+                    unidade_origem="",
+                    tipo_arquivo="E",
+                    tag="CTR",
+                    headless=_cfg_headless(),
+                    on_status=_on_status,
+                )
+                analyze_reports_200(
+                    dl200.get("files") or [],
+                    placas=placas,
+                    on_status=_on_status,
+                )
+                from publish_dashboard import publish_contratacao_local
+                from sheets_sync_073 import sync_sheets_073
+
+                publish_contratacao_local(on_status=_on_status)
+                sync_sheets_073(on_status=_on_status)
+            except Exception as err:  # noqa: BLE001
+                _on_status(f"200 avisou: {err}")
+        elif skip_200:
+            print("  modo: só Excel / custo (sem 200)")
+        # releitura resumo
+        from parser_ssw073 import RESUMO_073_CSV
+        import csv as _csv
+
+        resumo = result.get("resumo") or {}
+        if RESUMO_073_CSV.exists():
+            with RESUMO_073_CSV.open(encoding="utf-8-sig", newline="") as fh:
+                resumo = next(_csv.DictReader(fh), resumo) or resumo
+        return (
+            f"CTR OK · veículos={resumo.get('total_veiculos')} "
+            f"custo=R${resumo.get('custo_fmt')} frete=R${resumo.get('frete_fmt')} "
+            f"· placas={len(placas)} · janela=ontem+hoje"
+        )
+
+    # legado 073…
     skip_076 = not any(str(x).lower() in {"com76", "com076", "com_76"} for x in extra)
     if any(str(x).lower() in {"so73", "só73", "skip76", "sem76"} for x in extra):
         skip_076 = True
@@ -1117,6 +1197,12 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
             "com76",
             "com076",
             "com_76",
+            "legado",
+            "legacy",
+            "ssw",
+            "073",
+            "tela",
+            "mos",
         }:
             continue
         p = Path(x)
@@ -1127,7 +1213,7 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
             local_200.append(str(p))
         else:
             local_073.append(str(p))
-    print("\n=== Pipeline Contratação (073 → filiais: 200) ===")
+    print("\n=== Pipeline Contratação LEGADO (073 → filiais: 200) ===")
     if local_073 or local_200:
         if local_073:
             print(f"  073 local: {', '.join(local_073)}")
@@ -1155,6 +1241,89 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
         f"custo=R${resumo.get('custo_fmt')} frete=R${resumo.get('frete_fmt')} "
         f"· placas={len(result.get('placas') or [])}{extra_msg}"
     )
+
+
+def run_sync_073() -> str:
+    from publish_dashboard import publish_contratacao_local
+    from sheets_sync_073 import sync_sheets_073
+
+    print("\n=== Sync Sheets Contratação ===")
+    r = sync_sheets_073(on_status=_on_status)
+    publish_contratacao_local(on_status=_on_status)
+    if r.get("ok"):
+        return (
+            f"sync073 OK · veículos={r.get('veiculos')} "
+            f"destinos={r.get('destinos')}"
+        )
+    if r.get("skipped"):
+        return f"sync073 pulou · {r.get('reason')}"
+    return f"sync073 falhou · {r.get('error')}"
+
+
+def run_ctr_agente_cmd(extra: list[str] | None = None) -> str:
+    """`ctr agente` / `agente ctr` / `push ctr` · update|push | once | status."""
+    extra = extra or []
+    toks = [str(x).lower() for x in extra]
+    if not toks or toks[0] in {"update", "push", "deploy", "atualizar", "enviar"}:
+        from extensao_contratacao.agent_main import push_update_from_main
+        from config import load_settings
+
+        cfg = load_settings()
+        dest = None
+        for x in extra:
+            xl = str(x).lower()
+            if xl in {"update", "push", "deploy", "atualizar", "enviar"}:
+                continue
+            p = Path(x)
+            # UNC pode não “existir” no Path.exists antes do acesso — aceita string de pasta
+            if xl.startswith("\\\\") or xl.startswith("//") or (p.exists() and p.is_dir()):
+                dest = p
+                break
+        if dest is None and not str(cfg.ctr_agente_dir or "").strip():
+            return (
+                "push agente: configure ctr_agente_dir (pasta no outro PC).\n"
+                "Ex.: /e ctr_agente_dir \\\\PC-NOME\\ACE_AnalisadorColetaEntrega\n"
+                "Depois: push ctr   ou   ctr agente push"
+            )
+        return push_update_from_main(dest or (cfg.ctr_agente_dir or None))
+    if toks[0] in {"once", "agora", "run", "rodar"}:
+        from extensao_contratacao.agent_main import run_once
+
+        result = run_once()
+        resumo = result.get("resumo") or {}
+        return (
+            f"agente once OK · veíc={resumo.get('total_veiculos')} "
+            f"custo={resumo.get('custo_fmt')} frete={resumo.get('frete_fmt')}"
+        )
+    if toks[0] in {"status", "info", "cfg"}:
+        from config import load_settings
+
+        cfg = load_settings()
+        dest = str(cfg.ctr_agente_dir or "").strip()
+        ver = "—"
+        if dest:
+            vp = Path(dest)
+            if vp.name.lower() != "extensao_contratacao":
+                if (vp / "extensao_contratacao" / "version.json").exists():
+                    vp = vp / "extensao_contratacao"
+            vfile = vp / "version.json"
+            if not vfile.exists() and (Path(dest) / "version.json").exists():
+                vfile = Path(dest) / "version.json"
+            if vfile.exists():
+                try:
+                    ver = json.loads(vfile.read_text(encoding="utf-8")).get(
+                        "pushed_at", "—"
+                    )
+                except Exception:
+                    ver = "(version.json ilegível)"
+        return (
+            f"ctr_agente_excel={cfg.ctr_agente_excel or '—'}\n"
+            f"ctr_agente_dir={dest or '(não configurado — obrigatório para push)'}\n"
+            f"ctr_agente_intervalo={cfg.ctr_agente_intervalo}\n"
+            f"contratacao_in_loop={cfg.contratacao_in_loop}\n"
+            f"ultimo_push_remoto={ver}"
+        )
+    return "uso: push ctr | ctr agente push | ctr agente once | ctr agente status"
 
 
 def run_sync_455() -> str:
@@ -1651,6 +1820,26 @@ def _execute_line_body(
         return (run_pipeline_reciclagem_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
     if cmd in {"73", "/73", "76", "/76", "contratacao", "/contratacao", "contratação"}:
         return (run_pipeline_contratacao_cmd(parts[1:] if len(parts) > 1 else None), _load_payload())
+    if cmd in {"sync73", "/sync73", "sheets73", "syncctr", "synccontratacao"}:
+        return (run_sync_073(), payload)
+    if cmd in {"agente", "/agente", "ctragente"}:
+        # `agente ctr update` ou `agente update`
+        rest = parts[1:] if len(parts) > 1 else []
+        if rest and str(rest[0]).lower() in {"ctr", "contratacao", "contratação", "73"}:
+            rest = rest[1:]
+        return (run_ctr_agente_cmd(rest), _load_payload())
+    if cmd in {"ctr", "/ctr"} and len(parts) > 1 and str(parts[1]).lower() in {
+        "agente",
+        "agent",
+        "excel",
+        "update",
+        "once",
+        "status",
+    }:
+        rest = parts[1:]
+        if str(rest[0]).lower() in {"agente", "agent", "excel"}:
+            rest = rest[1:]
+        return (run_ctr_agente_cmd(rest or ["status"]), _load_payload())
     if cmd in {"sync31", "/sync31", "sheets31"}:
         return (run_sync_31(), payload)
     if cmd in {"sync455", "/sync455", "sheets455", "syncemissao"}:
@@ -1736,6 +1925,18 @@ def _execute_line_body(
         "subir",
         "/subir",
     }:
+        # push ctr / push agente → atualiza o programa no outro PC
+        rest = parts[1:] if len(parts) > 1 else []
+        if rest and str(rest[0]).lower() in {
+            "ctr",
+            "contratacao",
+            "contratação",
+            "73",
+            "agente",
+            "agent",
+            "excel",
+        }:
+            return (run_ctr_agente_cmd(["push", *rest[1:]]), _load_payload())
         return (run_git_push(parts), payload)
     if cmd in {"pull", "/pull", "baixar", "/baixar"}:
         return (run_git_pull(), payload)
@@ -1968,6 +2169,26 @@ def main(argv: list[str] | None = None) -> int:
             elif cmd in {"73", "/73", "76", "/76", "contratacao", "/contratacao", "contratação"}:
                 message = run_pipeline_contratacao_cmd(parts[1:] if len(parts) > 1 else None)
                 payload = _load_payload()
+            elif cmd in {"sync73", "/sync73", "sheets73", "syncctr"}:
+                message = run_sync_073()
+            elif cmd in {"agente", "/agente"} or (
+                cmd in {"ctr", "/ctr"}
+                and len(parts) > 1
+                and str(parts[1]).lower() in {"agente", "agent", "excel", "update", "once", "status"}
+            ):
+                rest = parts[1:] if len(parts) > 1 else []
+                if rest and str(rest[0]).lower() in {
+                    "ctr",
+                    "contratacao",
+                    "contratação",
+                    "73",
+                    "agente",
+                    "agent",
+                    "excel",
+                }:
+                    rest = rest[1:]
+                message = run_ctr_agente_cmd(rest or ["status"])
+                payload = _load_payload()
             elif cmd in {"177", "/177", "conferentes", "/conferentes"}:
                 message = run_pipeline_177_cmd()
                 payload = _load_payload()
@@ -2025,7 +2246,20 @@ def main(argv: list[str] | None = None) -> int:
                 "subir",
                 "/subir",
             }:
-                message = run_git_push(parts)
+                rest = parts[1:] if len(parts) > 1 else []
+                if rest and str(rest[0]).lower() in {
+                    "ctr",
+                    "contratacao",
+                    "contratação",
+                    "73",
+                    "agente",
+                    "agent",
+                    "excel",
+                }:
+                    message = run_ctr_agente_cmd(["push", *rest[1:]])
+                    payload = _load_payload()
+                else:
+                    message = run_git_push(parts)
             elif cmd in {"pull", "/pull", "baixar", "/baixar"}:
                 message = run_git_pull()
             elif cmd in {"brand", "/brand", "logo", "/logo", "cubos", "/cubos"}:
