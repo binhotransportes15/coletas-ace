@@ -3969,16 +3969,15 @@
     }
     .ctr-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+      grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto minmax(0, 1fr);
       gap: clamp(8px, 1vw, 14px);
       height: 100%;
       min-height: 0;
       overflow: hidden;
     }
-    .ctr-layout [data-block="kpis"] { grid-column: 1 / -1; grid-row: 1; }
+    .ctr-layout [data-block="kpis"] { grid-column: 1; grid-row: 1; }
     .ctr-layout [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
-    .ctr-layout [data-block="tabela"] { grid-column: 2; grid-row: 2; min-height: 0; }
     .ctr-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
     .ctr-mix {
       display: flex;
@@ -4039,17 +4038,33 @@
       overflow: hidden;
     }
     .torres.ctr-torres .torre {
-      width: min(118px, 13vw);
+      width: min(140px, 14vw);
       max-width: none;
-      flex: 0 0 auto;
+      flex: 0 1 auto;
+      min-width: 96px;
     }
     .torres.ctr-torres .barra {
-      min-height: 40px !important;
+      min-height: 48px !important;
       max-height: none !important;
     }
+    .torres.ctr-torres .barra .ctr-bar-val {
+      display: block;
+      font-size: clamp(11px, 1.1vw, 14px);
+      font-weight: 800;
+      line-height: 1.15;
+      padding: 0 4px;
+      text-align: center;
+    }
+    .torres.ctr-torres .barra .ctr-bar-qtd {
+      display: block;
+      font-size: clamp(10px, 0.95vw, 12px);
+      font-weight: 600;
+      opacity: 0.9;
+      margin-top: 2px;
+    }
     .torres.ctr-torres .base {
-      min-height: 52px;
-      padding-top: 6px;
+      min-height: 56px;
+      padding-top: 8px;
     }
     .torres.ctr-torres .base .lbl {
       display: flex;
@@ -4113,7 +4128,7 @@
     }
     body.tv-mode .ctr-layout {
       display: grid !important;
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.25fr) !important;
+      grid-template-columns: minmax(0, 1fr) !important;
       grid-template-rows: auto minmax(0, 1fr) !important;
       height: 100% !important;
       min-height: 0 !important;
@@ -4130,10 +4145,6 @@
     body.tv-mode .ctr-layout [data-block="chart"] {
       min-height: 0 !important;
       height: 100% !important;
-      overflow: hidden !important;
-    }
-    body.tv-mode .ctr-layout [data-block="tabela"] {
-      min-height: 0 !important;
       overflow: hidden !important;
     }
     body.tv-mode .ctr-towers-wrap {
@@ -4176,18 +4187,17 @@
     @media (max-width: 1100px) {
       .ctr-layout {
         grid-template-columns: 1fr;
-        grid-template-rows: auto minmax(0, 1.2fr) minmax(0, 0.9fr);
+        grid-template-rows: auto minmax(0, 1fr);
       }
       .ctr-layout [data-block="kpis"] { grid-column: 1; grid-row: 1; }
       .ctr-layout [data-block="chart"] { grid-column: 1; grid-row: 2; }
-      .ctr-layout [data-block="tabela"] { grid-column: 1; grid-row: 3; }
       .ctr-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .ctr-wrap { height: auto; min-height: 100vh; }
     }
     @media (max-width: 1100px) {
       body.tv-mode .ctr-layout {
         grid-template-columns: 1fr !important;
-        grid-template-rows: auto minmax(0, 1.35fr) minmax(0, 0.75fr) !important;
+        grid-template-rows: auto minmax(0, 1fr) !important;
       }
     }
 
@@ -9289,39 +9299,20 @@
           <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Veículos</div><div class="val" id="ctrVeic">0</div></div>
           <div class="arm-kpi atrasado ds-kpi is-warn"><div class="lbl">Custo</div><div class="val" id="ctrCusto">0</div></div>
           <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Frete</div><div class="val" id="ctrFrete">0</div></div>
-          <div class="arm-kpi ds-kpi is-run"><div class="lbl">Custo médio</div><div class="val" id="ctrCustoMed" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
+          <div class="arm-kpi ds-kpi is-run"><div class="lbl">Custo médio/dia</div><div class="val" id="ctrCustoMed" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
           <div class="arm-kpi chegou ds-kpi is-neutral"><div class="lbl">Período</div><div class="val" id="ctrPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
         </div>
         <section class="arm-hero-card dash-block" data-block="chart">
           <header>
-            <h2>Custo por base (origem)</h2>
-            <div class="meta" id="ctrMeta">origem Excel → filial</div>
+            <h2>Custo médio/dia por base</h2>
+            <div class="meta" id="ctrMeta">origem Excel → filial · valor = custo ÷ dias</div>
             <div class="meta" id="ctrAtualizado">atualizado —</div>
           </header>
           <div class="ctr-mix" id="ctrMix" aria-label="Mix propriedade"></div>
           <div class="ctr-towers-wrap">
-            <div class="torres arm-torres ctr-torres" id="ctrTorres" aria-label="Torres por unidade destino"></div>
+            <div class="torres arm-torres ctr-torres" id="ctrTorres" aria-label="Torres por base"></div>
           </div>
-        </section>
-        <section class="arm-panel dash-block" data-block="tabela">
-          <header>
-            <h2>Veículos</h2>
-            <div class="meta" id="ctrTabMeta">SPO</div>
-          </header>
-          <div class="arm-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Placa</th>
-                  <th>Carreta</th>
-                  <th>Valor</th>
-                  <th>Frete</th>
-                </tr>
-              </thead>
-              <tbody id="ctrTbody"></tbody>
-            </table>
-            <div class="arm-err" id="ctrErr" hidden></div>
-          </div>
+          <div class="arm-err" id="ctrErr" hidden></div>
         </section>
       </div>
     </div>
@@ -10886,7 +10877,10 @@
         renderPenTorres(lastGoodPenOfens);
       }
       if (lastGoodCtrDestinos.length && typeof renderCtrTorres === 'function') {
-        renderCtrTorres(lastGoodCtrDestinos);
+        renderCtrTorres(
+          lastGoodCtrDestinos,
+          ctrDiasPeriodo(lastGoodCtrResumo && lastGoodCtrResumo.periodo)
+        );
       }
     }
 
@@ -14170,15 +14164,34 @@
       if (el) el.textContent = text == null || text === '' ? '—' : String(text);
     }
 
+    function parseCtrNum(v) {
+      if (v == null || v === '') return 0;
+      if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+      const s = String(v).trim();
+      if (!s) return 0;
+      // CSV/Sheets número puro: 27000 / 27000.0 / 1751.4
+      if (/^-?\d+(\.\d+)?$/.test(s)) {
+        const n = Number(s);
+        return Number.isFinite(n) ? n : 0;
+      }
+      // Formatado BR: "27.000,00" / "R$ 1.751,40"
+      const cleaned = s
+        .replace(/R\$\s?/gi, '')
+        .replace(/\./g, '')
+        .replace(',', '.')
+        .replace(/[^\d.-]/g, '');
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : 0;
+    }
+
     function fmtCtrMoney(v) {
-      const n = Number(String(v ?? '').replace(/\./g, '').replace(',', '.')) || Number(v) || 0;
+      const n = parseCtrNum(v);
       if (!Number.isFinite(n)) return String(v || '0');
       return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function ctrHasFrete(v) {
-      const n = Number(String(v?.frete ?? '').replace(/\./g, '').replace(',', '.')) || Number(v?.frete) || 0;
-      return Number.isFinite(n) && n > 0;
+      return parseCtrNum(v?.frete) > 0;
     }
 
     function fmtCtrFreteCell(v) {
@@ -14195,53 +14208,83 @@
     }
 
     function fmtCtrPeso(v) {
-      const n = Number(String(v ?? '').replace(/\./g, '').replace(',', '.')) || Number(v) || 0;
+      const n = parseCtrNum(v);
       if (!Number.isFinite(n)) return String(v || '0');
       return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' kg';
+    }
+
+    function ctrDiasPeriodo(periodo) {
+      const s = String(periodo || '').trim();
+      // "01/08 a 20/08" | "01/08 – 20/08" | "0108-2008"
+      let m = s.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s*[aà–\-]+\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/i);
+      if (m) {
+        const y = new Date().getFullYear();
+        const y0 = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : y;
+        const y1 = m[6] ? (m[6].length === 2 ? 2000 + Number(m[6]) : Number(m[6])) : y0;
+        const d0 = new Date(y0, Number(m[2]) - 1, Number(m[1]));
+        const d1 = new Date(y1, Number(m[5]) - 1, Number(m[4]));
+        if (!Number.isNaN(d0.getTime()) && !Number.isNaN(d1.getTime())) {
+          return Math.max(1, Math.round((d1 - d0) / 86400000) + 1);
+        }
+      }
+      m = s.match(/^(\d{2})(\d{2})\s*[–\-aA]\s*(\d{2})(\d{2})$/);
+      if (m) {
+        const y = new Date().getFullYear();
+        const d0 = new Date(y, Number(m[2]) - 1, Number(m[1]));
+        const d1 = new Date(y, Number(m[4]) - 1, Number(m[3]));
+        if (!Number.isNaN(d0.getTime()) && !Number.isNaN(d1.getTime())) {
+          return Math.max(1, Math.round((d1 - d0) / 86400000) + 1);
+        }
+      }
+      // fallback: dias do mês até hoje
+      const now = new Date();
+      return Math.max(1, now.getDate());
     }
 
     function alturaTorreCtr(valor, max) {
       const wrap = document.querySelector('#ctrLayout .ctr-towers-wrap')
         || document.querySelector('.ctr-towers-wrap');
       const tv = document.body.classList.contains('tv-mode');
-      const pin = tv ? 64 : 52;
-      const base = tv ? 52 : 44;
+      const pin = tv ? 72 : 58;
+      const base = tv ? 58 : 52;
       const pad = tv ? 20 : 16;
       let avail = wrap && wrap.clientHeight > 60 ? wrap.clientHeight : 0;
       if (!avail) {
         const chart = document.querySelector('#ctrLayout [data-block="chart"]');
         avail = chart && chart.clientHeight > 100
-          ? Math.round(chart.clientHeight * 0.72)
-          : Math.round((window.innerHeight || 800) * (tv ? 0.34 : 0.42));
+          ? Math.round(chart.clientHeight * 0.78)
+          : Math.round((window.innerHeight || 800) * (tv ? 0.42 : 0.48));
       }
-      const maxH = Math.max(tv ? 72 : 64, Math.round(avail - pin - base - pad));
-      const minH = Math.max(tv ? 36 : 32, Math.round(maxH * 0.16));
+      const maxH = Math.max(tv ? 88 : 72, Math.round(avail - pin - base - pad));
+      const minH = Math.max(tv ? 40 : 36, Math.round(maxH * 0.14));
       if (!max || max <= 0) return minH;
       const t = Math.max(0, Number(valor) || 0) / max;
       return Math.round(minH + t * (maxH - minH));
     }
 
-    function renderCtrTorres(destinos) {
+    function renderCtrTorres(destinos, diasPeriodo) {
       const host = document.getElementById('ctrTorres');
       if (!host) return;
       if (Array.isArray(destinos) && destinos.length) {
         lastGoodCtrDestinos = destinos.slice();
       }
+      const dias = Math.max(1, Number(diasPeriodo) || ctrDiasPeriodo('') || 1);
       const items = (
         Array.isArray(destinos) && destinos.length
           ? destinos
           : lastGoodCtrDestinos
-      ).slice(0, 10);
+      ).slice(0, 10).map((d) => {
+        const qtd = parseCtrNum(d.qtd);
+        const custo = parseCtrNum(d.custo);
+        const medioDia = custo / dias;
+        return { ...d, qtd, custo, medioDia };
+      });
       if (!items.length) {
         host.innerHTML = '<div class="arm-rank-empty">Sem bases — rode o agente Excel / `73`</div>';
         return;
       }
-      const max = Math.max(...items.map((d) => Number(d.custo) || Number(d.qtd) || 0), 1);
-      const totalCusto = items.reduce((s, d) => s + (Number(d.custo) || 0), 0) || 1;
+      const max = Math.max(...items.map((d) => d.medioDia || 0), 1);
       host.innerHTML = items.map((d, i) => {
-        const qtd = Number(d.qtd) || 0;
-        const custo = Number(d.custo) || 0;
-        const pct = Math.round((custo / totalCusto) * 100);
         const skin = 't-d' + (i % 8);
         const raw = String(d.destino || '—').trim() || '—';
         const parts = raw.split(/\s*[·•|]\s*/);
@@ -14251,12 +14294,18 @@
           ? `<span class="filial-sigla">${esc(sigla)}</span><span class="filial-cidade">${esc(cidade)}</span>`
           : `<span class="filial-sigla">${esc(sigla)}</span>`;
         const tip = esc(
-          `${raw} · ${qtd} veículo(s) · custo R$ ${fmtCtrMoney(custo)} · frete R$ ${fmtCtrMoney(d.frete)}`
+          `${raw} · ${d.qtd} veículo(s) · custo R$ ${fmtCtrMoney(d.custo)} · médio/dia R$ ${fmtCtrMoney(d.medioDia)} · ${dias} dia(s)`
         );
-        const h = alturaTorreCtr(custo, max);
+        const h = alturaTorreCtr(d.medioDia, max);
+        const valorLab = fmtCtrMoney(d.medioDia);
         return `<div class="torre ${skin}" title="${tip}">
-          <div class="pin"><span class="${qtd >= 100 ? 'pin-lg' : ''}">${qtd}</span></div>
-          <div class="barra" style="height:${h}px"><strong>${pct}<span class="pct-sign">%</span></strong></div>
+          <div class="pin"><span class="${d.qtd >= 100 ? 'pin-lg' : ''}">${d.qtd}</span></div>
+          <div class="barra" style="height:${h}px">
+            <strong>
+              <span class="ctr-bar-val">R$ ${esc(valorLab)}</span>
+              <span class="ctr-bar-qtd">${d.qtd} veíc.</span>
+            </strong>
+          </div>
           <div class="base"><div class="lbl">${lab}</div></div>
         </div>`;
       }).join('');
@@ -15765,25 +15814,24 @@
         setCtrText('ctrVeic', resumo.total_veiculos || veics.length || '0');
         setCtrText('ctrCusto', 'R$ ' + (resumo.custo_fmt || fmtCtrMoney(resumo.custo || 0)));
         setCtrText('ctrFrete', 'R$ ' + (resumo.frete_fmt || fmtCtrMoney(resumo.frete || 0)));
+        const dias = ctrDiasPeriodo(resumo.periodo);
         {
-          const nVeic = Number(resumo.total_veiculos) || veics.length || 0;
-          const custo = Number(resumo.custo) || 0;
-          if (nVeic > 0 && custo > 0) {
-            const med = custo / nVeic;
-            setCtrText('ctrCustoMed', 'R$ ' + med.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+          const custo = parseCtrNum(resumo.custo);
+          if (custo > 0 && dias > 0) {
+            const med = custo / dias;
+            setCtrText('ctrCustoMed', 'R$ ' + fmtCtrMoney(med));
           } else {
             setCtrText('ctrCustoMed', '—');
           }
         }
         setCtrText('ctrPeriodo', resumo.periodo || '—');
         setCtrText('ctrAtualizado', 'atualizado ' + (resumo.atualizado || '—'));
-        setCtrText('ctrTabMeta', resumo.unidade || 'SPO');
         const meta = document.getElementById('ctrMeta');
         if (meta) {
           meta.textContent = [
-            resumo.total_ctrbs ? `${resumo.total_ctrbs} CTRB/OS` : '',
             destinos.length ? `${destinos.length} bases` : '',
-            'origem → base',
+            `${dias} dia(s) no período`,
+            'custo médio/dia = custo ÷ dias',
           ].filter(Boolean).join(' · ');
         }
 
@@ -15795,20 +15843,7 @@
           `;
         }
 
-        renderCtrTorres(destinos);
-
-        const tb = document.getElementById('ctrTbody');
-        if (tb) {
-          const sorted = veics.slice().sort((a, b) => Number(b.custo || 0) - Number(a.custo || 0));
-          tb.innerHTML = sorted.slice(0, 120).map((v) => `
-            <tr class="${ctrHasFrete(v) ? 'ctr-row-ok' : 'ctr-row-wait'}">
-              <td class="mono">${esc(v.placa || '—')}</td>
-              <td class="mono">${esc(fmtCtrCarreta(v))}</td>
-              <td class="mono right">R$ ${esc(fmtCtrMoney(v.custo))}</td>
-              <td class="mono right">${fmtCtrFreteCell(v)}</td>
-            </tr>
-          `).join('') || `<tr><td colspan="4" class="muted">Sem dados — rode o agente Excel / \`73\` no ACE</td></tr>`;
-        }
+        renderCtrTorres(destinos, dias);
         if (stamp) lastCtrDataVersion = stamp;
         else if (resumo.atualizado) lastCtrDataVersion = String(resumo.atualizado);
       } catch (e) {
