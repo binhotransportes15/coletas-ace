@@ -134,31 +134,32 @@ def _cidades_do_texto(origem: str) -> list[str]:
 
 def base_da_origem(origem: str | None) -> tuple[str, str]:
     """
-    Resolve texto de ORIGEM da planilha → (sigla_base, rotulo).
+    Resolve texto de ORIGEM da planilha → (sigla_base, rotulo_exibicao).
 
     Exemplos:
-      GUARULHOS/SP → (SPO, SPO)
-      GOIANIA/GO → (GYN, GYN)
-      BRAGANÇA PAULISTA/SP → (SPO, SPO)
+      GUARULHOS/SP → (SPO, SPO · GUARULHOS)
+      GOIANIA/GO → (GYN, GYN · GOIANIA)
     """
     text = str(origem or "").strip()
     if not text:
-        return ("OUT", "OUTROS")
+        return ("OUT", "OUT · OUTROS")
 
     folded = _fold(text)
     if folded in SIGLAS_FILIAIS:
-        return folded, folded
+        return folded, f"{folded} · {SIGLAS_FILIAIS[folded][0]}"
 
     for city in _cidades_do_texto(text):
         if city in _ALIASES_CIDADE_BASE:
             base = _ALIASES_CIDADE_BASE[city]
-            return base, base
+            nome = cidade_da_sigla(base) if base != "OUT" else city
+            return base, f"{base} · {nome}"
         if city in _BASE_CANONICA:
             base = _BASE_CANONICA[city]
-            return base, base
+            return base, f"{base} · {cidade_da_sigla(base)}"
         for alias, base in _ALIASES_CIDADE_BASE.items():
             if alias in city or city in alias:
-                return base, base
+                nome = cidade_da_sigla(base) if base != "OUT" else city
+                return base, f"{base} · {nome}"
 
     uf_match = re.search(r"/([A-Z]{2})\b", folded)
     if uf_match:
@@ -173,6 +174,6 @@ def base_da_origem(origem: str | None) -> tuple[str, str]:
         }
         if uf in uf_hub:
             base = uf_hub[uf]
-            return base, base
+            return base, f"{base} · {cidade_da_sigla(base)}"
 
-    return "OUT", "OUTROS"
+    return "OUT", "OUT · OUTROS"

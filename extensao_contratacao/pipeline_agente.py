@@ -17,7 +17,7 @@ if str(_ACE_ROOT) not in sys.path:
     sys.path.insert(0, str(_ACE_ROOT))
 
 from config import AceSettings, ensure_dirs, load_settings  # noqa: E402
-from dates import format_period, periodo_ctr_ontem_hoje  # noqa: E402
+from dates import format_period, periodo_mes_ate_hoje  # noqa: E402
 from parser_ssw073 import (  # noqa: E402
     CTRBS_073_CSV,
     CTRBS_FIELDS,
@@ -75,9 +75,9 @@ def _merge_keep_custo_anterior(
     anteriores: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """
-    Custo sempre vem primeiro (Excel). Mantém placas/custo do dia anterior
-    que ainda não entraram no lote novo; preserva frete antigo até o CRT
-    rodar o 200 (ontem+hoje).
+    Custo sempre vem primeiro (Excel). Mantém placas/custo do mês que ainda
+    não entraram no lote novo; preserva frete antigo até o CRT rodar o 200
+    (mês referente, amarrado só pela placa — frete pode ser D+1 do custo).
     """
     by: dict[str, dict[str, Any]] = {}
     for v in anteriores:
@@ -305,11 +305,11 @@ def run_pipeline_contratacao_excel(
             f"cancelados={parsed.get('skipped_cancel')}, fora do mês={parsed.get('skipped_date')})"
         )
 
-    ini, fim = periodo_ctr_ontem_hoje()
+    ini, fim = periodo_mes_ate_hoje()
     periodo_fmt = format_period(ini, fim)
     status(
         f"Excel OK · aba={parsed.get('sheet')} · {len(rows)} linha(s) · "
-        f"janela={periodo_fmt} (ontem+hoje) · "
+        f"mês={periodo_fmt} · "
         f"cancel={parsed.get('skipped_cancel')} · fora={parsed.get('skipped_date')}"
     )
     built = build_caches_from_excel_rows(rows, periodo=periodo_fmt, unidade="SPO")

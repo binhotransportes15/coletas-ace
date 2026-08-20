@@ -23,9 +23,12 @@ from parser_ssw31 import (
     RESUMO_31_CSV,
 )
 from parser_ssw455 import (
+    DIAS_MES_455_CSV,
     EXPEDIDORES_455_CSV,
+    EXPEDIDORES_MES_455_CSV,
     HORAS_455_CSV,
     RESUMO_455_CSV,
+    RESUMO_MES_455_CSV,
 )
 from mapa_distribuicao import publish_mapa_local
 
@@ -234,7 +237,7 @@ def _copy_emissao_to_dashboard() -> dict[str, str]:
     defaults = {
         "resumo_455.csv": (
             "periodo,mes,atualizado,ctes,peso,peso_fmt,valor_mercadoria,valor_mercadoria_fmt,"
-            "volumes,cubagem,cubagem_fmt,frete,frete_fmt,dia,noite,cancelados\n"
+            "volumes,cubagem,cubagem_fmt,frete,frete_fmt,dia,noite,cancelados,pendentes,finalizados\n"
         ),
         "expedidores_455.csv": "nome,nome_exibicao,qtd,pct\n",
         "horas_455.csv": "hora,label,qtd\n",
@@ -270,10 +273,81 @@ def _copy_emissao_to_dashboard() -> dict[str, str]:
         _safe_write_text(stamp_path, json.dumps(stamp, ensure_ascii=False), encoding="utf-8")
         out["emissao/stamp.json"] = str(stamp_path)
     except OSError:
-        # TV pode manter o stamp aberto; CSVs já copiados bastam para o painel
         pass
 
-    # Bump meta.json para fetchDataVersion() na TV (senão o painel congela)
+    try:
+        meta_path = DASHBOARD_DIR / "data" / "meta.json"
+        meta: dict[str, Any] = {}
+        if meta_path.is_file():
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                meta = {}
+        if not isinstance(meta, dict):
+            meta = {}
+        files = meta.get("files") if isinstance(meta.get("files"), dict) else {}
+        files.update(out)
+        meta["updated_at"] = datetime.now().isoformat(timespec="seconds")
+        meta["files"] = files
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        _safe_write_text(
+            meta_path,
+            json.dumps(meta, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        out["meta.json"] = str(meta_path)
+    except Exception:
+        pass
+    return out
+
+
+def _copy_emissao_mes_to_dashboard() -> dict[str, str]:
+    """Copia CSVs 455 mês → dashboard/data/emissao_mes/ (separado da diária)."""
+    data_dir = DASHBOARD_DIR / "data" / "emissao_mes"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    out: dict[str, str] = {}
+    defaults = {
+        "resumo_mes_455.csv": (
+            "periodo,mes,atualizado,ctes,peso,peso_fmt,valor_mercadoria,valor_mercadoria_fmt,"
+            "volumes,cubagem,cubagem_fmt,frete,frete_fmt,dia,noite,cancelados,pendentes,finalizados\n"
+        ),
+        "expedidores_mes_455.csv": "nome,nome_exibicao,qtd,pct\n",
+        "dias_mes_455.csv": "dia,label,qtd\n",
+    }
+    for src, name in (
+        (RESUMO_MES_455_CSV, "resumo_mes_455.csv"),
+        (EXPEDIDORES_MES_455_CSV, "expedidores_mes_455.csv"),
+        (DIAS_MES_455_CSV, "dias_mes_455.csv"),
+    ):
+        dest = data_dir / name
+        if src.exists():
+            _copy_file(src, dest)
+            out[f"emissao_mes/{name}"] = str(dest)
+        elif not dest.exists():
+            _safe_write_text(dest, defaults[name], encoding="utf-8-sig")
+            out[f"emissao_mes/{name}"] = str(dest)
+
+    atualizado = ""
+    resumo_dest = data_dir / "resumo_mes_455.csv"
+    if resumo_dest.exists():
+        try:
+            with resumo_dest.open(encoding="utf-8-sig", newline="") as fh:
+                row = next(csv.DictReader(fh), {}) or {}
+                atualizado = str(row.get("atualizado") or "")
+        except Exception:
+            atualizado = ""
+    stamp = {
+        "ts": datetime.now().timestamp(),
+        "atualizado": atualizado or datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        "modo": "mes",
+    }
+    stamp_path = data_dir / "stamp.json"
+    try:
+        _safe_write_text(stamp_path, json.dumps(stamp, ensure_ascii=False), encoding="utf-8")
+        out["emissao_mes/stamp.json"] = str(stamp_path)
+    except OSError:
+        pass
+
     try:
         meta_path = DASHBOARD_DIR / "data" / "meta.json"
         meta: dict[str, Any] = {}
@@ -305,6 +379,13 @@ def publish_emissao_local(*, on_status: StatusCallback | None = None) -> dict[st
     paths = _copy_emissao_to_dashboard()
     status(f"Dashboard Emissão local: {len(paths)} arquivo(s).")
     return {"ok": True, "local": paths}
+
+
+def publish_emissao_mes_local(*, on_status: StatusCallback | None = None) -> dict[str, Any]:
+    status = on_status or _noop
+    paths = _copy_emissao_mes_to_dashboard()
+    status(f"Dashboard Emissão Mês local: {len(paths)} arquivo(s).")
+    return {"ok": True, "local": paths, "modo": "mes"}
 
 
 def _copy_reciclagem_to_dashboard() -> dict[str, str]:

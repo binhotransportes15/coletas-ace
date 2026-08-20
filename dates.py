@@ -137,10 +137,21 @@ def periodo_36_ontem_hoje(hoje: date | datetime | None = None) -> tuple[str, str
 
 
 def periodo_ctr_ontem_hoje(hoje: date | datetime | None = None) -> tuple[str, str]:
-    """Contratação · frete 200 e janela de custo: ontem → hoje (DDMM, DDMM)."""
+    """Contratação · janela curta legada: ontem → hoje (DDMM, DDMM)."""
     today = _as_date(hoje)
     ontem = today - timedelta(days=1)
     return to_ddmm(ontem), to_ddmm(today)
+
+
+def periodo_ctr_frete_200(hoje: date | datetime | None = None) -> tuple[str, str]:
+    """
+    Contratação · SSW 200 (frete): dia 1 do mês → hoje (DDMM).
+
+    O frete é amarrado só pela PLACA do cavalo (não pelo dia do custo).
+    No SSW o frete muitas vezes cai no dia seguinte ao custo da planilha;
+    puxando o mês inteiro, o D+1 entra na soma da mesma placa.
+    """
+    return periodo_mes_ate_hoje(hoje)
 
 
 def data_corte_emissao_36(hoje: date | datetime | None = None) -> date:

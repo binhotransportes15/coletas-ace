@@ -4847,7 +4847,7 @@ class AceCrtConsole(QWidget):
             ("78", "Armazém", "078 · descarga", "armazem_in_loop", "armazem_intervalo"),
             ("31", "Pendência", "031 · ofensores/SLA", "pendencia_in_loop", "pendencia_intervalo"),
             ("73", "Contratação", "Excel → 200", "contratacao_in_loop", "contratacao_intervalo"),
-            ("455", "Emissão", "455 · fretes do dia", "emissao_in_loop", "emissao_intervalo"),
+            ("455", "Emissão", "455 · diária + mês", "emissao_in_loop", "emissao_intervalo"),
             ("mapa", "Mapa Operacional", "36 · rotas na rua", "mapa_in_loop", "mapa_intervalo"),
         )
         lay.addWidget(self._section("Setores no automático"))

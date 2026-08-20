@@ -1151,9 +1151,9 @@ def run_dual_cycle(
                 emit(f"031 FALHOU: {err}")
 
         if getattr(cfg, "contratacao_in_loop", False):
-            emit("Contratação · custo Excel (ontem+hoje) + frete 200…")
+            emit("Contratação · Excel (mês) + frete 200 por placa…")
             try:
-                from dates import periodo_ctr_ontem_hoje
+                from dates import periodo_ctr_frete_200
                 from extensao_contratacao.pipeline_agente import run_pipeline_contratacao_excel
                 from parser_ssw0644 import analyze_reports_200
                 from publish_dashboard import publish_contratacao_local
@@ -1167,8 +1167,11 @@ def run_dual_cycle(
                 )
                 placas = list(result_73.get("placas") or [])
                 if placas:
-                    ini, fim = periodo_ctr_ontem_hoje()
-                    emit(f"CRT 200 frete {ini}->{fim} (ontem+hoje)…")
+                    ini, fim = periodo_ctr_frete_200()
+                    emit(
+                        f"CRT 200 frete {ini}->{fim} "
+                        f"(mês · amarra por placa; frete pode ser D+1)…"
+                    )
                     try:
                         dl200 = download_reports_200(
                             period=(ini, fim),
@@ -1197,16 +1200,29 @@ def run_dual_cycle(
                 emit(f"Contratação FALHOU: {err}")
 
         if getattr(cfg, "emissao_in_loop", False):
-            emit("455 / Emissao sequencial...")
+            emit("455 / Emissao sequencial (diária + mês)...")
             try:
                 result_455 = run_pipeline_455(
                     credentials=creds,
                     settings=cfg,
                     headless=use_headless,
+                    modo="diario",
                     on_status=lambda m: emit(f"[455] {m}"),
                     clean_downloads=False,
                 )
-                emit("455 concluido.")
+                emit("455 diária concluida.")
+                try:
+                    run_pipeline_455(
+                        credentials=creds,
+                        settings=cfg,
+                        headless=use_headless,
+                        modo="mes",
+                        on_status=lambda m: emit(f"[455-mes] {m}"),
+                        clean_downloads=False,
+                    )
+                    emit("455 mês concluida.")
+                except Exception as err_mes:  # noqa: BLE001
+                    emit(f"455 mês avisou: {err_mes}")
             except Exception as err:  # noqa: BLE001
                 errors["455"] = str(err)
                 emit(f"455 FALHOU: {err}")
@@ -1394,7 +1410,7 @@ def run_parallel_cycle(
         )
 
     def _run_73() -> dict[str, Any]:
-        from dates import periodo_ctr_ontem_hoje
+        from dates import periodo_ctr_frete_200
         from extensao_contratacao.pipeline_agente import run_pipeline_contratacao_excel
         from parser_ssw0644 import analyze_reports_200
         from publish_dashboard import publish_contratacao_local
@@ -1408,7 +1424,11 @@ def run_parallel_cycle(
         )
         placas = list(result.get("placas") or [])
         if placas:
-            ini, fim = periodo_ctr_ontem_hoje()
+            ini, fim = periodo_ctr_frete_200()
+            emit(
+                f"CRT 200 frete {ini}->{fim} "
+                f"(mês · amarra por placa; frete pode ser D+1)…"
+            )
             try:
                 dl200 = download_reports_200(
                     period=(ini, fim),
@@ -1432,13 +1452,26 @@ def run_parallel_cycle(
         return result
 
     def _run_455() -> dict[str, Any]:
-        return run_pipeline_455(
+        daily = run_pipeline_455(
             credentials=creds,
             settings=cfg,
             headless=use_headless,
+            modo="diario",
             on_status=lambda m: emit(f"[455] {m}"),
             clean_downloads=False,
         )
+        try:
+            run_pipeline_455(
+                credentials=creds,
+                settings=cfg,
+                headless=use_headless,
+                modo="mes",
+                on_status=lambda m: emit(f"[455-mes] {m}"),
+                clean_downloads=False,
+            )
+        except Exception as err_mes:  # noqa: BLE001
+            emit(f"455 mês avisou: {err_mes}")
+        return daily
 
     def _run_reciclagem() -> dict[str, Any]:
         return run_pipeline_reciclagem(
@@ -1756,27 +1789,38 @@ def run_pipeline_455(
     settings: AceSettings | None = None,
     headless: bool | None = None,
     unidade: str = "SPO",
+    modo: str = "diario",
     on_status: StatusCallback | None = None,
     clean_downloads: bool = True,
 ) -> dict[str, Any]:
-    """SSW 455: Fretes Expedidos (SPO/E) · dia emissão → painel Emissão."""
+    """SSW 455: Fretes Expedidos (SPO/E) · emissão → painel Emissão (diária ou mês)."""
     status = on_status or _noop
     ensure_dirs()
     creds = credentials or load_credentials()
     cfg = settings or load_settings()
+    from dates import periodo_mes_ate_hoje
     from parser_ssw455 import analyze_reports_455
-    from publish_dashboard import publish_emissao_local
+    from publish_dashboard import publish_emissao_local, publish_emissao_mes_local
     from ssw_455 import download_reports_455
 
-    def emit(msg: str) -> None:
-        status(f"[455] {msg}")
+    modo_l = str(modo or "diario").strip().lower()
+    is_mes = modo_l in {"mes", "mês", "mensal", "month"}
+    tag = "455-mes" if is_mes else "455"
 
-    emit(f"ACE EMISSAO · 455 | {datetime.now():%d/%m %H:%M:%S}")
+    def emit(msg: str) -> None:
+        status(f"[{tag}] {msg}")
+
+    emit(
+        f"ACE EMISSAO · {tag} ({'mês' if is_mes else 'diária'}) | "
+        f"{datetime.now():%d/%m %H:%M:%S}"
+    )
     use_headless = cfg.headless if headless is None else headless
+    period = periodo_mes_ate_hoje() if is_mes else None
     dl = download_reports_455(
         unidade=unidade or "SPO",
         tipo_unidade="E",
         arquivo="E",
+        period=period,
         credentials=creds,
         settings=cfg,
         headless=use_headless,
@@ -1788,6 +1832,7 @@ def run_pipeline_455(
         return {
             "ok": True,
             "empty": True,
+            "modo": "mes" if is_mes else "diario",
             "download": dl,
             "analysis": {"ok": True, "empty": True, "rows": []},
             "publish": {"ok": True, "skipped": True},
@@ -1796,44 +1841,50 @@ def run_pipeline_455(
     analysis = analyze_reports_455(
         dl.get("files") or [],
         periodo=str(dl.get("periodo_fmt") or dl.get("period") or ""),
+        modo="mes" if is_mes else "diario",
         on_status=emit,
     )
     ctes = int((analysis.get("resumo") or {}).get("ctes") or 0)
     if ctes <= 0:
-        # Evita apagar o painel com zeros (arquivo vazio / parse falhou / filtro agressivo)
         emit("0 CTEs no parse — não publica (mantém último dashboard bom)")
         return {
             "ok": True,
             "empty": True,
+            "modo": "mes" if is_mes else "diario",
             "download": dl,
             "analysis": analysis,
             "publish": {"ok": True, "skipped": True, "reason": "zero_ctes"},
             "sheets": {"ok": True, "skipped": True, "empty": True},
         }
-    pub = publish_emissao_local(on_status=emit)
+    if is_mes:
+        pub = publish_emissao_mes_local(on_status=emit)
+    else:
+        pub = publish_emissao_local(on_status=emit)
     sheets: dict[str, Any] = {"ok": False, "skipped": True}
     from config import sheets_enabled
 
     if _should_use_local_store(cfg):
-        emit("455 analisado — modo local (JSON/CSV)…")
+        emit(f"{tag} analisado — modo local (JSON/CSV)…")
         sheets = {"ok": True, "local": True}
         if sheets_enabled(cfg):
-            from sheets_sync_455 import sync_sheets_455
+            from sheets_sync_455 import sync_sheets_455, sync_sheets_455_mes
 
-            emit("455 — espelhando planilha (sync remoto ON)…")
+            emit(f"{tag} — espelhando planilha (sync remoto ON)…")
             try:
-                remote = sync_sheets_455(settings=cfg, on_status=emit)
+                sync_fn = sync_sheets_455_mes if is_mes else sync_sheets_455
+                remote = sync_fn(settings=cfg, on_status=emit)
                 sheets = {**remote, "local": True}
             except Exception as err:  # noqa: BLE001
-                emit(f"455 Sheets aviso: {err}")
+                emit(f"{tag} Sheets aviso: {err}")
                 sheets = {"ok": False, "error": str(err), "local": True}
     elif sheets_enabled(cfg):
-        from sheets_sync_455 import sync_sheets_455
+        from sheets_sync_455 import sync_sheets_455, sync_sheets_455_mes
 
-        emit("455 analisado — sync Sheets (Sites/TV)…")
-        sheets = sync_sheets_455(settings=cfg, on_status=emit)
+        emit(f"{tag} analisado — sync Sheets (Sites/TV)…")
+        sync_fn = sync_sheets_455_mes if is_mes else sync_sheets_455
+        sheets = sync_fn(settings=cfg, on_status=emit)
     else:
-        emit("455: Sheets OFF (sync_remoto/enable_sheets) — só dashboard local.")
+        emit(f"{tag}: Sheets OFF (sync_remoto/enable_sheets) — só dashboard local.")
 
     resumo = analysis.get("resumo") or {}
     emit(
@@ -1850,8 +1901,10 @@ def run_pipeline_455(
         "analysis": analysis,
         "sheets": sheets,
         "publish": pub,
+        "modo": "mes" if is_mes else "diario",
         **analysis,
     }
+
 
 
 def run_pipeline_reciclagem(

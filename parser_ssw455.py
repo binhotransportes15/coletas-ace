@@ -27,6 +27,13 @@ EXPEDIDORES_455_CSV = CACHE_DIR / "expedidores_455.csv"
 HORAS_455_CSV = CACHE_DIR / "horas_455.csv"
 LAST_455_JSON = CACHE_DIR / "last_run_455.json"
 
+# Visão mensal (não sobrescreve a diária)
+EMISSOES_MES_455_CSV = CACHE_DIR / "emissoes_mes_455.csv"
+RESUMO_MES_455_CSV = CACHE_DIR / "resumo_mes_455.csv"
+EXPEDIDORES_MES_455_CSV = CACHE_DIR / "expedidores_mes_455.csv"
+DIAS_MES_455_CSV = CACHE_DIR / "dias_mes_455.csv"
+LAST_MES_455_JSON = CACHE_DIR / "last_run_mes_455.json"
+
 # DIA = 06:00–17:59 · NOITE = 18:00–05:59 (hora de emissão)
 DIA_START = 6
 DIA_END = 18  # exclusive
@@ -122,6 +129,7 @@ RESUMO_FIELDS = [
 
 EXPEDIDOR_FIELDS = ["nome", "nome_exibicao", "qtd", "pct"]
 HORA_FIELDS = ["hora", "label", "qtd"]
+DIA_FIELDS = ["dia", "label", "qtd"]
 
 
 def _clean(value: Any) -> str:
@@ -711,13 +719,43 @@ def _row_in_period(rec: dict[str, Any], d0: datetime | None, d1: datetime | None
     return True
 
 
+def _format_periodo_show(periodo: str) -> str:
+    """Normaliza periodo_fmt do download para exibição no painel."""
+    periodo_show = (periodo or "").strip()
+    if not periodo_show:
+        return ""
+    # "0108 – 2008" / "0108-2008"
+    m = re.match(
+        r"^(\d{4})\s*[–\-aA]\s*(\d{4})$",
+        periodo_show,
+    )
+    if m:
+        a, b = m.group(1), m.group(2)
+        return f"{a[:2]}/{a[2:]} – {b[:2]}/{b[2:]}"
+    if re.fullmatch(r"\d{4}", periodo_show):
+        return f"{periodo_show[:2]}/{periodo_show[2:]}"
+    if re.fullmatch(r"\d{6}", periodo_show):
+        return f"{periodo_show[:2]}/{periodo_show[2:4]}/{periodo_show[4:]}"
+    return periodo_show
+
+
 def analyze_reports_455(
     files: list[str] | list[Path] | str | Path | None,
     *,
     periodo: str = "",
+    modo: str = "diario",
     on_status=None,
 ) -> dict[str, Any]:
+    """
+    Agrega 455 → resumo / expedidores / série temporal.
+
+    modo=diario → horas_455 + pasta emissão diária
+    modo=mes    → dias_mes_455 + pasta emissão mês (não sobrescreve o dia)
+    """
     status = on_status or (lambda _m: None)
+    modo_l = str(modo or "diario").strip().lower()
+    is_mes = modo_l in {"mes", "mês", "mensal", "month"}
+    tag = "455-mes" if is_mes else "455"
     paths: list[Path] = []
     if isinstance(files, (str, Path)):
         paths = [Path(files)]
@@ -726,30 +764,29 @@ def analyze_reports_455(
 
     rows: list[dict[str, Any]] = []
     for p in paths:
-        status(f"[455] parse {p.name}")
+        status(f"[{tag}] parse {p.name}")
         try:
             parsed = parse_excel_455(p)
         except Exception as err:
-            status(f"[455] parse falhou {p.name}: {err}")
-            # conserva amostra do arquivo para diagnóstico
+            status(f"[{tag}] parse falhou {p.name}: {err}")
             try:
-                dbg = CACHE_DIR / f"debug_455_fail_{p.stem[:40]}.txt"
+                dbg = CACHE_DIR / f"debug_{tag.replace('-', '_')}_fail_{p.stem[:40]}.txt"
                 raw = p.read_bytes()[:4000]
                 dbg.write_bytes(raw)
-                status(f"[455] amostra salva em {dbg.name}")
+                status(f"[{tag}] amostra salva em {dbg.name}")
             except Exception:
                 pass
             raise
-        status(f"[455] {p.name}: {len(parsed)} linha(s) bruta(s)")
+        status(f"[{tag}] {p.name}: {len(parsed)} linha(s) bruta(s)")
         if not parsed:
             try:
-                dbg = CACHE_DIR / "debug_455_empty.txt"
+                dbg = CACHE_DIR / f"debug_{tag.replace('-', '_')}_empty.txt"
                 sample = p.read_text(encoding="utf-8", errors="replace")[:3000]
                 dbg.write_text(
                     f"file={p}\nsize={p.stat().st_size}\n---\n{sample}",
                     encoding="utf-8",
                 )
-                status(f"[455] arquivo sem linhas úteis — amostra em {dbg.name}")
+                status(f"[{tag}] arquivo sem linhas úteis — amostra em {dbg.name}")
             except Exception:
                 pass
         rows.extend(parsed)
@@ -759,9 +796,9 @@ def analyze_reports_455(
         before = len(rows)
         rows = [r for r in rows if _row_in_period(r, d0, d1)]
         if before != len(rows):
-            status(f"[455] filtro período {periodo}: {before} → {len(rows)} CTRCs")
+            status(f"[{tag}] filtro período {periodo}: {before} → {len(rows)} CTRCs")
         elif before == 0:
-            status(f"[455] filtro período {periodo}: 0 CTRCs (nada para filtrar)")
+            status(f"[{tag}] filtro período {periodo}: 0 CTRCs (nada para filtrar)")
 
     # KPIs
     ctes = len(rows)
@@ -779,15 +816,18 @@ def analyze_reports_455(
     dia = 0
     noite = 0
     horas = Counter({h: 0 for h in range(24)})
+    dias_count: Counter[int] = Counter()
     for r in rows:
         h = r.get("_hora")
-        if h is None:
-            continue
-        horas[int(h)] += 1
-        if DIA_START <= int(h) < DIA_END:
-            dia += 1
-        else:
-            noite += 1
+        if h is not None:
+            horas[int(h)] += 1
+            if DIA_START <= int(h) < DIA_END:
+                dia += 1
+            else:
+                noite += 1
+        dt = _parse_br_date(r.get("data_emissao"))
+        if dt is not None:
+            dias_count[int(dt.day)] += 1
 
     # Expedidores: só logins oficiais · chave = login normalizado
     exp_count: Counter[str] = Counter()
@@ -812,19 +852,28 @@ def analyze_reports_455(
         {"hora": h, "label": f"{h}:00", "qtd": int(horas.get(h, 0))} for h in range(24)
     ]
 
+    today = datetime.now()
+    if is_mes:
+        last_day = max(today.day, max(dias_count.keys(), default=1))
+    else:
+        last_day = max(dias_count.keys(), default=today.day)
+    dias_rows = [
+        {
+            "dia": d,
+            "label": f"{d:02d}",
+            "qtd": int(dias_count.get(d, 0)),
+        }
+        for d in range(1, last_day + 1)
+    ]
+
     mes_nome = ""
     try:
-        mes_nome = MESES_PT[datetime.now().month - 1]
+        mes_nome = MESES_PT[today.month - 1]
     except Exception:
         mes_nome = ""
 
     atualizado = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    # periodo SSW "1708" → exibição "17/08"
-    periodo_show = (periodo or "").strip()
-    if re.fullmatch(r"\d{4}", periodo_show):
-        periodo_show = f"{periodo_show[:2]}/{periodo_show[2:]}"
-    elif re.fullmatch(r"\d{6}", periodo_show):
-        periodo_show = f"{periodo_show[:2]}/{periodo_show[2:4]}/{periodo_show[4:]}"
+    periodo_show = _format_periodo_show(periodo)
     resumo = {
         "periodo": periodo_show or periodo or "",
         "mes": mes_nome,
@@ -846,7 +895,6 @@ def analyze_reports_455(
         "finalizados": finalizados,
     }
 
-    # CSV detalhe (sem campos internos)
     detail_rows = []
     for r in rows:
         detail_rows.append(
@@ -868,20 +916,41 @@ def analyze_reports_455(
             }
         )
 
-    _write_csv(EMISSOES_455_CSV, EMISSAO_FIELDS, detail_rows)
-    # Não zera o cache se veio 0 (evita TV/dashboard perder o último bom)
-    if ctes > 0 or not RESUMO_455_CSV.exists():
-        _write_csv(RESUMO_455_CSV, RESUMO_FIELDS, [resumo])
-        _write_csv(EXPEDIDORES_455_CSV, EXPEDIDOR_FIELDS, expedidores)
-        _write_csv(HORAS_455_CSV, HORA_FIELDS, horas_rows)
+    if is_mes:
+        out_emissoes = EMISSOES_MES_455_CSV
+        out_resumo = RESUMO_MES_455_CSV
+        out_exp = EXPEDIDORES_MES_455_CSV
+        out_serie = DIAS_MES_455_CSV
+        out_json = LAST_MES_455_JSON
+        serie_fields = DIA_FIELDS
+        serie_rows = dias_rows
+        serie_key = "dias"
     else:
-        status("[455] 0 CTEs — cache CSV anterior preservado")
-    LAST_455_JSON.write_text(
+        out_emissoes = EMISSOES_455_CSV
+        out_resumo = RESUMO_455_CSV
+        out_exp = EXPEDIDORES_455_CSV
+        out_serie = HORAS_455_CSV
+        out_json = LAST_455_JSON
+        serie_fields = HORA_FIELDS
+        serie_rows = horas_rows
+        serie_key = "horas"
+
+    _write_csv(out_emissoes, EMISSAO_FIELDS, detail_rows)
+    if ctes > 0 or not out_resumo.exists():
+        _write_csv(out_resumo, RESUMO_FIELDS, [resumo])
+        _write_csv(out_exp, EXPEDIDOR_FIELDS, expedidores)
+        _write_csv(out_serie, serie_fields, serie_rows)
+    else:
+        status(f"[{tag}] 0 CTEs — cache CSV anterior preservado")
+    out_json.write_text(
         json.dumps(
             {
+                "modo": "mes" if is_mes else "diario",
                 "resumo": resumo,
                 "expedidores": expedidores,
+                serie_key: serie_rows,
                 "horas": horas_rows,
+                "dias": dias_rows,
                 "total": ctes,
                 "files": [str(p) for p in paths],
             },
@@ -891,21 +960,24 @@ def analyze_reports_455(
         encoding="utf-8",
     )
     status(
-        f"[455] OK · CTEs={ctes} frete={resumo['frete_fmt']} "
+        f"[{tag}] OK · CTEs={ctes} frete={resumo['frete_fmt']} "
         f"dia={dia} noite={noite} cancel={cancelados} "
         f"pend={pendentes} fin={finalizados} exp={len(expedidores)}"
     )
-    return {
+    result: dict[str, Any] = {
         "ok": True,
+        "modo": "mes" if is_mes else "diario",
         "total": ctes,
         "resumo": resumo,
         "expedidores": expedidores,
         "horas": horas_rows,
+        "dias": dias_rows,
         "rows": detail_rows,
         "files": {
-            "emissoes": str(EMISSOES_455_CSV),
-            "resumo": str(RESUMO_455_CSV),
-            "expedidores": str(EXPEDIDORES_455_CSV),
-            "horas": str(HORAS_455_CSV),
+            "emissoes": str(out_emissoes),
+            "resumo": str(out_resumo),
+            "expedidores": str(out_exp),
+            serie_key: str(out_serie),
         },
     }
+    return result

@@ -1,4 +1,4 @@
-"""Sync Google Sheets · Emissão SSW 455."""
+"""Sync Google Sheets · Emissão SSW 455 (diária + mês)."""
 from __future__ import annotations
 
 import time
@@ -6,12 +6,16 @@ from typing import Any, Callable
 
 from config import AceSettings, load_settings
 from parser_ssw455 import (
+    DIA_FIELDS,
+    DIAS_MES_455_CSV,
     EXPEDIDORES_455_CSV,
+    EXPEDIDORES_MES_455_CSV,
     EXPEDIDOR_FIELDS,
     HORAS_455_CSV,
     HORA_FIELDS,
     RESUMO_455_CSV,
     RESUMO_FIELDS,
+    RESUMO_MES_455_CSV,
 )
 from sheets_sync import (
     _ensure_apps_script,
@@ -77,4 +81,57 @@ def sync_sheets_455(
     except Exception as error:  # noqa: BLE001
         result["error"] = str(error)
         status(f"Sheets 455 falhou (cache local ok): {error}")
+        return result
+
+
+def sync_sheets_455_mes(
+    settings: AceSettings | None = None,
+    *,
+    on_status: StatusCallback | None = None,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Abas Resumo455Mes / Expedidores455Mes / Dias455Mes (criar no sheet se ainda não existirem)."""
+    status = on_status or _noop
+    cfg = settings or load_settings()
+    result: dict[str, Any] = {"ok": False, "via": "apps_script", "modo": "mes"}
+    status("Sheets Emissão 455 Mês: preparando…")
+    gate = _ensure_apps_script(cfg, status, ping=False, force=force)
+    if not gate.get("ok"):
+        result.update(gate)
+        return result
+
+    url = str(gate["url"])
+    token = str(gate["token"])
+    resumo = _read_csv(RESUMO_MES_455_CSV)
+    expedidores = _read_csv(EXPEDIDORES_MES_455_CSV)
+    dias = _read_csv(DIAS_MES_455_CSV)
+    items = [
+        _sheet_item("Resumo455Mes", RESUMO_FIELDS, resumo),
+        _sheet_item("Expedidores455Mes", EXPEDIDOR_FIELDS, expedidores),
+        _sheet_item("Dias455Mes", DIA_FIELDS, dias),
+    ]
+    try:
+        status(
+            f"Sheets Emissão 455 Mês: enviando resumo, "
+            f"{len(expedidores)} expedidor(es), {len(dias)} dia(s)…"
+        )
+        batch = _send_sheets_batch(url, token, items, on_status=status)
+        if not batch.get("ok"):
+            raise RuntimeError(str(batch.get("error") or "lote 455 mês falhou"))
+        _ping_cache.update({"ok_at": time.time(), "url": url, "token": token})
+        result.update(
+            {
+                "ok": True,
+                "resumo": len(resumo),
+                "expedidores": len(expedidores),
+                "dias": len(dias),
+                "stats": batch.get("stats"),
+                "mode": "batch",
+            }
+        )
+        status(f"Sheets Emissão 455 Mês OK: {len(expedidores)} expedidor(es).")
+        return result
+    except Exception as error:  # noqa: BLE001
+        result["error"] = str(error)
+        status(f"Sheets 455 Mês falhou (cache local ok): {error}")
         return result

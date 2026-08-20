@@ -1,6 +1,8 @@
 """Parser SSW 200 / ssw0644 — Relação de Manifestos Operacionais.
 
-Usa coluna FRETE-R$ agregada por PLACA_CAVALO para enriquecer o painel Contratação.
+Frete (FRETE-R$) é agregado e aplicado por PLACA_CAVALO — sem cruzar data com o
+custo do Excel. O frete costuma aparecer no dia seguinte ao custo; o CRT baixa
+o mês referente e soma tudo da mesma placa.
 """
 from __future__ import annotations
 
@@ -133,7 +135,13 @@ def merge_frete_200_into_073(
     *,
     on_status: Any = None,
 ) -> dict[str, Any]:
-    """Aplica frete do 200 nas placas do 073 (substitui frete quando > 0)."""
+    """
+    Aplica frete do 200 nas placas do Excel/073.
+
+    Chave única = placa do cavalo (normalizada). Não exige mesmo dia do custo:
+    se o frete caiu no D+1, ainda assim entra na soma da placa no mês.
+    Nunca zera custo; se a placa não veio no 200, mantém o frete já gravado.
+    """
     status = on_status or (lambda _m: None)
     ensure_dirs()
     if not VEICULOS_073_CSV.exists():
@@ -144,18 +152,27 @@ def merge_frete_200_into_073(
 
     by_placa = {_norm_placa(r.get("placa")): r for r in frete_rows if r.get("placa")}
 
-    # frete do 200 só enriquece — nunca zera/altera custo (Excel/dia anterior)
     updated = 0
+    kept = 0
     for v in veiculos:
         placa = _norm_placa(v.get("placa"))
+        if not placa:
+            continue
+        prev_frete = float(v.get("frete") or 0)
         extra = by_placa.get(placa)
         if not extra:
+            # placa sem linha no 200 neste lote — mantém frete anterior (ex.: D+1 ainda não saiu)
+            if prev_frete > 0:
+                kept += 1
             continue
         frete = float(extra.get("frete") or 0)
         if frete > 0:
             v["frete"] = f"{frete:.2f}"
             updated += 1
-        # custo permanece como estava (dia anterior / Excel)
+        elif prev_frete > 0:
+            # 200 veio zerado para a placa — não apaga frete já conhecido
+            kept += 1
+        # custo permanece como estava (Excel)
     _write_csv(VEICULOS_073_CSV, VEICULO_FIELDS, veiculos)
     _write_csv(FRETE_200_CSV, FRETE_FIELDS, frete_rows)
 
@@ -184,10 +201,15 @@ def merge_frete_200_into_073(
     except Exception:
         pass
     _publish_local()
-    status(f"200 merge: {updated} placa(s) com frete · total R$ {_fmt_money(total_frete)}")
+    status(
+        f"200 merge: {updated} placa(s) com frete novo · "
+        f"{kept} mantido(s) · total R$ {_fmt_money(total_frete)} "
+        f"(chave=placa; frete pode ser D+1 do custo)"
+    )
     return {
         "ok": True,
         "updated": updated,
+        "kept": kept,
         "resumo": resumo,
         "frete_rows": len(frete_rows),
         "frete_total": round(sum(float(r.get("frete") or 0) for r in frete_rows), 2),

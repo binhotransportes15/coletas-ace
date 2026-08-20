@@ -182,7 +182,7 @@ def download_reports_455(
     cfg = settings or load_settings()
     use_headless = cfg.headless if headless is None else bool(headless)
 
-    # Emissão = sempre o dia de hoje no PERÍODO DE EMISSÃO (ini = fim)
+    # Emissão = PERÍODO DE EMISSÃO (default: hoje; passe period=mês para visão mensal)
     ini_ddmm, fim_ddmm = period or periodo_hoje()
     ini, fim = _cap_period_31d(ini_ddmm, fim_ddmm)
     # normalize to ddmmyy

@@ -157,15 +157,14 @@ def read_produtividade_xlsx(
     path: Path | str,
     *,
     sheet: str = "",
-    only_month_to_today: bool = False,
-    only_ontem_hoje: bool = True,
+    only_month_to_today: bool = True,
+    only_ontem_hoje: bool = False,
     hoje: date | None = None,
 ) -> dict[str, Any]:
     """
     Lê a planilha e devolve linhas tipadas.
 
-    Por padrão (only_ontem_hoje): DATA em ontem + hoje — mantém custo do dia
-    anterior e o do dia corrente. Frete 200 no CRT usa a mesma janela.
+    Por padrão: mês referente (dia 1 até hoje) na aba do mês vigente.
     """
     path = Path(path)
     if not path.exists():
@@ -253,5 +252,9 @@ def read_produtividade_xlsx(
         "total": len(rows),
         "skipped_cancel": skipped_cancel,
         "skipped_date": skipped_date,
-        "periodo_ref": f"{ontem.strftime('%d/%m/%Y')} a {day.strftime('%d/%m/%Y')}",
+        "periodo_ref": (
+            f"{month_start.strftime('%d/%m/%Y')} a {day.strftime('%d/%m/%Y')}"
+            if only_month_to_today or not only_ontem_hoje
+            else f"{ontem.strftime('%d/%m/%Y')} a {day.strftime('%d/%m/%Y')}"
+        ),
     }
