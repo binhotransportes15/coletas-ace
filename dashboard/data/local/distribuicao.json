@@ -1,10 +1,10 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-21T10:48:07",
+  "updated_at": "2026-08-21T10:53:14",
   "resumo_50": {
     "data_cadastro": "PERIODO",
-    "total_coletas": "3",
-    "cadastrada": "3",
+    "total_coletas": "5",
+    "cadastrada": "5",
     "comandada": "0",
     "coletada": "0",
     "cancelada": "0"
@@ -21,16 +21,16 @@
   "resumo_36": {
     "periodo": "20/08 a 21/08",
     "total": "89",
-    "realizada": "42",
-    "em_rota": "44",
-    "pendencia": "3",
+    "realizada": "48",
+    "em_rota": "39",
+    "pendencia": "2",
     "excluido": "8"
   },
   "resumo_225": {
     "periodo": "Agendamento AGOSTO",
     "total": "110",
-    "em_rota": "4",
-    "parado": "13",
+    "em_rota": "5",
+    "parado": "12",
     "concluido": "93",
     "alerta": "0",
     "peso_total": "177.356,66",
@@ -39,9 +39,9 @@
     "realizado": "93",
     "peso_realizado": "155.972,69",
     "frete_realizado": "124.412,02",
-    "armazem": "13",
-    "peso_armazem": "13.787,11",
-    "frete_armazem": "20.120,88",
+    "armazem": "12",
+    "peso_armazem": "12.243,44",
+    "frete_armazem": "18.554,18",
     "amanha": "0",
     "peso_amanha": "0,00",
     "volumes_amanha": "0",
