@@ -78,7 +78,7 @@ def download_reports_200(
     context=None,
     page=None,
 ) -> dict[str, Any]:
-    """Gera 200 com Tipo=E → download direto CSV. origem = destino do 073."""
+    """Gera 200 com Tipo=E → download DIRETO do CSV (não usa fila 156)."""
     status = on_status or _noop
     ensure_dirs()
     _ensure_playwright_path()
@@ -113,20 +113,22 @@ def download_reports_200(
     paths: list[str] = []
     status(
         f"SSW 200 | tipo={tipo} | origem={unid or '(tudo)'} | tag={file_tag} | {ini}-{fim}"
-        + (" · sessão reusada" if reuse else "")
+        + (" · sessao reusada" if reuse else " · download direto (sem fila 156)")
     )
 
-    def _run(sess_client, sess_context, sess_page) -> None:
+    def _run(sess_client, sess_context, sess_page) -> str:
         nonlocal paths
         popup = None
         empty_msg = ""
         try:
-            status(f"[200/{file_tag}] abrindo opção 200…")
+            status(f"[200/{file_tag}] abrindo opcao 200...")
             popup = sess_client._open_menu_option(sess_page, "200", markers=SSW_200_MARKERS)
+            status(f"[200/{file_tag}] preenchendo periodo {ini}-{fim} tipo={tipo}...")
             _preencher_200(
                 popup, ini=ini, fim=fim, unidade=unid, tipo=tipo, on_status=status
             )
             dest = f"contratacao_200_{file_tag}_{ts}.csv"
+            status(f"[200/{file_tag}] gerando (download direto)...")
             path = _gerar_download_200(
                 sess_client, sess_context, sess_page, popup, dest, status
             )
@@ -134,7 +136,7 @@ def download_reports_200(
             status(f"[200/{file_tag}] OK {path.name}")
         except FilaSemDados as empty_err:
             empty_msg = str(empty_err)
-            status(f"[200/{file_tag}] sem base — pula ({empty_err})")
+            status(f"[200/{file_tag}] sem base - pula ({empty_err})")
         finally:
             try:
                 if popup is not None and not popup.is_closed():
@@ -148,21 +150,25 @@ def download_reports_200(
         empty_note = _run(own_client, context, page) or ""
     else:
         with sync_playwright() as p:
+            status("[200] abrindo Chromium...")
             browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
-        try:
-            from ace_stop import register_browser
-            register_browser(browser)
-        except Exception:
-            pass
+            try:
+                from ace_stop import register_browser
+
+                register_browser(browser)
+            except Exception:
+                pass
             ctx = browser.new_context(accept_downloads=True)
             pg = ctx.new_page()
             pg.set_default_timeout(60000)
             pg.on("dialog", lambda d: d.accept())
             ctx.on("page", lambda p2: p2.on("dialog", lambda d: d.accept()))
             try:
+                status("[200] login SSW...")
                 own_client._login(pg)
                 own_client._ensure_unit(pg)
                 own_client._patch_blank_popup_form(pg)
+                status("[200] login OK · gerando relatorio...")
                 empty_note = _run(own_client, ctx, pg) or ""
             finally:
                 try:
@@ -171,6 +177,7 @@ def download_reports_200(
                     pass
                 try:
                     from ace_stop import unregister_browser
+
                     unregister_browser(browser)
                 except Exception:
                     pass
@@ -183,18 +190,18 @@ def download_reports_200(
                 "empty": True,
                 "error": empty_note,
                 "period": (ini_ddmm, fim_ddmm),
-                "periodo_fmt": f"{ini_ddmm} – {fim_ddmm}",
+                "periodo_fmt": f"{ini_ddmm} - {fim_ddmm}",
                 "unidade_origem": unid,
                 "tipo_arquivo": tipo,
                 "tag": file_tag,
             }
-        raise RuntimeError("200: nenhum arquivo baixado")
+        raise RuntimeError("200: nenhum arquivo baixado (download direto falhou)")
 
     return {
         "ok": True,
         "files": paths,
         "period": (ini_ddmm, fim_ddmm),
-        "periodo_fmt": f"{ini_ddmm} – {fim_ddmm}",
+        "periodo_fmt": f"{ini_ddmm} - {fim_ddmm}",
         "unidade_origem": unid,
         "tipo_arquivo": tipo,
         "tag": file_tag,
@@ -296,7 +303,7 @@ def _preencher_200(popup, *, ini: str, fim: str, unidade: str, tipo: str, on_sta
     except Exception as err:  # noqa: BLE001
         status(f"[200] fill playwright: {err}")
 
-    status(f"[200] form origem={origem or '—'} · {filled}")
+    status(f"[200] form origem={origem or '-'} · {filled}")
     if not filled.get("okTipo"):
         raise RuntimeError(f"200: não achei Tipo de arquivo (E). form={filled}")
     if origem and not filled.get("okOrigem"):
@@ -309,31 +316,51 @@ def _preencher_200(popup, *, ini: str, fim: str, unidade: str, tipo: str, on_sta
 
 
 def _clicar_gerar_200(popup) -> str:
-    try:
-        loc = popup.get_by_text("►", exact=True)
-        if loc.count() > 0:
-            loc.first.click(timeout=5000)
-            return "►"
-    except Exception:
-        pass
-    try:
-        loc = popup.locator("a", has_text="►")
-        if loc.count() > 0:
-            loc.first.click(timeout=5000)
-            return "a:►"
-    except Exception:
-        pass
-    return popup.evaluate(
-        """() => {
-          const links = Array.from(document.querySelectorAll('a, span, button, img'));
-          for (const a of links) {
-            const t = ((a.innerText || a.textContent || a.alt || a.title || '') + '').trim();
-            if (t === '►' || t === '▶') { a.click(); return 'play'; }
-          }
-          const as = Array.from(document.querySelectorAll('a'));
-          if (as.length) { as[0].click(); return 'a0'; }
-          return '';
-        }"""
+    """Clica no ► / play da tela 200 (download direto com Tipo=E)."""
+    # 1) texto/link ►
+    for how, locator in (
+        ("text", lambda: popup.get_by_text("►", exact=True)),
+        ("text2", lambda: popup.get_by_text("▶", exact=True)),
+        ("a", lambda: popup.locator("a", has_text="►")),
+        ("img", lambda: popup.locator("img[alt*='►'], img[title*='►'], img[src*='play']")),
+    ):
+        try:
+            loc = locator()
+            if loc.count() > 0:
+                loc.first.click(timeout=5000)
+                return how
+        except Exception:
+            pass
+
+    # 2) JS: play / ajaxEnvia típico SSW (NUNCA clica no 1º <a> aleatório)
+    return str(
+        popup.evaluate(
+            """() => {
+              const txt = (el) =>
+                ((el.innerText || el.textContent || el.alt || el.title || el.value || '') + '')
+                  .trim();
+              const nodes = Array.from(
+                document.querySelectorAll('a, span, button, img, input[type=button], input[type=image]')
+              );
+              for (const a of nodes) {
+                const t = txt(a);
+                if (t === '►' || t === '▶' || t === '>' || /^gerar$/i.test(t)) {
+                  a.click();
+                  return 'play:' + t;
+                }
+              }
+              if (typeof ajaxEnvia === 'function') {
+                try { ajaxEnvia('ENV', 0); return 'ajax:ENV'; } catch (e) {}
+                try { ajaxEnvia('', 0); return 'ajax:0'; } catch (e) {}
+              }
+              const playImg = document.querySelector(
+                "img[src*='play'], img[src*='seta'], img[src*='go'], a[onclick*='ajaxEnvia']"
+              );
+              if (playImg) { playImg.click(); return 'img-play'; }
+              return '';
+            }"""
+        )
+        or ""
     )
 
 
@@ -364,7 +391,6 @@ def _try_dismiss_nenhum_registro(popup) -> str:
                       return t || 'OK';
                     }
                   }
-                  // X do cabeçalho "Aviso"
                   for (const a of clickables) {
                     const t = ((a.innerText || a.textContent || a.title || '') + '').trim();
                     if (t === 'X' || t === '×' || /fechar|close/i.test(t)) {
@@ -383,8 +409,8 @@ def _try_dismiss_nenhum_registro(popup) -> str:
 
 def _gerar_download_200(client, context, page, popup, dest_name: str, status) -> Path:
     """
-    Tipo=E + ► → download DIRETO do CSV.
-    Se aparecer 'Nenhum registro encontrado…' → fecha OK e segue (FilaSemDados).
+    Tipo=E + ► → download DIRETO do CSV (sem fila 156).
+    Se aparecer 'Nenhum registro encontrado' → FilaSemDados.
     """
     _ = page
     try:
@@ -392,59 +418,81 @@ def _gerar_download_200(client, context, page, popup, dest_name: str, status) ->
     except Exception:
         pass
 
-    downloads: list[Any] = []
-
-    def _on_dl(d) -> None:
-        downloads.append(d)
-
+    download = None
     try:
-        context.on("download", _on_dl)
-    except Exception:
-        pass
-
-    try:
-        clicked = _clicar_gerar_200(popup)
-        if not clicked:
-            raise RuntimeError("200: botão ► não encontrado")
-        status(f"[200] clique={clicked} · download direto…")
-
-        deadline = time.time() + 60
-        while time.time() < deadline:
-            if downloads:
-                path = client._save_download(downloads[0], dest_name)
-                # força nome contratacao_200_TAG.csv (SSW manda m.aguir…BIN)
-                try:
-                    forced = Path(client.download_dir) / Path(dest_name).name
-                    if path.resolve() != forced.resolve():
-                        if forced.exists():
-                            forced.unlink()
-                        path.replace(forced)
-                        path = forced
-                except Exception:
-                    pass
-                status(f"[200] download OK · {path.name}")
-                return path
-
-            dismissed = _try_dismiss_nenhum_registro(popup)
-            if dismissed:
-                status(f"[200] sem registro — OK ({dismissed})")
-                raise FilaSemDados("sem base · nenhum registro encontrado")
-
-            try:
-                popup.wait_for_timeout(350)
-            except Exception:
-                time.sleep(0.35)
-
+        with context.expect_event("download", timeout=120000) as di:
+            clicked = _clicar_gerar_200(popup)
+            if not clicked:
+                raise RuntimeError("200: botao gerar (►) nao encontrado")
+            status(f"[200] clique={clicked} · aguardando CSV direto (sem fila 156)...")
+        download = di.value
+    except FilaSemDados:
+        raise
+    except Exception as err:
         dismissed = _try_dismiss_nenhum_registro(popup)
         if dismissed:
-            status(f"[200] sem registro — OK ({dismissed})")
-            raise FilaSemDados("sem base · nenhum registro encontrado")
-        raise RuntimeError("200: timeout sem download (e sem aviso de vazio)")
-    finally:
+            status(f"[200] sem registro - OK ({dismissed})")
+            raise FilaSemDados("sem base · nenhum registro encontrado") from err
+        # Fallback: listener + novo clique
+        status(f"[200] expect_event: {err} · retry listener...")
+        downloads: list[Any] = []
+
+        def _on_dl(d) -> None:
+            downloads.append(d)
+
         try:
-            context.remove_listener("download", _on_dl)
+            context.on("download", _on_dl)
         except Exception:
             pass
+        try:
+            clicked = _clicar_gerar_200(popup)
+            if not clicked:
+                raise RuntimeError(f"200: botao gerar nao encontrado ({err})") from err
+            status(f"[200] clique(retry)={clicked}")
+            deadline = time.time() + 90
+            while time.time() < deadline:
+                if downloads:
+                    download = downloads[0]
+                    break
+                dismissed = _try_dismiss_nenhum_registro(popup)
+                if dismissed:
+                    raise FilaSemDados("sem base · nenhum registro encontrado")
+                try:
+                    popup.wait_for_timeout(350)
+                except Exception:
+                    time.sleep(0.35)
+            else:
+                raise RuntimeError(f"200: timeout sem download direto ({err})") from err
+        finally:
+            try:
+                context.remove_listener("download", _on_dl)
+            except Exception:
+                pass
+
+    if download is None:
+        raise RuntimeError("200: download nao capturado")
+
+    path = client._save_download(download, dest_name)
+    try:
+        forced = Path(client.download_dir) / Path(dest_name).name
+        suggested = (download.suggested_filename or "").lower()
+        if suggested.endswith(".xlsx"):
+            forced = forced.with_suffix(".xlsx")
+        elif suggested.endswith(".xls") and not suggested.endswith(".xlsx"):
+            forced = forced.with_suffix(".xls")
+        elif suggested.endswith(".csv"):
+            forced = forced.with_suffix(".csv")
+        elif suggested.endswith(".sswweb"):
+            forced = forced.with_suffix(".sswweb")
+        if path.resolve() != forced.resolve():
+            if forced.exists():
+                forced.unlink()
+            path.replace(forced)
+            path = forced
+    except Exception:
+        pass
+    status(f"[200] download OK · {path.name} ({path.stat().st_size} bytes)")
+    return path
 
 
 def _snapshot_fila_200_before(client, context, page, status) -> tuple[set[str], int]:

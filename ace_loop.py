@@ -47,7 +47,12 @@ def _log(msg: str) -> None:
 
         _enable_windows_ansi()
         stamp = datetime.now().strftime("%H:%M:%S")
-        print(f"  {format_status(msg, hhmmss=stamp)}", flush=True)
+        line = f"  {format_status(msg, hhmmss=stamp)}"
+        try:
+            print(line, flush=True)
+        except UnicodeEncodeError:
+            enc = getattr(sys.stdout, "encoding", None) or "cp1252"
+            print(line.encode(enc, errors="replace").decode(enc, errors="replace"), flush=True)
         try:
             from crt_bridge import append_log
 
@@ -57,7 +62,10 @@ def _log(msg: str) -> None:
         except Exception:
             pass
     except Exception:
-        print(f"[{datetime.now():%H:%M:%S}] {msg}", flush=True)
+        try:
+            print(f"[{datetime.now():%H:%M:%S}] {msg}", flush=True)
+        except UnicodeEncodeError:
+            print(f"[{datetime.now():%H:%M:%S}] {msg}".encode("ascii", errors="replace").decode("ascii"), flush=True)
 
 
 # Alias de tag no log → id do setor
@@ -522,8 +530,19 @@ def run_loop(
 
             today = date.today()
             if today != day_marker:
-                _log(f"VIRADA DE DIA: {day_marker} → {today} | recalculando periodos")
+                msg = (
+                    f"VIRADA DE DIA: {day_marker:%d/%m/%Y} -> {today:%d/%m/%Y} | "
+                    "recalculando periodos e forcando todos os setores"
+                )
+                _log(msg)
+                try:
+                    from pipeline import _log_file
+
+                    _log_file(msg)
+                except Exception:
+                    pass
                 day_marker = today
+                last_run.clear()  # não espera o intervalo — baixa já com o dia novo
                 if not quiet_banner:
                     _banner(cfg, use_headless)
 

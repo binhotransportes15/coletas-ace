@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable
 
 from config import DOWNLOAD_DIR, LOG_DIR, AceSettings, SswCredentials, ensure_dirs, load_credentials, load_settings
-from dates import format_period, normalize_date, periodo_103_hoje, periodo_36_ontem_hoje, periodo_50_coleta_hoje, periodo_mes_corrente, sugestao_periodo, titulo_agendamento_mes
+from dates import format_period, normalize_date, periodo_103_hoje, periodo_36_ontem_hoje, periodo_50_coleta_hoje, periodo_mes_corrente, sugestao_periodo, titulo_agendamento_mes, to_ssw_ddmmyy
 from parser_ssw0157 import analyze_report
 from publish_dashboard import publish_dashboard
 from sheets_sync import sync_google_sheets, sync_google_sheets_103, sync_google_sheets_36, sync_google_sheets_225
@@ -31,6 +31,41 @@ _STATUS_LOCK = threading.Lock()
 
 def _noop(_: str) -> None:
     return None
+
+
+def _file_is_current_calendar_day(path: Path, *, kind: str = "day") -> bool:
+    """
+    Evita republicar relatório de ontem após a virada de dia.
+
+    - Relatórios diários (50/103/36): nome deve conter o DDMMYY de hoje,
+      ou (sem data no nome) mtime no dia civil atual.
+    - 225 (mês): aceita se o par ini/fim do nome bate com o mês corrente,
+      ou mtime de hoje.
+    """
+    import re
+
+    try:
+        name = path.name.lower()
+    except Exception:
+        return False
+    today_yy = to_ssw_ddmmyy(periodo_50_coleta_hoje()[0])
+    tokens = re.findall(r"(?<!\d)(\d{6})(?!\d)", name)
+
+    if kind in {"225", "agenda", "agendamento"}:
+        ini, fim = periodo_mes_corrente()
+        ini_yy, fim_yy = to_ssw_ddmmyy(ini), to_ssw_ddmmyy(fim)
+        if tokens:
+            return ini_yy in tokens and fim_yy in tokens
+    else:
+        if tokens:
+            # 36 tem dois dias (D-1..hoje) — exige o fim = hoje
+            return today_yy in tokens
+
+    try:
+        mday = date.fromtimestamp(path.stat().st_mtime)
+    except Exception:
+        return False
+    return mday == date.today()
 
 
 def _persist_local_instead_of_sheets(
@@ -117,8 +152,11 @@ def find_latest_report(download_dir: Path | None = None) -> Path | None:
             for bad in ("0146", "0166", "2862", "coleta_103", "entrega_36", "agendamento_225")
         ):
             continue
-        if name.startswith("coleta_50") or "ssw0157" in name or "0157" in name:
-            return p
+        if not (name.startswith("coleta_50") or "ssw0157" in name or "0157" in name):
+            continue
+        if not _file_is_current_calendar_day(p, kind="50"):
+            continue
+        return p
     return None
 
 
@@ -138,7 +176,7 @@ def run_analysis_only(
     totais = meta.get("totais_situacao") or {}
     status(
         f"Analise: {meta.get('lote_atual')} coleta(s) pelo cabecalho SPO | "
-        f"SITUACAO ATUAL → "
+        f"SITUACAO ATUAL -> "
         f"COL {totais.get('coletada', 0)} / "
         f"COM {totais.get('comandada', 0)} / "
         f"CAD {totais.get('cadastrada', 0)} / "
@@ -263,6 +301,8 @@ def find_latest_103(download_dir: Path | None = None) -> Path | None:
         ):
             continue
         if "0166" in name or name.startswith("coleta_103"):
+            if not _file_is_current_calendar_day(p, kind="103"):
+                continue
             return p
     return None
 
@@ -400,6 +440,8 @@ def find_latest_225(download_dir: Path | None = None) -> Path | None:
             continue
         if "ROMANEIO" in head and "AGEND" not in head:
             continue
+        if not _file_is_current_calendar_day(p, kind="225"):
+            continue
         if "AGEND PARA" in head or "AGENDADO PARA" in head:
             return p
         if "AGEND" in head and "CTRC" in head and "OCORRENCIA" in head:
@@ -453,7 +495,10 @@ def find_latest_36(download_dir: Path | None = None) -> Path | None:
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )
-    return files[0] if files else None
+    for p in files:
+        if _file_is_current_calendar_day(p, kind="36"):
+            return p
+    return None
 
 
 def run_analysis_36(
@@ -612,7 +657,7 @@ def run_pipeline_mapa(
                 import shutil
 
                 shutil.copy2(report50, stable)
-                emit(f"[50] copiado → {stable.name}")
+                emit(f"[50] copiado -> {stable.name}")
             except Exception:
                 pass
         else:
@@ -999,6 +1044,11 @@ def run_dual_cycle(
 
     download_bundle: dict[str, Any] = {"paths": {}, "errors": {}}
     try:
+        # Recalcula na hora do download (ciclo pode ter demorado / virada de dia)
+        ini50, fim50 = periodo_50_coleta_hoje()
+        ini103, fim103 = periodo_103_hoje()
+        ini36, fim36 = periodo_36_ontem_hoje()
+        ini225, fim225 = periodo_mes_corrente()
         download_bundle = download_ace_shared_cycle(
             period_50=(ini50, fim50),
             period_103=(ini103, fim103),
@@ -1183,11 +1233,18 @@ def run_dual_cycle(
                             headless=use_headless,
                             on_status=lambda m: emit(f"[200] {m}"),
                         )
-                        analyze_reports_200(
-                            dl200.get("files") or [],
-                            placas=placas,
-                            on_status=lambda m: emit(f"[200] {m}"),
-                        )
+                        files200 = list(dl200.get("files") or [])
+                        if dl200.get("empty") or not files200:
+                            emit(
+                                f"200 sem arquivo ({dl200.get('error') or 'vazio'}) — "
+                                "custo Excel mantido, frete não atualizado"
+                            )
+                        else:
+                            analyze_reports_200(
+                                files200,
+                                placas=placas,
+                                on_status=lambda m: emit(f"[200] {m}"),
+                            )
                     except Exception as err200:  # noqa: BLE001
                         emit(f"200 avisou: {err200} (custo Excel mantido)")
                 publish_contratacao_local(on_status=lambda m: emit(f"[ctr] {m}"))
@@ -1440,11 +1497,18 @@ def run_parallel_cycle(
                     headless=use_headless,
                     on_status=lambda m: emit(f"[200] {m}"),
                 )
-                analyze_reports_200(
-                    dl200.get("files") or [],
-                    placas=placas,
-                    on_status=lambda m: emit(f"[200] {m}"),
-                )
+                files200 = list(dl200.get("files") or [])
+                if dl200.get("empty") or not files200:
+                    emit(
+                        f"200 sem arquivo ({dl200.get('error') or 'vazio'}) — "
+                        "custo Excel mantido, frete não atualizado"
+                    )
+                else:
+                    analyze_reports_200(
+                        files200,
+                        placas=placas,
+                        on_status=lambda m: emit(f"[200] {m}"),
+                    )
             except Exception as err200:  # noqa: BLE001
                 emit(f"200 avisou: {err200}")
         publish_contratacao_local(on_status=lambda m: emit(f"[ctr] {m}"))
@@ -1763,8 +1827,18 @@ def run_pipeline_31(
         on_status=status,
     )
     if _should_use_local_store(cfg):
-        status("031 analisado — modo local (JSON, sem Sheets)…")
+        status("031 analisado — modo local (JSON)…")
         sheets = _persist_local_instead_of_sheets("31", cfg=cfg, on_status=status)
+        from config import sheets_enabled
+
+        if sheets_enabled(cfg):
+            status("031 — espelhando planilha (sync remoto ON)…")
+            try:
+                remote = sync_sheets_31(cfg, on_status=status)
+                sheets = {**remote, "local": sheets}
+            except Exception as err:  # noqa: BLE001
+                status(f"031 Sheets aviso: {err}")
+                sheets = {"ok": False, "error": str(err), "local": sheets}
     else:
         status("031 analisado — enviando Sheets agora…")
         sheets = sync_sheets_31(cfg, on_status=status)

@@ -8,13 +8,22 @@ from config import LOG_DIR, ensure_dirs, load_settings
 from pipeline import run_full_pipeline
 
 
+def _safe_print(line: str) -> None:
+    """Windows cp1252 não tem →/…/— — nunca derruba o robot por encoding."""
+    try:
+        print(line, flush=True)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "cp1252"
+        print(line.encode(enc, errors="replace").decode(enc, errors="replace"), flush=True)
+
+
 def main() -> int:
     ensure_dirs()
     log_path = LOG_DIR / f"ace_{datetime.now():%Y%m%d}.log"
 
     def on_status(msg: str) -> None:
         line = f"[{datetime.now():%H:%M:%S}] {msg}"
-        print(line, flush=True)
+        _safe_print(line)
         with log_path.open("a", encoding="utf-8") as fh:
             fh.write(line + "\n")
 

@@ -1,6 +1,8 @@
 @echo off
 cd /d "%~dp0"
 chcp 65001 >nul
+set PYTHONIOENCODING=utf-8
+set PYTHONUTF8=1
 REM ================================
 REM  ACE · Gestão Operacional
 REM  Padrao: so o painel CRT (sem janela preta)

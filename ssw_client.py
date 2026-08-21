@@ -16,7 +16,15 @@ from config import (
     login_unit,
     parse_coleta_units,
 )
-from dates import format_period, normalize_date, periodo_36_ontem_hoje, to_ssw_ddmmyy
+from dates import (
+    format_period,
+    normalize_date,
+    periodo_103_hoje,
+    periodo_36_ontem_hoje,
+    periodo_50_coleta_hoje,
+    periodo_mes_corrente,
+    to_ssw_ddmmyy,
+)
 
 StatusCallback = Callable[[str], None]
 
@@ -189,6 +197,24 @@ class AceSswClient:
         self.start_date_yy = to_ssw_ddmmyy(start_date)
         self.end_date_yy = to_ssw_ddmmyy(end_date)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    def refresh_period_hoje(self, kind: str = "50") -> tuple[str, str]:
+        """
+        Recalcula o período com a data civil de AGORA (protege virada de dia
+        no meio de um ciclo longo).
+        kind: 50 | 103 | 36 | 225
+        """
+        k = str(kind or "50").strip().lower()
+        if k in {"36", "entrega", "0146"}:
+            ini, fim = periodo_36_ontem_hoje()
+        elif k in {"103", "limite"}:
+            ini, fim = periodo_103_hoje()
+        elif k in {"225", "agendamento", "agenda"}:
+            ini, fim = periodo_mes_corrente()
+        else:
+            ini, fim = periodo_50_coleta_hoje()
+        self.set_period(ini, fim)
+        return ini, fim
 
     def _cleanup_before_download(self) -> None:
         if not self.clean_downloads:
@@ -931,6 +957,7 @@ class AceSswClient:
           Previsao entrega = mes corrente 01→ultimo dia (DDMMYY)
           Gerar = #act_rel → ajaxEnvia('REL', 0)
         """
+        self.refresh_period_hoje("225")
         unidade = "SPO"
         self.on_status(
             f"Gerando 225 relatorio R | mes {self.start_date_yy} a {self.end_date_yy} | un={unidade}..."
@@ -1106,6 +1133,8 @@ class AceSswClient:
 
     def _download_report_50(self, page) -> Path:
         """050 - Relacao das Coletas (ssw0157) pelo Periodo de COLETA (hoje)."""
+        # Virada de dia: sempre recalcula (não usa período congelado do início do ciclo)
+        self.refresh_period_hoje("50")
         units = self._coleta_units()
         # [] = sem filtro (1 download); varias siglas = N telas em paralelo
         passes = units if units else [""]
@@ -1352,6 +1381,7 @@ class AceSswClient:
           Unidade = cada sigla em config (SPO,LEO,RIS) ou vazio = todas
           Multi-unidade: abre N telas juntas e gera em cada uma.
         """
+        self.refresh_period_hoje("103")
         units = self._coleta_units()
         passes = units if units else [""]
         label = ",".join(passes) if units else "TODAS"
@@ -1640,7 +1670,8 @@ class AceSswClient:
                 for label, path_key, period, markers in open_plan:
                     popup = None
                     try:
-                        self.set_period(period[0], period[1])
+                        # Recalcula no ato (ciclo pode atravessar a meia-noite)
+                        period = self.refresh_period_hoje(label)
                         if (label == "50" and multi_50) or (label == "103" and multi_103):
                             self.on_status(
                                 f"[{label}] multi-unidade · abre no gerar · "
@@ -1673,7 +1704,7 @@ class AceSswClient:
                 # Fase B: gera/baixa em cada guia já aberta
                 for label, path_key, period, popup in opened:
                     try:
-                        self.set_period(period[0], period[1])
+                        period = self.refresh_period_hoje(label)
                         self.on_status(f"[{label}] gerando…")
                         if label == "50":
                             if multi_50 or popup is None:
@@ -1744,7 +1775,7 @@ class AceSswClient:
                 for label, path_key, period, downloader in retries:
                     try:
                         self.on_status(f"[{label}] nova tentativa na mesma sessão…")
-                        self.set_period(period[0], period[1])
+                        self.refresh_period_hoje(label)
                         page.bring_to_front()
                         path = downloader(page)
                         self.paths[path_key] = str(path)
@@ -1792,6 +1823,7 @@ class AceSswClient:
                             pass
 
     def _gerar_download_50_popup(self, popup, unidade: str) -> Path:
+        self.refresh_period_hoje("50")
         try:
             popup.on("dialog", lambda d: d.accept())
         except Exception:
@@ -1837,6 +1869,7 @@ class AceSswClient:
                 pass
 
     def _gerar_download_103_popup(self, popup, unidade: str) -> Path:
+        self.refresh_period_hoje("103")
         self._preencher_tela_103(popup, unidade=unidade)
         with popup.expect_download(timeout=180000) as download_info:
             self._clicar_gerar_103(popup)
@@ -1889,6 +1922,7 @@ class AceSswClient:
         return path
 
     def _gerar_download_225_popup(self, popup, unidade: str) -> Path:
+        self.refresh_period_hoje("225")
         self._preencher_tela_225(popup, unidade=unidade)
         popup.wait_for_timeout(400)
         with popup.expect_download(timeout=180000) as download_info:

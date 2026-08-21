@@ -1190,16 +1190,23 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
                     headless=_cfg_headless(),
                     on_status=_on_status,
                 )
-                analyze_reports_200(
-                    dl200.get("files") or [],
-                    placas=placas,
-                    on_status=_on_status,
-                )
-                from publish_dashboard import publish_contratacao_local
-                from sheets_sync_073 import sync_sheets_073
+                files200 = list(dl200.get("files") or [])
+                if dl200.get("empty") or not files200:
+                    _on_status(
+                        f"200 sem arquivo ({dl200.get('error') or 'vazio'}) — "
+                        "custo Excel mantido"
+                    )
+                else:
+                    analyze_reports_200(
+                        files200,
+                        placas=placas,
+                        on_status=_on_status,
+                    )
+                    from publish_dashboard import publish_contratacao_local
+                    from sheets_sync_073 import sync_sheets_073
 
-                publish_contratacao_local(on_status=_on_status)
-                sync_sheets_073(on_status=_on_status)
+                    publish_contratacao_local(on_status=_on_status)
+                    sync_sheets_073(on_status=_on_status)
             except Exception as err:  # noqa: BLE001
                 _on_status(f"200 avisou: {err}")
         elif skip_200:
