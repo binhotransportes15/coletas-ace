@@ -1,10 +1,10 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-21T13:53:31",
+  "updated_at": "2026-08-21T14:03:32",
   "resumo_50": {
     "data_cadastro": "PERIODO",
-    "total_coletas": "8",
-    "cadastrada": "7",
+    "total_coletas": "9",
+    "cadastrada": "8",
     "comandada": "0",
     "coletada": "1",
     "cancelada": "0"
