@@ -781,19 +781,22 @@ def publish_dashboard(
         status("Dashboard: github_repo nao configurado — so arquivo local.")
         result["skipped_push"] = True
         return result
-    if not token:
-        status(f"Dashboard: token {cfg.github_token_env} ausente — so arquivo local.")
-        result["skipped_push"] = True
-        return result
 
     try:
-        dash = DASHBOARD_DIR
-        # Se dashboard estiver dentro do repo ACE, faz commit so dos arquivos do dashboard
+        from git_sync import (
+            ensure_clean_github_origin,
+            git_env_with_token,
+            redact_git_text,
+        )
+
         repo_root = BASE_DIR
-        env = os.environ.copy()
-        # remote com token
-        remote = f"https://x-access-token:{token}@github.com/{cfg.github_repo}.git"
+        env = git_env_with_token(token or None)
         branch = cfg.github_branch or "main"
+        ensure_clean_github_origin(str(cfg.github_repo), cwd=repo_root)
+        if not token:
+            status(
+                f"Dashboard: {cfg.github_token_env} ausente — tentando push com credencial do Git."
+            )
 
         def run(cmd: list[str]) -> subprocess.CompletedProcess:
             return subprocess.run(
@@ -809,22 +812,16 @@ def publish_dashboard(
         msg = f"chore(dashboard): atualiza dados ACE {datetime.now():%Y-%m-%d %H:%M}"
         commit = run(["git", "commit", "-m", msg])
         if commit.returncode != 0 and "nothing to commit" not in (commit.stdout + commit.stderr):
-            # pode nao ser repo git — tenta push de pasta isolada via gh?
-            result["commit_stderr"] = commit.stderr
-        # configura remote temporario se necessario
-        remotes = run(["git", "remote"])
-        if "origin" not in remotes.stdout:
-            run(["git", "remote", "add", "origin", remote])
-        else:
-            run(["git", "remote", "set-url", "origin", remote])
+            result["commit_stderr"] = redact_git_text(commit.stderr or "")
         push = run(["git", "push", "-u", "origin", branch])
         if push.returncode == 0:
             result["pushed"] = True
             status("Dashboard publicado no GitHub.")
         else:
             result["ok"] = True  # local ok
-            result["push_error"] = push.stderr
-            status(f"Push GitHub falhou (mantendo pagina anterior): {push.stderr[:200]}")
+            err = redact_git_text((push.stderr or "")[:200])
+            result["push_error"] = err
+            status(f"Push GitHub falhou (mantendo pagina anterior): {err}")
         return result
     except Exception as error:  # noqa: BLE001
         result["ok"] = True

@@ -5,7 +5,9 @@ Sobe alteracoes do projeto para o GitHub sem expor segredos.
 """
 from __future__ import annotations
 
+import base64
 import os
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +16,44 @@ from typing import Callable
 from config import BASE_DIR
 
 StatusCallback = Callable[[str], None]
+
+
+def redact_git_text(raw: str) -> str:
+    text = str(raw or "")
+    text = re.sub(r"ghp_[A-Za-z0-9]+", "ghp_***", text)
+    text = re.sub(r"github_pat_[A-Za-z0-9_]+", "github_pat_***", text)
+    text = re.sub(r"x-access-token:[^@\s]+", "x-access-token:***", text)
+    return text
+
+
+def github_origin_url(repo: str) -> str:
+    clean = str(repo or "").strip().strip("/")
+    return f"https://github.com/{clean}.git"
+
+
+def git_env_with_token(token: str | None = None) -> dict[str, str]:
+    """Auth só no processo do git — nunca grava o token no remote."""
+    env = os.environ.copy()
+    tok = str(token or env.get("GH_TOKEN") or env.get("GITHUB_TOKEN") or "").strip()
+    if tok:
+        basic = base64.b64encode(f"x-access-token:{tok}".encode("ascii")).decode("ascii")
+        env["GIT_CONFIG_COUNT"] = "1"
+        env["GIT_CONFIG_KEY_0"] = "http.https://github.com/.extraheader"
+        env["GIT_CONFIG_VALUE_0"] = f"AUTHORIZATION: basic {basic}"
+        env["GIT_TERMINAL_PROMPT"] = "0"
+    return env
+
+
+def ensure_clean_github_origin(repo: str, *, cwd: Path | None = None) -> None:
+    """Tira token embutido no origin (publish antigo gravava x-access-token na URL)."""
+    want = github_origin_url(repo)
+    got = _run(["git", "remote", "get-url", "origin"], cwd=cwd)
+    current = (got.stdout or "").strip()
+    if not current:
+        _run(["git", "remote", "add", "origin", want], cwd=cwd)
+        return
+    if current != want:
+        _run(["git", "remote", "set-url", "origin", want], cwd=cwd)
 
 # Nunca forcar add destes (mesmo se alguem tentar)
 BLOCKED_PATTERNS = (
@@ -32,7 +72,12 @@ def _noop(_: str) -> None:
     return None
 
 
-def _run(cmd: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def _run(
+    cmd: list[str],
+    *,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         cmd,
         cwd=str(cwd or BASE_DIR),
@@ -41,6 +86,7 @@ def _run(cmd: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProc
         check=False,
         encoding="utf-8",
         errors="replace",
+        env=env,
     )
 
 
@@ -56,9 +102,8 @@ def git_status(*, on_status: StatusCallback | None = None) -> str:
     remote = _run(["git", "remote", "get-url", "origin"])
     ahead = _run(["git", "status", "-sb"])
     status(f"Branch: {(branch.stdout or '').strip() or '?'}")
-    url = (remote.stdout or "").strip()
+    url = redact_git_text((remote.stdout or "").strip())
     if "@" in url and "github.com" in url:
-        # mascara token se existir na URL
         url = "https://github.com/" + url.split("github.com/")[-1]
     status(f"Remote: {url or '(sem origin)'}")
     print(ahead.stdout or ahead.stderr or "(vazio)")
@@ -145,15 +190,24 @@ def git_push(
         else:
             status("Nada seguro para commit apos filtrar segredos.")
 
+    cfg_repo = "binhotransportes15/coletas-ace"
+    try:
+        from config import load_settings
+
+        cfg_repo = str(getattr(load_settings(), "github_repo", "") or cfg_repo)
+    except Exception:
+        pass
+    ensure_clean_github_origin(cfg_repo)
     branch = (_run(["git", "rev-parse", "--abbrev-ref", "HEAD"]).stdout or "main").strip()
     status(f"Enviando para origin/{branch}...")
-    push = _run(["git", "push", "-u", "origin", "HEAD"])
-    pout = ((push.stdout or "") + (push.stderr or "")).strip()
+    push = _run(["git", "push", "-u", "origin", "HEAD"], env=git_env_with_token())
+    pout = redact_git_text(((push.stdout or "") + (push.stderr or "")).strip())
     print(pout or "(sem saida)")
     if push.returncode != 0:
         tip = (
-            "Dica: confira login do git (gh auth login) ou "
-            "/e enable_github_publish true + GH_TOKEN."
+            "Permissao recusada no GitHub. Gere um token novo com escopo repo, "
+            "coloque em GH_TOKEN e confirme escrita em binhotransportes15/coletas-ace. "
+            "Se o token antigo estava gravado no origin, revogue-o."
         )
         return f"Push falhou: {pout[:400]}\n{tip}"
 
