@@ -9921,6 +9921,9 @@
     }
 
     const PREFER_LOCAL_CSV = preferLocalCsv();
+    /** CSV do mesmo host só vale na LAN. Em github.io/Sites o arquivo do Pages
+     *  congela (ciclo ACE grava local sem push) e sobrescrevia a planilha. */
+    const USE_PAGES_CSV_OVERLAY = PREFER_LOCAL_CSV;
     let lastCtrDataVersion = null;
     let ctrRefreshTimer = null;
     let lastGoodCtrResumo = null;
