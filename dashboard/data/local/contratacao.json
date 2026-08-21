@@ -1,14 +1,14 @@
 {
   "setor": "contratacao",
-  "updated_at": "2026-08-20T17:00:21",
+  "updated_at": "2026-08-21T10:39:33",
   "resumo_073": {
-    "periodo": "19/08 a 20/08",
-    "atualizado": "20/08/2026 16:19:14",
+    "periodo": "01/08 a 21/08",
+    "atualizado": "21/08/2026 10:33:55",
     "unidade": "SPO",
     "total_veiculos": "45",
-    "total_ctrbs": "10",
-    "custo": "372150.0",
-    "custo_fmt": "372.150,00",
+    "total_ctrbs": "60",
+    "custo": "403300.0",
+    "custo_fmt": "403.300,00",
     "frete": "0.0",
     "frete_fmt": "0,00",
     "peso": "0.0",
@@ -85,6 +85,19 @@
       "ctrbs": ""
     },
     {
+      "placa": "NFI3A71",
+      "carreta": "NFH9I51",
+      "propriedade": "JOÃO EDVAL DA SILVA",
+      "grupo": "contratados",
+      "qtd_ctrb": "2",
+      "custo": "15000.0",
+      "custo_av": "0.0",
+      "valor_pagar": "15000.0",
+      "peso": "0.0",
+      "frete": "0.0",
+      "ctrbs": ""
+    },
+    {
       "placa": "TOH4G21",
       "carreta": "TOI7E13",
       "propriedade": "DPK TRANSPORTES",
@@ -109,6 +122,19 @@
       "peso": "0.0",
       "frete": "0.0",
       "ctrbs": "41318-6"
+    },
+    {
+      "placa": "QRH1E76",
+      "carreta": "SFX9G71",
+      "propriedade": "DPK TRANSPORTES",
+      "grupo": "contratados",
+      "qtd_ctrb": "2",
+      "custo": "12700.0",
+      "custo_av": "0.0",
+      "valor_pagar": "12700.0",
+      "peso": "0.0",
+      "frete": "0.0",
+      "ctrbs": ""
     },
     {
       "placa": "RXZ3F27",
@@ -161,6 +187,32 @@
       "peso": "0.0",
       "frete": "0.0",
       "ctrbs": "41308-9"
+    },
+    {
+      "placa": "HMV9H97",
+      "carreta": "LWW4F23",
+      "propriedade": "JB TRANSPORTES",
+      "grupo": "contratados",
+      "qtd_ctrb": "2",
+      "custo": "11000.0",
+      "custo_av": "0.0",
+      "valor_pagar": "11000.0",
+      "peso": "0.0",
+      "frete": "0.0",
+      "ctrbs": ""
+    },
+    {
+      "placa": "OMP3E60",
+      "carreta": "SDL9E85",
+      "propriedade": "JB TRANSPORTES",
+      "grupo": "contratados",
+      "qtd_ctrb": "2",
+      "custo": "11000.0",
+      "custo_av": "0.0",
+      "valor_pagar": "11000.0",
+      "peso": "0.0",
+      "frete": "0.0",
+      "ctrbs": ""
     },
     {
       "placa": "QRI8A20",
@@ -267,19 +319,6 @@
       "ctrbs": ""
     },
     {
-      "placa": "NFI3A71",
-      "carreta": "NFH9I51",
-      "propriedade": "JOSE EDVAL",
-      "grupo": "contratados",
-      "qtd_ctrb": "1",
-      "custo": "7500.0",
-      "custo_av": "0.0",
-      "valor_pagar": "7500.0",
-      "peso": "0.0",
-      "frete": "0.0",
-      "ctrbs": ""
-    },
-    {
       "placa": "RRF0F93",
       "carreta": "RRE6G46",
       "propriedade": "SAM TRANSPORTES",
@@ -314,32 +353,6 @@
       "custo": "6200.0",
       "custo_av": "0.0",
       "valor_pagar": "6200.0",
-      "peso": "0.0",
-      "frete": "0.0",
-      "ctrbs": ""
-    },
-    {
-      "placa": "HMV9H97",
-      "carreta": "LWW4F23",
-      "propriedade": "JB TRANSPORTES",
-      "grupo": "contratados",
-      "qtd_ctrb": "1",
-      "custo": "5500.0",
-      "custo_av": "0.0",
-      "valor_pagar": "5500.0",
-      "peso": "0.0",
-      "frete": "0.0",
-      "ctrbs": ""
-    },
-    {
-      "placa": "OMP3E60",
-      "carreta": "SDL9E85",
-      "propriedade": "JB TRANSPORTES",
-      "grupo": "contratados",
-      "qtd_ctrb": "1",
-      "custo": "5500.0",
-      "custo_av": "0.0",
-      "valor_pagar": "5500.0",
       "peso": "0.0",
       "frete": "0.0",
       "ctrbs": ""
@@ -392,19 +405,6 @@
       "custo": "5200.0",
       "custo_av": "0.0",
       "valor_pagar": "5200.0",
-      "peso": "0.0",
-      "frete": "0.0",
-      "ctrbs": ""
-    },
-    {
-      "placa": "QRH1E76",
-      "carreta": "TOH5F65",
-      "propriedade": "DPK TRANSPORTES",
-      "grupo": "contratados",
-      "qtd_ctrb": "1",
-      "custo": "4200.0",
-      "custo_av": "0.0",
-      "valor_pagar": "4200.0",
       "peso": "0.0",
       "frete": "0.0",
       "ctrbs": ""
@@ -488,6 +488,19 @@
       "ctrbs": ""
     },
     {
+      "placa": "EXI7I89",
+      "carreta": "",
+      "propriedade": "ANDERSON MOURA DO NASCIMENTO",
+      "grupo": "contratados",
+      "qtd_ctrb": "3",
+      "custo": "4000.0",
+      "custo_av": "0.0",
+      "valor_pagar": "4000.0",
+      "peso": "0.0",
+      "frete": "0.0",
+      "ctrbs": ""
+    },
+    {
       "placa": "OWU2D36",
       "carreta": "TOQ4H23",
       "propriedade": "EBV EVIN",
@@ -522,19 +535,6 @@
       "custo": "2800.0",
       "custo_av": "0.0",
       "valor_pagar": "2800.0",
-      "peso": "0.0",
-      "frete": "0.0",
-      "ctrbs": ""
-    },
-    {
-      "placa": "BWA7J50",
-      "carreta": "",
-      "propriedade": "ROBSON DE OLIVEIRA SOUZA",
-      "grupo": "contratados",
-      "qtd_ctrb": "1",
-      "custo": "1200.0",
-      "custo_av": "0.0",
-      "valor_pagar": "1200.0",
       "peso": "0.0",
       "frete": "0.0",
       "ctrbs": ""
