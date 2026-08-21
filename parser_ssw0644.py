@@ -235,8 +235,14 @@ def analyze_reports_200(
         if not path.exists():
             status(f"200: ausente {path}")
             continue
-        chunk = parse_ssw0644(path, placas_ok=placas_ok)
-        status(f"200: {len(chunk)} placa(s) em {path.name}")
+        chunk = parse_ssw0644(path)
+        status(f"200: {len(chunk)} placa(s) no arquivo {path.name}")
+        if placas_ok:
+            n_hit = sum(1 for r in chunk if r["placa"] in placas_ok)
+            status(
+                f"200: {n_hit}/{len(chunk)} placa(s) conferem com a contratação"
+                + ("" if n_hit else " — relatório veio, mas nenhuma placa da planilha")
+            )
         for r in chunk:
             placa = r["placa"]
             slot = by_placa[placa]

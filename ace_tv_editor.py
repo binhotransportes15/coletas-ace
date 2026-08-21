@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
 
 from tv_layout import (
     ARM_VIEWS,
+    SECTOR_IDS,
     SECTOR_LABELS,
     default_view_ui,
     load_layout,
@@ -415,8 +416,8 @@ class TvEditorDialog(QDialog):
 
         form = QFormLayout()
         self.tv_sector = QComboBox()
-        for sid, lab in SECTOR_LABELS.items():
-            self.tv_sector.addItem(lab, sid)
+        for sid in SECTOR_IDS:
+            self.tv_sector.addItem(SECTOR_LABELS.get(sid, sid), sid)
         self.tv_sector.currentIndexChanged.connect(self._wall_slot_changed)
 
         self.tv_view = QComboBox()
@@ -475,8 +476,8 @@ class TvEditorDialog(QDialog):
 
         wall_row = QHBoxLayout()
         self.wall_sector = QComboBox()
-        for sid, lab in SECTOR_LABELS.items():
-            self.wall_sector.addItem(lab, sid)
+        for sid in SECTOR_IDS:
+            self.wall_sector.addItem(SECTOR_LABELS.get(sid, sid), sid)
         wall_row.addWidget(self.wall_sector, 1)
         b_on = QPushButton("Ativar parede")
         b_on.clicked.connect(self._wall_on)
@@ -505,8 +506,8 @@ class TvEditorDialog(QDialog):
 
         form = QFormLayout()
         self.dash_sector = QComboBox()
-        for sid, lab in SECTOR_LABELS.items():
-            self.dash_sector.addItem(lab, sid)
+        for sid in SECTOR_IDS:
+            self.dash_sector.addItem(SECTOR_LABELS.get(sid, sid), sid)
         self.dash_sector.currentIndexChanged.connect(self._dash_context_changed)
 
         self.dash_view = QComboBox()

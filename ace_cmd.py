@@ -571,6 +571,7 @@ def draw_menu(payload: dict[str, Any], *, message: str = "") -> None:
     print(f"    Pend  {g('31')} (10 cod.)  {g('sync31')}   Contr {g('73')}  {g('73 so73')}")
     print(f"    Emis  {g('455')} / {g('455 mes')} / {g('sync455')}   Mapa {g('mapa')} (CyberMap)")
     print(f"    Sync  {g('sync')} dist   Loop {g('/automatica')}  {g('piloto_sites')}  {g('sites')}")
+    print(f"    Aviso {g('aviso video.mp4')} anexa+push   {g('aviso push')} só site")
     print(f"    Local {g('local')}  {g('lan')}  {g('dash')}   Config {g('/e')}  {g('show')}  {g('help')}")
     print(f"    {g('/viz')} on|off   {g('brand')} ANSI   {g('crt')} CRT   {g('sair')}")
     print(f"    {muted('manual')}  docs/MANUAL.md  ·  {muted('sites')} docs/CONCEITO_SITES.md")
@@ -685,6 +686,13 @@ def cmd_help() -> str:
             "────────────────────────────────────",
             "  /status       Situação da publicação (destino, Sheets, GitHub).",
             "  /push [msg]   Publica no GitHub Pages (se habilitado).",
+            "  aviso         Mostra o comunicado da TV (vídeo/foto/texto).",
+            "  ace.bat aviso video.mp4",
+            "                Anexa o arquivo e faz push para o site.",
+            "  ace.bat aviso push",
+            "                Só publica o aviso já salvo em dashboard/aviso.",
+            "  aviso anexar arq.mp4",
+            "                Só copia o arquivo (sem push).",
             "  /pull         Traz atualizações do repositório.",
             "  dash          Gera/atualiza arquivos locais do dashboard.",
             "  piloto_sites  Liga Sheets, desliga GitHub, destino=sites.",
@@ -719,7 +727,7 @@ def cmd_help() -> str:
             "────────────────────────────────────",
             "TV / PAREDE",
             "────────────────────────────────────",
-            "  Configurações → TV  Editor da parede (setores por TV, logo, margens).",
+            "  Configurações → TV  Editor da parede + anexar aviso e publicar no site.",
             "  /tempo mapa   Tempo de troca de rota no mapa (ver acima).",
             "  Na TV: Ctrl+F5 após mudar layout ou tempo.",
             "",
@@ -1154,10 +1162,8 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
         x in {"legado", "legacy", "ssw", "073", "tela", "mos"} for x in extra_l
     )
     if not use_legado:
-        from dates import periodo_ctr_frete_200
         from extensao_contratacao.pipeline_agente import run_pipeline_contratacao_excel
-        from parser_ssw0644 import analyze_reports_200
-        from ssw_200 import download_reports_200
+        from ssw_200 import aplicar_frete_200_contratacao
 
         skip_200 = any(x in {"sem200", "skip200", "soexcel", "sóexcel"} for x in extra_l)
         excel = ""
@@ -1177,31 +1183,13 @@ def run_pipeline_contratacao_cmd(extra: list[str] | None = None) -> str:
         placas = list(result.get("placas") or [])
         if not skip_200 and placas:
             try:
-                ini, fim = periodo_ctr_frete_200()
-                print(
-                    f"  CRT: SSW 200 frete {ini}->{fim} "
-                    f"(mês · amarra por placa; frete pode ser D+1)…"
-                )
-                dl200 = download_reports_200(
-                    period=(ini, fim),
-                    unidade_origem="",
-                    tipo_arquivo="E",
-                    tag="CTR",
+                applied = aplicar_frete_200_contratacao(
+                    placas=placas,
+                    excel_result=result,
                     headless=_cfg_headless(),
                     on_status=_on_status,
                 )
-                files200 = list(dl200.get("files") or [])
-                if dl200.get("empty") or not files200:
-                    _on_status(
-                        f"200 sem arquivo ({dl200.get('error') or 'vazio'}) — "
-                        "custo Excel mantido"
-                    )
-                else:
-                    analyze_reports_200(
-                        files200,
-                        placas=placas,
-                        on_status=_on_status,
-                    )
+                if applied.get("ok"):
                     from publish_dashboard import publish_contratacao_local
                     from sheets_sync_073 import sync_sheets_073
 
@@ -1979,6 +1967,8 @@ def _execute_line_body(
         )
     if cmd in {"8", "status", "/status", "git", "/git"}:
         return (run_git_status(), payload)
+    if cmd in {"aviso", "/aviso", "avisos", "comunicado"}:
+        return (run_aviso_cmd(parts[1:] if len(parts) > 1 else []), payload)
     if cmd in {
         "9",
         "push",
@@ -2022,6 +2012,65 @@ def _execute_line_body(
             pass
         return ("__CLEAR__", payload)
     return (f"Comando desconhecido: {raw}. Digite help", payload)
+
+
+def run_aviso_cmd(rest: list[str] | None = None) -> str:
+    from pathlib import Path
+
+    from aviso_media import attach_files, load_aviso, status_text
+
+    _media = {".mp4", ".webm", ".mov", ".mkv", ".avi", ".m4v", ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
+
+    def _is_media(arg: str) -> bool:
+        p = Path(arg)
+        if p.is_file():
+            return True
+        return p.suffix.lower() in _media
+
+    args = [str(a) for a in (rest or []) if str(a).strip()]
+    if not args or args[0].lower() in {"status", "ver"}:
+        return (
+            status_text(load_aviso())
+            + "\n\nUso:\n"
+            + "  ace.bat aviso video.mp4     Anexa e publica no site\n"
+            + "  ace.bat aviso push          Só publica o aviso já salvo\n"
+            + "  ace.bat aviso anexar arq    Só copia (sem push)"
+        )
+
+    head = args[0].lower().lstrip("/")
+    do_push = False
+    paths: list[str] = []
+    if head in {"push", "publicar", "site"} and len(args) == 1:
+        return run_git_push(["push", "chore(aviso): atualiza comunicado TV"])
+    if head in {"anexar", "add", "attach"}:
+        paths = args[1:]
+        do_push = False
+    elif head in {"push", "publicar", "site"}:
+        paths = args[1:]
+        do_push = True
+    elif _is_media(args[0]) or any(_is_media(a) for a in args):
+        paths = args
+        do_push = True
+    else:
+        return (
+            "Uso: ace.bat aviso video.mp4 | ace.bat aviso push | ace.bat aviso anexar arquivo.mp4"
+        )
+
+    if not paths:
+        return "Passe o arquivo: ace.bat aviso \"C:\\pasta\\video.mp4\""
+    missing = [p for p in paths if not Path(p).is_file()]
+    if missing:
+        return "Arquivo não encontrado:\n  " + "\n  ".join(missing)
+    try:
+        out = attach_files(paths)
+    except Exception as err:  # noqa: BLE001
+        return f"Aviso: {err}"
+    lines = [status_text(out.get("cfg"))]
+    if out.get("errors"):
+        lines.append("Avisos: " + " | ".join(out["errors"]))
+    if do_push:
+        lines.append(run_git_push(["push", "chore(aviso): atualiza comunicado TV"]))
+    return "\n".join(lines)
 
 
 def run_git_status() -> str:
@@ -2089,6 +2138,11 @@ def _is_pull_token(token: str) -> bool:
     return t in {"pull", "baixar"}
 
 
+def _is_aviso_token(token: str) -> bool:
+    t = token.strip().lower().lstrip("/")
+    return t in {"aviso", "avisos", "comunicado"}
+
+
 def main(argv: list[str] | None = None) -> int:
     if os.name == "nt":
         try:
@@ -2111,6 +2165,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args and _is_pull_token(args[0]):
         print(run_git_pull())
+        return 0
+    if args and _is_aviso_token(args[0]):
+        msg = run_aviso_cmd(args[1:] if len(args) > 1 else [])
+        print(msg)
+        low = (msg or "").lower()
+        if "falhou" in low or "erro:" in low or "não encontrado" in low or "nao encontrado" in low:
+            return 1
         return 0
     if args and args[0].lstrip("/").lower() in {"78", "armazem", "once78"}:
         print(run_pipeline_78_cmd())
@@ -2302,6 +2363,8 @@ def main(argv: list[str] | None = None) -> int:
                 payload = _load_payload()
             elif cmd in {"8", "status", "/status", "git", "/git"}:
                 message = run_git_status()
+            elif cmd in {"aviso", "/aviso", "avisos", "comunicado"}:
+                message = run_aviso_cmd(parts[1:] if len(parts) > 1 else [])
             elif cmd in {
                 "9",
                 "push",

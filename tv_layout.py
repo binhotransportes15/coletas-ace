@@ -23,6 +23,7 @@ SECTOR_IDS = (
     "pendencia",
     "mapa",
     "emissao",
+    "aviso",
 )
 OPS_VIEWS = ("coleta", "entrega", "agendamento")
 ARM_VIEWS = ("patio", "conferentes")
@@ -35,6 +36,7 @@ SECTOR_LABELS = {
     "mapa": "Mapa Operacional",
     "reciclagem": "Mapa Operacional",  # legado → mapa
     "emissao": "Emissão",
+    "aviso": "Aviso",
 }
 
 
@@ -182,6 +184,8 @@ def _migrate_legacy_slot(s: dict[str, Any], template: dict[str, Any]) -> dict[st
         sector = "distribuicao"
     if sector in ("rastreamento", "recicla", "reciclagem", "019", "081", "19", "81", "mapa"):
         sector = "mapa"
+    if sector in ("aviso", "avisos", "comunicado", "comunicados"):
+        sector = "aviso"
     if sector not in SECTOR_IDS:
         sector = str(template.get("sector") or "distribuicao")
     if mode not in ("rotate", "fixed"):

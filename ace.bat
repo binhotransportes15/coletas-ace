@@ -9,6 +9,8 @@ REM  Padrao: so o painel CRT (sem janela preta)
 REM  ace.bat           → painel
 REM  ace.bat cmd       → console texto (legado)
 REM  ace.bat automatica → loop sem janela (via CRT se aberto; senao headless)
+REM  ace.bat aviso video.mp4 → anexa vídeo/foto e publica no site
+REM  ace.bat aviso push → só sobe o aviso já salvo
 REM ================================
 
 if /I "%~1"=="cmd" (
@@ -33,7 +35,18 @@ if /I "%~1"=="crt" goto :crt
 if /I "%~1"=="painel" goto :crt
 if /I "%~1"=="gestao" goto :crt
 
+if /I "%~1"=="aviso" goto :aviso
+if /I "%~1"=="/aviso" goto :aviso
+if /I "%~1"=="avisos" goto :aviso
+if /I "%~1"=="comunicado" goto :aviso
+
 REM Comandos CLI ainda aceitos (automatica, 50, sync...) sem abrir menu
+python -u ace_cmd.py %*
+if errorlevel 1 pause
+goto :eof
+
+:aviso
+title ACE · Aviso TV
 python -u ace_cmd.py %*
 if errorlevel 1 pause
 goto :eof

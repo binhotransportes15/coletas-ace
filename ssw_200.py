@@ -208,6 +208,212 @@ def download_reports_200(
     }
 
 
+def origens_frete_200(result: dict[str, Any] | None = None) -> list[str]:
+    """Siglas de Unidade origem do 200 a partir da planilha (SPO, GYN, VIX…)."""
+    seen: list[str] = []
+
+    def _add(raw: Any) -> None:
+        tok = str(raw or "").strip().upper().split("·", 1)[0].strip()
+        tok = re.sub(r"[^A-Z]", "", tok)
+        if (
+            2 <= len(tok) <= 4
+            and tok.isalpha()
+            and tok not in {"OUT", "ALL", "CTR"}
+            and tok not in seen
+        ):
+            seen.append(tok)
+
+    if result:
+        for b in result.get("bases") or []:
+            _add(b)
+        for d in result.get("destinos") or []:
+            if isinstance(d, dict):
+                _add(d.get("base") or d.get("destino"))
+            else:
+                _add(d)
+    if not seen:
+        return ["SPO"]
+    if "SPO" in seen:
+        return ["SPO"] + [x for x in seen if x != "SPO"]
+    return seen
+
+
+def download_reports_200_origens(
+    origens: list[str] | None = None,
+    *,
+    period: tuple[str, str] | None = None,
+    tipo_arquivo: str = "E",
+    headless: bool | None = None,
+    on_status: StatusCallback | None = None,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    client: AceSswClient | None = None,
+    context=None,
+    page=None,
+) -> dict[str, Any]:
+    """Um login · um 200 por unidade origem (não deixa origem em branco)."""
+    status = on_status or _noop
+    unids = origens_frete_200({"bases": list(origens or [])})
+    ini_ddmm, fim_ddmm = period or periodo_mes_ate_hoje()
+    files: list[str] = []
+    by: dict[str, Any] = {}
+    errors: dict[str, str] = {}
+
+    status(f"SSW 200 · origens {', '.join(unids)} · {ini_ddmm}-{fim_ddmm}")
+
+    reuse = page is not None and context is not None and client is not None
+    own_client = client
+    browser = None
+    ctx = context
+    pg = page
+
+    def _one(sess_client, sess_ctx, sess_page) -> None:
+        for unid in unids:
+            try:
+                dl = download_reports_200(
+                    period=(ini_ddmm, fim_ddmm),
+                    unidade_origem=unid,
+                    tipo_arquivo=tipo_arquivo,
+                    tag=unid,
+                    on_status=status,
+                    credentials=credentials,
+                    settings=settings,
+                    client=sess_client,
+                    context=sess_ctx,
+                    page=sess_page,
+                )
+                got = list(dl.get("files") or [])
+                if got:
+                    files.extend(got)
+                    by[unid] = {"ok": True, "files": got}
+                    status(f"[200/{unid}] {len(got)} arquivo(s)")
+                else:
+                    msg = str(dl.get("error") or "vazio")
+                    by[unid] = {"ok": True, "empty": True, "error": msg}
+                    status(f"[200/{unid}] sem movimento ({msg})")
+            except FilaSemDados as empty_err:
+                by[unid] = {"ok": True, "empty": True, "error": str(empty_err)}
+                status(f"[200/{unid}] sem base ({empty_err})")
+            except Exception as err:  # noqa: BLE001
+                errors[unid] = str(err)
+                status(f"[200/{unid}] avisou: {err}")
+
+    if reuse:
+        _one(own_client, ctx, pg)
+    else:
+        ensure_dirs()
+        _ensure_playwright_path()
+        creds = credentials or load_credentials()
+        cfg = settings or load_settings()
+        use_headless = cfg.headless if headless is None else bool(headless)
+        own_client = AceSswClient(
+            ini_ddmm,
+            fim_ddmm,
+            keep_open=False,
+            headless=use_headless,
+            on_status=status,
+            credentials=creds,
+            settings=cfg,
+            clean_downloads=False,
+        )
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            status("[200] abrindo Chromium (frete por origem)...")
+            browser = p.chromium.launch(headless=use_headless, slow_mo=0 if use_headless else 40)
+            try:
+                from ace_stop import register_browser
+
+                register_browser(browser)
+            except Exception:
+                pass
+            ctx = browser.new_context(accept_downloads=True)
+            pg = ctx.new_page()
+            pg.set_default_timeout(60000)
+            pg.on("dialog", lambda d: d.accept())
+            ctx.on("page", lambda p2: p2.on("dialog", lambda d: d.accept()))
+            try:
+                status("[200] login SSW...")
+                own_client._login(pg)
+                own_client._ensure_unit(pg)
+                own_client._patch_blank_popup_form(pg)
+                _one(own_client, ctx, pg)
+            finally:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+                try:
+                    from ace_stop import unregister_browser
+
+                    unregister_browser(browser)
+                except Exception:
+                    pass
+
+    if not files and errors and not any(v.get("empty") for v in by.values()):
+        raise RuntimeError(
+            "200: nenhum arquivo baixado · "
+            + "; ".join(f"{k}:{v}" for k, v in errors.items())
+        )
+    return {
+        "ok": True,
+        "files": files,
+        "empty": not files,
+        "error": "" if files else "; ".join(errors.values()) or "sem movimento",
+        "by_origem": by,
+        "errors": errors,
+        "origens": unids,
+        "period": (ini_ddmm, fim_ddmm),
+    }
+
+
+def aplicar_frete_200_contratacao(
+    *,
+    placas: list[str] | None = None,
+    excel_result: dict[str, Any] | None = None,
+    period: tuple[str, str] | None = None,
+    headless: bool | None = None,
+    on_status: StatusCallback | None = None,
+    credentials: SswCredentials | None = None,
+    settings: AceSettings | None = None,
+    client: AceSswClient | None = None,
+    context=None,
+    page=None,
+) -> dict[str, Any]:
+    """Baixa 200 por origem da planilha e aplica FRETE-R$ nas placas da contratação."""
+    from dates import periodo_ctr_frete_200
+    from parser_ssw0644 import analyze_reports_200
+
+    status = on_status or _noop
+    origens = origens_frete_200(excel_result)
+    peri = period or periodo_ctr_frete_200()
+    status(
+        f"CRT 200 frete {peri[0]}->{peri[1]} · origens {', '.join(origens)} "
+        f"(mês · amarra por placa)"
+    )
+    dl = download_reports_200_origens(
+        origens,
+        period=peri,
+        tipo_arquivo="E",
+        headless=headless,
+        on_status=status,
+        credentials=credentials,
+        settings=settings,
+        client=client,
+        context=context,
+        page=page,
+    )
+    files = list(dl.get("files") or [])
+    if not files:
+        status(
+            f"200 sem arquivo ({dl.get('error') or 'vazio'}) — "
+            "custo Excel mantido, frete não atualizado"
+        )
+        return {"ok": False, "empty": True, "download": dl}
+    analysis = analyze_reports_200(files, placas=list(placas or []), on_status=status)
+    return {"ok": True, "download": dl, **analysis}
+
+
 def _preencher_200(popup, *, ini: str, fim: str, unidade: str, tipo: str, on_status) -> None:
     """
     ssw0644 (tela 200) — ordem do form (print):
@@ -462,7 +668,17 @@ def _gerar_download_200(client, context, page, popup, dest_name: str, status) ->
                 except Exception:
                     time.sleep(0.35)
             else:
-                raise RuntimeError(f"200: timeout sem download direto ({err})") from err
+                status("[200] download direto timeout · tentando fila 156...")
+                try:
+                    return _baixar_via_fila_200(
+                        client, context, page, popup, dest_name, status
+                    )
+                except FilaSemDados:
+                    raise
+                except Exception as fila_err:  # noqa: BLE001
+                    raise RuntimeError(
+                        f"200: timeout sem download direto ({err})"
+                    ) from fila_err
         finally:
             try:
                 context.remove_listener("download", _on_dl)

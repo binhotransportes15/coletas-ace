@@ -1203,12 +1203,10 @@ def run_dual_cycle(
         if getattr(cfg, "contratacao_in_loop", False):
             emit("Contratação · Excel (mês) + frete 200 por placa…")
             try:
-                from dates import periodo_ctr_frete_200
                 from extensao_contratacao.pipeline_agente import run_pipeline_contratacao_excel
-                from parser_ssw0644 import analyze_reports_200
                 from publish_dashboard import publish_contratacao_local
                 from sheets_sync_073 import sync_sheets_073
-                from ssw_200 import download_reports_200
+                from ssw_200 import aplicar_frete_200_contratacao
 
                 result_73 = run_pipeline_contratacao_excel(
                     settings=cfg,
@@ -1217,34 +1215,15 @@ def run_dual_cycle(
                 )
                 placas = list(result_73.get("placas") or [])
                 if placas:
-                    ini, fim = periodo_ctr_frete_200()
-                    emit(
-                        f"CRT 200 frete {ini}->{fim} "
-                        f"(mês · amarra por placa; frete pode ser D+1)…"
-                    )
                     try:
-                        dl200 = download_reports_200(
-                            period=(ini, fim),
-                            unidade_origem="",
-                            tipo_arquivo="E",
-                            tag="CTR",
+                        aplicar_frete_200_contratacao(
+                            placas=placas,
+                            excel_result=result_73,
                             credentials=creds,
                             settings=cfg,
                             headless=use_headless,
                             on_status=lambda m: emit(f"[200] {m}"),
                         )
-                        files200 = list(dl200.get("files") or [])
-                        if dl200.get("empty") or not files200:
-                            emit(
-                                f"200 sem arquivo ({dl200.get('error') or 'vazio'}) — "
-                                "custo Excel mantido, frete não atualizado"
-                            )
-                        else:
-                            analyze_reports_200(
-                                files200,
-                                placas=placas,
-                                on_status=lambda m: emit(f"[200] {m}"),
-                            )
                     except Exception as err200:  # noqa: BLE001
                         emit(f"200 avisou: {err200} (custo Excel mantido)")
                 publish_contratacao_local(on_status=lambda m: emit(f"[ctr] {m}"))
@@ -1467,12 +1446,10 @@ def run_parallel_cycle(
         )
 
     def _run_73() -> dict[str, Any]:
-        from dates import periodo_ctr_frete_200
         from extensao_contratacao.pipeline_agente import run_pipeline_contratacao_excel
-        from parser_ssw0644 import analyze_reports_200
         from publish_dashboard import publish_contratacao_local
         from sheets_sync_073 import sync_sheets_073
-        from ssw_200 import download_reports_200
+        from ssw_200 import aplicar_frete_200_contratacao
 
         result = run_pipeline_contratacao_excel(
             settings=cfg,
@@ -1481,34 +1458,15 @@ def run_parallel_cycle(
         )
         placas = list(result.get("placas") or [])
         if placas:
-            ini, fim = periodo_ctr_frete_200()
-            emit(
-                f"CRT 200 frete {ini}->{fim} "
-                f"(mês · amarra por placa; frete pode ser D+1)…"
-            )
             try:
-                dl200 = download_reports_200(
-                    period=(ini, fim),
-                    unidade_origem="",
-                    tipo_arquivo="E",
-                    tag="CTR",
+                aplicar_frete_200_contratacao(
+                    placas=placas,
+                    excel_result=result,
                     credentials=creds,
                     settings=cfg,
                     headless=use_headless,
                     on_status=lambda m: emit(f"[200] {m}"),
                 )
-                files200 = list(dl200.get("files") or [])
-                if dl200.get("empty") or not files200:
-                    emit(
-                        f"200 sem arquivo ({dl200.get('error') or 'vazio'}) — "
-                        "custo Excel mantido, frete não atualizado"
-                    )
-                else:
-                    analyze_reports_200(
-                        files200,
-                        placas=placas,
-                        on_status=lambda m: emit(f"[200] {m}"),
-                    )
             except Exception as err200:  # noqa: BLE001
                 emit(f"200 avisou: {err200}")
         publish_contratacao_local(on_status=lambda m: emit(f"[ctr] {m}"))

@@ -275,6 +275,7 @@ def build_caches_from_excel_rows(
         "destinos": destinos,
         "resumo": resumo,
         "placas": [norm_placa(v.get("placa")) for v in veiculos if v.get("placa")],
+        "bases": [k for k in dest_agg if k and k != "OUT"],
         "planilha": planilha,
     }
 
@@ -371,4 +372,5 @@ def run_pipeline_contratacao_excel(
         "placas": placas,
         "planilha": built.get("planilha") or [],
         "destinos": built.get("destinos") or [],
+        "bases": built.get("bases") or [],
     }

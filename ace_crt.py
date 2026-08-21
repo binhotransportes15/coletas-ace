@@ -422,6 +422,7 @@ _NAV_ICON_KEYS = (
     "73",
     "455",
     "mapa",
+    "aviso",
     "logs",
     "rapido",
     "cfg",
@@ -437,6 +438,7 @@ _NAV_ICONS: dict[str, str] = {
     "73": "⇄",
     "455": "◉",
     "mapa": "◎",
+    "aviso": "!",
     "logs": "☰",
     "rapido": ">_",
     "cfg": "⚙",
@@ -1908,6 +1910,19 @@ class NavGlyphIcon(QWidget):
             p.drawEllipse(QRectF(x + w * 0.08, y + h * 0.08, w * 0.84, h * 0.84))
             p.drawEllipse(QRectF(x + w * 0.24, y + h * 0.24, w * 0.52, h * 0.52))
             p.drawEllipse(QRectF(x + w * 0.40, y + h * 0.40, w * 0.20, h * 0.20))
+        elif k == "aviso":
+            horn = QPainterPath()
+            horn.moveTo(x + w * 0.16, y + h * 0.38)
+            horn.lineTo(x + w * 0.42, y + h * 0.38)
+            horn.lineTo(x + w * 0.72, y + h * 0.16)
+            horn.lineTo(x + w * 0.72, y + h * 0.84)
+            horn.lineTo(x + w * 0.42, y + h * 0.62)
+            horn.lineTo(x + w * 0.16, y + h * 0.62)
+            horn.closeSubpath()
+            p.drawPath(horn)
+            p.drawLine(QPointF(x + w * 0.80, y + h * 0.30), QPointF(x + w * 0.92, y + h * 0.18))
+            p.drawLine(QPointF(x + w * 0.80, y + h * 0.50), QPointF(x + w * 0.94, y + h * 0.50))
+            p.drawLine(QPointF(x + w * 0.80, y + h * 0.70), QPointF(x + w * 0.92, y + h * 0.82))
         elif k == "logs":
             for yy in (0.22, 0.50, 0.78):
                 p.drawLine(QPointF(x + w * 0.16, y + h * yy), QPointF(x + w * 0.84, y + h * yy))
@@ -1981,6 +1996,7 @@ class ProActionButton(QPushButton):
         "accent": "#c084fc",
         "dashboard": "#22d3ee",
         "gestao": "#fbbf24",
+        "aviso": "#facc15",
         "muted": "#38bdf8",
         "default": "#94a3b8",
     }
@@ -3505,6 +3521,44 @@ class AceCrtRapidoWindow(QWidget):
         self.hide()
 
 
+class AceCrtAvisoWindow(QWidget):
+    """Janela do comunicado temporário das TVs (vídeo / foto / texto)."""
+
+    def __init__(self, owner: "AceCrtConsole", content: QWidget) -> None:
+        super().__init__(None)
+        self.setObjectName("cfgWin")
+        self.setWindowTitle("ACE · Aviso TV")
+        self.setWindowFlags(
+            Qt.Window
+            | Qt.WindowTitleHint
+            | Qt.WindowSystemMenuHint
+            | Qt.WindowCloseButtonHint
+        )
+        self.setWindowIcon(crt_window_icon(DEFAULT_CRT_THEME))
+        self._owner = owner
+        self.resize(520, 620)
+        self.setMinimumSize(420, 480)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(10, 10, 10, 10)
+        lay.setSpacing(6)
+        tip = QLabel(
+            "Vídeo, foto ou texto nas TVs. Na parede, escolha o setor Aviso "
+            "no aparelho que deve mostrar o comunicado."
+        )
+        tip.setObjectName("hint")
+        tip.setWordWrap(True)
+        lay.addWidget(tip)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setWidget(content)
+        lay.addWidget(scroll, 1)
+
+    def closeEvent(self, event) -> None:  # noqa: N802
+        event.ignore()
+        self.hide()
+
+
 class AceCrtMenuWindow(QWidget):
     """Janela à parte com as abas de configuração (mesmo tema do CRT)."""
 
@@ -3598,6 +3652,7 @@ class AceCrtConsole(QWidget):
         self._sector_meters: dict[str, SectorMeterRow] = {}
         self._menu_win: AceCrtMenuWindow | None = None
         self._rapido_win: AceCrtRapidoWindow | None = None
+        self._aviso_win: AceCrtAvisoWindow | None = None
         # Intervalo opcional p/ Iniciar Automação (valor real = aba Automação)
         self.auto_iv = QLineEdit()
         self.auto_iv.hide()
@@ -3849,6 +3904,12 @@ class AceCrtConsole(QWidget):
                 self.page_sub.setText("Setor operacional — progresso à esquerda · log ao centro")
             self.run_command(cmd_map[key])
             return
+        if key == "aviso":
+            if hasattr(self, "page_title"):
+                self.page_title.setText("Aviso")
+                self.page_sub.setText("Comunicado temporário das TVs — vídeo, foto ou texto")
+            self._show_aviso_window()
+            return
         if key == "logs":
             if hasattr(self, "log"):
                 self.log.setFocus(Qt.OtherFocusReason)
@@ -4082,6 +4143,7 @@ class AceCrtConsole(QWidget):
             ("Parar Automação", "#fb7185", "■", "danger", lambda: self._stop_all()),
             ("Forçar Atualização", "#c084fc", "↻", "accent", lambda: self.run_command("sync")),
             ("Dashboard", "#22d3ee", "▦", "dashboard", lambda: self._show_dashboard_menu()),
+            ("Aviso TV", "#facc15", "!", "aviso", lambda: self._show_aviso_window()),
             ("Gestão", "#fbbf24", "☰", "gestao", lambda: self._open_gestao_ui()),
             ("Comandos SSW", "#38bdf8", ">_", "muted", lambda: self._toggle_rapido_window()),
         )
@@ -4107,7 +4169,7 @@ class AceCrtConsole(QWidget):
         self._info_rows: dict[str, QLabel] = {}
         blurb = QLabel(
             "O ACE automatiza a coleta no SSW, atualiza TVs/planilhas e acompanha "
-            "em tempo real distribuição, armazém, pendência, contratação, emissão e mapa — "
+            "em tempo real distribuição, armazém, pendência, contratação, emissão, mapa e aviso — "
             "com loop automático, modo local e comandos rápidos."
         )
         blurb.setObjectName("sysBlurb")
@@ -5426,6 +5488,39 @@ class AceCrtConsole(QWidget):
         row.addWidget(b_reload)
         row.addWidget(b_save)
         lay.addLayout(row)
+
+        lay.addWidget(self._section("Aviso (TV temporária)"))
+        avi_tip = QLabel(
+            "Anexa vídeo ou foto nesta máquina e sobe para o site (GitHub Pages). "
+            "Na parede, escolha o setor Aviso na TV desejada. Arquivo até ~95 MB."
+        )
+        avi_tip.setObjectName("hint")
+        avi_tip.setWordWrap(True)
+        lay.addWidget(avi_tip)
+        self.aviso_status = QLabel("—")
+        self.aviso_status.setObjectName("hint")
+        self.aviso_status.setWordWrap(True)
+        lay.addWidget(self.aviso_status)
+        self.aviso_title = QLineEdit()
+        self.aviso_title.setPlaceholderText("Título (ex.: AVISO)")
+        lay.addWidget(self.aviso_title)
+        self.aviso_text = QLineEdit()
+        self.aviso_text.setPlaceholderText("Texto opcional (aparece junto ou sozinho)")
+        lay.addWidget(self.aviso_text)
+        avi_row = QHBoxLayout()
+        b_avi_add = QPushButton("Anexar vídeo/foto")
+        b_avi_add.clicked.connect(lambda: self._aviso_anexar(push=False))
+        b_avi_pub = QPushButton("Anexar e publicar no site")
+        b_avi_pub.setObjectName("primary")
+        b_avi_pub.clicked.connect(lambda: self._aviso_anexar(push=True))
+        avi_row.addWidget(b_avi_add)
+        avi_row.addWidget(b_avi_pub)
+        lay.addLayout(avi_row)
+        b_avi_only = QPushButton("Publicar aviso atual no site")
+        b_avi_only.clicked.connect(lambda: self.run_command("aviso push"))
+        lay.addWidget(b_avi_only)
+        self._aviso_refresh_status()
+
         lay.addStretch(1)
 
         self._tv_slot_btns = {}
@@ -5447,6 +5542,52 @@ class AceCrtConsole(QWidget):
         self.dash_locked = QCheckBox()
         self._tv_reload()
         return wrap
+
+    def _aviso_refresh_status(self) -> None:
+        lab = getattr(self, "aviso_status", None)
+        if lab is None:
+            return
+        try:
+            from aviso_media import load_aviso, status_text
+
+            cfg = load_aviso()
+            lab.setText(status_text(cfg))
+            title = getattr(self, "aviso_title", None)
+            if title is not None and not title.text().strip():
+                title.setText(str(cfg.get("title") or "AVISO"))
+        except Exception as err:  # noqa: BLE001
+            lab.setText(f"Aviso: {err}")
+
+    def _aviso_anexar(self, *, push: bool) -> None:
+        paths, _ok = QFileDialog.getOpenFileNames(
+            self,
+            "Anexar vídeo ou foto do aviso",
+            str(Path.home() / "Downloads"),
+            "Vídeo ou foto (*.mp4 *.webm *.mov *.mkv *.avi *.m4v *.jpg *.jpeg *.png *.gif *.webp);;Todos (*.*)",
+        )
+        if not paths:
+            return
+        try:
+            from aviso_media import attach_files, status_text
+
+            title = ""
+            text = ""
+            if getattr(self, "aviso_title", None) is not None:
+                title = self.aviso_title.text()
+            if getattr(self, "aviso_text", None) is not None:
+                text = self.aviso_text.text()
+            out = attach_files(paths, title=title, text=text, replace=True)
+            self._aviso_refresh_status()
+            msg = status_text(out.get("cfg"))
+            if out.get("errors"):
+                msg += "\n" + "\n".join(out["errors"])
+            self._append_log("sistema", msg.replace("\n", " · "))
+        except Exception as err:  # noqa: BLE001
+            QMessageBox.warning(self, "Aviso", str(err))
+            self._append_log("sistema", f"Aviso falhou: {err}")
+            return
+        if push:
+            self.run_command("aviso push")
 
     def _open_tv_editor(self) -> None:
         from ace_tv_editor import TvEditorDialog
@@ -5711,6 +5852,10 @@ class AceCrtConsole(QWidget):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, c=cmd: self.run_command(c))
             lay.addWidget(b)
+        b_avi_menu = QPushButton("Aviso: anexar e publicar")
+        b_avi_menu.setObjectName("primary")
+        b_avi_menu.clicked.connect(lambda: self._aviso_anexar(push=True))
+        lay.addWidget(b_avi_menu)
 
         lay.addStretch(1)
         scroll.setWidget(body)

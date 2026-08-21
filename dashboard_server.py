@@ -7,13 +7,19 @@ Um único IP da máquina + hashes por setor (não precisa de IP por setor):
 """
 from __future__ import annotations
 
+import json
 import os
+import re
 import socket
 import subprocess
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, unquote, urlparse
 
 from config import DASHBOARD_DIR, load_settings
+
+_AVISO_MAX_UPLOAD = 80 * 1024 * 1024
+_AVISO_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
 
 _httpd: ThreadingHTTPServer | None = None
 _port: int = 0
@@ -152,6 +158,62 @@ def ensure_dashboard_server(
                 self.send_header("Cache-Control", "no-cache")
                 self.send_header("Access-Control-Allow-Origin", "*")
                 super().end_headers()
+
+            def do_OPTIONS(self) -> None:  # noqa: N802
+                self.send_response(204)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Content-Type")
+                self.send_header("Access-Control-Max-Age", "86400")
+                self.end_headers()
+
+            def _json(self, code: int, payload: dict) -> None:
+                raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+
+            def do_POST(self) -> None:  # noqa: N802
+                parsed = urlparse(self.path)
+                length = int(self.headers.get("Content-Length") or 0)
+                if length < 0 or length > _AVISO_MAX_UPLOAD:
+                    self._json(413, {"ok": False, "error": "arquivo grande demais (máx. 80 MB)"})
+                    return
+                body = self.rfile.read(length) if length else b""
+                aviso_dir = DASHBOARD_DIR / "aviso"
+                aviso_dir.mkdir(parents=True, exist_ok=True)
+
+                if parsed.path.rstrip("/") == "/api/aviso/upload":
+                    qs = parse_qs(parsed.query)
+                    raw_name = unquote((qs.get("name") or ["arquivo.bin"])[0])
+                    safe = _AVISO_NAME_RE.sub("_", os.path.basename(raw_name)).strip("._")
+                    if not safe:
+                        safe = "arquivo.bin"
+                    dest = aviso_dir / safe
+                    dest.write_bytes(body)
+                    self._json(200, {"ok": True, "src": f"aviso/{safe}"})
+                    return
+
+                if parsed.path.rstrip("/") == "/api/aviso/config":
+                    try:
+                        data = json.loads(body.decode("utf-8"))
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        self._json(400, {"ok": False, "error": "JSON inválido"})
+                        return
+                    if not isinstance(data, dict):
+                        self._json(400, {"ok": False, "error": "JSON deve ser objeto"})
+                        return
+                    dest = aviso_dir / "aviso.json"
+                    dest.write_text(
+                        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                    self._json(200, {"ok": True, "src": "aviso/aviso.json"})
+                    return
+
+                self._json(404, {"ok": False, "error": "rota não encontrada"})
 
         bind_host = want_host
         bind_port = want_port
