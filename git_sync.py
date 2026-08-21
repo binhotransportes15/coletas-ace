@@ -32,15 +32,22 @@ def github_origin_url(repo: str) -> str:
 
 
 def git_env_with_token(token: str | None = None) -> dict[str, str]:
-    """Auth só no processo do git — nunca grava o token no remote."""
+    """Auth só no processo do git — nunca grava o token no remote.
+
+    Desliga o Git Credential Manager neste processo para o token do GH_TOKEN
+    não perder para uma credencial antiga do Windows.
+    """
     env = os.environ.copy()
     tok = str(token or env.get("GH_TOKEN") or env.get("GITHUB_TOKEN") or "").strip()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GCM_INTERACTIVE"] = "never"
     if tok:
         basic = base64.b64encode(f"x-access-token:{tok}".encode("ascii")).decode("ascii")
-        env["GIT_CONFIG_COUNT"] = "1"
-        env["GIT_CONFIG_KEY_0"] = "http.https://github.com/.extraheader"
-        env["GIT_CONFIG_VALUE_0"] = f"AUTHORIZATION: basic {basic}"
-        env["GIT_TERMINAL_PROMPT"] = "0"
+        env["GIT_CONFIG_COUNT"] = "2"
+        env["GIT_CONFIG_KEY_0"] = "credential.helper"
+        env["GIT_CONFIG_VALUE_0"] = ""
+        env["GIT_CONFIG_KEY_1"] = "http.https://github.com/.extraheader"
+        env["GIT_CONFIG_VALUE_1"] = f"AUTHORIZATION: basic {basic}"
     return env
 
 
