@@ -1,0 +1,13 @@
+{
+  "title": "AVISO",
+  "kicker": "COMUNICADO TEMPORÁRIO",
+  "fit": "contain",
+  "items": [
+    {
+      "type": "video",
+      "src": "aviso/aviso.mp4",
+      "loop": true,
+      "muted": false
+    }
+  ]
+}
