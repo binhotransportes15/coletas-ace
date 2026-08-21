@@ -13,9 +13,93 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from config import BASE_DIR
+from config import BASE_DIR, SECRETS_DIR
 
 StatusCallback = Callable[[str], None]
+
+GH_TOKEN_FILE = SECRETS_DIR / "gh_token.txt"
+
+
+def load_github_token() -> str:
+    """Token do arquivo local do CRT, senão GH_TOKEN / GITHUB_TOKEN do Windows."""
+    try:
+        if GH_TOKEN_FILE.is_file():
+            for line in GH_TOKEN_FILE.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    os.environ["GH_TOKEN"] = line
+                    return line
+    except Exception:
+        pass
+    return str(os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or "").strip()
+
+
+def save_github_token(token: str) -> None:
+    SECRETS_DIR.mkdir(parents=True, exist_ok=True)
+    tok = str(token or "").strip()
+    GH_TOKEN_FILE.write_text((tok + "\n") if tok else "", encoding="utf-8")
+    if tok:
+        os.environ["GH_TOKEN"] = tok
+    elif "GH_TOKEN" in os.environ:
+        os.environ.pop("GH_TOKEN", None)
+
+
+def github_token_hint() -> str:
+    tok = load_github_token()
+    if not tok:
+        return "Nenhum token neste PC. Cole um token classic com 'repo' e Salvar."
+    return f"Token salvo neste PC ({tok[:4]}…, {len(tok)} caracteres). Cole outro para trocar."
+
+
+def preflight_github_write(repo: str, token: str) -> str | None:
+    """None = pode tentar push. Texto = motivo em português (cabe no log do CRT)."""
+    import json
+    import ssl
+    import urllib.error
+    import urllib.request
+
+    repo = str(repo or "").strip().strip("/")
+    tok = str(token or "").strip()
+    if not tok:
+        return (
+            "Sem token de escrita. Config → Token GitHub (push) → cole token classic "
+            "com a caixa repo → Salvar → feche e abra o CRT → /push."
+        )
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {tok}",
+            "User-Agent": "ACE-git-sync",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20, context=ssl.create_default_context()) as resp:
+            scopes = str(resp.headers.get("X-OAuth-Scopes") or "")
+            body = json.loads(resp.read().decode("utf-8", errors="replace") or "{}")
+    except urllib.error.HTTPError as err:
+        if err.code in {401, 403}:
+            return (
+                "GitHub recusou o token (403). O token atual NAO escreve no repo. "
+                "Gere outro classic com repo, cole no Config do CRT, Salvar, reinicie o CRT."
+            )
+        if err.code == 404:
+            return f"Repo {repo} nao encontrado para este token."
+        return f"GitHub API HTTP {err.code}."
+    except Exception:
+        return None
+    perms = body.get("permissions") if isinstance(body, dict) else None
+    if isinstance(perms, dict) and not (perms.get("push") or perms.get("admin")):
+        return (
+            "Token sem escrita neste repo. Token classic precisa da caixa 'repo' "
+            "(nao so public_repo). Cole no Config do CRT e Salvar."
+        )
+    bits = [s.strip().lower() for s in scopes.split(",") if s.strip()]
+    if bits and "repo" not in bits and "public_repo" in bits:
+        return "Token so tem public_repo. Marque 'repo' no token novo."
+    return None
 
 
 def redact_git_text(raw: str) -> str:
@@ -38,7 +122,7 @@ def git_env_with_token(token: str | None = None) -> dict[str, str]:
     não perder para uma credencial antiga do Windows.
     """
     env = os.environ.copy()
-    tok = str(token or env.get("GH_TOKEN") or env.get("GITHUB_TOKEN") or "").strip()
+    tok = str(token or load_github_token()).strip()
     env["GIT_TERMINAL_PROMPT"] = "0"
     env["GCM_INTERACTIVE"] = "never"
     if tok:
@@ -205,18 +289,18 @@ def git_push(
     except Exception:
         pass
     ensure_clean_github_origin(cfg_repo)
+    token = load_github_token()
+    blocked = preflight_github_write(cfg_repo, token)
+    if blocked:
+        status(blocked)
+        return blocked
     branch = (_run(["git", "rev-parse", "--abbrev-ref", "HEAD"]).stdout or "main").strip()
     status(f"Enviando para origin/{branch}...")
     push = _run(["git", "push", "-u", "origin", "HEAD"], env=git_env_with_token())
     pout = redact_git_text(((push.stdout or "") + (push.stderr or "")).strip())
     print(pout or "(sem saida)")
     if push.returncode != 0:
-        tip = (
-            "Permissao recusada no GitHub. Gere um token novo com escopo repo, "
-            "coloque em GH_TOKEN e confirme escrita em binhotransportes15/coletas-ace. "
-            "Se o token antigo estava gravado no origin, revogue-o."
-        )
-        return f"Push falhou: {pout[:400]}\n{tip}"
+        return f"Push falhou: {pout[:400]}\nCole token classic com repo no Config do CRT, Salvar, reinicie o CRT."
 
     log1 = _run(["git", "log", "-1", "--oneline"])
     head = (log1.stdout or "").strip()

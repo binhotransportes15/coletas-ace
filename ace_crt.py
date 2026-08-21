@@ -4639,6 +4639,7 @@ class AceCrtConsole(QWidget):
             "headless",
             "loop_intervalo",
             "ciclo_paralelo",
+            "github_token_env",
             *(k for k, (g, *_r) in EDITABLE.items() if g == "automacao"),
         }
         current_group = None
@@ -4685,6 +4686,8 @@ class AceCrtConsole(QWidget):
             lab.setMinimumWidth(120)
             lab.setMaximumWidth(180)
             form.addRow(lab, self._cfg_value_with_help(key, w))
+            if key == "github_repo":
+                self._add_github_token_row(form)
 
         form.addRow(self._section("Navegador (SSW)"))
         viz_hint = QLabel(_field_help("headless") or (
@@ -4999,6 +5002,7 @@ class AceCrtConsole(QWidget):
             self.payload["headless"] = not self.chk_viz.isChecked()
             self.payload["crt_theme"] = self._theme_id
             self._store_frost_into_payload()
+            self._persist_github_token_from_ui()
             _save_payload(self.payload)
             self.payload = __import__("ace_cmd", fromlist=["_load_payload"])._load_payload()
             self._update_meta()
@@ -5851,6 +5855,12 @@ class AceCrtConsole(QWidget):
         from ace_cmd import EDITABLE, _load_payload
 
         self.payload = _load_payload()
+        try:
+            from git_sync import load_github_token
+
+            load_github_token()
+        except Exception:
+            pass
         for key, (_g, typ, _secret) in EDITABLE.items():
             w = self._fields.get(key)
             if w is None:
@@ -5873,6 +5883,7 @@ class AceCrtConsole(QWidget):
         self._apply_theme(theme, persist=False)
         self._seed_sector_bars_from_config()
         self._update_meta()
+        self._refresh_github_token_placeholder()
         self._append_log("config", "Configuração recarregada.")
 
     def _frost_alpha_val(self) -> int:
@@ -6415,6 +6426,7 @@ class AceCrtConsole(QWidget):
             self.payload["headless"] = not self.chk_viz.isChecked()
             self.payload["crt_theme"] = self._theme_id
             self._store_frost_into_payload()
+            self._persist_github_token_from_ui()
             _save_payload(self.payload)
             self.payload = __import__("ace_cmd", fromlist=["_load_payload"])._load_payload()
             self._update_meta()
@@ -6432,6 +6444,57 @@ class AceCrtConsole(QWidget):
         except Exception as err:  # noqa: BLE001
             self._append_log("erro", str(err))
             QMessageBox.warning(self, "ACE", f"Falha ao salvar:\n{err}")
+
+    def _add_github_token_row(self, form) -> None:
+        from git_sync import github_token_hint
+
+        self._gh_token = QLineEdit()
+        self._gh_token.setEchoMode(QLineEdit.Password)
+        self._gh_token.setMinimumHeight(30)
+        self._refresh_github_token_placeholder()
+        lab = QLabel("Token GitHub (push)")
+        lab.setWordWrap(True)
+        lab.setMinimumWidth(120)
+        lab.setMaximumWidth(180)
+        wrap = QWidget()
+        lay = QVBoxLayout(wrap)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(2)
+        lay.addWidget(self._gh_token)
+        hint = QLabel(
+            "Cole o token classic com a caixa repo marcada. "
+            "Salvo só neste PC (não vai para o Git). Depois: Salvar, feche o CRT, abra de novo, /push."
+        )
+        hint.setObjectName("hint")
+        hint.setWordWrap(True)
+        lay.addWidget(hint)
+        self._gh_token_hint = hint
+        form.addRow(lab, wrap)
+
+    def _refresh_github_token_placeholder(self) -> None:
+        w = getattr(self, "_gh_token", None)
+        if not isinstance(w, QLineEdit):
+            return
+        try:
+            from git_sync import github_token_hint
+
+            w.setPlaceholderText(github_token_hint())
+        except Exception:
+            w.setPlaceholderText("Cole o token GitHub e Salvar")
+
+    def _persist_github_token_from_ui(self) -> None:
+        w = getattr(self, "_gh_token", None)
+        if not isinstance(w, QLineEdit):
+            return
+        text = w.text().strip()
+        if not text:
+            return
+        from git_sync import save_github_token
+
+        save_github_token(text)
+        w.clear()
+        self._refresh_github_token_placeholder()
+        self._append_log("config", "Token GitHub salvo neste PC (fora do Git).")
 
     def _update_meta(self) -> None:
         p = self.payload or {}
