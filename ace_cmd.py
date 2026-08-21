@@ -2031,10 +2031,12 @@ def run_git_status() -> str:
 
 
 def run_git_push(parts: list[str] | None = None) -> str:
-    from git_sync import git_push
+    import importlib
+    import git_sync
 
+    importlib.reload(git_sync)
     msg = " ".join((parts or [])[1:]).strip()
-    return git_push(msg, on_status=_on_status)
+    return git_sync.git_push(msg, on_status=_on_status)
 
 
 def run_git_pull() -> str:

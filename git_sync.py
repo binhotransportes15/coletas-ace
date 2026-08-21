@@ -97,8 +97,18 @@ def preflight_github_write(repo: str, token: str) -> str | None:
             "(nao so public_repo). Cole no Config do CRT e Salvar."
         )
     bits = [s.strip().lower() for s in scopes.split(",") if s.strip()]
+    # Token classic ghp_ sem nenhuma caixa marcada: API mostra dono do repo,
+    # mas git push dá 403. Escopos vazios = não pode escrever.
+    if tok.startswith("ghp_") and not bits:
+        return (
+            "Token classic SEM ESCOPO (nenhuma caixa marcada). "
+            "GitHub > Settings > Developer settings > Personal access tokens > "
+            "Generate classic > marque repo > cole em Config Token GitHub (push) > Salvar."
+        )
     if bits and "repo" not in bits and "public_repo" in bits:
         return "Token so tem public_repo. Marque 'repo' no token novo."
+    if bits and "repo" not in bits and "public_repo" not in bits:
+        return "Token sem escopo repo. No GitHub, gere o token e marque a caixa repo."
     return None
 
 
@@ -115,12 +125,35 @@ def github_origin_url(repo: str) -> str:
     return f"https://github.com/{clean}.git"
 
 
-def git_env_with_token(token: str | None = None) -> dict[str, str]:
-    """Auth só no processo do git — nunca grava o token no remote.
+def _push_head(repo: str, branch: str, token: str) -> subprocess.CompletedProcess[str]:
+    """Push sem Credential Manager e sem gravar token no origin."""
+    tok = str(token or "").strip()
+    url = f"https://x-access-token:{tok}@github.com/{str(repo).strip()}.git"
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GCM_INTERACTIVE"] = "never"
+    return subprocess.run(
+        [
+            "git",
+            "-c",
+            "credential.helper=",
+            "push",
+            "-u",
+            url,
+            f"HEAD:{branch or 'main'}",
+        ],
+        cwd=str(BASE_DIR),
+        capture_output=True,
+        text=True,
+        check=False,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+    )
 
-    Desliga o Git Credential Manager neste processo para o token do GH_TOKEN
-    não perder para uma credencial antiga do Windows.
-    """
+
+def git_env_with_token(token: str | None = None) -> dict[str, str]:
+    """Auth só no processo do git — nunca grava o token no remote."""
     env = os.environ.copy()
     tok = str(token or load_github_token()).strip()
     env["GIT_TERMINAL_PROMPT"] = "0"
@@ -296,7 +329,7 @@ def git_push(
         return blocked
     branch = (_run(["git", "rev-parse", "--abbrev-ref", "HEAD"]).stdout or "main").strip()
     status(f"Enviando para origin/{branch}...")
-    push = _run(["git", "push", "-u", "origin", "HEAD"], env=git_env_with_token())
+    push = _push_head(cfg_repo, branch, token)
     pout = redact_git_text(((push.stdout or "") + (push.stderr or "")).strip())
     print(pout or "(sem saida)")
     if push.returncode != 0:
