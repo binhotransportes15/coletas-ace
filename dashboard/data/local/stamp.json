@@ -1,13 +1,13 @@
 {
-  "updated_at": "2026-08-21T11:06:53",
+  "updated_at": "2026-08-21T11:12:06",
   "sectors": {
     "distribuicao": {
       "file": "distribuicao.json",
-      "updated_at": "2026-08-21T11:06:53"
+      "updated_at": "2026-08-21T11:12:06"
     },
     "armazem": {
       "file": "armazem.json",
-      "updated_at": "2026-08-21T10:58:44"
+      "updated_at": "2026-08-21T11:07:20"
     },
     "pendencia": {
       "file": "pendencia.json",
