@@ -1,7 +1,7 @@
 {
-  "atualizado": "21/08/2026 15:56:57",
+  "atualizado": "21/08/2026 16:01:48",
   "periodo": "hoje",
-  "fonte": "C:\\Users\\analista.qualidade\\Desktop\\ACE_AnalisadorColetaEntrega\\data\\downloads\\CSVssw0146BIN[1]155740.sswweb",
+  "fonte": "C:\\Users\\analista.qualidade\\Desktop\\ACE_AnalisadorColetaEntrega\\data\\downloads\\CSVssw0146BIN[1]160230.sswweb",
   "base": {
     "nome": "BINHO TRANSPORTES",
     "lat": -23.4265324,
@@ -27034,8 +27034,8 @@
         }
       ],
       "servico_feitas": 6,
-      "servico_total": 13,
-      "servico_pct": 46.2
+      "servico_total": 11,
+      "servico_pct": 54.5
     },
     {
       "placa": "EZL2E51",

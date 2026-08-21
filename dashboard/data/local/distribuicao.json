@@ -1,19 +1,19 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-21T15:57:03",
+  "updated_at": "2026-08-21T16:01:55",
   "resumo_50": {
     "data_cadastro": "PERIODO",
-    "total_coletas": "19",
-    "cadastrada": "18",
+    "total_coletas": "20",
+    "cadastrada": "19",
     "comandada": "0",
     "coletada": "1",
     "cancelada": "0"
   },
   "resumo_103": {
     "periodo": "21/08",
-    "total": "31",
-    "parado": "1",
-    "em_rota": "15",
+    "total": "30",
+    "parado": "2",
+    "em_rota": "13",
     "realizada": "6",
     "cancelada": "9",
     "outro": "0"
