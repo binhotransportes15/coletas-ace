@@ -4171,93 +4171,133 @@
       height: 100%;
       display: flex;
       align-items: stretch;
-      justify-content: center;
-      padding: 8px 14px 12px;
+      justify-content: stretch;
+      padding: 4px 10px 12px;
       overflow: hidden;
     }
-    .torres.ctr-torres {
-      flex: 1;
+    .ctr-rank {
       display: flex;
-      align-items: flex-end;
-      justify-content: space-evenly;
-      gap: clamp(18px, 2.4vw, 36px);
+      flex-direction: column;
+      justify-content: center;
+      gap: clamp(8px, 1.1vh, 14px);
       width: 100%;
       height: 100%;
       min-height: 0;
-      max-height: none;
-      overflow: hidden;
+      overflow: auto;
+      padding: 2px 2px 4px;
     }
-    .torres.ctr-torres .torre {
-      width: min(140px, 14vw);
-      max-width: none;
-      flex: 0 1 auto;
-      min-width: 96px;
-    }
-    .torres.ctr-torres .barra {
-      min-height: 48px !important;
-      max-height: none !important;
-    }
-    .torres.ctr-torres .barra .ctr-bar-val {
-      display: block;
-      font-size: clamp(11px, 1.1vw, 14px);
-      font-weight: 800;
-      line-height: 1.15;
-      padding: 0 4px;
-      text-align: center;
-    }
-    .torres.ctr-torres .barra .ctr-bar-qtd {
-      display: block;
-      font-size: clamp(10px, 0.95vw, 12px);
-      font-weight: 600;
-      opacity: 0.9;
-      margin-top: 2px;
-    }
-    .torres.ctr-torres .base {
-      min-height: 56px;
-      padding-top: 8px;
-    }
-    .torres.ctr-torres .base .lbl {
-      display: flex;
-      flex-direction: column;
+    .ctr-rank-row {
+      display: grid;
+      grid-template-columns: 84px minmax(0, 1fr) minmax(148px, auto);
+      grid-template-areas:
+        "sigla copy metrics"
+        "sigla track metrics";
+      column-gap: 14px;
+      row-gap: 6px;
       align-items: center;
-      gap: 2px;
-      line-height: 1.15;
-      white-space: normal;
-      overflow: hidden;
+      background: linear-gradient(90deg, rgba(12, 18, 32, 0.96), rgba(7, 11, 20, 0.88));
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 14px;
+      padding: 10px 14px 12px;
+      min-height: 72px;
     }
-    .torres.ctr-torres .base .lbl .filial-sigla {
-      font-size: clamp(13px, 1.35vw, 17px);
+    .ctr-rank-row.is-zero {
+      opacity: 0.55;
+    }
+    .ctr-rank-sigla {
+      grid-area: sigla;
+      width: 72px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      font-size: clamp(15px, 1.5vw, 20px);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #f8fafc;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    }
+    .ctr-rank-copy {
+      grid-area: copy;
+      min-width: 0;
+    }
+    .ctr-rank-copy .city {
+      font-size: clamp(13px, 1.25vw, 16px);
       font-weight: 800;
       letter-spacing: 0.06em;
-      color: #f8fafc;
       text-transform: uppercase;
+      color: #f1f5f9;
+      line-height: 1.2;
+      white-space: normal;
+      overflow: visible;
     }
-    .torres.ctr-torres .base .lbl .filial-cidade {
-      font-size: clamp(10px, 1.05vw, 12px);
+    .ctr-rank-copy .sub {
+      margin-top: 3px;
+      font-size: clamp(11px, 1.05vw, 13px);
       font-weight: 600;
       color: #94a3b8;
-      text-transform: uppercase;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
-    .torres.ctr-torres .t-d0 .barra { background: linear-gradient(180deg, #fb923c, #c2410c); }
-    .torres.ctr-torres .t-d0 .pin { background: #f97316; }
-    .torres.ctr-torres .t-d1 .barra { background: linear-gradient(180deg, #38bdf8, #0284c7); }
-    .torres.ctr-torres .t-d1 .pin { background: #0ea5e9; }
-    .torres.ctr-torres .t-d2 .barra { background: linear-gradient(180deg, #4ade80, #15803d); }
-    .torres.ctr-torres .t-d2 .pin { background: #22c55e; }
-    .torres.ctr-torres .t-d3 .barra { background: linear-gradient(180deg, #fbbf24, #d97706); }
-    .torres.ctr-torres .t-d3 .pin { background: #f59e0b; }
-    .torres.ctr-torres .t-d4 .barra { background: linear-gradient(180deg, #a78bfa, #6d28d9); }
-    .torres.ctr-torres .t-d4 .pin { background: #8b5cf6; }
-    .torres.ctr-torres .t-d5 .barra { background: linear-gradient(180deg, #f472b6, #be185d); }
-    .torres.ctr-torres .t-d5 .pin { background: #ec4899; }
-    .torres.ctr-torres .t-d6 .barra { background: linear-gradient(180deg, #94a3b8, #475569); }
-    .torres.ctr-torres .t-d6 .pin { background: #64748b; }
-    .torres.ctr-torres .t-d7 .barra { background: linear-gradient(180deg, #f87171, #b91c1c); }
-    .torres.ctr-torres .t-d7 .pin { background: #ef4444; }
+    .ctr-rank-track {
+      grid-area: track;
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.14);
+      overflow: hidden;
+    }
+    .ctr-rank-track i {
+      display: block;
+      height: 100%;
+      width: var(--w, 0%);
+      border-radius: inherit;
+      min-width: 0;
+    }
+    .ctr-rank-metrics {
+      grid-area: metrics;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      min-width: 0;
+    }
+    .ctr-rank-metrics strong {
+      font-size: clamp(18px, 2vw, 28px);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #f8fafc;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .ctr-rank-pct {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: clamp(11px, 1.05vw, 13px);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+    }
+    .ctr-rank-pct.is-ok { background: rgba(34, 197, 94, 0.18); color: #4ade80; }
+    .ctr-rank-pct.is-warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .ctr-rank-pct.is-crit { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .ctr-rank-pct.is-run { background: rgba(148, 163, 184, 0.16); color: #cbd5e1; }
+    .ctr-rank-row.t-d0 .ctr-rank-sigla,
+    .ctr-rank-row.t-d0 .ctr-rank-track i { background: #ea580c; }
+    .ctr-rank-row.t-d1 .ctr-rank-sigla,
+    .ctr-rank-row.t-d1 .ctr-rank-track i { background: #0284c7; }
+    .ctr-rank-row.t-d2 .ctr-rank-sigla,
+    .ctr-rank-row.t-d2 .ctr-rank-track i { background: #16a34a; }
+    .ctr-rank-row.t-d3 .ctr-rank-sigla,
+    .ctr-rank-row.t-d3 .ctr-rank-track i { background: #ca8a04; }
+    .ctr-rank-row.t-d4 .ctr-rank-sigla,
+    .ctr-rank-row.t-d4 .ctr-rank-track i { background: #7c3aed; }
+    .ctr-rank-row.t-d5 .ctr-rank-sigla,
+    .ctr-rank-row.t-d5 .ctr-rank-track i { background: #db2777; }
+    .ctr-rank-row.t-d6 .ctr-rank-sigla,
+    .ctr-rank-row.t-d6 .ctr-rank-track i { background: #475569; }
+    .ctr-rank-row.t-d7 .ctr-rank-sigla,
+    .ctr-rank-row.t-d7 .ctr-rank-track i { background: #dc2626; }
     .arm-hero-card:has(.ctr-towers-wrap) {
       display: flex;
       flex-direction: column;
@@ -4300,32 +4340,39 @@
     body.tv-mode .ctr-towers-wrap {
       height: 100% !important;
       min-height: 0 !important;
-      padding: clamp(4px, 0.8vmin, 10px) !important;
+      padding: clamp(4px, 0.8vmin, 10px) clamp(8px, 1.2vmin, 16px) !important;
       overflow: hidden !important;
     }
-    body.tv-mode .torres.ctr-torres {
-      height: 100% !important;
-      max-height: none !important;
-      min-height: 0 !important;
-      gap: clamp(20px, 2.6vmin, 40px) !important;
-      justify-content: space-evenly !important;
+    body.tv-mode .ctr-rank {
+      gap: clamp(8px, 1.2vmin, 16px) !important;
       overflow: hidden !important;
     }
-    body.tv-mode .torres.ctr-torres .torre {
-      width: clamp(88px, 10vmin, 150px) !important;
+    body.tv-mode .ctr-rank-row {
+      grid-template-columns: 96px minmax(0, 1fr) minmax(180px, auto) !important;
+      min-height: clamp(64px, 8vmin, 92px) !important;
+      padding: clamp(8px, 1.1vmin, 14px) clamp(12px, 1.4vmin, 18px) !important;
+      border-radius: 16px !important;
     }
-    body.tv-mode .torres.ctr-torres .barra {
-      min-height: clamp(40px, 5vmin, 72px) !important;
-      max-height: none !important;
+    body.tv-mode .ctr-rank-sigla {
+      width: 84px !important;
+      height: 56px !important;
+      font-size: clamp(16px, 2vmin, 24px) !important;
     }
-    body.tv-mode .torres.ctr-torres .base {
-      min-height: clamp(56px, 7vmin, 72px) !important;
-    }
-    body.tv-mode .torres.ctr-torres .base .lbl .filial-sigla {
+    body.tv-mode .ctr-rank-copy .city {
       font-size: clamp(14px, 1.7vmin, 20px) !important;
     }
-    body.tv-mode .torres.ctr-torres .base .lbl .filial-cidade {
-      font-size: clamp(11px, 1.25vmin, 14px) !important;
+    body.tv-mode .ctr-rank-copy .sub {
+      font-size: clamp(12px, 1.4vmin, 16px) !important;
+    }
+    body.tv-mode .ctr-rank-metrics strong {
+      font-size: clamp(22px, 2.8vmin, 34px) !important;
+    }
+    body.tv-mode .ctr-rank-pct {
+      font-size: clamp(12px, 1.5vmin, 16px) !important;
+      padding: 4px 10px !important;
+    }
+    body.tv-mode .ctr-rank-track {
+      height: 11px !important;
     }
     body.tv-mode.tv-no-margins #panel-contratacao,
     body.tv-mode:not(.tv-no-margins) #panel-contratacao {
@@ -9467,12 +9514,12 @@
         <section class="arm-hero-card dash-block" data-block="chart">
           <header>
             <h2>Custo médio/dia por base</h2>
-            <div class="meta" id="ctrMeta">origem Excel → filial · valor = custo ÷ dias</div>
+            <div class="meta" id="ctrMeta">custo ÷ dias do período · custo/frete = custo ÷ frete</div>
             <div class="meta" id="ctrAtualizado">atualizado —</div>
           </header>
           <div class="ctr-mix" id="ctrMix" aria-label="Mix propriedade"></div>
           <div class="ctr-towers-wrap">
-            <div class="torres arm-torres ctr-torres" id="ctrTorres" aria-label="Torres por base"></div>
+            <div class="ctr-rank" id="ctrTorres" aria-label="Custo médio por base"></div>
           </div>
           <div class="arm-err" id="ctrErr" hidden></div>
         </section>
@@ -14732,6 +14779,12 @@
       return Math.round(minH + t * (maxH - minH));
     }
 
+    const CTR_CIDADE = {
+      SPO: 'GUARULHOS', GYN: 'GOIANIA', DCX: 'RIO DE JANEIRO', VIX: 'SERRA',
+      PPY: 'POUSO ALEGRE', BSB: 'BRASILIA', APS: 'ANAPOLIS', APL: 'ANAPOLIS',
+      ATM: 'ALTAMIRA', STM: 'SANTAREM', BNU: 'ITAJAI', OUT: 'OUTROS',
+    };
+
     function renderCtrTorres(destinos, diasPeriodo) {
       const host = document.getElementById('ctrTorres');
       if (!host) return;
@@ -14756,30 +14809,31 @@
         return;
       }
       const max = Math.max(...items.map((d) => d.medioDia || 0), 1);
+      host.className = 'ctr-rank';
       host.innerHTML = items.map((d, i) => {
         const skin = 't-d' + (i % 8);
         const raw = String(d.destino || '—').trim() || '—';
         const parts = raw.split(/\s*[·•|]\s*/);
-        const sigla = (parts[0] || raw).trim();
-        const cidade = (parts.slice(1).join(' · ') || '').trim();
-        const lab = cidade
-          ? `<span class="filial-sigla">${esc(sigla)}</span><span class="filial-cidade">${esc(cidade)}</span>`
-          : `<span class="filial-sigla">${esc(sigla)}</span>`;
+        const sigla = (parts[0] || raw).trim().toUpperCase();
+        const cidade = (parts.slice(1).join(' · ') || CTR_CIDADE[sigla] || '').trim();
+        const w = Math.max(4, Math.round((d.medioDia / max) * 100));
+        const tone = ctrCustoFreteTone(d.custoFrete.pct);
+        const zero = d.medioDia <= 0 ? ' is-zero' : '';
         const tip = esc(
-          `${raw} · ${d.qtd} veículo(s) · custo R$ ${fmtCtrMoney(d.custo)} · frete R$ ${fmtCtrMoney(d.frete)} · custo/frete ${d.custoFrete.txt} · médio/dia R$ ${fmtCtrMoney(d.medioDia)} · ${dias} dia(s)`
+          `${sigla} ${cidade} · ${d.qtd} veículo(s) · custo R$ ${fmtCtrMoney(d.custo)} · frete R$ ${fmtCtrMoney(d.frete)} · custo/frete ${d.custoFrete.txt} · médio/dia R$ ${fmtCtrMoney(d.medioDia)} · ${dias} dia(s)`
         );
-        const h = alturaTorreCtr(d.medioDia, max);
-        const valorLab = fmtCtrMoney(d.medioDia);
-        return `<div class="torre ${skin}" title="${tip}">
-          <div class="pin"><span class="${d.qtd >= 100 ? 'pin-lg' : ''}">${d.qtd}</span></div>
-          <div class="barra" style="height:${h}px">
-            <strong>
-              <span class="ctr-bar-val">R$ ${esc(valorLab)}</span>
-              <span class="ctr-bar-qtd">${d.qtd} veíc. · ${esc(d.custoFrete.txt)}</span>
-            </strong>
+        return `<article class="ctr-rank-row ${skin}${zero}" title="${tip}">
+          <div class="ctr-rank-sigla">${esc(sigla)}</div>
+          <div class="ctr-rank-copy">
+            <div class="city">${esc(cidade || sigla)}</div>
+            <div class="sub">${d.qtd} veículo${d.qtd === 1 ? '' : 's'}</div>
           </div>
-          <div class="base"><div class="lbl">${lab}</div></div>
-        </div>`;
+          <div class="ctr-rank-metrics">
+            <strong>R$ ${esc(fmtCtrMoney(d.medioDia))}</strong>
+            <span class="ctr-rank-pct ${tone}">custo/frete ${esc(d.custoFrete.txt)}</span>
+          </div>
+          <div class="ctr-rank-track"><i style="--w:${w}%"></i></div>
+        </article>`;
       }).join('');
     }
 
