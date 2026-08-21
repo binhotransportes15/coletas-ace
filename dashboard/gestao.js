@@ -474,9 +474,18 @@
         try { rows = await loadCsv('data/contratacao/ctrbs_073.csv'); } catch (_) {}
       }
       const keys = rows[0] ? Object.keys(rows[0]) : ['placa', 'motorista', 'frete', 'status'];
+      const withPct = rows.map((r) => {
+        const c = Number(r.custo) || 0;
+        const f = Number(r.frete) || 0;
+        const pct = f > 0 ? ((c / f) * 100).toFixed(1).replace('.', ',') + '%' : '—';
+        return { ...r, custo_frete: pct };
+      });
       return {
-        columns: keys.map((k) => colDef(k, k)),
-        rows,
+        columns: [
+          ...keys.map((k) => colDef(k, k)),
+          colDef('custo_frete', 'Custo/Frete'),
+        ],
+        rows: withPct,
       };
     }
     if (SETOR === 'emissao') {

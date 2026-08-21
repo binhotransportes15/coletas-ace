@@ -4128,7 +4128,7 @@
     }
     .ctr-layout [data-block="kpis"] { grid-column: 1; grid-row: 1; }
     .ctr-layout [data-block="chart"] { grid-column: 1; grid-row: 2; min-height: 0; }
-    .ctr-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .ctr-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .ctr-mix {
       display: flex;
       flex-wrap: wrap;
@@ -4287,7 +4287,7 @@
     }
     body.tv-mode .ctr-layout [data-block="kpis"] {
       container-type: normal !important;
-      grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+      grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
       min-height: min-content !important;
       height: auto !important;
       overflow: visible !important;
@@ -7992,6 +7992,9 @@
       grid-template-columns: repeat(8, minmax(0, 1fr));
       gap: 8px;
     }
+    .arm-kpis.ctr-kpis {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
     .arm-kpi {
       background: var(--ds-kpi-bg, var(--panel));
       border: 1px solid var(--line);
@@ -9454,6 +9457,10 @@
           <div class="arm-kpi ds-kpi is-neutral"><div class="lbl">Veículos</div><div class="val" id="ctrVeic">0</div></div>
           <div class="arm-kpi atrasado ds-kpi is-warn"><div class="lbl">Custo</div><div class="val" id="ctrCusto">0</div></div>
           <div class="arm-kpi finalizado ds-kpi is-ok"><div class="lbl">Frete</div><div class="val" id="ctrFrete">0</div></div>
+          <div class="arm-kpi ds-kpi is-run" id="ctrPctCard" title="Percentual de custo sobre o frete (custo ÷ frete)">
+            <div class="lbl">Custo/Frete</div>
+            <div class="val" id="ctrCustoFrete">—</div>
+          </div>
           <div class="arm-kpi ds-kpi is-run"><div class="lbl">Custo médio/dia</div><div class="val" id="ctrCustoMed" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
           <div class="arm-kpi chegou ds-kpi is-neutral"><div class="lbl">Período</div><div class="val" id="ctrPeriodo" style="font-size:clamp(13px,1.5vw,18px)">—</div></div>
         </div>
@@ -14629,6 +14636,24 @@
       return Number.isFinite(n) ? n : 0;
     }
 
+    function fmtCtrCustoFretePct(custo, frete) {
+      const c = parseCtrNum(custo);
+      const f = parseCtrNum(frete);
+      if (!(f > 0)) return { txt: '—', pct: null };
+      const pct = (c / f) * 100;
+      return {
+        txt: pct.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%',
+        pct,
+      };
+    }
+
+    function ctrCustoFreteTone(pct) {
+      if (pct == null || !Number.isFinite(pct)) return 'is-run';
+      if (pct < 50) return 'is-ok';
+      if (pct <= 100) return 'is-warn';
+      return 'is-crit';
+    }
+
     function fmtCtrMoney(v) {
       const n = parseCtrNum(v);
       if (!Number.isFinite(n)) return String(v || '0');
@@ -14721,8 +14746,10 @@
       ).slice(0, 10).map((d) => {
         const qtd = parseCtrNum(d.qtd);
         const custo = parseCtrNum(d.custo);
+        const frete = parseCtrNum(d.frete);
         const medioDia = custo / dias;
-        return { ...d, qtd, custo, medioDia };
+        const ratio = fmtCtrCustoFretePct(custo, frete);
+        return { ...d, qtd, custo, frete, medioDia, custoFrete: ratio };
       });
       if (!items.length) {
         host.innerHTML = '<div class="arm-rank-empty">Sem bases — rode o agente Excel / `73`</div>';
@@ -14739,7 +14766,7 @@
           ? `<span class="filial-sigla">${esc(sigla)}</span><span class="filial-cidade">${esc(cidade)}</span>`
           : `<span class="filial-sigla">${esc(sigla)}</span>`;
         const tip = esc(
-          `${raw} · ${d.qtd} veículo(s) · custo R$ ${fmtCtrMoney(d.custo)} · médio/dia R$ ${fmtCtrMoney(d.medioDia)} · ${dias} dia(s)`
+          `${raw} · ${d.qtd} veículo(s) · custo R$ ${fmtCtrMoney(d.custo)} · frete R$ ${fmtCtrMoney(d.frete)} · custo/frete ${d.custoFrete.txt} · médio/dia R$ ${fmtCtrMoney(d.medioDia)} · ${dias} dia(s)`
         );
         const h = alturaTorreCtr(d.medioDia, max);
         const valorLab = fmtCtrMoney(d.medioDia);
@@ -14748,7 +14775,7 @@
           <div class="barra" style="height:${h}px">
             <strong>
               <span class="ctr-bar-val">R$ ${esc(valorLab)}</span>
-              <span class="ctr-bar-qtd">${d.qtd} veíc.</span>
+              <span class="ctr-bar-qtd">${d.qtd} veíc. · ${esc(d.custoFrete.txt)}</span>
             </strong>
           </div>
           <div class="base"><div class="lbl">${lab}</div></div>
@@ -16259,6 +16286,21 @@
         setCtrText('ctrVeic', resumo.total_veiculos || veics.length || '0');
         setCtrText('ctrCusto', 'R$ ' + (resumo.custo_fmt || fmtCtrMoney(resumo.custo || 0)));
         setCtrText('ctrFrete', 'R$ ' + (resumo.frete_fmt || fmtCtrMoney(resumo.frete || 0)));
+        {
+          const ratio = fmtCtrCustoFretePct(resumo.custo, resumo.frete);
+          setCtrText('ctrCustoFrete', ratio.txt);
+          const card = document.getElementById('ctrPctCard');
+          if (card) {
+            card.classList.remove('is-ok', 'is-warn', 'is-run', 'is-crit', 'finalizado', 'atrasado');
+            const tone = ctrCustoFreteTone(ratio.pct);
+            card.classList.add('ds-kpi', tone);
+            if (tone === 'is-ok') card.classList.add('finalizado');
+            if (tone === 'is-warn' || tone === 'is-crit') card.classList.add('atrasado');
+            card.title = ratio.pct == null
+              ? 'Custo/Frete — aguardando frete do 200'
+              : `Custo/Frete = custo ÷ frete · ${ratio.txt}`;
+          }
+        }
         const dias = ctrDiasPeriodo(resumo.periodo);
         {
           const custo = parseCtrNum(resumo.custo);
@@ -16276,6 +16318,7 @@
           meta.textContent = [
             destinos.length ? `${destinos.length} bases` : '',
             `${dias} dia(s) no período`,
+            'custo/frete = custo ÷ frete',
             'custo médio/dia = custo ÷ dias',
           ].filter(Boolean).join(' · ');
         }
