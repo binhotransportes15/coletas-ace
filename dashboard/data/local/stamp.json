@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-08-21T11:27:43",
+  "updated_at": "2026-08-21T11:32:46",
   "sectors": {
     "distribuicao": {
       "file": "distribuicao.json",
-      "updated_at": "2026-08-21T11:27:43"
+      "updated_at": "2026-08-21T11:28:04"
     },
     "armazem": {
       "file": "armazem.json",
@@ -11,7 +11,7 @@
     },
     "pendencia": {
       "file": "pendencia.json",
-      "updated_at": "2026-08-21T11:17:50"
+      "updated_at": "2026-08-21T11:32:46"
     },
     "contratacao": {
       "file": "contratacao.json",

@@ -1,6 +1,6 @@
 {
   "setor": "distribuicao",
-  "updated_at": "2026-08-21T11:27:43",
+  "updated_at": "2026-08-21T11:28:04",
   "resumo_50": {
     "data_cadastro": "PERIODO",
     "total_coletas": "6",
@@ -48,6 +48,6 @@
     "frete_amanha": "0,00"
   },
   "extra": {
-    "report": "225"
+    "report": "36"
   }
 }

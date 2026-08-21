@@ -46,6 +46,14 @@ StatusCallback = Callable[[str], None]
 # Apps Script tem limite pratico de tempo/tamanho; envia em fatias.
 _CHUNK_ROWS = 350
 _HASH_CACHE_PATH = CACHE_DIR / "sheets_hashes.json"
+# Telas ao vivo da TV: sempre reenvia (hash skip deixava o site parado).
+_LIVE_TV_SHEETS = frozenset({
+    "Coletas103",
+    "Resumo103",
+    "Entregas36",
+    "Romaneios36",
+    "Resumo36",
+})
 _ping_cache: dict[str, Any] = {"ok_at": 0.0, "url": "", "token": ""}
 
 
@@ -268,7 +276,7 @@ def _send_sheet(
 ) -> dict[str, Any]:
     """Substitui a aba (overwrite no Apps Script, sem clear total). Pula se hash igual."""
     digest = _content_hash(headers, rows)
-    if _local_hash_match(sheet, digest):
+    if _local_hash_match(sheet, digest) and sheet not in _LIVE_TV_SHEETS:
         on_status(f"Sheets: {sheet} igual (local) — pulou rede.")
         return {
             "ok": True,
@@ -530,7 +538,11 @@ def sync_cycle_sheets(
         return {"ok": True, "skipped": True, "reason": "empty_batch"}
 
     # Só o que mudou (cache local) — se nada mudou, nem chama a rede
-    pending = [i for i in items if not _local_hash_match(str(i["sheet"]), str(i.get("content_hash") or ""))]
+    pending = [
+        i for i in items
+        if str(i["sheet"]) in _LIVE_TV_SHEETS
+        or not _local_hash_match(str(i["sheet"]), str(i.get("content_hash") or ""))
+    ]
     if not pending:
         status("Sheets: tudo igual ao último envio — pulou rede.")
         return {"ok": True, "skipped": True, "reason": "local_hash_all", "stats": {

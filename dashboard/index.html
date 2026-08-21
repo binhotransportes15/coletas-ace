@@ -3606,10 +3606,15 @@
     .swap-nav.prev { left: 10px; }
     .swap-nav.next { right: 10px; }
     body.live-mode[data-sector="distribuicao"] .swap-nav,
-    body[data-sector="armazem"] .swap-nav { display: grid; }
+    body[data-sector="armazem"] .swap-nav,
+    body[data-sector="emissao"] .swap-nav { display: grid; }
     body[data-sector="armazem"] .swap-nav:hover {
       border-color: #7dd3fc;
       color: #7dd3fc;
+    }
+    body[data-sector="emissao"] .swap-nav:hover {
+      border-color: #c084fc;
+      color: #c084fc;
     }
     .agenda-swap-btns {
       display: inline-flex;
@@ -3747,7 +3752,7 @@
     }
 
     .sector-root[hidden] { display: none !important; }
-    body:not([data-sector="distribuicao"]):not([data-sector="armazem"]) .swap-nav { display: none !important; }
+    body:not([data-sector="distribuicao"]):not([data-sector="armazem"]):not([data-sector="emissao"]) .swap-nav { display: none !important; }
     body:not([data-sector="distribuicao"]) > .tv-hint { display: none !important; }
 
     /* Views operacionais — uma tela cheia por vez */
@@ -3955,12 +3960,16 @@
       background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, .7);
     }
     body[data-sector="emissao"][data-view="diaria"] #emiTitle { color: #c084fc; }
-    body[data-sector="emissao"][data-view="mes"] #emiTitle { color: #a78bfa; }
+    body[data-sector="emissao"][data-view="mes"] #emiTitle { color: #e9d5ff; }
+    body[data-sector="emissao"] #emiTitle {
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
     body[data-sector="emissao"][data-view="diaria"] #emiSwapDot i.d-diaria {
       background: #c084fc; box-shadow: 0 0 8px rgba(192, 132, 252, .6);
     }
     body[data-sector="emissao"][data-view="mes"] #emiSwapDot i.d-mes {
-      background: #a78bfa; box-shadow: 0 0 8px rgba(167, 139, 250, .7);
+      background: #e9d5ff; box-shadow: 0 0 8px rgba(233, 213, 255, .7);
     }
     body[data-sector="pendencia"] #penTitle { color: #f472b6; }
     body[data-sector="contratacao"] #ctrTitle { color: #fb923c; }
@@ -9686,7 +9695,7 @@
           />
           <div class="arm-titles">
             <div class="kicker" id="emiKicker">ACE · OPERACIONAL · 455</div>
-            <h1 id="emiTitle" title="Trocar tela (Diária / Mês)" role="button" tabindex="0">EMISSÃO DE CT-e <span class="swap-dot" id="emiSwapDot" aria-hidden="true"><i class="d-diaria"></i><i class="d-mes"></i></span> <span class="emi-mes-pill" id="emiMes">—</span></h1>
+            <h1 id="emiTitle" title="Trocar tela (Diária / Mês)" role="button" tabindex="0">DIÁRIA <span class="swap-dot" id="emiSwapDot" role="button" tabindex="0" title="Trocar tela" aria-label="Alternar Diária e Mês"><i class="d-diaria"></i><i class="d-mes"></i></span></h1>
           </div>
         </div>
         <div class="emi-top-actions">
@@ -11891,9 +11900,12 @@
       const mesPill = document.getElementById('emiMes');
       const mesTxt = mesPill ? mesPill.textContent : '—';
       if (title) {
-        const base = onMes ? 'EMISSÃO · MÊS' : 'EMISSÃO DE CT-e';
-        title.innerHTML = `${base} <span class="swap-dot" id="emiSwapDot" aria-hidden="true"><i class="d-diaria"></i><i class="d-mes"></i></span> <span class="emi-mes-pill" id="emiMes">${esc(String(mesTxt || '—'))}</span>`;
-        title.title = 'Clique ou ← → para trocar Diária / Mês';
+        const label = onMes ? 'MÊS' : 'DIÁRIA';
+        const pill = onMes
+          ? ` <span class="emi-mes-pill" id="emiMes">${esc(String(mesTxt || '—'))}</span>`
+          : '';
+        title.innerHTML = `${label} <span class="swap-dot" id="emiSwapDot" role="button" tabindex="0" title="Trocar tela" aria-label="Alternar Diária e Mês"><i class="d-diaria"></i><i class="d-mes"></i></span>${pill}`;
+        title.title = 'Clique, ← → ou as setas laterais para trocar Diária / Mês';
         title.style.cursor = 'pointer';
         title.onclick = () => stepSwap(1);
       }
@@ -18273,13 +18285,13 @@
     document.querySelectorAll('.js-sector-menu').forEach((el) => {
       el.addEventListener('click', (e) => {
         // títulos com troca interna de tela (pátio/ranking) não abrem o menu
-        if (el.id === 'armTitle' || el.id === 'recTitle') return;
+        if (el.id === 'armTitle' || el.id === 'recTitle' || el.id === 'emiTitle') return;
         e.preventDefault();
         e.stopPropagation();
         openSectorMenu(true);
       });
       el.addEventListener('keydown', (e) => {
-        if (el.id === 'armTitle' || el.id === 'recTitle') return;
+        if (el.id === 'armTitle' || el.id === 'recTitle' || el.id === 'emiTitle') return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           openSectorMenu(true);
@@ -18287,7 +18299,7 @@
       });
     });
     // Duplo clique no título do armazém/reciclagem → menu de setores
-    ['armTitle', 'recTitle'].forEach((id) => {
+    ['armTitle', 'recTitle', 'emiTitle'].forEach((id) => {
       document.getElementById(id)?.addEventListener('dblclick', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -18335,7 +18347,7 @@
     if (btnSwapPrev) btnSwapPrev.addEventListener('click', () => stepSwap(-1));
     if (btnSwapNext) btnSwapNext.addEventListener('click', () => stepSwap(1));
 
-    // Arrastar/swipe horizontal · Distribuição e Armazém
+    // Arrastar/swipe horizontal · Distribuição, Armazém e Emissão
     (function bindHorizontalSwap() {
       let x0 = null;
       let y0 = null;
@@ -18345,7 +18357,9 @@
       const canSwap = () =>
         !ALERTA_LOCK_ON
         && !ARM_ALERT_ON
-        && (CURRENT_SECTOR === 'armazem' || CURRENT_SECTOR === 'distribuicao');
+        && (CURRENT_SECTOR === 'armazem'
+          || CURRENT_SECTOR === 'distribuicao'
+          || CURRENT_SECTOR === 'emissao');
 
       const onStart = (x, y) => {
         if (!canSwap()) return;
@@ -18425,12 +18439,12 @@
         if (TV_MODE) setTvMode(false);
         return;
       }
-      if ((isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem') && e.key === 'ArrowLeft') {
+      if ((isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem' || CURRENT_SECTOR === 'emissao') && e.key === 'ArrowLeft') {
         e.preventDefault();
         stepSwap(-1);
         return;
       }
-      if ((isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem') && e.key === 'ArrowRight') {
+      if ((isOpsSector(CURRENT_SECTOR) || CURRENT_SECTOR === 'armazem' || CURRENT_SECTOR === 'emissao') && e.key === 'ArrowRight') {
         e.preventDefault();
         stepSwap(1);
         return;
