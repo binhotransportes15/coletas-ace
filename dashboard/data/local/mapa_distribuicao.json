@@ -1,7 +1,7 @@
 {
-  "atualizado": "21/08/2026 11:22:30",
+  "atualizado": "21/08/2026 11:23:19",
   "periodo": "hoje",
-  "fonte": "C:\\Users\\analista.qualidade\\Desktop\\ACE_AnalisadorColetaEntrega\\data\\downloads\\CSVssw0146BIN[1]112314.sswweb",
+  "fonte": "C:\\Users\\analista.qualidade\\Desktop\\ACE_AnalisadorColetaEntrega\\data\\downloads\\CSVssw0146BIN[1]112402.sswweb",
   "base": {
     "nome": "BINHO TRANSPORTES",
     "lat": -23.4265324,
@@ -45615,9 +45615,9 @@
           "frete": 922.38
         }
       ],
-      "servico_feitas": 6,
+      "servico_feitas": 9,
       "servico_total": 14,
-      "servico_pct": 42.9
+      "servico_pct": 64.3
     },
     {
       "placa": "GEK0344",

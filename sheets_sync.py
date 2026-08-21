@@ -177,7 +177,7 @@ def _send_sheets_batch(
         sheet = str(item["sheet"])
         digest = str(item.get("content_hash") or "")
         rows = item.get("rows") or []
-        if _local_hash_match(sheet, digest):
+        if _local_hash_match(sheet, digest) and sheet not in _LIVE_TV_SHEETS:
             on_status(f"Sheets: {sheet} igual (local) — pulou rede.")
             stats[sheet] = {
                 "ok": True,
